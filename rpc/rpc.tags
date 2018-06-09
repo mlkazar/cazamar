@@ -1,0 +1,189 @@
+
+cthread.cc,62
+CThreadHandle::init(4,27
+CThreadHandle::startWrapper(16,320
+
+cthread.h,783
+#define __CTHREAD_H_ENV__ 2,26
+class CThread 10,137
+    typedef void (CThread::*StartMethod)CThread::StartMethod12,162
+    CThread(CThread::CThread14,221
+class CThreadMutex 17,243
+    CThreadMutex(CThreadMutex::CThreadMutex22,319
+    void take(CThreadMutex::take28,457
+    void release(CThreadMutex::release32,526
+    pthread_mutex_t *getPthreadMutex(CThreadMutex::getPthreadMutex36,600
+    ~CThreadMutex(CThreadMutex::~CThreadMutex40,679
+class CThreadCV 45,758
+    CThreadCV(CThreadCV::CThreadCV54,1004
+    void setMutex(CThreadCV::setMutex61,1151
+    void wait(CThreadCV::wait65,1226
+    void broadcast(CThreadCV::broadcast73,1448
+    void signalOne(CThreadCV::signalOne78,1552
+    ~CThreadCV(CThreadCV::~CThreadCV82,1624
+class CThreadHandle 87,1696
+
+dqueue.h,537
+#define  _DQ_H_ENV__ 2,20
+template <class TT> class dqueue 4,44
+    dqueue(dqueue::dqueue11,278
+    void init(dqueue::init13,359
+    int empty(dqueue::empty19,458
+    void insertAfter(dqueue::insertAfter23,507
+    void append(dqueue::append50,1156
+    void prepend(dqueue::prepend66,1444
+    void remove(dqueue::remove82,1741
+    void concat(dqueue::concat104,2073
+    unsigned long count(dqueue::count125,2611
+    TT *head(dqueue::head129,2674
+    TT *tail(dqueue::tail131,2709
+    TT *pop(dqueue::pop133,2744
+
+osp.cc,59
+osp_panic(7,65
+OspMBuf::alloc(16,245
+osp_time_ms(31,538
+
+osp.h,52
+#define _OSP_H_ENV__ 2,21
+#define osp_assert(7,91
+
+ospmbuf.h,443
+#define __OSP_MBUF_H_ENV__ 2,27
+class OspMBuf 9,124
+    uint32_t bytesAtEnd(OspMBuf::bytesAtEnd30,554
+    uint32_t dataBytes(OspMBuf::dataBytes39,840
+    char *data(OspMBuf::data43,901
+    static void freeList(OspMBuf::freeList47,950
+    char *popNBytes(OspMBuf::popNBytes59,1269
+    void pushNBytes(OspMBuf::pushNBytes71,1494
+    char *pushNBytesNoCopy(OspMBuf::pushNBytesNoCopy77,1675
+    ~OspMBuf(OspMBuf::~OspMBuf86,1880
+
+osptypes.h,165
+#define _OSP_TYPES_H_ENV__ 2,27
+typedef u_int8_t uint8_t;4,57
+typedef u_int16_t uint16_t;5,83
+typedef u_int32_t uint32_t;6,111
+typedef u_int64_t uint64_t;7,139
+
+rpc.cc,1101
+RpcListener::init(10,129
+RpcListener::listen(22,454
+RpcConn::initBase(77,1854
+RpcConn::sendData(100,2547
+RpcConn::~RpcConn(134,3364
+RpcConn::listenFd(145,3600
+RpcConn::helper(189,4604
+RpcConn::helperDone(354,10016
+RpcConn::sendHeaderResponse(368,10314
+RpcConn::terminate(374,10431
+RpcConn::updateActivity(391,10778
+RpcConn::waitForSendNL(399,10902
+RpcConn::releaseSendNL(408,11058
+RpcConn::waitForReceiveNL(416,11193
+RpcConn::releaseReceiveNL(425,11361
+RpcConn::reverseConnNL(433,11508
+RpcSdr::appendMBuf(447,11738
+RpcSdr::copyCountedBytes(478,12495
+RpcSdr::bytes(567,14662
+RpcSdrIn::doNotify(581,14837
+RpcSdrOut::doNotify(593,15026
+Rpc::addClientConn(613,15409
+Rpc::addServer(667,16797
+Rpc::init(684,17085
+Rpc::getServerById(691,17170
+RpcServer::findContext(705,17556
+RpcClientContext::waitForOpenNL(720,17871
+RpcClientContext::openServerNL(730,18070
+RpcClientContext::makeCall(757,18611
+RpcClientContext::getResponse(785,19268
+RpcClientContext::finishCall(837,20531
+RpcHeader::marshal(856,20829
+RpcHeader::generateResponse(884,21749
+RpcHeader::setupBasic(891,21887
+
+rpc.h,2782
+#define __RPC_H_ENV_ 2,21
+class RpcHeader 46,1280
+class RpcContext 83,2704
+    RpcConn *getConn(RpcContext::getConn89,2939
+    RpcServer *getServer(RpcContext::getServer93,2994
+    void setConn(RpcContext::setConn97,3055
+    void setServer(RpcContext::setServer101,3121
+class Rpc 110,3418
+    static void uuidFromLongId(Rpc::uuidFromLongId124,3675
+class RpcServerContext 135,3999
+    virtual ~RpcServerContext(RpcServerContext::~RpcServerContext144,4313
+    void release(RpcServerContext::release148,4370
+class RpcClientContext 153,4422
+    RpcClientContext(RpcClientContext::RpcClientContext171,4868
+    virtual ~RpcClientContext(RpcClientContext::~RpcClientContext176,4996
+    void release(RpcClientContext::release180,5053
+class RpcSdr 195,5582
+    typedef int32_t NotifyProc(RpcSdr::NotifyProc197,5619
+    enum SubType RpcSdr::SubType199,5677
+    enum SubType {IsUnknown,RpcSdr::SubType::IsUnknown199,5677
+    enum SubType {IsUnknown, IsIn,RpcSdr::SubType::IsIn199,5677
+    enum SubType {IsUnknown, IsIn, IsOut,RpcSdr::SubType::IsOut199,5677
+    enum SubType {IsUnknown, IsIn, IsOut, IsBuffer}RpcSdr::SubType::IsBuffer199,5677
+    RpcSdr(RpcSdr::RpcSdr236,7022
+    void init(RpcSdr::init240,7088
+    void setCallback(RpcSdr::setCallback256,7498
+    void abort(RpcSdr::abort266,7762
+    void free(RpcSdr::free276,7946
+    OspMBuf *popAll(RpcSdr::popAll290,8233
+    void append(RpcSdr::append302,8515
+    uint32_t getAvailableBytes(RpcSdr::getAvailableBytes317,8805
+class RpcSdrIn 329,9087
+    RpcSdrIn(RpcSdrIn::RpcSdrIn331,9129
+class RpcSdrOut 338,9211
+    RpcSdrOut(RpcSdrOut::RpcSdrOut340,9254
+class RpcSdrBuffer 347,9338
+    RpcSdrBuffer(RpcSdrBuffer::RpcSdrBuffer349,9384
+    void doNotify(RpcSdrBuffer::doNotify353,9449
+class RpcListener 357,9548
+    RpcListener(RpcListener::RpcListener366,9719
+class RpcConn 378,9992
+    RpcConn(RpcConn::RpcConn439,11691
+    void holdNL(RpcConn::holdNL466,12311
+    void releaseNL(RpcConn::releaseNL470,12359
+    void hold(RpcConn::hold478,12539
+    void release(RpcConn::release484,12643
+    void releaseSend(RpcConn::releaseSend502,12986
+    void releaseReceive(RpcConn::releaseReceive508,13104
+    void waitForReceive(RpcConn::waitForReceive518,13295
+    void exchangeReceiveOwnerNL(RpcConn::exchangeReceiveOwnerNL524,13447
+    void reverseConn(RpcConn::reverseConn532,13691
+    void exchangeReceiveOwner(RpcConn::exchangeReceiveOwner538,13809
+    void setServer(RpcConn::setServer544,13985
+    void initServer(RpcConn::initServer550,14083
+    void initClient(RpcConn::initClient555,14157
+class RpcServer 562,14288
+    virtual RpcServerContext *getContext(RpcServer::getContext597,15136
+    RpcServer(RpcServer::RpcServer612,15684
+
+rpctest.cc,576
+class TestServer 10,133
+    class TestServerContext TestServer::TestServerContext13,181
+        int32_t serverMethod(TestServer::TestServerContext::serverMethod14,237
+        TestServerContext(TestServer::TestServerContext::TestServerContext28,538
+    RpcServerContext *getContext(TestServer::getContext31,577
+    TestServer(TestServer::TestServer43,864
+class TestClientContext 46,915
+    void init(TestClientContext::init51,1043
+    void init2(TestClientContext::init256,1194
+    TestClientContext(TestClientContext::TestClientContext95,2377
+main(103,2551
+
+sdr.cc,113
+Sdr::copyChar(4,26
+Sdr::copyShort(10,159
+Sdr::copyLong(17,296
+Sdr::copyLongLong(24,432
+Sdr::copyUuid(31,572
+
+sdr.h,73
+#define __SDR_H_ENV__ 2,22
+class SdrSerialize 10,168
+class Sdr 18,390

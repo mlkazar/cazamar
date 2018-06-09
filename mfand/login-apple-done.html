@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<!-- This page is loaded when Apple's login operation complete, and the key
+     server runs at /login.  The /login code returns the contents of this file. -->
+
+<style>
+h1 {text-align: center; color: blue}
+body {background-color: rgb(200,200,255)}
+</style>
+
+<body>
+
+<h1>Apple Login Done</h1>
+
+
+<script>
+  console.log('window opener is');
+  console.log(window.opener);
+  function mytest() {
+    console.log('window opener is');
+    console.log(window.opener);
+    window.opener.postMessage('kazar1', "*");
+    window.close();
+  }
+  window.onload = mytest;
+</script>
+
+<div id="postResp">[Logged in]</div>
+
+</body>
+</html>

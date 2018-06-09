@@ -1,0 +1,11 @@
+to run, do:
+./sapitest 5555 (or whatever)
+then visit localhost:5555 with a browser
+
+developer.apple.com:
+Identifiers / App IDs has Web -- com.Cazamar.Web enable iCloud and edit it and ensure that CloudKit is enabled
+Identifiers / iCloud Containers -- iCloud.com.Cazamar.Web
+
+icloud.developer.apple.com:
+Go to API Access to define an API Token for postMessage (named Web1)
+Go to Record Types to define a record type for holding data, and define a field for Assets.
