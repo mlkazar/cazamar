@@ -1,7 +1,11 @@
 all: radio
 install: all
 
+OS=$(shell uname -s)
 CXXFLAGS=-g -Wall -I../include
+ifeq ($(OS),Linux)
+CXXFLAGS += -Wno-unused-but-set-variable
+endif
 
 INCLS=dqueue.h ../include/xgml.h
 

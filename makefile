@@ -1,4 +1,5 @@
 all:
+	-mkdir include lib
 	(cd rpc;make install); (cd mfand; make install); (cd radio; make install)
 
 install: all

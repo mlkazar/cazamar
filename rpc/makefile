@@ -10,9 +10,10 @@ clean:
 #OSXVERSION=-mmacosx-version-min=10.7
 OSXVERSION=
 
+OS=$(shell uname -s)
 CXXFLAGS=-g -Wall $(WARNFLAGS) $(OSXVERSION)
 ifeq ($(OS),Linux)
-CXXFLAGS+=-Wno-unused-but-set-variable
+CXXFLAGS += -Wno-unused-but-set-variable
 endif
 
 
