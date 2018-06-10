@@ -5,6 +5,7 @@ install: all
 
 clean:
 	(cd rpc;make clean); (cd mfand; make clean); (cd radio; make clean)
+	-rm -rf include lib
 
 beancount:
 	wc rpc/*.[ch]* mfand/*.[ch]* mfand/*.html MusicFan/MusicFan/*.[mhc]*
