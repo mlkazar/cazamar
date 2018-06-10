@@ -1,0 +1,16 @@
+WERS http://www.wers.org/wp-content/uploads/2017/01/wers.pls
+WYEP http://16853.live.streamtheworld.com:80/WYEPFMAAC_SC
+WESA http://16853.live.streamtheworld.com:80/WESAFMAAC_SC
+Interwebs http://go.interwebsradio.com/radio/8010/stream
+WRCT http://stream.wrct.org:8000/wrct-hi.mp3
+
+get set of addresses:
+curl http://provisioning.streamtheworld.com/pls/WYEPFMaac.pls
+curl http://provisioning.streamtheworld.com/pls/WYEPaac.pls
+
+----
+
+Favorites (above +)
+WSUM
+Interwebsradio
+WMBR

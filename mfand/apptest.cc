@@ -68,17 +68,23 @@ public:
     std::string _webAuthToken;
     SApiLoginApple *_loginApplep;
     SApiLoginMS *_loginMSp;
+#ifdef __linux__
     random_data _randomBuf;
     char _randomState[64];
+#endif
     
     AppTestContext() {
         _loginApplep = NULL;
         _loginMSp = NULL;
+#ifdef __linux__
         _randomBuf.state = NULL;
         initstate_r(time(0) + getpid(),
                     _randomState,
                     sizeof(_randomState),
                     &_randomBuf);
+#else
+        srandomdev();
+#endif
     }
 };
 
@@ -109,15 +115,21 @@ public:
     std::string _finalUrl;      /* URL to switch to when authentication done */
     std::string _authId;        /* ID used as key in key server */
 
+#ifdef __linux__
     random_data _randomBuf;
     char _randomState[64];
+#endif
 
     SApiLoginGeneric() {
+#ifdef __linux__
         _randomBuf.state = NULL;
         initstate_r(time(0) + getpid(),
                     _randomState,
                     sizeof(_randomState),
                     &_randomBuf);
+#else
+        srandomdev();
+#endif
     }
 
     void printAuthState() {
@@ -140,7 +152,7 @@ public:
  */
 class SApiLoginApple : public SApiLoginGeneric {
     SApi *_sapip;
-    CThreadPipe *outPipe;
+    // CThreadPipe *outPipe;
     std::string _apiUrl;
 
 public: 
@@ -158,7 +170,7 @@ public:
 
 class SApiLoginMS : public SApiLoginGeneric {
     SApi *_sapip;
-    CThreadPipe *outPipe;
+    // CThreadPipe *outPipe;
     std::string _clientId;
     std::string _clientSecret;
 
@@ -491,8 +503,8 @@ SApiLoginApple::getLoginPage(std::string *outStringp)
         CThreadPipe *inPipep;
         char tbuffer[16384];
         std::string redirectUrl;
-        uint32_t tokenPos;
-        uint32_t endPos;
+        size_t tokenPos;
+        size_t endPos;
         std::string tableKey;
         
         xapip = new XApi();
@@ -563,7 +575,13 @@ SApiLoginMS::init(SApi *sapip, std::string finalUrl)
     int32_t tval;
     
     _sapip = sapip;
+
+#ifdef __linux__
     random_r(&_randomBuf, &tval);
+#else
+    tval = random();
+#endif
+
     tval = tval & 0x7FFFFFFF;
     sprintf(tbuffer, "%u", tval);
     _authId = std::string(tbuffer);

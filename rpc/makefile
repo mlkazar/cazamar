@@ -5,12 +5,16 @@ install: all
 	cp *.h ../include
 
 clean:
-	rm -f *.o *.a rpctest jsontest
+	rm -f *.o *.a rpctest jsontest xgmltest
 
 #OSXVERSION=-mmacosx-version-min=10.7
 OSXVERSION=
 
-CXXFLAGS=-g -Wall -Wno-unused-but-set-variable $(OSXVERSION)
+CXXFLAGS=-g -Wall $(WARNFLAGS) $(OSXVERSION)
+ifeq ($(OS),Linux)
+CXXFLAGS+=-Wno-unused-but-set-variable
+endif
+
 
 INCLS=cthread.h dqueue.h json.h osp.h ospmbuf.h osptypes.h sdr.h restcall.h rpc.h xgml.h 
 

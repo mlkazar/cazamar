@@ -8,9 +8,7 @@
 #include <unistd.h>
 #include <uuid/uuid.h>
 
-#ifdef __linux__
 #include <netinet/tcp.h>
-#endif
 
 #include "cthread.h"
 #include "ospmbuf.h"

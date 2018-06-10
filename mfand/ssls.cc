@@ -23,7 +23,11 @@ public:
         int opt;
 
         _listenFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#ifdef __linux__
         _sslMethodp = TLS_server_method();
+#else
+        _sslMethodp = TLSv1_2_server_method();
+#endif
         _sslCtxp = SSL_CTX_new(_sslMethodp);
 
         if (SSL_CTX_load_verify_locations(_sslCtxp, "test_cert.pem", "test_key.pem") != 1) {

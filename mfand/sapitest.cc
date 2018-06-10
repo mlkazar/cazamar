@@ -31,7 +31,7 @@ main(int argc, char **argv)
 }
 
 class AppleLoginKeyData : public SApi::ServerReq {
-    SApi *_sapip;
+    //    SApi *_sapip;
 public:
     static SApi::ServerReq *factory(std::string *opcodep, SApi *sapip);
 
@@ -92,7 +92,7 @@ AppleLoginKeyData::factory(std::string *opcodep, SApi *sapip)
 }
 
 class AppleLogin : public SApi::ServerReq {
-    SApi *_sapip;
+    //    SApi *_sapip;
 
 public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
@@ -627,7 +627,7 @@ WriteTest::startMethod()
 }
 
 class ReadTest : public SApi::ServerReq {
-    SApi *_sapip;
+    // SApi *_sapip;
 
 public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
@@ -856,7 +856,7 @@ ReadTest::startMethod()
 }
 
 class DeleteTest : public SApi::ServerReq {
-    SApi *_sapip;
+    // SApi *_sapip;
 
 public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);

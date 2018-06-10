@@ -426,11 +426,15 @@ class SApi : public CThread {
     }
 
     SApi() : _userThreadCV(&_lock) {
+#ifdef __linux__
         _randomBuf.state = NULL;
         initstate_r(time(0) + getpid(),
                     _randomState,
                     sizeof(_randomState),
                     &_randomBuf);
+#else
+        srandomdev();
+#endif
 
         _useTls = 0;
         return;
@@ -460,8 +464,10 @@ class SApi : public CThread {
      */
     CThreadMutex _lock;
 
+#ifdef __linux__
     random_data _randomBuf;
     char _randomState[64];
+#endif
 
     /* note that userThreadCV must follow _lock so that the latter
      * gets constructed first, since userThreadCV's constructor is

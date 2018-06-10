@@ -390,8 +390,13 @@ SApi::ServerReq::setCookie(void *cookiep)
     char cookieBuffer[1024];
 
     _setCookie = 1;
+#ifdef __linux__
     random_r(&_sapip->_randomBuf, &partA);
     random_r(&_sapip->_randomBuf, &partB);
+#else
+    partA = random();
+    partB = random();
+#endif
     sprintf(idBuffer, "%08x%08x", partA, partB);
 
     _cookieId = idBuffer;

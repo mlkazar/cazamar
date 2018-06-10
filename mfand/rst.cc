@@ -303,7 +303,7 @@ int32_t
 Rst::Common::parseCommonHeaders()
 {
     Hdr *hdrp;
-    uint32_t pos;
+    size_t pos;
     std::string cookieLine;
 
     /* if we get here, all of the headers have been received; parse out the interesting ones */

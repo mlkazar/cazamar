@@ -217,9 +217,9 @@ AppleLogin::startMethod()
     SApi::Dict dict;
     std::string tableKey;
     std::string tableValue;
-    uint32_t ampPos;
-    uint32_t tokenPos;
-    uint32_t endPos;
+    size_t ampPos;
+    size_t tokenPos;
+    size_t endPos;
     KeyServ *keyServp = static_cast<KeyServ *>(_sapip->getContext());
     int isMS = 0;
     int isApple = 0;
