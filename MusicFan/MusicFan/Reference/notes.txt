@@ -1,0 +1,36 @@
+iphone 3.5		640  x 960
+iphone 4 inch		640  x 1136
+iphone 4.7 inch		750  x 1334 
+ipad resolution:	1536 x 2048
+====
+Colors for background gradient (drawn from lower right to upper left):
+
+661AFF to 6040FF (@50%) to 809FFF
+
+The files in reference include sumo files (www.sumopaint.com) for PNG files.  Also include
+some PNG files in case sumo disappears.  And includes screen shot (sshot) files.
+
+Description:
+====
+Easily create multiple on-the-fly channels (playlists). 
+
+Switch among podcasts, Internet radio stations, and your music with the press of a button!
+
+AudioGalaxy saves your place in each channel, so you go back to where you left off the next time you switch back to that channel.
+
+Each channel consists of a mix of your choice of playlists, albums, artists, songs, radio stations or podcasts, each qualified by an optional minimum rating.
+
+Podcasts are downloaded directly from RSS feeds, avoiding iTunes.
+
+<<someting about streaming from cloud>>
+
+Lite version has same functionality as full version now!
+
+We want to hear from you!  Please send comments or suggestions to djtogoapp@gmail.com.
+====
+keywords: music,podcast,radio,player,playlist,on the go,on the fly,play list,edit,dj,channel
+
+====
+MFANTopSettings.h: forcenoart
+
+Drawing editor: sumopaint.com

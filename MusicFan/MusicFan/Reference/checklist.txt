@@ -1,0 +1,36 @@
+				Release checklist
+
+test switching stations
+test adding radio stations
+test adding podcasts
+test adding playlists, songs, artists, albums, artist/album, artist/album/song, album/song
+test stars filter
+test cloud filter
+test clear all
+test podcast reset
+test podcast refresh
+
+test moving forward from mp song with app buttons
+test moving forward from av song
+test moving back from mp song
+test moving back from av song
+
+test moving forward from mp song with lock screen
+test moving forward from av song
+test moving back from mp song
+test moving back from av song
+
+test correctly continuing at end with mp song
+test correctly continuing at end with av song
+
+test positioning to mp song with circle-L
+test positioning to av song with circle-L
+
+test positioning mp song with slider
+test positioning av song with slider
+
+test help screen
+
+test social screen
+
+test all settings
