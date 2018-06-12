@@ -12,6 +12,12 @@
 		7F6B42E020BB321A001DCC59 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7F6B42DF20BB321A001DCC59 /* Assets.xcassets */; };
 		7F6B42E320BB321A001DCC59 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7F6B42E120BB321A001DCC59 /* Main.storyboard */; };
 		7F6B42E620BB321A001DCC59 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42E520BB321A001DCC59 /* main.m */; };
+		7FFD966820CEAC5800FD0ADC /* xgml.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD966620CEAC5800FD0ADC /* xgml.cc */; };
+		7FFD967620CEAC8C00FD0ADC /* osp.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD966B20CEAC8C00FD0ADC /* osp.cc */; };
+		7FFD967720CEAC8C00FD0ADC /* sdr.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD966D20CEAC8C00FD0ADC /* sdr.cc */; };
+		7FFD967820CEAC8C00FD0ADC /* json.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD967120CEAC8C00FD0ADC /* json.cc */; };
+		7FFD967920CEAC8C00FD0ADC /* cthread.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD967320CEAC8C00FD0ADC /* cthread.cc */; };
+		7FFD967A20CEAC8C00FD0ADC /* rpc.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD967420CEAC8C00FD0ADC /* rpc.cc */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +31,21 @@
 		7F6B42E420BB321A001DCC59 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7F6B42E520BB321A001DCC59 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		7F6B42E720BB321A001DCC59 /* Upload.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Upload.entitlements; sourceTree = "<group>"; };
+		7FFD966620CEAC5800FD0ADC /* xgml.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xgml.cc; path = ../../rpc/xgml.cc; sourceTree = "<group>"; };
+		7FFD966720CEAC5800FD0ADC /* xgml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xgml.h; path = ../../rpc/xgml.h; sourceTree = "<group>"; };
+		7FFD966920CEAC8C00FD0ADC /* osptypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osptypes.h; path = ../../rpc/osptypes.h; sourceTree = "<group>"; };
+		7FFD966A20CEAC8C00FD0ADC /* rpc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rpc.h; path = ../../rpc/rpc.h; sourceTree = "<group>"; };
+		7FFD966B20CEAC8C00FD0ADC /* osp.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = osp.cc; path = ../../rpc/osp.cc; sourceTree = "<group>"; };
+		7FFD966C20CEAC8C00FD0ADC /* ospmbuf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ospmbuf.h; path = ../../rpc/ospmbuf.h; sourceTree = "<group>"; };
+		7FFD966D20CEAC8C00FD0ADC /* sdr.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdr.cc; path = ../../rpc/sdr.cc; sourceTree = "<group>"; };
+		7FFD966E20CEAC8C00FD0ADC /* sdr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdr.h; path = ../../rpc/sdr.h; sourceTree = "<group>"; };
+		7FFD966F20CEAC8C00FD0ADC /* cthread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cthread.h; path = ../../rpc/cthread.h; sourceTree = "<group>"; };
+		7FFD967020CEAC8C00FD0ADC /* json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = json.h; path = ../../rpc/json.h; sourceTree = "<group>"; };
+		7FFD967120CEAC8C00FD0ADC /* json.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = json.cc; path = ../../rpc/json.cc; sourceTree = "<group>"; };
+		7FFD967220CEAC8C00FD0ADC /* dqueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dqueue.h; path = ../../rpc/dqueue.h; sourceTree = "<group>"; };
+		7FFD967320CEAC8C00FD0ADC /* cthread.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = cthread.cc; path = ../../rpc/cthread.cc; sourceTree = "<group>"; };
+		7FFD967420CEAC8C00FD0ADC /* rpc.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = rpc.cc; path = ../../rpc/rpc.cc; sourceTree = "<group>"; };
+		7FFD967520CEAC8C00FD0ADC /* osp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osp.h; path = ../../rpc/osp.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +78,7 @@
 		7F6B42D820BB321A001DCC59 /* Upload */ = {
 			isa = PBXGroup;
 			children = (
+				7FFD966520CEAA3100FD0ADC /* rpc */,
 				7F6B42D920BB321A001DCC59 /* AppDelegate.h */,
 				7F6B42DA20BB321A001DCC59 /* AppDelegate.m */,
 				7F6B42DC20BB321A001DCC59 /* ViewController.h */,
@@ -68,6 +90,28 @@
 				7F6B42E720BB321A001DCC59 /* Upload.entitlements */,
 			);
 			path = Upload;
+			sourceTree = "<group>";
+		};
+		7FFD966520CEAA3100FD0ADC /* rpc */ = {
+			isa = PBXGroup;
+			children = (
+				7FFD967320CEAC8C00FD0ADC /* cthread.cc */,
+				7FFD966F20CEAC8C00FD0ADC /* cthread.h */,
+				7FFD967220CEAC8C00FD0ADC /* dqueue.h */,
+				7FFD967120CEAC8C00FD0ADC /* json.cc */,
+				7FFD967020CEAC8C00FD0ADC /* json.h */,
+				7FFD966B20CEAC8C00FD0ADC /* osp.cc */,
+				7FFD967520CEAC8C00FD0ADC /* osp.h */,
+				7FFD966C20CEAC8C00FD0ADC /* ospmbuf.h */,
+				7FFD966920CEAC8C00FD0ADC /* osptypes.h */,
+				7FFD967420CEAC8C00FD0ADC /* rpc.cc */,
+				7FFD966A20CEAC8C00FD0ADC /* rpc.h */,
+				7FFD966D20CEAC8C00FD0ADC /* sdr.cc */,
+				7FFD966E20CEAC8C00FD0ADC /* sdr.h */,
+				7FFD966620CEAC5800FD0ADC /* xgml.cc */,
+				7FFD966720CEAC5800FD0ADC /* xgml.h */,
+			);
+			name = rpc;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,9 +183,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7FFD967620CEAC8C00FD0ADC /* osp.cc in Sources */,
+				7FFD967920CEAC8C00FD0ADC /* cthread.cc in Sources */,
 				7F6B42DE20BB321A001DCC59 /* ViewController.m in Sources */,
 				7F6B42E620BB321A001DCC59 /* main.m in Sources */,
 				7F6B42DB20BB321A001DCC59 /* AppDelegate.m in Sources */,
+				7FFD966820CEAC5800FD0ADC /* xgml.cc in Sources */,
+				7FFD967820CEAC8C00FD0ADC /* json.cc in Sources */,
+				7FFD967A20CEAC8C00FD0ADC /* rpc.cc in Sources */,
+				7FFD967720CEAC8C00FD0ADC /* sdr.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
