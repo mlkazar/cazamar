@@ -186,7 +186,7 @@ SApi::ServerConn::HeadersProc( void *contextp,
 
     /* see if we got an "id" cookie */
     if (strcasecmp(rstReqp->_cookieId.c_str(), "id") == 0) {
-        reqp->_cookieContextp = sapip->findCookieContext(&rstReqp->_cookieValue);
+        reqp->_cookieEntryp = sapip->findCookieEntry(&rstReqp->_cookieValue);
     }
 
     /* if no data is coming in, we should mark the input done, and set
@@ -382,14 +382,55 @@ SApi::ServerConn::interpretParm( int opcode,
 }
 
 void
-SApi::ServerReq::setCookie(void *cookiep)
+SApi::ServerReq::setCookieKey(std::string key, void *cxp)
+{
+    CookieKey *cookieKeyp;
+    
+    if (_cookieEntryp == NULL) {
+        _cookieEntryp = setCookie();
+    }
+
+    for( cookieKeyp = _cookieEntryp->_allKVs.head(); 
+         cookieKeyp;
+         cookieKeyp = cookieKeyp->_dqNextp) {
+        if (key == cookieKeyp->_key) {
+            cookieKeyp->_valuep = cxp;
+            return;
+        }
+    }
+
+    cookieKeyp = new CookieKey();
+    cookieKeyp->_key = key;
+    cookieKeyp->_valuep = cxp;
+    _cookieEntryp->_allKVs.append(cookieKeyp);
+}
+
+void *
+SApi::ServerReq::getCookieKey(std::string key)
+{
+    CookieKey *cookieKeyp;
+
+    if (_cookieEntryp == NULL)
+        return NULL;
+    for(cookieKeyp = _cookieEntryp->_allKVs.head(); 
+        cookieKeyp;
+        cookieKeyp = cookieKeyp->_dqNextp) {
+        if (key == cookieKeyp->_key)
+            return cookieKeyp->_valuep;
+    }
+
+    return NULL;
+}
+
+SApi::CookieEntry *
+SApi::ServerReq::setCookie()
 {
     int32_t partA;
     int32_t partB;
     char idBuffer[32];
     char cookieBuffer[1024];
+    SApi::CookieEntry *entryp;
 
-    _setCookie = 1;
 #ifdef __linux__
     random_r(&_sapip->_randomBuf, &partA);
     random_r(&_sapip->_randomBuf, &partB);
@@ -397,27 +438,28 @@ SApi::ServerReq::setCookie(void *cookiep)
     partA = random();
     partB = random();
 #endif
-    sprintf(idBuffer, "%08x%08x", partA, partB);
 
+    sprintf(idBuffer, "%08x%08x", partA, partB);
     _cookieId = idBuffer;
-    _cookieContextp = cookiep;
 
     sprintf(cookieBuffer, "id=%s", idBuffer);
 
     addHeader("Set-Cookie", cookieBuffer);
+    entryp = _sapip->addCookieState(_cookieId);
 
-    _sapip->addCookieState(_cookieId, cookiep);
+    return entryp;
 }
 
-void
-SApi::addCookieState(std::string cookieId, void *cookieContextp)
+SApi::CookieEntry *
+SApi::addCookieState(std::string cookieId)
 {
     CookieEntry *ep;
 
     ep = new CookieEntry();
     ep->_cookieId = cookieId;
-    ep->_cookieContextp = cookieContextp;
     _allCookieEntries.append(ep);
+
+    return ep;
 }
 
 int32_t

@@ -1,7 +1,9 @@
-cookies
+* cookies
 
 separate out app from sapilogin.cc
 
-add support for MS
+* add support for MS
 
 add support for Google
+
+get app IDs out sapilogin code

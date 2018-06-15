@@ -19,6 +19,8 @@ class SApi : public CThread {
     class ServerReq;
     class ClientReq;
     class UserThread;
+    class CookieEntry;
+    class CookieKey;
 
     typedef SApi::ServerReq *UrlCallback(std::string *urlp, SApi *sapip);
 
@@ -58,8 +60,29 @@ class SApi : public CThread {
     public:
         CookieEntry *_dqNextp;
         CookieEntry *_dqPrevp;
-        void *_cookieContextp;
+        dqueue<CookieKey> _allKVs;
         std::string _cookieId;
+
+        CookieEntry() {
+            _dqNextp = NULL;
+            _dqPrevp = NULL;
+        }
+    };
+
+    class CookieKey {
+    public:
+        CookieEntry *_cookieEntryp;
+        std::string _key;
+        void *_valuep;
+        CookieKey *_dqNextp;
+        CookieKey *_dqPrevp;
+
+        CookieKey() {
+            _cookieEntryp = NULL;
+            _dqPrevp = NULL;
+            _dqPrevp = NULL;
+            _valuep = NULL;
+        }
     };
 
     /* for delivering requests from user threads */
@@ -281,16 +304,14 @@ class SApi : public CThread {
         dqueue<Rst::Hdr> *_sendHeadersp;
         SApi::ServerConn *_connp;
         Rst::Request *_rstReqp;
-        uint8_t _setCookie;
         std::string _cookieId;
-        void *_cookieContextp;  /* looked up based on incoming cookie */
+        CookieEntry *_cookieEntryp;  /* looked up based on incoming cookie */
 
         ServerReq *_dqNextp;    /* in allServerReqs */
         ServerReq *_dqPrevp;
 
         ServerReq(SApi *sapip) {
-            _setCookie = 0;
-            _cookieContextp = NULL;
+            _cookieEntryp = NULL;
             _sapip = sapip;
             sapip->_allServerReqs.append(this);
             return;
@@ -313,11 +334,15 @@ class SApi : public CThread {
             return _rcvHeadersp->head();
         }
 
-        void *getCookie() {
-            return _cookieContextp;
+        void *getCookieKey(std::string key);
+
+        void setCookieKey(std::string key, void *contextp);
+
+        CookieEntry *getCookie() {
+            return _cookieEntryp;
         }
 
-        void setCookie(void *contextp);
+        CookieEntry *setCookie();
 
         void addHeader(const char *keyp, const char *valuep) {
             Rst::Hdr *hdrp;
@@ -405,7 +430,7 @@ class SApi : public CThread {
 
     void freeUserThread(SApi::UserThread *up);
 
-    void addCookieState(std::string cookieId, void *cookieContextp);
+    CookieEntry *addCookieState(std::string cookieId);
 
  public:
     /* Externally callable functions */
@@ -440,11 +465,11 @@ class SApi : public CThread {
         return;
     }
 
-    void *findCookieContext(std::string *strp) {
+    CookieEntry *findCookieEntry(std::string *strp) {
         CookieEntry *ep;
         for(ep = _allCookieEntries.head(); ep; ep=ep->_dqNextp) {
             if (ep->_cookieId == *strp) {
-                return ep->_cookieContextp;
+                return ep;
             }
         }
         return NULL;
