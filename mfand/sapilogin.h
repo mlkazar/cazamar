@@ -207,7 +207,6 @@ class SApiLogin {
  public:
     
     static void initSApi (SApi *sapip) {
-        sapip = sapip;
         sapip->registerUrl("/appleLoginScreen", &AppleLoginScreen::factory);
         sapip->registerUrl("/msLoginScreen", &MSLoginScreen::factory);
         sapip->registerUrl("/logoutScreen", &LogoutScreen::factory);
