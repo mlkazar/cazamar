@@ -209,7 +209,7 @@ HomeScreen::startMethod()
 
     contextp = SApiLogin::getLoginCookie(this);
 
-    if (contextp && contextp->_webAuthToken.length() == 0) {
+    if (!contextp || contextp->_webAuthToken.length() == 0) {
         loginHtml = "<a href=\"/appleLoginScreen\">Apple Login</a><p><a href=\"/msLoginScreen\">        MS Login</a>";
     }
     else {

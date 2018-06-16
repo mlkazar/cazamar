@@ -82,7 +82,7 @@ AppleLoginKeyData::startMethod()
     const char *urlp;
     SApiLoginGeneric *genLoginp = (SApiLoginGeneric *) _sapip->getContext();
 
-    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookie();
+    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
     printf("SApiLoginCookie=%p\n", contextp);
 
     if (!contextp) {
@@ -94,6 +94,7 @@ AppleLoginKeyData::startMethod()
         outPipep->write(tbuffer, strlen(tbuffer));
         outPipep->eof();
         requestDone();
+        return;
     }
 
     CThreadPipe *inPipep = getIncomingPipe();
@@ -425,7 +426,7 @@ AppleLoginScreen::startMethod()
     CThreadPipe *outPipep = getOutgoingPipe();
     SApiLoginCookie *contextp;
         
-    contextp = (SApiLoginCookie *) getCookie();
+    contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
     if (contextp == NULL) {
         contextp = new SApiLoginCookie();
         setCookieKey("sapiLogin", contextp);
@@ -474,7 +475,7 @@ MSLoginScreen::startMethod()
     SApi::Dict dict;
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
-    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookie();
+    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
     
     if (contextp == NULL) {
         contextp = new SApiLoginCookie();
@@ -525,7 +526,7 @@ LogoutScreen::startMethod()
     SApi::Dict dict;
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
-    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookie();
+    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
         
     if (contextp == NULL) {
         strcpy(tbuffer, "Error -- no cookie in logout");
