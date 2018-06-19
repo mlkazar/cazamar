@@ -2,10 +2,6 @@
 #include <string>
 #include <stdlib.h>
 #include "sapi.h"
-#include "xapi.h"
-#include "bufsocket.h"
-#include "buftls.h"
-#include "json.h"
 
 /* This file contains the basics for a toy test application, and the
  * login authentication framework used by any application that

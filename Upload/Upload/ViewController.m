@@ -8,12 +8,34 @@
 
 #import "ViewController.h"
 
+NSImage *
+resizeImage2(NSImage* image, NSSize newSize) 
+{
+    NSImage *newImage;
+    NSSize oldSize;
+
+    newImage = [[NSImage alloc] initWithSize: newSize];
+    oldSize = [image size];
+
+    [newImage lockFocus];
+    [image setSize: newSize];
+    [image drawInRect: NSMakeRect(0, 0, newSize.width, newSize.height)
+	   fromRect: NSMakeRect(0, 0, oldSize.width, oldSize.height)
+	   operation: NSCompositingOperationSourceOver
+	   fraction: 1.0];
+    [newImage unlockFocus];
+
+    return newImage;
+}
+
 @implementation ViewController
 
 WKWebView *_webViewp;
 NSURL *_urlp;
 NSURLRequest *_requestp;
 WebView *_oldViewp;
+NSStatusItem *_statusItem;
+NSMenu *_menu;
 
 - (void) loadView {
     [super loadView];
@@ -26,36 +48,50 @@ WebView *_oldViewp;
 
     [[NSWorkspace sharedWorkspace] openURL: [NSURL URLWithString: @"http://192.168.1.203:7701"]];
 
-#if 0
-#if 1
-    // Do any additional setup after loading the view.
-    NSWindow *windowp = [NSApplication sharedApplication].windows[0];
-    WKWebViewConfiguration *theConfiguration = [[WKWebViewConfiguration alloc] init];
-    WKWebView *_webViewp = [[WKWebView alloc] initWithFrame:self.view.frame
-					      configuration:theConfiguration];
-    _webViewp.navigationDelegate = self;
+    {
+	NSImage *image;
+	NSImage *scaledImage;
+	NSMenuItem *item;
 
-    _urlp=[NSURL URLWithString:@"http://apple.com"];
-    _requestp=[NSURLRequest requestWithURL:_urlp];
-    [_webViewp loadRequest:_requestp];
-    // [self.view addSubview:_webViewp];
-    self.view = _webViewp;
-    NSLog(@"windowp=%@ wvp=%@", windowp, _webViewp);
-    NSLog(@"vcp=%@ vcviewp=%@ contentviewp=%@", self, self.view, windowp.contentView);
-#else
-    // Do any additional setup after loading the view.
-    WebView *_oldViewp = [[WebView alloc] initWithFrame:self.view.frame];
-    NSWindow *windowp = [NSApplication sharedApplication].windows[0];
+	_statusItem = [[NSStatusBar systemStatusBar]
+			  statusItemWithLength: NSSquareStatusItemLength];
+	image = [NSImage imageNamed: @"status.png"];
+	scaledImage = resizeImage2(image, NSMakeSize(18.0, 18.0));
+	_statusItem.button.image = image;
+	_statusItem.button.alternateImage = image;
+	_statusItem.visible = YES;
 
-    _urlp=[NSURL URLWithString:@"https://google.com"];
-    _requestp=[NSURLRequest requestWithURL:_urlp];
-    [_oldViewp.mainFrame loadRequest:_requestp];
-    self.view = _oldViewp;
-    NSLog(@"vcp=%@ vcviewp=%@ webviewp=%@", self, self.view, _oldViewp);
-#endif
-#endif
+	_menu = [[NSMenu alloc] init];
+	_statusItem.menu = _menu;
+
+	item = [[NSMenuItem alloc]
+		   initWithTitle: @"Start"
+		   action: @selector(startPressed)
+		   keyEquivalent: (NSString *) @"s"];
+	item.target = self;
+	[_menu addItem: item];
+	
+	item = [NSMenuItem separatorItem];
+	[_menu addItem: item];
+
+	item = [[NSMenuItem alloc]
+		   initWithTitle: @"Quit"
+		   action: @selector(quitPressed)
+		   keyEquivalent: (NSString *) @"q"];
+	item.target = self;
+	[_menu addItem: item];
+    }
 }
 
+
+- (void) startPressed {
+    NSLog(@"start pressed!!");
+}
+
+- (void) quitPressed {
+    NSLog(@"quit pressed");
+    [NSApp terminate: self];
+}
 
 - (void)setRepresentedObject:(id)representedObject {
     [super setRepresentedObject:representedObject];

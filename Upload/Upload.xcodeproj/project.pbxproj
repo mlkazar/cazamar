@@ -7,20 +7,46 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7F034C9C20D5B9DA0035B449 /* login-apple.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F034C9620D5B9DA0035B449 /* login-apple.html */; };
+		7F034C9D20D5B9DA0035B449 /* login-ms-done.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F034C9720D5B9DA0035B449 /* login-ms-done.html */; };
+		7F034C9E20D5B9DA0035B449 /* login-logout.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F034C9820D5B9DA0035B449 /* login-logout.html */; };
+		7F034C9F20D5B9DA0035B449 /* login-ms.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F034C9920D5B9DA0035B449 /* login-ms.html */; };
+		7F034CA020D5B9DA0035B449 /* login-apple-done.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F034C9A20D5B9DA0035B449 /* login-apple-done.html */; };
+		7F034CA120D5B9DA0035B449 /* login-home.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F034C9B20D5B9DA0035B449 /* login-home.html */; };
+		7F23AB6420D671E000E368E8 /* librst.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6320D671E000E368E8 /* librst.a */; };
+		7F23AB6620D6721C00E368E8 /* libext.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6520D6721C00E368E8 /* libext.a */; };
+		7F23AB6820D6724700E368E8 /* libcore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6720D6724700E368E8 /* libcore.a */; };
+		7F23AB6B20D6738B00E368E8 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6920D6738B00E368E8 /* libssl.a */; };
+		7F23AB6C20D6738B00E368E8 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6A20D6738B00E368E8 /* libcrypto.a */; };
 		7F6B42DB20BB321A001DCC59 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42DA20BB321A001DCC59 /* AppDelegate.m */; };
 		7F6B42DE20BB321A001DCC59 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42DD20BB321A001DCC59 /* ViewController.m */; };
 		7F6B42E020BB321A001DCC59 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7F6B42DF20BB321A001DCC59 /* Assets.xcassets */; };
 		7F6B42E320BB321A001DCC59 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7F6B42E120BB321A001DCC59 /* Main.storyboard */; };
 		7F6B42E620BB321A001DCC59 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42E520BB321A001DCC59 /* main.m */; };
-		7FFD966820CEAC5800FD0ADC /* xgml.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD966620CEAC5800FD0ADC /* xgml.cc */; };
-		7FFD967620CEAC8C00FD0ADC /* osp.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD966B20CEAC8C00FD0ADC /* osp.cc */; };
-		7FFD967720CEAC8C00FD0ADC /* sdr.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD966D20CEAC8C00FD0ADC /* sdr.cc */; };
-		7FFD967820CEAC8C00FD0ADC /* json.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD967120CEAC8C00FD0ADC /* json.cc */; };
-		7FFD967920CEAC8C00FD0ADC /* cthread.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD967320CEAC8C00FD0ADC /* cthread.cc */; };
-		7FFD967A20CEAC8C00FD0ADC /* rpc.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FFD967420CEAC8C00FD0ADC /* rpc.cc */; };
+		7FBC42D520D7144800AFF662 /* status.png in Resources */ = {isa = PBXBuildFile; fileRef = 7FBC42D420D7144800AFF662 /* status.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		7F034C8C20D5B9730035B449 /* buftls.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = buftls.h; path = ../../mfand/buftls.h; sourceTree = "<group>"; };
+		7F034C9020D5B9730035B449 /* bufsocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bufsocket.h; path = ../../mfand/bufsocket.h; sourceTree = "<group>"; };
+		7F034C9120D5B9730035B449 /* bufgen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = bufgen.h; path = ../../mfand/bufgen.h; sourceTree = "<group>"; };
+		7F034C9620D5B9DA0035B449 /* login-apple.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "login-apple.html"; path = "../../mfand/login-apple.html"; sourceTree = "<group>"; };
+		7F034C9720D5B9DA0035B449 /* login-ms-done.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "login-ms-done.html"; path = "../../mfand/login-ms-done.html"; sourceTree = "<group>"; };
+		7F034C9820D5B9DA0035B449 /* login-logout.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "login-logout.html"; path = "../../mfand/login-logout.html"; sourceTree = "<group>"; };
+		7F034C9920D5B9DA0035B449 /* login-ms.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "login-ms.html"; path = "../../mfand/login-ms.html"; sourceTree = "<group>"; };
+		7F034C9A20D5B9DA0035B449 /* login-apple-done.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "login-apple-done.html"; path = "../../mfand/login-apple-done.html"; sourceTree = "<group>"; };
+		7F034C9B20D5B9DA0035B449 /* login-home.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "login-home.html"; path = "../../mfand/login-home.html"; sourceTree = "<group>"; };
+		7F034CA420D5BA190035B449 /* oaxmalloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = oaxmalloc.h; path = ../../mfand/oaxmalloc.h; sourceTree = "<group>"; };
+		7F034CA520D5BA190035B449 /* oasha1.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = oasha1.h; path = ../../mfand/oasha1.h; sourceTree = "<group>"; };
+		7F034CAA20D5BA190035B449 /* oauth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = oauth.h; path = ../../mfand/oauth.h; sourceTree = "<group>"; };
+		7F034CB120D5BA5E0035B449 /* sapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sapi.h; path = ../../mfand/sapi.h; sourceTree = "<group>"; };
+		7F034CB320D5BA5E0035B449 /* rst.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rst.h; path = ../../mfand/rst.h; sourceTree = "<group>"; };
+		7F034CB520D5BA5E0035B449 /* sapilogin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sapilogin.h; path = ../../mfand/sapilogin.h; sourceTree = "<group>"; };
+		7F23AB6320D671E000E368E8 /* librst.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = librst.a; path = ../lib/librst.a; sourceTree = "<group>"; };
+		7F23AB6520D6721C00E368E8 /* libext.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libext.a; path = ../lib/libext.a; sourceTree = "<group>"; };
+		7F23AB6720D6724700E368E8 /* libcore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcore.a; path = ../lib/libcore.a; sourceTree = "<group>"; };
+		7F23AB6920D6738B00E368E8 /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../../../../usr/local/ssl/lib/libssl.a; sourceTree = "<group>"; };
+		7F23AB6A20D6738B00E368E8 /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../../../../usr/local/ssl/lib/libcrypto.a; sourceTree = "<group>"; };
 		7F6B42D620BB321A001DCC59 /* Upload.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Upload.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F6B42D920BB321A001DCC59 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		7F6B42DA20BB321A001DCC59 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -31,20 +57,15 @@
 		7F6B42E420BB321A001DCC59 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7F6B42E520BB321A001DCC59 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		7F6B42E720BB321A001DCC59 /* Upload.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Upload.entitlements; sourceTree = "<group>"; };
-		7FFD966620CEAC5800FD0ADC /* xgml.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xgml.cc; path = ../../rpc/xgml.cc; sourceTree = "<group>"; };
+		7FBC42D420D7144800AFF662 /* status.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = status.png; sourceTree = "<group>"; };
 		7FFD966720CEAC5800FD0ADC /* xgml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xgml.h; path = ../../rpc/xgml.h; sourceTree = "<group>"; };
 		7FFD966920CEAC8C00FD0ADC /* osptypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osptypes.h; path = ../../rpc/osptypes.h; sourceTree = "<group>"; };
 		7FFD966A20CEAC8C00FD0ADC /* rpc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rpc.h; path = ../../rpc/rpc.h; sourceTree = "<group>"; };
-		7FFD966B20CEAC8C00FD0ADC /* osp.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = osp.cc; path = ../../rpc/osp.cc; sourceTree = "<group>"; };
 		7FFD966C20CEAC8C00FD0ADC /* ospmbuf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ospmbuf.h; path = ../../rpc/ospmbuf.h; sourceTree = "<group>"; };
-		7FFD966D20CEAC8C00FD0ADC /* sdr.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdr.cc; path = ../../rpc/sdr.cc; sourceTree = "<group>"; };
 		7FFD966E20CEAC8C00FD0ADC /* sdr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdr.h; path = ../../rpc/sdr.h; sourceTree = "<group>"; };
 		7FFD966F20CEAC8C00FD0ADC /* cthread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cthread.h; path = ../../rpc/cthread.h; sourceTree = "<group>"; };
 		7FFD967020CEAC8C00FD0ADC /* json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = json.h; path = ../../rpc/json.h; sourceTree = "<group>"; };
-		7FFD967120CEAC8C00FD0ADC /* json.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = json.cc; path = ../../rpc/json.cc; sourceTree = "<group>"; };
 		7FFD967220CEAC8C00FD0ADC /* dqueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = dqueue.h; path = ../../rpc/dqueue.h; sourceTree = "<group>"; };
-		7FFD967320CEAC8C00FD0ADC /* cthread.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = cthread.cc; path = ../../rpc/cthread.cc; sourceTree = "<group>"; };
-		7FFD967420CEAC8C00FD0ADC /* rpc.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = rpc.cc; path = ../../rpc/rpc.cc; sourceTree = "<group>"; };
 		7FFD967520CEAC8C00FD0ADC /* osp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osp.h; path = ../../rpc/osp.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -53,17 +74,57 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7F23AB6420D671E000E368E8 /* librst.a in Frameworks */,
+				7F23AB6620D6721C00E368E8 /* libext.a in Frameworks */,
+				7F23AB6820D6724700E368E8 /* libcore.a in Frameworks */,
+				7F23AB6B20D6738B00E368E8 /* libssl.a in Frameworks */,
+				7F23AB6C20D6738B00E368E8 /* libcrypto.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7F034C8A20D5B90F0035B449 /* mfand */ = {
+			isa = PBXGroup;
+			children = (
+				7F034CB320D5BA5E0035B449 /* rst.h */,
+				7F034CB120D5BA5E0035B449 /* sapi.h */,
+				7F034CB520D5BA5E0035B449 /* sapilogin.h */,
+				7F034CA520D5BA190035B449 /* oasha1.h */,
+				7F034CAA20D5BA190035B449 /* oauth.h */,
+				7F034CA420D5BA190035B449 /* oaxmalloc.h */,
+				7F034C9A20D5B9DA0035B449 /* login-apple-done.html */,
+				7F034C9620D5B9DA0035B449 /* login-apple.html */,
+				7F034C9B20D5B9DA0035B449 /* login-home.html */,
+				7F034C9820D5B9DA0035B449 /* login-logout.html */,
+				7F034C9720D5B9DA0035B449 /* login-ms-done.html */,
+				7F034C9920D5B9DA0035B449 /* login-ms.html */,
+				7F034C9120D5B9730035B449 /* bufgen.h */,
+				7F034C9020D5B9730035B449 /* bufsocket.h */,
+				7F034C8C20D5B9730035B449 /* buftls.h */,
+			);
+			name = mfand;
+			sourceTree = "<group>";
+		};
+		7F23AB6220D671E000E368E8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7F23AB6A20D6738B00E368E8 /* libcrypto.a */,
+				7F23AB6920D6738B00E368E8 /* libssl.a */,
+				7F23AB6720D6724700E368E8 /* libcore.a */,
+				7F23AB6520D6721C00E368E8 /* libext.a */,
+				7F23AB6320D671E000E368E8 /* librst.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		7F6B42CD20BB321A001DCC59 = {
 			isa = PBXGroup;
 			children = (
 				7F6B42D820BB321A001DCC59 /* Upload */,
 				7F6B42D720BB321A001DCC59 /* Products */,
+				7F23AB6220D671E000E368E8 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -78,9 +139,11 @@
 		7F6B42D820BB321A001DCC59 /* Upload */ = {
 			isa = PBXGroup;
 			children = (
+				7F034C8A20D5B90F0035B449 /* mfand */,
 				7FFD966520CEAA3100FD0ADC /* rpc */,
 				7F6B42D920BB321A001DCC59 /* AppDelegate.h */,
 				7F6B42DA20BB321A001DCC59 /* AppDelegate.m */,
+				7FBC42D420D7144800AFF662 /* status.png */,
 				7F6B42DC20BB321A001DCC59 /* ViewController.h */,
 				7F6B42DD20BB321A001DCC59 /* ViewController.m */,
 				7F6B42DF20BB321A001DCC59 /* Assets.xcassets */,
@@ -95,20 +158,14 @@
 		7FFD966520CEAA3100FD0ADC /* rpc */ = {
 			isa = PBXGroup;
 			children = (
-				7FFD967320CEAC8C00FD0ADC /* cthread.cc */,
 				7FFD966F20CEAC8C00FD0ADC /* cthread.h */,
 				7FFD967220CEAC8C00FD0ADC /* dqueue.h */,
-				7FFD967120CEAC8C00FD0ADC /* json.cc */,
 				7FFD967020CEAC8C00FD0ADC /* json.h */,
-				7FFD966B20CEAC8C00FD0ADC /* osp.cc */,
 				7FFD967520CEAC8C00FD0ADC /* osp.h */,
 				7FFD966C20CEAC8C00FD0ADC /* ospmbuf.h */,
 				7FFD966920CEAC8C00FD0ADC /* osptypes.h */,
-				7FFD967420CEAC8C00FD0ADC /* rpc.cc */,
 				7FFD966A20CEAC8C00FD0ADC /* rpc.h */,
-				7FFD966D20CEAC8C00FD0ADC /* sdr.cc */,
 				7FFD966E20CEAC8C00FD0ADC /* sdr.h */,
-				7FFD966620CEAC5800FD0ADC /* xgml.cc */,
 				7FFD966720CEAC5800FD0ADC /* xgml.h */,
 			);
 			name = rpc;
@@ -171,8 +228,15 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7F034C9F20D5B9DA0035B449 /* login-ms.html in Resources */,
+				7F034CA120D5B9DA0035B449 /* login-home.html in Resources */,
 				7F6B42E020BB321A001DCC59 /* Assets.xcassets in Resources */,
+				7F034C9C20D5B9DA0035B449 /* login-apple.html in Resources */,
+				7F034C9E20D5B9DA0035B449 /* login-logout.html in Resources */,
+				7F034CA020D5B9DA0035B449 /* login-apple-done.html in Resources */,
+				7F034C9D20D5B9DA0035B449 /* login-ms-done.html in Resources */,
 				7F6B42E320BB321A001DCC59 /* Main.storyboard in Resources */,
+				7FBC42D520D7144800AFF662 /* status.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -183,15 +247,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7FFD967620CEAC8C00FD0ADC /* osp.cc in Sources */,
-				7FFD967920CEAC8C00FD0ADC /* cthread.cc in Sources */,
 				7F6B42DE20BB321A001DCC59 /* ViewController.m in Sources */,
 				7F6B42E620BB321A001DCC59 /* main.m in Sources */,
 				7F6B42DB20BB321A001DCC59 /* AppDelegate.m in Sources */,
-				7FFD966820CEAC5800FD0ADC /* xgml.cc in Sources */,
-				7FFD967820CEAC8C00FD0ADC /* json.cc in Sources */,
-				7FFD967A20CEAC8C00FD0ADC /* rpc.cc in Sources */,
-				7FFD967720CEAC8C00FD0ADC /* sdr.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -326,10 +384,16 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
+				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/ssl/include;
 				INFOPLIST_FILE = Upload/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				"LIBRARY_SEARCH_PATHS[arch=*]" = (
+					/Users/kazar/mac/lib,
+					/usr/local/ssl/lib,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.Upload;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -344,10 +408,17 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
+				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/ssl/include;
 				INFOPLIST_FILE = Upload/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				"LIBRARY_SEARCH_PATHS[arch=*]" = (
+					"$(inherited)",
+					/Users/kazar/mac/lib,
+					/usr/local/ssl/lib,
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.Upload;
 				PRODUCT_NAME = "$(TARGET_NAME)";
