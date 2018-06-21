@@ -59,11 +59,15 @@ class SApiLoginCookie;
 /* this class defines the generic interface to SApiLogin* */
 class SApiLoginGeneric {
 public:
-    virtual int32_t getLoginPage( std::string *outStringp) = 0;
+    virtual int32_t getLoginPage( std::string *outStringp, SApiLoginCookie *cookiep) = 0;
     virtual int32_t refineAuthToken(std::string *tokenp) = 0;
 
     virtual std::string getAuthToken() {
         return _authToken;
+    }
+
+    virtual std::string getRefreshToken() {
+        return _refreshToken;
     }
 
     virtual std::string getAuthId() {
@@ -125,7 +129,7 @@ class SApiLoginApple : public SApiLoginGeneric {
 
 public: 
     void init(SApi *sapip, std::string finalUrl);
-    int32_t getLoginPage(std::string *outStringp);
+    int32_t getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep);
 
     void setAppParams(std::string apiUrl) {
         _apiUrl = apiUrl;
@@ -144,7 +148,7 @@ class SApiLoginMS : public SApiLoginGeneric {
 
 public: 
     void init(SApi *sapip, std::string finalUrl);
-    int32_t getLoginPage(std::string *outStringp);
+    int32_t getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep);
 
     void setAppParams(std::string clientId, std::string clientSecret) {
         _clientId = clientId;
@@ -211,6 +215,8 @@ class SApiLogin {
     static SApiLoginCookie *getLoginCookie(SApi::ServerReq *reqp) {
         return (SApiLoginCookie *) reqp->getCookieKey("sapiLogin");
     }
+
+    static SApiLoginCookie *createLoginCookie(SApi::ServerReq *reqp);
 };
 
 /* state associated with SApiLogin and our web session cookie */
@@ -219,11 +225,20 @@ public:
     std::string _webAuthToken;
     SApiLoginApple *_loginApplep;
     SApiLoginMS *_loginMSp;
+    std::string _pathPrefix;
 #ifdef __linux__
     random_data _randomBuf;
     char _randomState[64];
 #endif
     
+    std::string getPathPrefix() {
+        return _pathPrefix;
+    }
+
+    void setPathPrefix(std::string pathPrefix) {
+        _pathPrefix = pathPrefix;
+    }
+
     SApiLoginCookie() {
         _loginApplep = NULL;
         _loginMSp = NULL;

@@ -19,11 +19,12 @@
 		7F23AB6B20D6738B00E368E8 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6920D6738B00E368E8 /* libssl.a */; };
 		7F23AB6C20D6738B00E368E8 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6A20D6738B00E368E8 /* libcrypto.a */; };
 		7F6B42DB20BB321A001DCC59 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42DA20BB321A001DCC59 /* AppDelegate.m */; };
-		7F6B42DE20BB321A001DCC59 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42DD20BB321A001DCC59 /* ViewController.m */; };
 		7F6B42E020BB321A001DCC59 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7F6B42DF20BB321A001DCC59 /* Assets.xcassets */; };
 		7F6B42E320BB321A001DCC59 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7F6B42E120BB321A001DCC59 /* Main.storyboard */; };
 		7F6B42E620BB321A001DCC59 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42E520BB321A001DCC59 /* main.m */; };
+		7F7264A220DA8678006B7E25 /* upload.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F7264A120DA8678006B7E25 /* upload.mm */; };
 		7FBC42D520D7144800AFF662 /* status.png in Resources */ = {isa = PBXBuildFile; fileRef = 7FBC42D420D7144800AFF662 /* status.png */; };
+		7FFB6CAD20DA78F500CE70FE /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7FFB6CAC20DA78F500CE70FE /* ViewController.mm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,13 +52,15 @@
 		7F6B42D920BB321A001DCC59 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		7F6B42DA20BB321A001DCC59 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		7F6B42DC20BB321A001DCC59 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
-		7F6B42DD20BB321A001DCC59 /* ViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
 		7F6B42DF20BB321A001DCC59 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7F6B42E220BB321A001DCC59 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		7F6B42E420BB321A001DCC59 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7F6B42E520BB321A001DCC59 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		7F6B42E720BB321A001DCC59 /* Upload.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Upload.entitlements; sourceTree = "<group>"; };
+		7F7264A120DA8678006B7E25 /* upload.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = upload.mm; sourceTree = "<group>"; };
 		7FBC42D420D7144800AFF662 /* status.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = status.png; sourceTree = "<group>"; };
+		7FFB6CAC20DA78F500CE70FE /* ViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ViewController.mm; sourceTree = "<group>"; };
+		7FFB6CAF20DA7CAD00CE70FE /* upload.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = upload.h; sourceTree = "<group>"; };
 		7FFD966720CEAC5800FD0ADC /* xgml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xgml.h; path = ../../rpc/xgml.h; sourceTree = "<group>"; };
 		7FFD966920CEAC8C00FD0ADC /* osptypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osptypes.h; path = ../../rpc/osptypes.h; sourceTree = "<group>"; };
 		7FFD966A20CEAC8C00FD0ADC /* rpc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = rpc.h; path = ../../rpc/rpc.h; sourceTree = "<group>"; };
@@ -144,8 +147,10 @@
 				7F6B42D920BB321A001DCC59 /* AppDelegate.h */,
 				7F6B42DA20BB321A001DCC59 /* AppDelegate.m */,
 				7FBC42D420D7144800AFF662 /* status.png */,
+				7F7264A120DA8678006B7E25 /* upload.mm */,
+				7FFB6CAF20DA7CAD00CE70FE /* upload.h */,
 				7F6B42DC20BB321A001DCC59 /* ViewController.h */,
-				7F6B42DD20BB321A001DCC59 /* ViewController.m */,
+				7FFB6CAC20DA78F500CE70FE /* ViewController.mm */,
 				7F6B42DF20BB321A001DCC59 /* Assets.xcassets */,
 				7F6B42E120BB321A001DCC59 /* Main.storyboard */,
 				7F6B42E420BB321A001DCC59 /* Info.plist */,
@@ -247,7 +252,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7F6B42DE20BB321A001DCC59 /* ViewController.m in Sources */,
+				7F7264A220DA8678006B7E25 /* upload.mm in Sources */,
+				7FFB6CAD20DA78F500CE70FE /* ViewController.mm in Sources */,
 				7F6B42E620BB321A001DCC59 /* main.m in Sources */,
 				7F6B42DB20BB321A001DCC59 /* AppDelegate.m in Sources */,
 			);

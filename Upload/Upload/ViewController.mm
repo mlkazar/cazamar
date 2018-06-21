@@ -7,6 +7,7 @@
 //
 
 #import "ViewController.h"
+#include "upload.h"
 
 NSImage *
 resizeImage2(NSImage* image, NSSize newSize) 
@@ -36,6 +37,7 @@ NSURLRequest *_requestp;
 WebView *_oldViewp;
 NSStatusItem *_statusItem;
 NSMenu *_menu;
+Upload *_uploadp;
 
 - (void) loadView {
     [super loadView];
@@ -43,49 +45,48 @@ NSMenu *_menu;
 }
 
 - (void)viewDidLoad {
+    NSImage *image;
+    NSImage *scaledImage;
+    NSMenuItem *item;
+
     [super viewDidLoad];
 
-
-    [[NSWorkspace sharedWorkspace] openURL: [NSURL URLWithString: @"http://192.168.1.203:7701"]];
-
-    {
-	NSImage *image;
-	NSImage *scaledImage;
-	NSMenuItem *item;
-
-	_statusItem = [[NSStatusBar systemStatusBar]
-			  statusItemWithLength: NSSquareStatusItemLength];
-	image = [NSImage imageNamed: @"status.png"];
-	scaledImage = resizeImage2(image, NSMakeSize(18.0, 18.0));
-	_statusItem.button.image = image;
-	_statusItem.button.alternateImage = image;
-	_statusItem.visible = YES;
-
-	_menu = [[NSMenu alloc] init];
-	_statusItem.menu = _menu;
-
-	item = [[NSMenuItem alloc]
-		   initWithTitle: @"Start"
-		   action: @selector(startPressed)
-		   keyEquivalent: (NSString *) @"s"];
-	item.target = self;
-	[_menu addItem: item];
-	
-	item = [NSMenuItem separatorItem];
-	[_menu addItem: item];
-
-	item = [[NSMenuItem alloc]
-		   initWithTitle: @"Quit"
-		   action: @selector(quitPressed)
-		   keyEquivalent: (NSString *) @"q"];
-	item.target = self;
-	[_menu addItem: item];
-    }
+    _statusItem = [[NSStatusBar systemStatusBar]
+		      statusItemWithLength: NSSquareStatusItemLength];
+    image = [NSImage imageNamed: @"status.png"];
+    scaledImage = resizeImage2(image, NSMakeSize(18.0, 18.0));
+    _statusItem.button.image = image;
+    _statusItem.button.alternateImage = image;
+    _statusItem.visible = YES;
+    
+    _menu = [[NSMenu alloc] init];
+    _statusItem.menu = _menu;
+    
+    item = [[NSMenuItem alloc]
+	       initWithTitle: @"Start"
+	       action: @selector(startPressed)
+	       keyEquivalent: (NSString *) @"s"];
+    item.target = self;
+    [_menu addItem: item];
+    
+    item = [NSMenuItem separatorItem];
+    [_menu addItem: item];
+    
+    item = [[NSMenuItem alloc]
+	       initWithTitle: @"Quit"
+	       action: @selector(quitPressed)
+	       keyEquivalent: (NSString *) @"q"];
+    item.target = self;
+    [_menu addItem: item];
 }
 
 
 - (void) startPressed {
     NSLog(@"start pressed!!");
+    _uploadp = new Upload();
+    _uploadp->init(NULL, NULL);
+
+    [[NSWorkspace sharedWorkspace] openURL: [NSURL URLWithString: @"http://localhost:7701"]];
 }
 
 - (void) quitPressed {

@@ -233,6 +233,10 @@ class SApi : public CThread {
             _mutex.release();
         }
 
+        SApi *getSApi() {
+            return _sapip;
+        }
+
         static int32_t interpretFile(char *fileNamep, Dict *dictp, std::string *responsep);
 
         static int32_t interpretParm( int opcode,
@@ -343,6 +347,10 @@ class SApi : public CThread {
         }
 
         CookieEntry *setCookie();
+
+        SApi *getSApi() {
+            return _sapip;
+        }
 
         void addHeader(const char *keyp, const char *valuep) {
             Rst::Hdr *hdrp;

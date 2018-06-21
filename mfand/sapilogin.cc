@@ -201,7 +201,7 @@ SApiLoginApple::init(SApi *sapip, std::string finalUrl)
  * this application.
  */
 int32_t
-SApiLoginApple::getLoginPage(std::string *outStringp)
+SApiLoginApple::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
 {
     int32_t code;
     SApi::Dict dict;
@@ -209,6 +209,7 @@ SApiLoginApple::getLoginPage(std::string *outStringp)
     Json::Node *jnodep;
     Json::Node *redirNodep;
     Json json;
+    std::string loginPath;
 
     /* make call to trigger retrieval of correct redirect URL from Apple */
     {
@@ -270,9 +271,14 @@ SApiLoginApple::getLoginPage(std::string *outStringp)
         delete reqp;
         reqp = NULL;
         
+        if (cookiep) {
+            loginPath = cookiep->getPathPrefix();
+        }
+        loginPath +=  "login-apple.html";
+
         dict.add("redir", tp);
         dict.add("final", _finalUrl);
-        code = SApi::ServerConn::interpretFile((char *) "login-apple.html", &dict, outStringp);
+        code = SApi::ServerConn::interpretFile((char *) loginPath.c_str(), &dict, outStringp);
         if (code != 0) {
             sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
             *outStringp = std::string(tbuffer);
@@ -311,11 +317,12 @@ SApiLoginMS::init(SApi *sapip, std::string finalUrl)
  * this application.
  */
 int32_t
-SApiLoginMS::getLoginPage(std::string *outStringp)
+SApiLoginMS::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
 {
     int32_t code;
     SApi::Dict dict;
     Json json;
+    std::string loginPath;
 
     /* make call to trigger retrieval of correct redirect URL from Apple */
     {
@@ -332,7 +339,13 @@ SApiLoginMS::getLoginPage(std::string *outStringp)
         redirectUrl += "&state=" + _authId;
         dict.add("redir", redirectUrl);
         dict.add("final", _finalUrl);
-        code = SApi::ServerConn::interpretFile((char *) "login-ms.html", &dict, outStringp);
+        
+        if (cookiep) {
+            loginPath = cookiep->getPathPrefix();
+            loginPath += "login-ms.html";
+        }
+
+        code = SApi::ServerConn::interpretFile((char *) loginPath.c_str(), &dict, outStringp);
         if (code != 0) {
             sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
             *outStringp = std::string(tbuffer);
@@ -414,6 +427,17 @@ SApiLoginMS::refineAuthToken(std::string *atokenp)
     return 0;
 }
 
+/* static */ SApiLoginCookie *
+SApiLogin::createLoginCookie(SApi::ServerReq *reqp) {
+    SApiLoginCookie *cookiep;
+    if ((cookiep = (SApiLoginCookie *) reqp->getCookieKey("sapiLogin")) == NULL) {
+        cookiep = new SApiLoginCookie();
+        reqp->setCookieKey("sapiLogin", cookiep);
+    }
+
+    return cookiep;
+}
+
 void
 AppleLoginScreen::startMethod()
 {
@@ -436,7 +460,7 @@ AppleLoginScreen::startMethod()
             contextp->_loginApplep = new SApiLoginApple();
             contextp->_loginApplep->setAppParams("/database/1/iCloud.com.Cazamar.Login1/development/public/users/caller?ckAPIToken=4e2811fdef054c7cb02aca853299b50151f5b7c40e5cdbd9a7762c135af3e99a");
             contextp->_loginApplep->init(_sapip, "/");
-            code = contextp->_loginApplep->getLoginPage(&response);
+            code = contextp->_loginApplep->getLoginPage(&response, contextp);
             obufferp = const_cast<char *>(response.c_str());
         }
         else {
@@ -488,7 +512,7 @@ MSLoginScreen::startMethod()
                                                "awqdimBY081)~-nXYMPD19:");
 
             contextp->_loginMSp->init(_sapip, "/");
-            code = contextp->_loginMSp->getLoginPage(&response);
+            code = contextp->_loginMSp->getLoginPage(&response, contextp);
             obufferp = const_cast<char *>(response.c_str());
         }
         else {
@@ -527,7 +551,8 @@ LogoutScreen::startMethod()
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
     SApiLoginCookie *contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
-        
+    std::string logoutPath;
+
     if (contextp == NULL) {
         strcpy(tbuffer, "Error -- no cookie in logout");
         setSendContentLength(strlen(tbuffer));
@@ -540,7 +565,8 @@ LogoutScreen::startMethod()
 
     contextp->_webAuthToken.erase();
 
-    code = getConn()->interpretFile((char *) "login-logout.html", &dict, &response);
+    logoutPath = contextp->getPathPrefix() + "login-logout.html";
+    code = getConn()->interpretFile((char *) logoutPath.c_str(), &dict, &response);
     if (code != 0) {
         sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
