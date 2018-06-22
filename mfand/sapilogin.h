@@ -104,6 +104,12 @@ public:
 #endif
     }
 
+    void logout() {
+        _authToken.erase();
+        _refreshToken.erase();
+        _authId.erase();
+    }
+
     void printAuthState() {
         printf("Auth token='%s'\nRefresh token='%s'\n",
                _authToken.c_str(), _refreshToken.c_str());
@@ -222,16 +228,28 @@ class SApiLogin {
 /* state associated with SApiLogin and our web session cookie */
 class SApiLoginCookie {
 public:
-    std::string _webAuthToken;
     SApiLoginApple *_loginApplep;
     SApiLoginMS *_loginMSp;
-    SApiLoginGeneric *_loginActivep;
+    SApiLoginGeneric *_loginActivep;    /* one currently being logged in for this cookie */
     std::string _pathPrefix;
 #ifdef __linux__
     random_data _randomBuf;
     char _randomState[64];
 #endif
     
+    void logout() {
+        if (_loginApplep)
+            _loginApplep->logout();
+        if (_loginMSp)
+            _loginMSp->logout();
+
+        /* this points to one of the above login structures, so we don't have to log
+         * this guy out.  But we do get rid of the pointer.
+         */
+        if (_loginActivep)
+            _loginActivep = NULL;
+    }
+
     std::string getPathPrefix() {
         return _pathPrefix;
     }

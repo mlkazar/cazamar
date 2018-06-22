@@ -197,6 +197,7 @@ HomeScreen::startMethod()
     std::string loginHtml;
     AppTestContext *appContextp;
     SApiLoginCookie *contextp;
+    std::string authToken;
         
     if ((appContextp = (AppTestContext *) getCookieKey("main")) == NULL) {
         appContextp = new AppTestContext();
@@ -209,7 +210,10 @@ HomeScreen::startMethod()
 
     contextp = SApiLogin::getLoginCookie(this);
 
-    if (!contextp || contextp->_webAuthToken.length() == 0) {
+    if (contextp && contextp->getActive())
+        authToken = contextp->getActive()->getAuthToken();
+
+    if (!contextp || authToken.length() == 0) {
         loginHtml = "<a href=\"/appleLoginScreen\">Apple Login</a><p><a href=\"/msLoginScreen\">        MS Login</a>";
     }
     else {

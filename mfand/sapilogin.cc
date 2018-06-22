@@ -131,6 +131,7 @@ AppleLoginKeyData::startMethod()
         Json::Node *authTokenNodep;
         Json::Node *jnodep;
         std::string callbackString;
+        std::string authToken;
         
         printf("apptest: retrieving key='%s'\n", genLoginp->getAuthId().c_str());
         callbackString = "/keyData?id=" + genLoginp->getAuthId();
@@ -167,9 +168,10 @@ AppleLoginKeyData::startMethod()
         delete jnodep;
         reqp = NULL;
 
-        cookiep->_webAuthToken = genLoginp->getAuthToken();
+        authToken = genLoginp->getAuthToken();
 
-        genLoginp->refineAuthToken(&cookiep->_webAuthToken, cookiep);
+        /* this converts the once only token into a real authentication token */
+        genLoginp->refineAuthToken(&authToken, cookiep);
     }
 
     requestDone();
@@ -450,6 +452,7 @@ AppleLoginScreen::startMethod()
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
     SApiLoginCookie *cookiep;
+    std::string authToken;
         
     cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
     if (cookiep == NULL) {
@@ -457,7 +460,9 @@ AppleLoginScreen::startMethod()
         setCookieKey("sapiLogin", cookiep);
     }
     else {
-        if (cookiep->_webAuthToken.length() == 0) {
+        if (cookiep->getActive())
+            authToken = cookiep->getActive()->getAuthToken();
+        if (authToken.length() == 0) {
             cookiep->_loginApplep = new SApiLoginApple();
             cookiep->_loginApplep->setAppParams("/database/1/iCloud.com.Cazamar.Login1/development/public/users/caller?ckAPIToken=4e2811fdef054c7cb02aca853299b50151f5b7c40e5cdbd9a7762c135af3e99a");
             cookiep->_loginApplep->init(_sapip, cookiep, "/");
@@ -501,13 +506,16 @@ MSLoginScreen::startMethod()
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
     SApiLoginCookie *cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
-    
+    std::string authToken;
+
     if (cookiep == NULL) {
         cookiep = new SApiLoginCookie();
         setCookieKey("sapiLogin", cookiep);
     }
     else {
-        if (cookiep->_webAuthToken.length() == 0) {
+        if (cookiep->getActive())
+            authToken = cookiep->getActive()->getAuthToken();
+        if (authToken.length() == 0) {
             cookiep->_loginMSp = new SApiLoginMS();
             cookiep->_loginMSp->setAppParams( "60a94129-6c64-493e-b91f-1bd6d0c09cd1",
                                                "awqdimBY081)~-nXYMPD19:");
@@ -564,7 +572,7 @@ LogoutScreen::startMethod()
         return;
     }
 
-    cookiep->_webAuthToken.erase();
+    cookiep->logout();
 
     logoutPath = cookiep->getPathPrefix() + "login-logout.html";
     code = getConn()->interpretFile((char *) logoutPath.c_str(), &dict, &response);

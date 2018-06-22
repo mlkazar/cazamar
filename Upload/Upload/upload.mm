@@ -66,6 +66,7 @@ HomeScreen::startMethod()
     SApiLoginCookie *contextp;
     Upload *up;
     std::string homePath;
+    std::string authToken;
         
     up = (Upload *) _sapip->getContext();
     printf("Using global context %p\n", up);
@@ -73,7 +74,9 @@ HomeScreen::startMethod()
     contextp = SApiLogin::createLoginCookie(this);
     contextp->setPathPrefix(up->_pathPrefix);
 
-    if (contextp->_webAuthToken.length() == 0) {
+    if (contextp && contextp->getActive())
+	authToken = contextp->getActive()->getAuthToken();
+    if (authToken.length() == 0) {
         loginHtml = "<a href=\"/appleLoginScreen\">Apple Login</a><p><a href=\"/msLoginScreen\">        MS Login</a>";
     }
     else {
