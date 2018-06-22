@@ -80,12 +80,11 @@ AppleLoginKeyData::startMethod()
     SApi::Dict dict;
     Json json;
     const char *urlp;
-    SApiLoginGeneric *genLoginp = (SApiLoginGeneric *) _sapip->getContext();
+    SApiLoginCookie *cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
 
-    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
-    printf("SApiLoginCookie=%p\n", contextp);
+    printf("SApiLoginCookie=%p\n", cookiep);
 
-    if (!contextp) {
+    if (!cookiep) {
         CThreadPipe *outPipep = getOutgoingPipe();
         printf("no cookie in AppleLoginKeyData\n");
         strcpy(tbuffer, "Error -- no cookie in login screen");
@@ -96,6 +95,8 @@ AppleLoginKeyData::startMethod()
         requestDone();
         return;
     }
+
+    SApiLoginGeneric *genLoginp = cookiep->getActive();
 
     CThreadPipe *inPipep = getIncomingPipe();
     
@@ -135,7 +136,7 @@ AppleLoginKeyData::startMethod()
         callbackString = "/keyData?id=" + genLoginp->getAuthId();
 
         xapip = new XApi();
-        bufGenp = new BufTls();
+        bufGenp = new BufTls(cookiep->getPathPrefix());
         bufGenp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7700);
         connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();
@@ -166,9 +167,9 @@ AppleLoginKeyData::startMethod()
         delete jnodep;
         reqp = NULL;
 
-        contextp->_webAuthToken = genLoginp->getAuthToken();
+        cookiep->_webAuthToken = genLoginp->getAuthToken();
 
-        genLoginp->refineAuthToken(&contextp->_webAuthToken);
+        genLoginp->refineAuthToken(&cookiep->_webAuthToken, cookiep);
     }
 
     requestDone();
@@ -189,10 +190,10 @@ AppleLoginKeyData::factory(std::string *opcodep, SApi *sapip)
  * associated with the web server responding for the web site.
  */
 void
-SApiLoginApple::init(SApi *sapip, std::string finalUrl)
+SApiLoginApple::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl)
 {
     _sapip = sapip;
-    sapip->setContext(this);
+    cookiep->setActive(this);
     _finalUrl = finalUrl;
     sapip->registerUrl("/sapiKeyData", &AppleLoginKeyData::factory);
 }
@@ -225,7 +226,7 @@ SApiLoginApple::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
         std::string tableKey;
         
         xapip = new XApi();
-        bufGenp = new BufTls();
+        bufGenp = new BufTls(cookiep->getPathPrefix());
         bufGenp->init(const_cast<char *>("api.apple-cloudkit.com"), 443);
         connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();
@@ -291,7 +292,7 @@ SApiLoginApple::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
  * associated with the web server responding for the web site.
  */
 void
-SApiLoginMS::init(SApi *sapip, std::string finalUrl)
+SApiLoginMS::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl)
 {
     char tbuffer[128];
     int32_t tval;
@@ -309,7 +310,7 @@ SApiLoginMS::init(SApi *sapip, std::string finalUrl)
     _authId = std::string(tbuffer);
 
     _finalUrl = finalUrl;
-    sapip->setContext(this);
+    cookiep->setActive(this);
     sapip->registerUrl("/sapiKeyData", &AppleLoginKeyData::factory);
 }
 
@@ -355,7 +356,7 @@ SApiLoginMS::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
 }
 
 int32_t
-SApiLoginMS::refineAuthToken(std::string *atokenp)
+SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
 {
     /* make a call to get access token and refresh tokens from MS, using code */
     {
@@ -384,7 +385,7 @@ SApiLoginMS::refineAuthToken(std::string *atokenp)
         postData += "&client_secret=" + Rst::urlEncode(&_clientSecret);
 
         xapip = new XApi();
-        bufGenp = new BufTls();
+        bufGenp = new BufTls(cookiep->getPathPrefix());
         bufGenp->init(const_cast<char *>("login.microsoftonline.com"), 443);
         connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();
@@ -448,19 +449,19 @@ AppleLoginScreen::startMethod()
     SApi::Dict dict;
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
-    SApiLoginCookie *contextp;
+    SApiLoginCookie *cookiep;
         
-    contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
-    if (contextp == NULL) {
-        contextp = new SApiLoginCookie();
-        setCookieKey("sapiLogin", contextp);
+    cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
+    if (cookiep == NULL) {
+        cookiep = new SApiLoginCookie();
+        setCookieKey("sapiLogin", cookiep);
     }
     else {
-        if (contextp->_webAuthToken.length() == 0) {
-            contextp->_loginApplep = new SApiLoginApple();
-            contextp->_loginApplep->setAppParams("/database/1/iCloud.com.Cazamar.Login1/development/public/users/caller?ckAPIToken=4e2811fdef054c7cb02aca853299b50151f5b7c40e5cdbd9a7762c135af3e99a");
-            contextp->_loginApplep->init(_sapip, "/");
-            code = contextp->_loginApplep->getLoginPage(&response, contextp);
+        if (cookiep->_webAuthToken.length() == 0) {
+            cookiep->_loginApplep = new SApiLoginApple();
+            cookiep->_loginApplep->setAppParams("/database/1/iCloud.com.Cazamar.Login1/development/public/users/caller?ckAPIToken=4e2811fdef054c7cb02aca853299b50151f5b7c40e5cdbd9a7762c135af3e99a");
+            cookiep->_loginApplep->init(_sapip, cookiep, "/");
+            code = cookiep->_loginApplep->getLoginPage(&response, cookiep);
             obufferp = const_cast<char *>(response.c_str());
         }
         else {
@@ -499,20 +500,20 @@ MSLoginScreen::startMethod()
     SApi::Dict dict;
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
-    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
+    SApiLoginCookie *cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
     
-    if (contextp == NULL) {
-        contextp = new SApiLoginCookie();
-        setCookieKey("sapiLogin", contextp);
+    if (cookiep == NULL) {
+        cookiep = new SApiLoginCookie();
+        setCookieKey("sapiLogin", cookiep);
     }
     else {
-        if (contextp->_webAuthToken.length() == 0) {
-            contextp->_loginMSp = new SApiLoginMS();
-            contextp->_loginMSp->setAppParams( "60a94129-6c64-493e-b91f-1bd6d0c09cd1",
+        if (cookiep->_webAuthToken.length() == 0) {
+            cookiep->_loginMSp = new SApiLoginMS();
+            cookiep->_loginMSp->setAppParams( "60a94129-6c64-493e-b91f-1bd6d0c09cd1",
                                                "awqdimBY081)~-nXYMPD19:");
 
-            contextp->_loginMSp->init(_sapip, "/");
-            code = contextp->_loginMSp->getLoginPage(&response, contextp);
+            cookiep->_loginMSp->init(_sapip, cookiep, "/");
+            code = cookiep->_loginMSp->getLoginPage(&response, cookiep);
             obufferp = const_cast<char *>(response.c_str());
         }
         else {
@@ -550,10 +551,10 @@ LogoutScreen::startMethod()
     SApi::Dict dict;
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
-    SApiLoginCookie *contextp = (SApiLoginCookie *) getCookieKey("sapiLogin");
+    SApiLoginCookie *cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
     std::string logoutPath;
 
-    if (contextp == NULL) {
+    if (cookiep == NULL) {
         strcpy(tbuffer, "Error -- no cookie in logout");
         setSendContentLength(strlen(tbuffer));
         inputReceived();
@@ -563,9 +564,9 @@ LogoutScreen::startMethod()
         return;
     }
 
-    contextp->_webAuthToken.erase();
+    cookiep->_webAuthToken.erase();
 
-    logoutPath = contextp->getPathPrefix() + "login-logout.html";
+    logoutPath = cookiep->getPathPrefix() + "login-logout.html";
     code = getConn()->interpretFile((char *) logoutPath.c_str(), &dict, &response);
     if (code != 0) {
         sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);

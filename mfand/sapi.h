@@ -430,6 +430,8 @@ class SApi : public CThread {
 
     dqueue<UrlEntry> _allUrls;
 
+    std::string _pathPrefix;
+
     ServerFactory *_requestFactoryProcp;
 
     void listener(void *cxp);
@@ -451,6 +453,14 @@ class SApi : public CThread {
     static int32_t parseOpFromUrl(std::string *strp, std::string *resultp);
 
     void initWithPort(uint16_t port);
+
+    std::string getPathPrefix() {
+        return _pathPrefix;
+    }
+
+    void setPathPrefix(std::string prefix) {
+        _pathPrefix = prefix;
+    }
 
     ClientConn *addClientConn(BufGen *bufGenp);
 

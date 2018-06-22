@@ -72,7 +72,7 @@ AppleLoginKeyData::runTests(AppTestContext *contextp, SApiLoginGeneric *genLogin
         postData += "}\n";
 
         xapip = new XApi();
-        bufGenp = new BufTls();
+        bufGenp = new BufTls("");
         bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
         connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();
@@ -128,7 +128,7 @@ AppleLoginKeyData::runTests(AppTestContext *contextp, SApiLoginGeneric *genLogin
         postData = "This is a test for test.txt\n";
 
         xapip = new XApi();
-        bufGenp = new BufTls();
+        bufGenp = new BufTls("");
         bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
         connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();

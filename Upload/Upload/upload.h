@@ -13,6 +13,7 @@ class Upload {
 
     notifyProc *_notifyProcp;
     void *_notifyContextp;
+    std::string _pathPrefix;
 
     void init(notifyProc *procp, void *notifyContextp);
 

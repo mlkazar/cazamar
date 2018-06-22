@@ -27,8 +27,15 @@ Upload::server(void *contextp)
     Upload *uploadp = (Upload *)contextp;
     SApi *sapip;
 
+    NSBundle *myBundle = [NSBundle mainBundle];
+    NSString *path= [myBundle pathForResource:@"status" ofType:@"png"]; /* file must exist */
+    /* path will end /status.png, but we only want through the trailing / */
+    path = [path substringToIndex: ([path length] - 10)];
+    uploadp->_pathPrefix = std::string([path cStringUsingEncoding: NSUTF8StringEncoding]);
+
     uploadp->_sapip = sapip = new SApi();
     sapip->setContext(uploadp);
+    sapip->setPathPrefix(uploadp->_pathPrefix);
     sapip->initWithPort(7701);
 
     /* setup login URL listeners */
@@ -58,20 +65,15 @@ HomeScreen::startMethod()
     std::string loginHtml;
     SApiLoginCookie *contextp;
     Upload *up;
-    NSBundle *myBundle = [NSBundle mainBundle];
-    NSString *path= [myBundle pathForResource:@"status" ofType:@"png"];
     std::string homePath;
         
     up = (Upload *) _sapip->getContext();
     printf("Using global context %p\n", up);
 
-    /* path will end /a.b, but we only want through the trailing / */
-    path = [path substringToIndex: ([path length] - 10)];
-
     contextp = SApiLogin::createLoginCookie(this);
-    contextp->setPathPrefix([path cStringUsingEncoding: NSUTF8StringEncoding]);
+    contextp->setPathPrefix(up->_pathPrefix);
 
-    if (!contextp || contextp->_webAuthToken.length() == 0) {
+    if (contextp->_webAuthToken.length() == 0) {
         loginHtml = "<a href=\"/appleLoginScreen\">Apple Login</a><p><a href=\"/msLoginScreen\">        MS Login</a>";
     }
     else {

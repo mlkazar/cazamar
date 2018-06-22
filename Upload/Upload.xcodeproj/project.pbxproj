@@ -24,6 +24,8 @@
 		7F6B42E620BB321A001DCC59 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42E520BB321A001DCC59 /* main.m */; };
 		7F7264A220DA8678006B7E25 /* upload.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F7264A120DA8678006B7E25 /* upload.mm */; };
 		7FBC42D520D7144800AFF662 /* status.png in Resources */ = {isa = PBXBuildFile; fileRef = 7FBC42D420D7144800AFF662 /* status.png */; };
+		7FD1B9D220DC93F400560290 /* test_cert.pem in Resources */ = {isa = PBXBuildFile; fileRef = 7FD1B9D020DC93F400560290 /* test_cert.pem */; };
+		7FD1B9D320DC93F400560290 /* test_key.pem in Resources */ = {isa = PBXBuildFile; fileRef = 7FD1B9D120DC93F400560290 /* test_key.pem */; };
 		7FFB6CAD20DA78F500CE70FE /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7FFB6CAC20DA78F500CE70FE /* ViewController.mm */; };
 /* End PBXBuildFile section */
 
@@ -59,6 +61,8 @@
 		7F6B42E720BB321A001DCC59 /* Upload.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Upload.entitlements; sourceTree = "<group>"; };
 		7F7264A120DA8678006B7E25 /* upload.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = upload.mm; sourceTree = "<group>"; };
 		7FBC42D420D7144800AFF662 /* status.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = status.png; sourceTree = "<group>"; };
+		7FD1B9D020DC93F400560290 /* test_cert.pem */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = test_cert.pem; path = ../../mfand/test_cert.pem; sourceTree = "<group>"; };
+		7FD1B9D120DC93F400560290 /* test_key.pem */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = test_key.pem; path = ../../mfand/test_key.pem; sourceTree = "<group>"; };
 		7FFB6CAC20DA78F500CE70FE /* ViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ViewController.mm; sourceTree = "<group>"; };
 		7FFB6CAF20DA7CAD00CE70FE /* upload.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = upload.h; sourceTree = "<group>"; };
 		7FFD966720CEAC5800FD0ADC /* xgml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xgml.h; path = ../../rpc/xgml.h; sourceTree = "<group>"; };
@@ -91,6 +95,8 @@
 		7F034C8A20D5B90F0035B449 /* mfand */ = {
 			isa = PBXGroup;
 			children = (
+				7FD1B9D020DC93F400560290 /* test_cert.pem */,
+				7FD1B9D120DC93F400560290 /* test_key.pem */,
 				7F034CB320D5BA5E0035B449 /* rst.h */,
 				7F034CB120D5BA5E0035B449 /* sapi.h */,
 				7F034CB520D5BA5E0035B449 /* sapilogin.h */,
@@ -233,7 +239,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7FD1B9D220DC93F400560290 /* test_cert.pem in Resources */,
 				7F034C9F20D5B9DA0035B449 /* login-ms.html in Resources */,
+				7FD1B9D320DC93F400560290 /* test_key.pem in Resources */,
 				7F034CA120D5B9DA0035B449 /* login-home.html in Resources */,
 				7F6B42E020BB321A001DCC59 /* Assets.xcassets in Resources */,
 				7F034C9C20D5B9DA0035B449 /* login-apple.html in Resources */,

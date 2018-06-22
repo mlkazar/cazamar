@@ -75,7 +75,7 @@ BufTls::accept(BufGen **remotepp)
         return code;
     }
 
-    socketp = new BufTls();
+    socketp = new BufTls(_pathPrefix);
     socketp->init((struct sockaddr *) &peerAddr, sizeof(peerAddr));
     socketp->_s = fd;
 
@@ -452,11 +452,17 @@ void
 BufTls::init(char *namep, uint32_t defaultPort)
 {
     static int didMainInit = 0;
+    std::string certPath;
+    std::string keyPath;
 
     BufGen::init(namep, defaultPort);
 
     if (!didMainInit) {
         didMainInit = 1;
+
+        certPath = _pathPrefix + "test_cert.pem";
+        keyPath = _pathPrefix + "test_key.pem";
+
         SSL_library_init();
         OpenSSL_add_all_algorithms();
         SSL_load_error_strings();
@@ -482,8 +488,8 @@ BufTls::init(char *namep, uint32_t defaultPort)
         _sslServerContextp = SSL_CTX_new(_sslServerMethodp);
 
         if (SSL_CTX_load_verify_locations( _sslServerContextp,
-                                           "test_cert.pem",
-                                           "test_key.pem") != 1) {
+                                           certPath.c_str(),
+                                           keyPath.c_str()) != 1) {
             printf("failing location test\n");
             ERR_print_errors_fp(stdout);
             osp_assert(0);
@@ -494,14 +500,14 @@ BufTls::init(char *namep, uint32_t defaultPort)
             osp_assert(0);
         }
         if (SSL_CTX_use_certificate_file(_sslServerContextp,
-                                         "test_cert.pem",
+                                         certPath.c_str(),
                                          SSL_FILETYPE_PEM) <= 0) {
             printf("failing use cert\n");
             ERR_print_errors_fp(stdout);
             osp_assert(0);
         }
         if (SSL_CTX_use_PrivateKey_file(_sslServerContextp,
-                                        "test_key.pem",
+                                        keyPath.c_str(),
                                         SSL_FILETYPE_PEM) <= 0) {
             printf("failing use key\n");
             ERR_print_errors_fp(stdout);

@@ -60,7 +60,7 @@ class SApiLoginCookie;
 class SApiLoginGeneric {
 public:
     virtual int32_t getLoginPage( std::string *outStringp, SApiLoginCookie *cookiep) = 0;
-    virtual int32_t refineAuthToken(std::string *tokenp) = 0;
+    virtual int32_t refineAuthToken(std::string *tokenp, SApiLoginCookie *cookiep) = 0;
 
     virtual std::string getAuthToken() {
         return _authToken;
@@ -128,14 +128,14 @@ class SApiLoginApple : public SApiLoginGeneric {
     std::string _apiUrl;
 
 public: 
-    void init(SApi *sapip, std::string finalUrl);
+    void init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl);
     int32_t getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep);
 
     void setAppParams(std::string apiUrl) {
         _apiUrl = apiUrl;
     }
 
-    int32_t refineAuthToken(std::string *tokenp) {
+    int32_t refineAuthToken(std::string *tokenp, SApiLoginCookie *cookiep) {
         return 0;
     }
 };
@@ -147,7 +147,7 @@ class SApiLoginMS : public SApiLoginGeneric {
     std::string _clientSecret;
 
 public: 
-    void init(SApi *sapip, std::string finalUrl);
+    void init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl);
     int32_t getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep);
 
     void setAppParams(std::string clientId, std::string clientSecret) {
@@ -155,7 +155,7 @@ public:
         _clientSecret = clientSecret;
     }
 
-    int32_t refineAuthToken(std::string *tokenp);
+    int32_t refineAuthToken(std::string *tokenp, SApiLoginCookie *cookiep);
 };
 
 class AppleLoginKeyData : public SApi::ServerReq {
@@ -225,6 +225,7 @@ public:
     std::string _webAuthToken;
     SApiLoginApple *_loginApplep;
     SApiLoginMS *_loginMSp;
+    SApiLoginGeneric *_loginActivep;
     std::string _pathPrefix;
 #ifdef __linux__
     random_data _randomBuf;
@@ -239,9 +240,18 @@ public:
         _pathPrefix = pathPrefix;
     }
 
+    SApiLoginGeneric *getActive() {
+        return _loginActivep;
+    }
+
+    void setActive(SApiLoginGeneric *activep) {
+        _loginActivep = activep;
+    }
+
     SApiLoginCookie() {
         _loginApplep = NULL;
         _loginMSp = NULL;
+        _loginActivep = NULL;
 #ifdef __linux__
         _randomBuf.state = NULL;
         initstate_r(time(0) + getpid(),

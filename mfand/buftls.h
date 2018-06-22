@@ -31,6 +31,7 @@ class BufTls : public BufGen {
     uint8_t _closed;
     uint8_t _connected;
     uint8_t _verbose;
+    std::string _pathPrefix;
 
     static SSL_CTX *_sslClientContextp;
     static SSL_CTX *_sslServerContextp;
@@ -88,13 +89,17 @@ class BufTls : public BufGen {
         return _closed;
     }
 
+    BufTls(std::string pathPrefix) {
+        _pathPrefix = pathPrefix;
+    }
+
     ~BufTls();
 };
 
 class BufTlsFactory : public BufGenFactory {
  public:
     BufGen *allocate() {
-        return new BufTls();
+        return new BufTls("");
     }
 };
 

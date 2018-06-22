@@ -64,7 +64,7 @@ client(int argc, char **argv, int port)
         socketp->init(const_cast<char *>("localhost"), port);
     }
     else {
-        socketp = new BufTls();
+        socketp = new BufTls("");
         socketp->init(const_cast<char *>("localhost"), port);
     }
 
@@ -192,7 +192,7 @@ server(int argc, char **argv, int port)
     xapip = new XApi();
     xapip->registerFactory(&serverRestFactory);
     if (useSecure) {
-        lsocketp = new BufTls();
+        lsocketp = new BufTls("");
         lsocketp->init((char *) NULL, port);
         xapip->initWithBufGen(lsocketp);
     }

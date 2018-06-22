@@ -157,7 +157,7 @@ AppleLogin::startMethod()
         char *urlp;
         
         xapip = new XApi();
-        bufGenp = new BufTls();
+        bufGenp = new BufTls("");
         bufGenp->init(const_cast<char *>("api.apple-cloudkit.com"), 443);
         connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();
@@ -331,7 +331,7 @@ WriteTest::startMethod()
     BufGen *bufGenp;
 
     xapip = new XApi();
-    bufGenp = new BufTls();
+    bufGenp = new BufTls("");
     bufGenp->init(const_cast<char *>("api.apple-cloudkit.com"), 443);
     connp = xapip->addClientConn(bufGenp);
 
@@ -439,7 +439,7 @@ WriteTest::startMethod()
         /* we should really be getting the default port from splitUrl */
         reqp->setSendContentLength(strlen(fileData));
         Rst::splitUrl(&uploadUrl, &urlHost, &urlPath);
-        uploadSocketp = new BufTls();
+        uploadSocketp = new BufTls("");
         uploadSocketp->init(const_cast<char *>(urlHost.c_str()), 443);
         uploadConnp = xapip->addClientConn(uploadSocketp);
         
@@ -689,7 +689,7 @@ ReadTest::startMethod()
     BufGen *bufGenp;
 
     xapip = new XApi();
-    bufGenp = new BufTls();
+    bufGenp = new BufTls("");
     bufGenp->init(const_cast<char *>("api.apple-cloudkit.com"), 443);
     connp = xapip->addClientConn(bufGenp);
 
@@ -795,7 +795,7 @@ ReadTest::startMethod()
         /* we should really be getting the default port from splitUrl */
         reqp->setSendContentLength(0);
         Rst::splitUrl(&downloadUrl, &urlHost, &urlPath);
-        downloadSocketp = new BufTls();
+        downloadSocketp = new BufTls("");
         downloadSocketp->init(const_cast<char *>(urlHost.c_str()), 443);
         downloadConnp = xapip->addClientConn(downloadSocketp);
         
@@ -917,7 +917,7 @@ DeleteTest::startMethod()
     BufGen *bufGenp;
 
     xapip = new XApi();
-    bufGenp = new BufTls();
+    bufGenp = new BufTls("");
     bufGenp->init(const_cast<char *>("api.apple-cloudkit.com"), 443);
     connp = xapip->addClientConn(bufGenp);
 

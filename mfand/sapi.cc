@@ -36,7 +36,7 @@ SApi::listener(void *cxp)
     int32_t code;
 
     if (_useTls)
-        lsocketp = new BufTls();
+        lsocketp = new BufTls(_pathPrefix);
     else
         lsocketp = new BufSocket();
     
