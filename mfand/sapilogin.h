@@ -1,3 +1,6 @@
+#ifndef _SAPILOGIN_H_ENV_
+#define _SAPILOGIN_H_ENV_ 1 
+
 #include <stdio.h>
 #include <string>
 #include <stdlib.h>
@@ -281,3 +284,5 @@ public:
 #endif
     }
 };
+
+#endif /* _SAPILOGIN_H_ENV_*/

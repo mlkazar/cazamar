@@ -1,4 +1,4 @@
-all: mfand libmf.a liboauth.a libjsdb.a librst.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv
+all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv
 
 install: all *.h
 	cp *.h ../include/.
@@ -41,6 +41,10 @@ librst.a: rst.o bufsocket.o buftls.o bufgen.o xapi.o sapi.o sapilogin.o
 libjsdb.a: jsdb.o
 	ar cru libjsdb.a jsdb.o 
 	ranlib libjsdb.a
+
+libcfs.a: cfs.o cfsms.o
+	ar cru libcfs.a cfs.o cfsms.o
+	ranlib libcfs.a
 
 rst.o: $(RSTINCLS)
 

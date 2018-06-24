@@ -38,6 +38,7 @@ WebView *_oldViewp;
 NSStatusItem *_statusItem;
 NSMenu *_menu;
 Upload *_uploadp;
+NSAlert *_alert;
 
 - (void) loadView {
     [super loadView];
@@ -47,7 +48,6 @@ Upload *_uploadp;
 - (void)viewDidLoad {
     NSImage *image;
     NSImage *scaledImage;
-    NSMenuItem *item;
 
     [super viewDidLoad];
 
@@ -59,16 +59,38 @@ Upload *_uploadp;
     _statusItem.button.alternateImage = image;
     _statusItem.visible = YES;
     
+    [self updateMenu];
+}
+
+
+- (void) updateMenu
+{
+    NSMenuItem *item;
+
     _menu = [[NSMenu alloc] init];
     _statusItem.menu = _menu;
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Start"
-	       action: @selector(startPressed)
+	       initWithTitle: @"Login"
+	       action: @selector(loginPressed)
 	       keyEquivalent: (NSString *) @"s"];
     item.target = self;
     [_menu addItem: item];
     
+    item = [[NSMenuItem alloc]
+	       initWithTitle: @"Backup"
+	       action: @selector(backupPressed)
+	       keyEquivalent: @"b"];
+    item.target = self;
+    [_menu addItem: item];
+
+    item = [[NSMenuItem alloc]
+	       initWithTitle: @"Run tests"
+	       action: @selector(testPressed)
+	       keyEquivalent: @"t"];
+    item.target = self;
+    [_menu addItem: item];
+
     item = [NSMenuItem separatorItem];
     [_menu addItem: item];
     
@@ -80,8 +102,23 @@ Upload *_uploadp;
     [_menu addItem: item];
 }
 
+- (void) backupPressed
+{
+    NSLog(@"backup pressed");
+}
 
-- (void) startPressed {
+- (void) testPressed
+{
+    if (!_uploadp) {
+	_alert = [[NSAlert alloc] init];
+	_alert.messageText = @"Not logged in";
+	_alert.informativeText = @"You must login before you can run the CFS tests";
+	[_alert runModal];
+	NSLog(@"alert done");
+    }
+}
+
+- (void) loginPressed {
     NSLog(@"start pressed!!");
     _uploadp = new Upload();
     _uploadp->init(NULL, NULL);
