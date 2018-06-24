@@ -28,11 +28,9 @@ class Cfile {
 class Cenv {
  public:
     uint32_t _uid;
-    SApiLoginMS *_loginp;
 
     Cenv() {
         _uid = ~0;
-        _loginp = NULL;
     }
 };
 
@@ -44,11 +42,11 @@ class Cnode {
     int32_t _refCount;
     Cnode *_parentp;
 
-    virtual int32_t getAttr(Cnode *cp, Cattr *attrsp, Cenv *envp) = 0;
-    virtual int32_t lookup(Cnode *cp, std::string name, Cnode **nodepp, Cenv *envp) = 0;
-    virtual int32_t create(Cnode *cp, std::string name, Cnode **nodepp, Cenv *envp) = 0;
-    virtual int32_t mkdir(Cnode *cp, std::string name, Cnode **nodepp, Cenv *envp) = 0;
-    virtual int32_t open(Cnode *cp, uint32_t flags, Cfile **filepp) = 0;
+    virtual int32_t getAttr(Cattr *attrsp, Cenv *envp) = 0;
+    virtual int32_t lookup(std::string name, Cnode **nodepp, Cenv *envp) = 0;
+    virtual int32_t create(std::string name, Cnode **nodepp, Cenv *envp) = 0;
+    virtual int32_t mkdir(std::string name, Cnode **nodepp, Cenv *envp) = 0;
+    virtual int32_t open(uint32_t flags, Cfile **filepp) = 0;
     virtual int32_t close(Cfile *filep) = 0;
     virtual int32_t write(Cfile *cp, uint64_t offset, uint32_t length, Cenv *envp) = 0;
     virtual int32_t read(Cfile *cp, uint64_t offset, uint32_t length, Cenv *envp) = 0;

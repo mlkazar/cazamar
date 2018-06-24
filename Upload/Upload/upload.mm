@@ -9,21 +9,38 @@ Upload::init(notifyProc *notifyProcp, void *contextp)
     _notifyProcp = notifyProcp;
     _notifyContextp = contextp;
 
-#if 0
-    code = pthread_create(&pthreadId, NULL, &Upload::server, this);
-    if (code != 0)
-        printf("Upload: failed to create pthread\n");
-#else
     server(this);
-#endif
+}
+
+void
+Upload::runTests()
+{
+    NSAlert *alert;
+    CnodeMs *rootp;
+    Cattr attr;
+
+    if (!_loginMSp) {
+	alert = [[NSAlert alloc] init];
+	alert.messageText = @"Not logged in";
+	alert.informativeText = @"Login started but no tokens available";
+	[alert runModal];
+	return;
+    }
+
+    _cfsp = new CfsMs(_loginMSp);
+    _cfsp->root((Cnode **) &rootp, NULL);
+    rootp->getAttr(&attr, NULL);
+
+    alert = [[NSAlert alloc] init];
+    alert.messageText = @"Tests done";
+    alert.informativeText = @"All tests complete";
+    [alert runModal];
+    
 }
 
 /* static */ void *
 Upload::server(void *contextp)
 {
-    /* TBD: do we really need a separate thread for this, given that all of the
-     * code here sets up async processes anyway?
-     */
     Upload *uploadp = (Upload *)contextp;
     SApi *sapip;
 
@@ -81,6 +98,7 @@ HomeScreen::startMethod()
     }
     else {
         loginHtml = "Logged in<p><a href=\"/logoutScreen\">Logout</a>";
+	up->_loginMSp = contextp->_loginMSp;
     }
     
     homePath = contextp->getPathPrefix() + "login-home.html";

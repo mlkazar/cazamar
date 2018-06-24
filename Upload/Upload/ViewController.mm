@@ -116,6 +116,9 @@ NSAlert *_alert;
 	[_alert runModal];
 	NSLog(@"alert done");
     }
+    else {
+	_uploadp->runTests();
+    }
 }
 
 - (void) loginPressed {

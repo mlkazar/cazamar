@@ -147,6 +147,10 @@ public:
     int32_t refineAuthToken(std::string *tokenp, SApiLoginCookie *cookiep) {
         return 0;
     }
+
+    virtual ~SApiLoginApple() {
+        _sapip = NULL;
+    }
 };
 
 class SApiLoginMS : public SApiLoginGeneric {
@@ -156,6 +160,10 @@ class SApiLoginMS : public SApiLoginGeneric {
     std::string _clientSecret;
 
 public: 
+    virtual ~SApiLoginMS() {
+        _sapip = NULL;
+    }
+
     void init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl);
     int32_t getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep);
 
@@ -226,6 +234,10 @@ class SApiLogin {
     }
 
     static SApiLoginCookie *createLoginCookie(SApi::ServerReq *reqp);
+
+    virtual ~SApiLogin() {
+        return;
+    };
 };
 
 /* state associated with SApiLogin and our web session cookie */

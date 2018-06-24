@@ -18,6 +18,7 @@
 		7F23AB6820D6724700E368E8 /* libcore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6720D6724700E368E8 /* libcore.a */; };
 		7F23AB6B20D6738B00E368E8 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6920D6738B00E368E8 /* libssl.a */; };
 		7F23AB6C20D6738B00E368E8 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F23AB6A20D6738B00E368E8 /* libcrypto.a */; };
+		7F2D886320E04F4300CBA93B /* libcfs.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F2D886220E04F4300CBA93B /* libcfs.a */; };
 		7F6B42DB20BB321A001DCC59 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B42DA20BB321A001DCC59 /* AppDelegate.m */; };
 		7F6B42E020BB321A001DCC59 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7F6B42DF20BB321A001DCC59 /* Assets.xcassets */; };
 		7F6B42E320BB321A001DCC59 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7F6B42E120BB321A001DCC59 /* Main.storyboard */; };
@@ -50,6 +51,9 @@
 		7F23AB6720D6724700E368E8 /* libcore.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcore.a; path = ../lib/libcore.a; sourceTree = "<group>"; };
 		7F23AB6920D6738B00E368E8 /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../../../../usr/local/ssl/lib/libssl.a; sourceTree = "<group>"; };
 		7F23AB6A20D6738B00E368E8 /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../../../../usr/local/ssl/lib/libcrypto.a; sourceTree = "<group>"; };
+		7F2D886020E040D700CBA93B /* cfs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cfs.h; path = ../../mfand/cfs.h; sourceTree = "<group>"; };
+		7F2D886120E040D700CBA93B /* cfsms.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cfsms.h; path = ../../mfand/cfsms.h; sourceTree = "<group>"; };
+		7F2D886220E04F4300CBA93B /* libcfs.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcfs.a; path = ../lib/libcfs.a; sourceTree = "<group>"; };
 		7F6B42D620BB321A001DCC59 /* Upload.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Upload.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F6B42D920BB321A001DCC59 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		7F6B42DA20BB321A001DCC59 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -81,6 +85,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7F2D886320E04F4300CBA93B /* libcfs.a in Frameworks */,
 				7F23AB6420D671E000E368E8 /* librst.a in Frameworks */,
 				7F23AB6620D6721C00E368E8 /* libext.a in Frameworks */,
 				7F23AB6820D6724700E368E8 /* libcore.a in Frameworks */,
@@ -109,6 +114,8 @@
 				7F034C9820D5B9DA0035B449 /* login-logout.html */,
 				7F034C9720D5B9DA0035B449 /* login-ms-done.html */,
 				7F034C9920D5B9DA0035B449 /* login-ms.html */,
+				7F2D886020E040D700CBA93B /* cfs.h */,
+				7F2D886120E040D700CBA93B /* cfsms.h */,
 				7F034C9120D5B9730035B449 /* bufgen.h */,
 				7F034C9020D5B9730035B449 /* bufsocket.h */,
 				7F034C8C20D5B9730035B449 /* buftls.h */,
@@ -119,6 +126,7 @@
 		7F23AB6220D671E000E368E8 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				7F2D886220E04F4300CBA93B /* libcfs.a */,
 				7F23AB6A20D6738B00E368E8 /* libcrypto.a */,
 				7F23AB6920D6738B00E368E8 /* libssl.a */,
 				7F23AB6720D6724700E368E8 /* libcore.a */,

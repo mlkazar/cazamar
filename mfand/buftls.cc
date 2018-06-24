@@ -4,6 +4,7 @@
 #ifdef __linux__
 #include <string.h>
 #endif
+#include "rst.h"
 
 SSL_CTX *BufTls::_sslClientContextp;
 SSL_CTX *BufTls::_sslServerContextp;
@@ -333,6 +334,8 @@ BufTls::readLine(char *bufferp, int32_t acount)
                     printf("TLS=%p readline hit eof (breaking) after %d bytes\n",
                            this, origCount - acount);
                 /* hit EOF, so terminate the buffer and return success */
+                if (acount == origCount)
+                    return RST_ERR_EOF;
                 break;
             }
             else {
