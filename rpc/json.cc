@@ -523,7 +523,7 @@ Pair::parseLine(InStream *inp, std::string *keyp, std::string *valuep)
         if (parsingKey) {
             if (tc == '\r' || tc == '\n') {
                 skipNewline(inp);
-                return ERR_FORMAT;
+                return JSON_ERR_FORMAT;
             }
             else if (tc == ':') {
                 parsingKey = 0;
@@ -545,7 +545,7 @@ Pair::parseLine(InStream *inp, std::string *keyp, std::string *valuep)
                 /* consume any trailing newline-like stuff */
                 skipNewline(inp);
                 /* and we're done */
-                return ERR_SUCCESS;
+                return JSON_ERR_SUCCESS;
             }
             else {
                 valuep->append(1, tc);
@@ -555,7 +555,7 @@ Pair::parseLine(InStream *inp, std::string *keyp, std::string *valuep)
     } /* while loop over all */
 
     /* we get here if we hit EOF */
-    return ERR_EOF;
+    return JSON_ERR_EOF;
 }
 
 InStreamFile::InStreamFile(FILE *filep)

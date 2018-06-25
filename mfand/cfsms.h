@@ -3,6 +3,7 @@
 
 #include "osp.h"
 #include "cfs.h"
+#include "json.h"
 
 class Cfs;
 class CnOps;
@@ -54,6 +55,8 @@ class CnodeMs : public Cnode {
     }
 
     int32_t getPath(std::string *pathp, Cenv *envp);
+
+    int32_t parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, time_t *modTimep);
 };
 
 
@@ -74,6 +77,7 @@ class CfsMs : public Cfs {
 
     int32_t root(Cnode **rootpp, Cenv *envp);
     
+    int32_t getCnode(std::string *idp, CnodeMs **cnodepp);
 };
 
 #endif /* _CFSMS_H_ENV__ */

@@ -1,6 +1,7 @@
+#include <time.h>
+
 #include "cfsms.h"
 #include "xapi.h"
-#include "json.h"
 #include "buftls.h"
 
 int32_t
@@ -8,6 +9,46 @@ CnodeMs::getPath(std::string *pathp, Cenv *envp)
 {
     pathp->erase();
     /* TBD: figure out how to generate paths */
+    return 0;
+}
+
+int32_t
+CnodeMs::parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, time_t *modTimep)
+{
+    Json::Node *tnodep;
+    std::string modTimeStr;
+    std::string sizeStr;
+
+    tnodep = jnodep->searchForChild("id", 0);
+    if (tnodep) {
+        *idp = tnodep->_children.head()->_name;
+    }
+
+    tnodep = jnodep->searchForChild("lastModifiedDateTime", 0);
+    if (tnodep) {
+        time_t secsSince70;
+        modTimeStr = tnodep->_children.head()->_name;
+        const char *tp = modTimeStr.c_str();
+        // USE mktime, gmtime, time to convert to local time_t
+        // format is "2016-03-21T20:01:37Z" Z for Zulu time zone
+        struct tm timeInfo;
+        timeInfo.tm_year = atoi(tp) - 1900;
+        timeInfo.tm_mon = atoi(tp+5) - 1;
+        timeInfo.tm_mday = atoi(tp+8);
+        timeInfo.tm_hour = atoi(tp+11);
+        timeInfo.tm_min = atoi(tp+14);
+        timeInfo.tm_sec = atoi(tp+17);
+        secsSince70 = timegm(&timeInfo);
+        *modTimep = secsSince70;
+        printf("ctime is %s\n", ctime(&secsSince70));
+    }
+
+    tnodep = jnodep->searchForChild("size", 0);
+    if (tnodep) {
+        sizeStr = tnodep->_children.head()->_name;
+        *sizep = atoi(sizeStr.c_str());
+    }
+
     return 0;
 }
 
@@ -29,6 +70,10 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
     std::string callbackString;
     std::string authHeader;
     int32_t code;
+    std::string id;
+    uint64_t size;
+    time_t modTime;
+    CnodeMs *childp;
     
     if (_parentp == NULL)
         callbackString = "/v1.0/me/drive/root/children";
@@ -73,6 +118,12 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
             jnodep->print();
         }
         
+        code = parseResults(jnodep, &id, &size, &modTime);
+        if (code == 0) {
+            _cfsp->getCnode(&id, &childp);
+            *newDirpp = childp;
+        }
+
         inPipep->waitForEof();
         delete reqp;
         delete jnodep;
@@ -80,13 +131,13 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
         break;
     }
 
-    return 0;
+    return code;
 }
 
 int32_t
 CnodeMs::getAttr(Cattr *attrp, Cenv *envp)
 {
-    /* perform mkdir operation */
+    /* perform getAttr operation */
     char tbuffer[0x4000];
     XApi *xapip;
     XApi::ClientConn *connp;
@@ -100,7 +151,12 @@ CnodeMs::getAttr(Cattr *attrp, Cenv *envp)
     Json::Node *jnodep;
     std::string callbackString;
     std::string authHeader;
+    std::string id;
+    std::string modTimeStr;
+    std::string sizeStr;
+    uint64_t size;
     int32_t code;
+    time_t modTime;
     
     if (_parentp == NULL)
         callbackString = "/v1.0/me/drive/root";
@@ -140,6 +196,9 @@ CnodeMs::getAttr(Cattr *attrp, Cenv *envp)
         
         inPipep->waitForEof();
         delete reqp;
+
+        parseResults(jnodep, &id, &size, &modTime);
+
         delete jnodep;
         reqp = NULL;
         break;
@@ -157,5 +216,19 @@ CfsMs::root(Cnode **nodepp, Cenv *envp)
     rootp->_cfsp = this;
     *nodepp = rootp;
 
+    return 0;
+}
+
+int32_t
+CfsMs::getCnode(std::string *idp, CnodeMs **cnodepp)
+{
+    /* TBD: hash table for finding existing cnodes; valid flag for attrs */
+    CnodeMs *cp;
+
+    cp = new CnodeMs();
+    cp->_cfsp = this;
+    cp->_id = *idp;
+    *cnodepp = cp;
+    cp->_refCount = 1;
     return 0;
 }

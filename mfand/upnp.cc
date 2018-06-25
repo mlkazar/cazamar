@@ -38,7 +38,7 @@ UpnpProbe::parseProbeResponse( char *respBufferp, std::string *locationStrp)
     foundContentDir = 0;
     while(1) {
         code = _pairParser.parseLine(&inStream, &key, &value);
-        if (code == Pair::ERR_SUCCESS) {
+        if (code == Pair::JSON_ERR_SUCCESS) {
             if ( !strcasecmp(key.c_str(), "st") &&
                  !strcasecmp(value.c_str(), "urn:schemas-upnp-org:service:ContentDirectory:1"))
                 foundContentDir = 1;
@@ -46,7 +46,7 @@ UpnpProbe::parseProbeResponse( char *respBufferp, std::string *locationStrp)
                 location = value;
             }
         }
-        else if (code == Pair::ERR_EOF) {
+        else if (code == Pair::JSON_ERR_EOF) {
             break;
         }
     }

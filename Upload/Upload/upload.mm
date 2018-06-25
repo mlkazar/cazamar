@@ -17,7 +17,9 @@ Upload::runTests()
 {
     NSAlert *alert;
     CnodeMs *rootp;
+    CnodeMs *childDirp;
     Cattr attr;
+    Cattr childAttr;
 
     if (!_loginMSp) {
 	alert = [[NSAlert alloc] init];
@@ -30,6 +32,8 @@ Upload::runTests()
     _cfsp = new CfsMs(_loginMSp);
     _cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attr, NULL);
+    rootp->mkdir("TestDir", (Cnode **) &childDirp, NULL);
+    childDirp->getAttr(&childAttr, NULL);
 
     alert = [[NSAlert alloc] init];
     alert.messageText = @"Tests done";

@@ -311,9 +311,9 @@ class Json {
 
 class Pair {
  public:
-    static const int32_t ERR_EOF = -2;
-    static const int32_t ERR_FORMAT = -1;
-    static const int32_t ERR_SUCCESS = 0;
+    static const int32_t JSON_ERR_EOF = -2;
+    static const int32_t JSON_ERR_FORMAT = -1;
+    static const int32_t JSON_ERR_SUCCESS = 0;
     void skipNewline(InStream *inp);
     int32_t parseLine(InStream *inp, std::string *keyp, std::string *valuep);
 };
