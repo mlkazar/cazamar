@@ -156,6 +156,7 @@ class XApi : public CThread {
         reqType _isPost;
         std::string _relativePath;
         int32_t _error;
+        int32_t _httpError;
         int32_t _sendContentLength;
         dqueue<Rst::Hdr> _sendHeaders;
         dqueue<Rst::Hdr> _recvHeaders;
@@ -200,6 +201,10 @@ class XApi : public CThread {
 
         int32_t getError() {
             return _error;
+        }
+
+        int32_t getHttpError() {
+            return (_error == 0? _httpError : _error);
         }
 
         void addHeader(const char *keyp, const char *valuep);

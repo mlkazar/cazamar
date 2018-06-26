@@ -18,11 +18,14 @@ CnodeMs::parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, tim
     Json::Node *tnodep;
     std::string modTimeStr;
     std::string sizeStr;
+    int allFound = 1;
 
     tnodep = jnodep->searchForChild("id", 0);
     if (tnodep) {
         *idp = tnodep->_children.head()->_name;
     }
+    else
+        allFound = 0;
 
     tnodep = jnodep->searchForChild("lastModifiedDateTime", 0);
     if (tnodep) {
@@ -42,14 +45,18 @@ CnodeMs::parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, tim
         *modTimep = secsSince70;
         printf("ctime is %s\n", ctime(&secsSince70));
     }
+    else
+        allFound = 0;
 
     tnodep = jnodep->searchForChild("size", 0);
     if (tnodep) {
         sizeStr = tnodep->_children.head()->_name;
         *sizep = atoi(sizeStr.c_str());
     }
+    else
+        allFound = 0;
 
-    return 0;
+    return (allFound? 0 : -1);
 }
 
 int32_t
@@ -106,6 +113,10 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
         outPipep->eof();
         
         code = reqp->waitForHeadersDone();
+        if (code != 0) {
+            break;
+        }
+
         inPipep = reqp->getIncomingPipe();
         code = inPipep->read(tbuffer, sizeof(tbuffer));
         if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
@@ -117,6 +128,9 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
         if (code == 0) {
             jnodep->print();
         }
+        else {
+            break;
+        }
         
         code = parseResults(jnodep, &id, &size, &modTime);
         if (code == 0) {
@@ -125,11 +139,19 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
         }
 
         inPipep->waitForEof();
-        delete reqp;
-        delete jnodep;
-        reqp = NULL;
         break;
     }
+
+    if (jnodep) {
+        delete jnodep;
+        jnodep = NULL;
+    }
+    if (reqp) {
+        delete reqp;
+        reqp = NULL;
+    }
+    if (code)
+        *newDirpp = NULL;
 
     return code;
 }
@@ -182,6 +204,12 @@ CnodeMs::getAttr(Cattr *attrp, Cenv *envp)
         outPipep->eof();
         
         code = reqp->waitForHeadersDone();
+        if (code) {
+            delete reqp;
+            reqp = NULL;
+            break;
+        }
+
         inPipep = reqp->getIncomingPipe();
         code = inPipep->read(tbuffer, sizeof(tbuffer));
         if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
@@ -201,11 +229,12 @@ CnodeMs::getAttr(Cattr *attrp, Cenv *envp)
 
         delete jnodep;
         reqp = NULL;
+        code = 0;
         break;
     }
 
-    return 0;
-               }
+    return code;
+}
 
 int32_t
 CfsMs::root(Cnode **nodepp, Cenv *envp)

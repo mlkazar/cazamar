@@ -545,6 +545,10 @@ XApi::ClientReq::headersDoneProc( void *contextp,
     XApi::ClientReq *reqp = (XApi::ClientReq *) contextp;
     XApi::ClientConn *connp = reqp->_connp;
 
+    /* save errors */
+    reqp->_error = errorCode;
+    reqp->_httpError = httpCode;
+
     connp->setHeadersDone();
 }
 

@@ -20,6 +20,7 @@ Upload::runTests()
     CnodeMs *childDirp;
     Cattr attr;
     Cattr childAttr;
+    int32_t code;
 
     if (!_loginMSp) {
 	alert = [[NSAlert alloc] init];
@@ -32,8 +33,11 @@ Upload::runTests()
     _cfsp = new CfsMs(_loginMSp);
     _cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attr, NULL);
-    rootp->mkdir("TestDir", (Cnode **) &childDirp, NULL);
-    childDirp->getAttr(&childAttr, NULL);
+    code = rootp->mkdir("TestDir", (Cnode **) &childDirp, NULL);
+    if (code == 0)
+	childDirp->getAttr(&childAttr, NULL);
+    else
+	printf("makedir failed code=%d\n", code);
 
     alert = [[NSAlert alloc] init];
     alert.messageText = @"Tests done";

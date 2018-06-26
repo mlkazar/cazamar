@@ -1,9 +1,13 @@
-* cookies
+writes
 
-separate out app from sapilogin.cc
+reads
 
-* add support for MS
+hash tables
 
-add support for Google
+handle timeouts, delete client requests in rst, xapi and sapi
 
 get app IDs out sapilogin code
+
+================
+
+add support for Google
