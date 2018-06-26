@@ -544,6 +544,7 @@ BufTls::~BufTls()
 {
     delete _outp;
 
+#if 0
     if (_sslServerContextp) {
         SSL_CTX_free(_sslServerContextp);
         _sslServerContextp = NULL;
@@ -552,6 +553,7 @@ BufTls::~BufTls()
         SSL_CTX_free(_sslClientContextp);
         _sslClientContextp = NULL;
     }
+#endif
 
     if (_s >= 0) {
         if (_verbose)
