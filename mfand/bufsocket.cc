@@ -174,6 +174,7 @@ BufSocket::doSetup(uint16_t srcPort)
     }
 
     if (srcPort != 0) {
+        memset(&srcAddr, 0, sizeof(srcAddr);
 #ifndef __linux__
         srcAddr.sin_len = sizeof(struct sockaddr_in);
 #endif

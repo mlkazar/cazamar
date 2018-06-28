@@ -41,31 +41,29 @@ Upload *_uploadp;
 NSAlert *_alert;
 NSTimer *_timer;
 
-- (void) loadView {
-    [super loadView];
-
-}
-
-- (void)viewDidLoad {
+- (ViewController *) init {
     NSImage *image;
     NSImage *scaledImage;
 
-    [super viewDidLoad];
-
-    _statusItem = [[NSStatusBar systemStatusBar]
-		      statusItemWithLength: NSSquareStatusItemLength];
-    image = [NSImage imageNamed: @"status.png"];
-    scaledImage = resizeImage2(image, NSMakeSize(18.0, 18.0));
-    _statusItem.button.image = image;
-    _statusItem.button.alternateImage = image;
-    _statusItem.visible = YES;
+    self = [super init];
+    if (self) {
+	_statusItem = [[NSStatusBar systemStatusBar]
+			  statusItemWithLength: NSSquareStatusItemLength];
+	image = [NSImage imageNamed: @"status.png"];
+	scaledImage = resizeImage2(image, NSMakeSize(18.0, 18.0));
+	_statusItem.button.image = image;
+	_statusItem.button.alternateImage = image;
+	_statusItem.highlightMode = YES;
+	_statusItem.visible = YES;
     
-    [self updateMenu];
+	[self updateMenu];
+    }
 
-    [self closeWindow];
+    return self;
 }
 
 
+#if 0
 - (void) closeWindow {
     NSLog(@"in close window");
     _timer = [NSTimer scheduledTimerWithTimeInterval: 0.0
@@ -84,10 +82,7 @@ NSTimer *_timer;
     [window orderOut: self];
     [window close];
 }
-
-- (void) viewWillAppear {
-    return;
-}
+#endif
 
 - (void) updateMenu
 {
@@ -158,26 +153,6 @@ NSTimer *_timer;
 - (void) quitPressed {
     NSLog(@"quit pressed");
     [NSApp terminate: self];
-}
-
-- (void)setRepresentedObject:(id)representedObject {
-    [super setRepresentedObject:representedObject];
-
-    // Update the view, if already loaded.
-}
-
-- (void) webView: (WKWebView *) webViewp
-didFailNavigation: (WKNavigation *)navp
-       withError: (NSError *)errorp
-{
-    NSLog(@"IN FAIL");
-}
-
-- (void) webView: (WKWebView *) webViewp
-didFailProvisionalNavigation: (WKNavigation *)navp
-       withError: (NSError *)errorp
-{
-    NSLog(@"IN FAIL PROV");
 }
 
 @end

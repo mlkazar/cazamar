@@ -9,7 +9,9 @@
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
 
-@interface ViewController : NSViewController <WKNavigationDelegate>
+@interface ViewController : NSObject
+
+- (ViewController *) init;
 
 @end
 
