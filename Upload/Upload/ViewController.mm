@@ -39,6 +39,7 @@ NSStatusItem *_statusItem;
 NSMenu *_menu;
 Upload *_uploadp;
 NSAlert *_alert;
+NSTimer *_timer;
 
 - (void) loadView {
     [super loadView];
@@ -60,8 +61,33 @@ NSAlert *_alert;
     _statusItem.visible = YES;
     
     [self updateMenu];
+
+    [self closeWindow];
 }
 
+
+- (void) closeWindow {
+    NSLog(@"in close window");
+    _timer = [NSTimer scheduledTimerWithTimeInterval: 0.0
+		      target: self
+		      selector: @selector(closeWindow2)
+		      userInfo: nil
+		      repeats: NO];
+}
+
+- (void) closeWindow2 {
+    NSWindow *window;
+
+    window = self.view.window;
+    NSLog(@"main window is %p", window);
+
+    [window orderOut: self];
+    [window close];
+}
+
+- (void) viewWillAppear {
+    return;
+}
 
 - (void) updateMenu
 {
