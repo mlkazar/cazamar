@@ -73,7 +73,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
     std::string postData;
     const char *tp;
     Json json;
-    Json::Node *jnodep;
+    Json::Node *jnodep = NULL;
     std::string callbackString;
     std::string authHeader;
     int32_t code;
