@@ -57,6 +57,13 @@ class CnodeMs : public Cnode {
     int32_t startSession(std::string name,
                          std::string *sessionUrlp);
 
+    int32_t sendData( std::string *sessionUrlp,
+                      Cnode::fillProc *fillProcp,
+                      void *fillContextp,
+                      uint64_t fileLength,
+                      uint64_t byteOffset,
+                      uint32_t byteCount);
+
     /* send the whole file, whose final size is 'size'.  Use fillProc to obtain
      * data to send.  Creates a file with specified name in dir cp.
      */

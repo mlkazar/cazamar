@@ -45,7 +45,7 @@ class Cnode {
     /* read up to count bytes; only return a short read if you've hit EOF; you can
      * return 0 bytes to indicate EOF if you have nothing more to send.
      */
-    typedef int32_t (fillProc)(void *contextp, uint32_t count, char *bufferp);
+    typedef int32_t (fillProc)(void *contextp, uint64_t offset, uint32_t count, char *bufferp);
 
     virtual int32_t getAttr(Cattr *attrsp, Cenv *envp) = 0;
     virtual int32_t lookup(std::string name, Cnode **nodepp, Cenv *envp) = 0;

@@ -12,6 +12,14 @@ Upload::init(notifyProc *notifyProcp, void *contextp)
     server(this);
 }
 
+/* static */ int32_t
+Upload::generateTestData(void *contextp, uint64_t offset, uint32_t count, char *bufferp)
+{
+    const char *datap = "this is some test data\n";
+    strcpy(bufferp, datap);
+    return (int32_t) strlen(datap)+1;
+}
+
 void
 Upload::runTests()
 {
@@ -43,6 +51,17 @@ Upload::runTests()
     code = rootp->startSession(std::string("testfile"),
 			       &uploadUrl);
     printf("upload URL=%s\n", uploadUrl.c_str());
+
+    if (code == 0) {
+	printf("test sending data\n");
+	code = rootp->sendData( &uploadUrl,
+				&generateTestData,
+				NULL,
+				100,
+				0,
+				100);
+	printf("test send code=%d\n", code);
+    }
 
     alert = [[NSAlert alloc] init];
     alert.messageText = @"Tests done";

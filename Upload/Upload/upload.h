@@ -22,6 +22,11 @@ class Upload {
 
     void runTests();
 
+    static int32_t generateTestData(void *contextp,
+                                    uint64_t offset,
+                                    uint32_t count,
+                                    char *bufferp);
+
     /* pthread callback */
     static void *server(void *contextp);
 };

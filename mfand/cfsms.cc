@@ -341,6 +341,117 @@ CnodeMs::startSession( std::string name,
 }
 
 int32_t
+CnodeMs::sendData( std::string *sessionUrlp,
+                   Cnode::fillProc *fillProcp,
+                   void *fillContextp,
+                   uint64_t fileLength,
+                   uint64_t byteOffset,
+                   uint32_t byteCount)
+{
+    /* perform mkdir operation */
+    char tbuffer[0x4000];
+    char *dataBufferp;
+    XApi *xapip;
+    std::string sessionHost;
+    std::string sessionRelativeUrl;
+    XApi::ClientConn *connp;
+    BufGen *bufGenp;
+    XApi::ClientReq *reqp = NULL;
+    CThreadPipe *inPipep;
+    CThreadPipe *outPipep;
+    const char *tp;
+    Json json;
+    Json::Node *jnodep = NULL;
+    std::string authHeader;
+    int32_t code=0;
+    std::string id;
+    uint32_t readCount;
+    int32_t actuallyReadCount;
+    
+    Rst::splitUrl(sessionUrlp, &sessionHost, &sessionRelativeUrl);
+
+    osp_assert(byteCount < 4*1024*1024);
+    dataBufferp = new char[byteCount];
+    xapip = new XApi();
+    bufGenp = new BufTls("");
+    bufGenp->init(const_cast<char *>(sessionHost.c_str()), 443);
+    
+    while(1) {
+        /* read some bytes */
+        readCount = (byteOffset + byteCount > fileLength?
+                     fileLength - byteOffset :
+                     byteCount);
+        actuallyReadCount = fillProcp(fillContextp, byteOffset, readCount, dataBufferp);
+        if (actuallyReadCount == 0)
+            break;
+        if (actuallyReadCount < 0) {
+            code = -1;
+            break;
+        }
+
+        connp = xapip->addClientConn(bufGenp);
+        reqp = new XApi::ClientReq();
+        reqp->setSendContentLength(actuallyReadCount);
+        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        reqp->addHeader("Authorization", authHeader.c_str());
+        sprintf(tbuffer, "bytes %ld-%ld/%ld",
+                (long) byteOffset,
+                (long) byteOffset+actuallyReadCount-1,
+                (long) actuallyReadCount);
+        reqp->addHeader("Content-Range", tbuffer);
+        reqp->startCall( connp,
+                         sessionRelativeUrl.c_str(),
+                         /* isPut */ XApi::reqPut);
+        
+        outPipep = reqp->getOutgoingPipe();
+        outPipep->write(dataBufferp, actuallyReadCount);
+        outPipep->eof();
+        
+        code = reqp->waitForHeadersDone();
+        if (code != 0) {
+            break;
+        }
+
+        inPipep = reqp->getIncomingPipe();
+        code = inPipep->read(tbuffer, sizeof(tbuffer));
+        if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
+            tbuffer[code] = 0;
+        }
+        
+        tp = tbuffer;
+        code = json.parseJsonChars((char **) &tp, &jnodep);
+        if (code == 0) {
+            jnodep->print();
+        }
+        else {
+            break;
+        }
+        
+        /* not clear we care about what came back */
+        inPipep->waitForEof();
+        break;
+    }
+
+    if (jnodep) {
+        delete jnodep;
+        jnodep = NULL;
+    }
+    if (dataBufferp) {
+        delete [] dataBufferp;
+    }
+    if (reqp) {
+        delete reqp;
+        reqp = NULL;
+    }
+
+    if (code == 0)
+        return actuallyReadCount;
+    else
+        return code;
+    
+}
+
+int32_t
 CnodeMs::sendFile( Cnode *cp,
                    std::string name,
                    Cnode::fillProc *fillProcp,
