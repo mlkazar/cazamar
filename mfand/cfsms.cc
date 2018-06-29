@@ -237,6 +237,121 @@ CnodeMs::getAttr(Cattr *attrp, Cenv *envp)
 }
 
 int32_t
+CnodeMs::startSession( std::string name,
+                       std::string *sessionUrlp)
+{
+    /* perform mkdir operation */
+    char tbuffer[0x4000];
+    XApi *xapip;
+    XApi::ClientConn *connp;
+    BufGen *bufGenp;
+    XApi::ClientReq *reqp;
+    CThreadPipe *inPipep;
+    CThreadPipe *outPipep;
+    std::string postData;
+    const char *tp;
+    Json json;
+    Json::Node *jnodep = NULL;
+    Json::Node *tnodep;
+    std::string callbackString;
+    std::string authHeader;
+    int32_t code;
+    std::string id;
+    
+    sessionUrlp->erase();
+
+    // perhaps syntax is .../root:/filename:/createUploadSession
+    // or .../items/{id}:/filename:/createUploadSession
+    // based on a random comment
+    if (_parentp == NULL)
+        callbackString = "/v1.0/me/drive/root:/" + name + ":/createUploadSession";
+    else
+        callbackString = "/v1.0/me/drive/items/" + _id + ":/" + name + ":/createUploadSession";
+    
+    postData = "{\n";
+    postData = "\"item\": {\n";
+    postData += "\"@microsoft.graph.conflictBehavior\": \"fail\"\n";
+    postData += "}\n";  /* close item */
+    postData += "}\n";
+    
+    xapip = new XApi();
+    bufGenp = new BufTls("");
+    bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
+    
+    while(1) {
+        connp = xapip->addClientConn(bufGenp);
+        reqp = new XApi::ClientReq();
+        reqp->setSendContentLength(postData.length());
+        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        reqp->addHeader("Authorization", authHeader.c_str());
+        reqp->addHeader("Content-Type", "application/json");
+        reqp->startCall( connp,
+                         callbackString.c_str(),
+                         /* isPost */ XApi::reqPost);
+        
+        outPipep = reqp->getOutgoingPipe();
+        outPipep->write(postData.c_str(), postData.length());
+        outPipep->eof();
+        
+        code = reqp->waitForHeadersDone();
+        if (code != 0) {
+            break;
+        }
+
+        inPipep = reqp->getIncomingPipe();
+        code = inPipep->read(tbuffer, sizeof(tbuffer));
+        if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
+            tbuffer[code] = 0;
+        }
+        
+        tp = tbuffer;
+        code = json.parseJsonChars((char **) &tp, &jnodep);
+        if (code == 0) {
+            jnodep->print();
+        }
+        else {
+            break;
+        }
+        
+        /* search for uploadUrl */
+        tnodep = jnodep->searchForChild("uploadUrl", 0);
+        if (tnodep) {
+            *sessionUrlp = tnodep->_children.head()->_name;
+            code = 0;
+        }
+        else {
+            code = -1;
+        }
+
+        inPipep->waitForEof();
+        break;
+    }
+
+    if (jnodep) {
+        delete jnodep;
+        jnodep = NULL;
+    }
+    if (reqp) {
+        delete reqp;
+        reqp = NULL;
+    }
+
+    return code;
+    
+}
+
+int32_t
+CnodeMs::sendFile( Cnode *cp,
+                   std::string name,
+                   Cnode::fillProc *fillProcp,
+                   void *contextp,
+                   uint64_t size,
+                   Cenv *envp)
+{
+    return 0;
+}
+
+int32_t
 CfsMs::root(Cnode **nodepp, Cenv *envp)
 {
     CnodeMs *rootp;

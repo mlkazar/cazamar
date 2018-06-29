@@ -42,6 +42,11 @@ class Cnode {
     int32_t _refCount;
     Cnode *_parentp;
 
+    /* read up to count bytes; only return a short read if you've hit EOF; you can
+     * return 0 bytes to indicate EOF if you have nothing more to send.
+     */
+    typedef int32_t (fillProc)(void *contextp, uint32_t count, char *bufferp);
+
     virtual int32_t getAttr(Cattr *attrsp, Cenv *envp) = 0;
     virtual int32_t lookup(std::string name, Cnode **nodepp, Cenv *envp) = 0;
     virtual int32_t create(std::string name, Cnode **nodepp, Cenv *envp) = 0;
@@ -50,6 +55,12 @@ class Cnode {
     virtual int32_t close(Cfile *filep) = 0;
     virtual int32_t write(Cfile *cp, uint64_t offset, uint32_t length, Cenv *envp) = 0;
     virtual int32_t read(Cfile *cp, uint64_t offset, uint32_t length, Cenv *envp) = 0;
+    virtual int32_t sendFile( Cnode *cp,
+                              std::string name,
+                              fillProc *fillProcp,
+                              void *contextp,
+                              uint64_t size,
+                              Cenv *envp) = 0;
 
     Cnode() {
         _refCount = 1;

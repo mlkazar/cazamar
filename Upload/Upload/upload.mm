@@ -21,6 +21,7 @@ Upload::runTests()
     Cattr attr;
     Cattr childAttr;
     int32_t code;
+    std::string uploadUrl;
 
     if (!_loginMSp) {
 	alert = [[NSAlert alloc] init];
@@ -38,6 +39,10 @@ Upload::runTests()
 	childDirp->getAttr(&childAttr, NULL);
     else
 	printf("makedir failed code=%d\n", code);
+
+    code = rootp->startSession(std::string("testfile"),
+			       &uploadUrl);
+    printf("upload URL=%s\n", uploadUrl.c_str());
 
     alert = [[NSAlert alloc] init];
     alert.messageText = @"Tests done";

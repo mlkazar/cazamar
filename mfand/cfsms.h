@@ -54,6 +54,19 @@ class CnodeMs : public Cnode {
         return -1;
     }
 
+    int32_t startSession(std::string name,
+                         std::string *sessionUrlp);
+
+    /* send the whole file, whose final size is 'size'.  Use fillProc to obtain
+     * data to send.  Creates a file with specified name in dir cp.
+     */
+    int32_t sendFile( Cnode *cp,
+                      std::string name,
+                      Cnode::fillProc *fillProcp,
+                      void *contextp,
+                      uint64_t size,
+                      Cenv *envp);
+    
     int32_t getPath(std::string *pathp, Cenv *envp);
 
     int32_t parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, time_t *modTimep);
