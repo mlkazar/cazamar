@@ -9,27 +9,37 @@ class Cfs;
 class CnOps;
 class Cnode;
 
-class Cattr {
+class CAttr {
  public:
     uint64_t _length;
-    uint64_t _mtime;    /* in nanoseconds since 1/1/70 */
-    uint64_t _ctime;    /* ditto */
+    uint64_t _mtime;    /* mod time in nanoseconds since 1/1/70 */
+    uint64_t _ctime;    /* change time in same */
 };
 
-class Cfile {
+class CDataSource {
+ public:
+    virtual int32_t getAttr(CAttr *attrp) = 0;
+    virtual int32_t read( uint64_t offset, uint32_t count, char *bufferp) = 0;
+    virtual int32_t close() = 0;
+    virtual ~CDataSource () {
+        return;
+    }
+};
+
+class CFile {
  public:
     Cnode *_cp;
 
-    Cfile() {
+    CFile() {
         _cp = NULL;
     }
 };
 
-class Cenv {
+class CEnv {
  public:
     uint32_t _uid;
 
-    Cenv() {
+    CEnv() {
         _uid = ~0;
     }
 };
@@ -47,20 +57,18 @@ class Cnode {
      */
     typedef int32_t (fillProc)(void *contextp, uint64_t offset, uint32_t count, char *bufferp);
 
-    virtual int32_t getAttr(Cattr *attrsp, Cenv *envp) = 0;
-    virtual int32_t lookup(std::string name, Cnode **nodepp, Cenv *envp) = 0;
-    virtual int32_t create(std::string name, Cnode **nodepp, Cenv *envp) = 0;
-    virtual int32_t mkdir(std::string name, Cnode **nodepp, Cenv *envp) = 0;
-    virtual int32_t open(uint32_t flags, Cfile **filepp) = 0;
-    virtual int32_t close(Cfile *filep) = 0;
-    virtual int32_t write(Cfile *cp, uint64_t offset, uint32_t length, Cenv *envp) = 0;
-    virtual int32_t read(Cfile *cp, uint64_t offset, uint32_t length, Cenv *envp) = 0;
-    virtual int32_t sendFile( Cnode *cp,
-                              std::string name,
-                              fillProc *fillProcp,
-                              void *contextp,
+    virtual int32_t getAttr(CAttr *attrsp, CEnv *envp) = 0;
+    virtual int32_t lookup(std::string name, Cnode **nodepp, CEnv *envp) = 0;
+    virtual int32_t create(std::string name, Cnode **nodepp, CEnv *envp) = 0;
+    virtual int32_t mkdir(std::string name, Cnode **nodepp, CEnv *envp) = 0;
+    virtual int32_t open(uint32_t flags, CFile **filepp) = 0;
+    virtual int32_t close(CFile *filep) = 0;
+    virtual int32_t write(CFile *cp, uint64_t offset, uint32_t length, CEnv *envp) = 0;
+    virtual int32_t read(CFile *cp, uint64_t offset, uint32_t length, CEnv *envp) = 0;
+    virtual int32_t sendFile( std::string name,
+                              CDataSource *sourcep,
                               uint64_t size,
-                              Cenv *envp) = 0;
+                              CEnv *envp) = 0;
 
     Cnode() {
         _refCount = 1;
@@ -72,7 +80,7 @@ class Cnode {
 /* one of these per file system instance */
 class Cfs {
  public:
-    virtual int32_t root(Cnode **rootpp, Cenv *envp) = 0;
+    virtual int32_t root(Cnode **rootpp, CEnv *envp) = 0;
 };
 
 #endif /* _CFS_H_ENV__ */

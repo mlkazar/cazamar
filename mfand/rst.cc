@@ -533,8 +533,7 @@ Rst::Call::sendOperation()
         code = (int32_t) strtol(tbuffer, NULL, 10);
     _httpError = code;
 
-    if (code < 200 || code >= 300)
-        printf("Rst: saw HTTP code=%d\n", code);
+    printf("Rst: incoming response with HTTP code=%d\n", code);
 
     /* read header lines */
     code = readCommonHeaders();

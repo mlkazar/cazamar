@@ -91,6 +91,11 @@ class BufTls : public BufGen {
 
     BufTls(std::string pathPrefix) {
         _pathPrefix = pathPrefix;
+        _s = -1;
+        _error = 0;
+        _connected = 0;
+        _verbose = 0;
+        _sslp = NULL;
     }
 
     ~BufTls();

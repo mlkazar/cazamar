@@ -5,6 +5,32 @@
 #include "sapilogin.h"
 #include "cfsms.h"
 
+class DataSourceFile : public CDataSource {
+    int _fd;
+    CThreadMutex _lock;
+
+ public:
+    int32_t open(char *fileNamep);
+
+    int32_t getAttr(CAttr *attrp);
+
+    int32_t read( uint64_t offset, uint32_t count, char *bufferp);
+
+    int32_t close() {
+        if (_fd >= 0)
+            ::close(_fd);
+        return 0;
+    }
+
+    DataSourceFile() {
+        _fd = -1;
+    }
+
+    ~DataSourceFile() {
+        close();
+    }
+};
+
 class Upload {
  public:
     typedef void (notifyProc)(Upload *uploadp, void *contextp, uint32_t event);

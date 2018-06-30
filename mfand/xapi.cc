@@ -497,12 +497,6 @@ XApi::ClientReq::callSendProc( void *contextp,
     XApi::ClientReq *clientReqp = (XApi::ClientReq *) contextp;
 
     code = clientReqp->_outgoingDatap->read(bufferp, maxSize);
-    printf("**callsendproc reads data from pipe=%p, code=%d req=%p, count=%d eof=%d\n",
-           clientReqp->_outgoingDatap,
-           code,
-           clientReqp,
-           clientReqp->_outgoingDatap->count(),
-           clientReqp->_outgoingDatap->atEof());
     if (code < 0) {
         *bufferSizep = 0;
         return code;
@@ -572,7 +566,6 @@ XApi::ClientReq::startMethod()
     /* this call won't return until the entire request and response have
      * been processed.
      */
-    printf("**clientreq start method req=%p\n", this);
     code = callp->init( _relativePath.c_str(),
                         callSendProc,
                         &_sendHeaders,
@@ -581,7 +574,6 @@ XApi::ClientReq::startMethod()
                         headersDoneProc,
                         this);
     if (code != 0) {
-        printf("**clientreq error path method req=%p code=%d\n", this, code);
         _error = code;
         if (!_connp->_headersDone) {
             _connp->setHeadersDone();

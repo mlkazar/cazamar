@@ -5,7 +5,7 @@
 #include "buftls.h"
 
 int32_t
-CnodeMs::getPath(std::string *pathp, Cenv *envp)
+CnodeMs::getPath(std::string *pathp, CEnv *envp)
 {
     pathp->erase();
     /* TBD: figure out how to generate paths */
@@ -43,7 +43,6 @@ CnodeMs::parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, tim
         timeInfo.tm_sec = atoi(tp+17);
         secsSince70 = timegm(&timeInfo);
         *modTimep = secsSince70;
-        printf("ctime is %s\n", ctime(&secsSince70));
     }
     else
         allFound = 0;
@@ -60,7 +59,7 @@ CnodeMs::parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, tim
 }
 
 int32_t
-CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
+CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
 {
     /* perform mkdir operation */
     char tbuffer[0x4000];
@@ -157,7 +156,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, Cenv *envp)
 }
 
 int32_t
-CnodeMs::getAttr(Cattr *attrp, Cenv *envp)
+CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
 {
     /* perform getAttr operation */
     char tbuffer[0x4000];
@@ -270,7 +269,7 @@ CnodeMs::startSession( std::string name,
     
     postData = "{\n";
     postData = "\"item\": {\n";
-    postData += "\"@microsoft.graph.conflictBehavior\": \"fail\"\n";
+    postData += "\"@microsoft.graph.conflictBehavior\": \"replace\"\n";
     postData += "}\n";  /* close item */
     postData += "}\n";
     
@@ -342,8 +341,7 @@ CnodeMs::startSession( std::string name,
 
 int32_t
 CnodeMs::sendData( std::string *sessionUrlp,
-                   Cnode::fillProc *fillProcp,
-                   void *fillContextp,
+                   CDataSource *sourcep,
                    uint64_t fileLength,
                    uint64_t byteOffset,
                    uint32_t byteCount)
@@ -381,7 +379,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
         readCount = (byteOffset + byteCount > fileLength?
                      fileLength - byteOffset :
                      byteCount);
-        actuallyReadCount = fillProcp(fillContextp, byteOffset, readCount, dataBufferp);
+        actuallyReadCount = sourcep->read( byteOffset, readCount, dataBufferp);
         if (actuallyReadCount == 0)
             break;
         if (actuallyReadCount < 0) {
@@ -397,7 +395,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
         sprintf(tbuffer, "bytes %ld-%ld/%ld",
                 (long) byteOffset,
                 (long) byteOffset+actuallyReadCount-1,
-                (long) actuallyReadCount);
+                (long) fileLength);
         reqp->addHeader("Content-Range", tbuffer);
         reqp->startCall( connp,
                          sessionRelativeUrl.c_str(),
@@ -414,6 +412,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
 
         inPipep = reqp->getIncomingPipe();
         code = inPipep->read(tbuffer, sizeof(tbuffer));
+        printf("sendData received %d bytes from response pipe read\n", (int) code);
         if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
             tbuffer[code] = 0;
         }
@@ -451,19 +450,61 @@ CnodeMs::sendData( std::string *sessionUrlp,
     
 }
 
-int32_t
-CnodeMs::sendFile( Cnode *cp,
-                   std::string name,
-                   Cnode::fillProc *fillProcp,
-                   void *contextp,
-                   uint64_t size,
-                   Cenv *envp)
+/* static */ int32_t
+CnodeMs::abortSession( std::string *sessionUrlp)
 {
+    /* TBD: write this */
     return 0;
 }
 
 int32_t
-CfsMs::root(Cnode **nodepp, Cenv *envp)
+CnodeMs::sendFile( std::string name,
+                   CDataSource *sourcep,
+                   uint64_t size,
+                   CEnv *envp)
+{
+    int32_t code;
+    std::string sessionUrl;
+    uint64_t remainingBytes;
+    uint64_t currentOffset;
+
+    /* MS claims in docs that multiples of this are only safe values;
+     * commenters don't believe them.
+     */
+    uint32_t bytesPerPut = 320*1024;
+    
+    code = startSession( name, &sessionUrl);
+    if (code)
+        return code;
+
+    remainingBytes = size;
+    currentOffset = 0;
+    while(remainingBytes > 0) {
+        code = sendData( &sessionUrl,
+                         sourcep,
+                         size,
+                         currentOffset,
+                         bytesPerPut);
+        if (code < 0) {
+            abortSession( &sessionUrl);
+            return code;
+        }
+        else if (code < bytesPerPut) {
+            /* we've hit EOF, so we're done */
+            code = 0;
+            break;
+        }
+        else {
+            /* update counters */
+            currentOffset += bytesPerPut;
+        }
+    }
+
+    return code;
+}
+
+int32_t
+CfsMs::root(Cnode **nodepp, CEnv *envp)
 {
     CnodeMs *rootp;
 

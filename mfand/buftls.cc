@@ -536,7 +536,6 @@ BufTls::init(char *namep, uint32_t defaultPort)
     _closed = 0;
     _connected = 0;
     _listening = (namep? 0 : 1);
-    _verbose = 1;
 }
 
 

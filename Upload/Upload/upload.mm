@@ -1,7 +1,111 @@
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
 #import <Cocoa/Cocoa.h>
 
+#include "cthread.h"
 #include "upload.h"
+
+class TestDataSource : public CDataSource {
+    static const char *_datap;
+
+ public:
+    int32_t getAttr(CAttr *attrp) {
+	attrp->_mtime = 1000000000ULL;
+	attrp->_ctime = 1000000000ULL;
+	attrp->_length = strlen(_datap)+1;
+	return 0;
+    }
+
+    int32_t read( uint64_t offset, uint32_t count, char *bufferp) {
+	int32_t tcount = count;
+	int32_t length = (int32_t) strlen(_datap)+1;
+
+	if (offset >= length)
+	    return 0;
+
+	if (tcount > length - offset)
+	    tcount = (int32_t) (length-offset);
+
+	memcpy(bufferp, _datap+offset, tcount);
+	return tcount;
+    }
+
+    int32_t close() {
+	return 0;
+    }
+
+    TestDataSource () {
+	return;
+    }
+
+    ~TestDataSource() {
+	return;
+    }
+};
+
+const char *TestDataSource::_datap = "This is some test data";
+
+int32_t
+DataSourceFile::open(char *fileNamep)
+{
+    _fd = ::open(fileNamep, O_RDONLY);
+    if (_fd < 0)
+	return -1;
+    else
+	return 0;
+}
+
+int32_t
+DataSourceFile::getAttr(CAttr *attrp)
+{
+    struct stat tstat;
+    int code;
+
+    if (_fd < 0)
+	return -1;
+
+    code = fstat(_fd, &tstat);
+    if (code < 0)
+	return -1;
+
+#ifdef __linux__
+    attrp->_mtime = tstat.st_mtime.tv_sec *1000000 + tstat.st_mtime.tv_nsec;
+    attrp->_ctime = tstat.st_ctime.tv_sec *1000000 + tstat.st_ctime.tv_nsec;
+#else
+    attrp->_mtime = tstat.st_mtimespec.tv_sec *1000000 + tstat.st_mtimespec.tv_nsec;
+    attrp->_ctime = tstat.st_ctimespec.tv_sec *1000000 + tstat.st_ctimespec.tv_nsec;
+#endif
+    attrp->_length = tstat.st_size;
+
+    return 0;
+}
+
+int32_t
+DataSourceFile::read( uint64_t offset, uint32_t count, char *bufferp)
+{
+    int32_t code;
+    int64_t retOffset;
+
+    if (_fd < 0)
+	return -1;
+
+    /* make seek + read for this file atomic */
+    _lock.take();
+
+    retOffset = lseek(_fd, offset, SEEK_SET);
+    if (retOffset < 0) {
+	_lock.release();
+	return -1;
+    }
+
+    code = (int32_t) ::read(_fd, bufferp, count);
+
+    _lock.release();
+
+    return code;
+}
 
 void
 Upload::init(notifyProc *notifyProcp, void *contextp)
@@ -26,10 +130,11 @@ Upload::runTests()
     NSAlert *alert;
     CnodeMs *rootp;
     CnodeMs *childDirp;
-    Cattr attr;
-    Cattr childAttr;
+    CAttr attr;
+    CAttr childAttr;
     int32_t code;
     std::string uploadUrl;
+    DataSourceFile dataFile;
 
     if (!_loginMSp) {
 	alert = [[NSAlert alloc] init];
@@ -54,13 +159,25 @@ Upload::runTests()
 
     if (code == 0) {
 	printf("test sending data\n");
+	TestDataSource testSource;
+
 	code = rootp->sendData( &uploadUrl,
-				&generateTestData,
-				NULL,
+				&testSource,
 				100,
 				0,
 				100);
 	printf("test send code=%d\n", code);
+
+	dataFile.open((char *) "/Users/kazar/Desktop/kernel");
+	dataFile.getAttr(&childAttr);
+	printf("Send size should be %ld\n", (long) childAttr._length);
+
+	/* test file copy */
+	code = rootp->sendFile( std::string("testfile2"),
+				&dataFile,
+				childAttr._length,
+				NULL);
+	printf("sendfile status=%d\n", code);
     }
 
     alert = [[NSAlert alloc] init];

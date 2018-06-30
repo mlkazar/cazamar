@@ -28,29 +28,29 @@ class CnodeMs : public Cnode {
     }
 
     /* virtual ops realized */
-    int32_t getAttr(Cattr *attrsp, Cenv *envp);
+    int32_t getAttr(CAttr *attrsp, CEnv *envp);
 
-    int32_t lookup(std::string name, Cnode **nodepp, Cenv *envp) {
+    int32_t lookup(std::string name, Cnode **nodepp, CEnv *envp) {
         return -1;
     }
 
-    int32_t create(std::string name, Cnode **nodepp, Cenv *envp) {
+    int32_t create(std::string name, Cnode **nodepp, CEnv *envp) {
         return -1;
     }
-    int32_t mkdir(std::string name, Cnode **nodepp, Cenv *envp);
+    int32_t mkdir(std::string name, Cnode **nodepp, CEnv *envp);
 
-    int32_t open(uint32_t flags, Cfile **filepp) {
+    int32_t open(uint32_t flags, CFile **filepp) {
         return -1;
     }
-    int32_t close(Cfile *filep) {
-        return -1;
-    }
-
-    int32_t write(Cfile *cp, uint64_t offset, uint32_t length, Cenv *envp) {
+    int32_t close(CFile *filep) {
         return -1;
     }
 
-    int32_t read(Cfile *cp, uint64_t offset, uint32_t length, Cenv *envp) {
+    int32_t write(CFile *cp, uint64_t offset, uint32_t length, CEnv *envp) {
+        return -1;
+    }
+
+    int32_t read(CFile *cp, uint64_t offset, uint32_t length, CEnv *envp) {
         return -1;
     }
 
@@ -58,23 +58,22 @@ class CnodeMs : public Cnode {
                          std::string *sessionUrlp);
 
     int32_t sendData( std::string *sessionUrlp,
-                      Cnode::fillProc *fillProcp,
-                      void *fillContextp,
+                      CDataSource *sourcep,
                       uint64_t fileLength,
                       uint64_t byteOffset,
                       uint32_t byteCount);
 
+    static int32_t abortSession( std::string *sessionUrlp);
+
     /* send the whole file, whose final size is 'size'.  Use fillProc to obtain
      * data to send.  Creates a file with specified name in dir cp.
      */
-    int32_t sendFile( Cnode *cp,
-                      std::string name,
-                      Cnode::fillProc *fillProcp,
-                      void *contextp,
+    int32_t sendFile( std::string name,
+                      CDataSource *sourcep,
                       uint64_t size,
-                      Cenv *envp);
+                      CEnv *envp);
     
-    int32_t getPath(std::string *pathp, Cenv *envp);
+    int32_t getPath(std::string *pathp, CEnv *envp);
 
     int32_t parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, time_t *modTimep);
 };
@@ -95,7 +94,7 @@ class CfsMs : public Cfs {
         _loginp = loginp;
     }
 
-    int32_t root(Cnode **rootpp, Cenv *envp);
+    int32_t root(Cnode **rootpp, CEnv *envp);
     
     int32_t getCnode(std::string *idp, CnodeMs **cnodepp);
 };

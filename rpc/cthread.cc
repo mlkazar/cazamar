@@ -140,7 +140,6 @@ CThreadPipe::read(char *bufferp, int32_t count)
 void
 CThreadPipe::waitForEof()
 {
-    printf("**waitForEof pipe=%p\n", this);
     _lock.take();
     while(1) {
         if (_eof)
@@ -163,7 +162,6 @@ void
 CThreadPipe::eof()
 {
     _lock.take();
-    printf("**setting eof for pipe=%p\n", this);
     _eof = 1;
     _lock.release();
 
