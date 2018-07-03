@@ -85,18 +85,18 @@ CThreadPipe::read(char *bufferp, int32_t count)
     while( 1) {
         if (_count == 0 || count == 0) {
             /* no more data left, or no more room left in receiver */
-            if (bytesCopied == 0) {
-                if (_eof)
-                    break;
-                _cv.wait();
-                continue;
-            }
-            else {
-                /* no more bytes, but we have returned some already, so we're
-                 * done.
+            if (_eof || count == 0) {
+                /* we've run out of data and EOF is set, or we've run out of room;
+                 * note that we don't have to check _count == 0 with eof case, since
+                 * we already know that count==0 or _count == 0.
                  */
                 break;
             }
+            /* here, we've run out of data, but EOF isn't set yet, and we do have
+             * more room in the incoming buffer.  Wait for more data.
+             */
+            _cv.wait();
+            continue;
         }
 
         if (_pos >= _maxBytes)

@@ -260,17 +260,33 @@ BufTls::getc()
     code = doConnect();
     if (code) return code;
 
-    code = SSL_read(_sslp, (char *) &tc, sizeof(tc));
-    if (code == 1) {
-        if (_verbose) {
-            printf("%c", tc);
+    while(1) {
+        code = SSL_read(_sslp, (char *) &tc, sizeof(tc));
+        if (code == 1) {
+            if (_verbose) {
+                printf("%c", tc);
+            }
+            return tc;
         }
-        return tc;
+        else {
+            int sslError;
+            sslError = SSL_get_error(_sslp, code);
+            if (sslError == SSL_ERROR_WANT_READ) {
+                printf(" SSL read terminate (cont) with want read, code=%d sslError=%d",
+                       code, sslError);
+                continue;
+            }
+
+            printf(" SSL read terminate with code=%d sslError=%d\n", code, sslError);
+            if (code == 0) {
+                // return -2;
+                continue;
+            }
+            else {
+                return -1;
+            }
+        }
     }
-    else if (code == 0)
-        return -2;
-    else
-        return -1;
 }
 
 /* return a negative error code, or the count of bytes transferred.  Count of
@@ -286,6 +302,7 @@ BufTls::read(char *bufferp, int32_t acount)
     code = doConnect();
     if (code) return code;
 
+    printf("SSL read TLS=%p read start ct=%d\n", this, acount);
     if (_verbose)
         printf("TLS=%p read start ct=%d:", this, acount);
     for(i=0;i<acount;i++) {
@@ -306,6 +323,7 @@ BufTls::read(char *bufferp, int32_t acount)
         }
     }
 
+    printf(" SSL read TLS=%p read done at count, ret=%d\n", this, acount);
     if (_verbose)
         printf("TLS=%p read done at count, ret=%d\n", this, acount);
     return acount;
