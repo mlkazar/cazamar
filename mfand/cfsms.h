@@ -9,6 +9,26 @@ class Cfs;
 class CnOps;
 class Cnode;
 class CfsMs;
+class CnodeMs;
+
+class CnodeBackEntry {
+ public:
+    std::string _name;
+    CnodeMs *_parentp;                  /* hard reference */
+    CnodeMs *_childp;                   /* sort reference */
+
+    /* next entry belonging to this same child, i.e. another hard link to this same
+     * file.
+     */
+    CnodeBackEntry *_nextSameChildp;
+
+    /* TBD: do we need to have a list of all entries belonging to a particular parent? */
+
+    CnodeBackEntry() {
+        _parentp = NULL;
+        _nextSameChildp = NULL;
+    }
+};
 
 /* Cnodes represent files in the local file system or the cloud; _parentp is null
  * for the root.
@@ -18,6 +38,10 @@ class CnodeMs : public Cnode {
 
     std::string _id;
 
+    CnodeMs *_nextIdHashp;
+    CnodeBackEntry *_backEntriesp;
+    uint8_t _isRoot;
+
  protected:
     CfsMs *_cfsp;
 
@@ -25,7 +49,12 @@ class CnodeMs : public Cnode {
 
     CnodeMs() {
         _cfsp = NULL;
+        _nextIdHashp = NULL;
+        _backEntriesp = NULL;
+        _isRoot = 0;
     }
+
+    int32_t fillAttrs( CEnv *envp);
 
     /* virtual ops realized */
     int32_t getAttr(CAttr *attrsp, CEnv *envp);
@@ -75,17 +104,25 @@ class CnodeMs : public Cnode {
     
     int32_t getPath(std::string *pathp, CEnv *envp);
 
-    int32_t parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, time_t *modTimep);
+    int32_t parseResults( Json::Node *jnodep,
+                          std::string *idp,
+                          uint64_t *sizep,
+                          uint64_t *changeTimep,
+                          uint64_t *modTimep);
 };
 
 
 /* one of these per file system instance */
 class CfsMs : public Cfs {
  public:
+    static const uint32_t _hashSize = 997;
     SApiLoginMS *_loginp;
+    CThreadMutex _lock;         /* protect hash table */
+    CnodeMs *_hashTablep[_hashSize];
 
     CfsMs(SApiLoginMS *loginp) {
         _loginp = loginp;
+        memset(_hashTablep, 0, sizeof(_hashTablep));
     }
 
     void setLogin(SApiLoginMS *loginp) {
@@ -97,6 +134,11 @@ class CfsMs : public Cfs {
     int32_t root(Cnode **rootpp, CEnv *envp);
     
     int32_t getCnode(std::string *idp, CnodeMs **cnodepp);
+
+    int32_t getCnodeLinked( CnodeMs *parentp,
+                            std::string name,
+                            std::string *idp,
+                            CnodeMs **cnodepp);
 };
 
 #endif /* _CFSMS_H_ENV__ */

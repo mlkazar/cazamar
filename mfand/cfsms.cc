@@ -13,7 +13,11 @@ CnodeMs::getPath(std::string *pathp, CEnv *envp)
 }
 
 int32_t
-CnodeMs::parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, time_t *modTimep)
+CnodeMs::parseResults( Json::Node *jnodep,
+                       std::string *idp,
+                       uint64_t *sizep,
+                       uint64_t *modTimep,
+                       uint64_t *changeTimep)
 {
     Json::Node *tnodep;
     std::string modTimeStr;
@@ -42,7 +46,8 @@ CnodeMs::parseResults(Json::Node *jnodep, std::string *idp, uint64_t *sizep, tim
         timeInfo.tm_min = atoi(tp+14);
         timeInfo.tm_sec = atoi(tp+17);
         secsSince70 = timegm(&timeInfo);
-        *modTimep = secsSince70;
+        *modTimep = secsSince70 * 1000000000;
+        *changeTimep = *modTimep;
     }
     else
         allFound = 0;
@@ -78,10 +83,11 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     int32_t code;
     std::string id;
     uint64_t size;
-    time_t modTime;
+    uint64_t modTime;
+    uint64_t changeTime;
     CnodeMs *childp;
     
-    if (_parentp == NULL)
+    if (_isRoot)
         callbackString = "/v1.0/me/drive/root/children";
     else
         callbackString = "/v1.0/me/drive/items/" + _id + "/children";
@@ -122,6 +128,8 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             tbuffer[code] = 0;
         }
         
+        inPipep->waitForEof();
+
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         if (code == 0) {
@@ -131,13 +139,20 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             break;
         }
         
-        code = parseResults(jnodep, &id, &size, &modTime);
+        code = parseResults(jnodep, &id, &size, &changeTime, &modTime);
         if (code == 0) {
-            _cfsp->getCnode(&id, &childp);
-            *newDirpp = childp;
+            code = _cfsp->getCnodeLinked(this, name, &id, &childp);
+            if (code == 0) {
+                childp->_valid = 1;
+                childp->_attrs._length = size;
+                childp->_attrs._ctime = changeTime;
+                childp->_attrs._mtime = modTime;
+                *newDirpp = childp;
+            }
         }
+        else
+            break;
 
-        inPipep->waitForEof();
         break;
     }
 
@@ -155,8 +170,9 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     return code;
 }
 
+/* called with Cnode lock held */
 int32_t
-CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
+CnodeMs::fillAttrs( CEnv *envp)
 {
     /* perform getAttr operation */
     char tbuffer[0x4000];
@@ -177,9 +193,10 @@ CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
     std::string sizeStr;
     uint64_t size;
     int32_t code;
-    time_t modTime;
+    uint64_t modTime;
+    uint64_t changeTime;
     
-    if (_parentp == NULL)
+    if (_isRoot)
         callbackString = "/v1.0/me/drive/root";
     else
         callbackString = "/v1.0/me/drive/items/" + _id;
@@ -224,7 +241,11 @@ CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
         inPipep->waitForEof();
         delete reqp;
 
-        parseResults(jnodep, &id, &size, &modTime);
+        parseResults(jnodep, &id, &size, &changeTime, &modTime);
+        _attrs._mtime = modTime;
+        _attrs._ctime = changeTime;
+        _attrs._length = size;
+        _valid = 1;
 
         delete jnodep;
         reqp = NULL;
@@ -232,6 +253,17 @@ CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
         break;
     }
 
+    return code;
+}
+
+int32_t
+CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
+{
+    int32_t code;
+
+    if (_valid)
+        return 0;
+    code = fillAttrs(envp);
     return code;
 }
 
@@ -262,7 +294,7 @@ CnodeMs::startSession( std::string name,
     // perhaps syntax is .../root:/filename:/createUploadSession
     // or .../items/{id}:/filename:/createUploadSession
     // based on a random comment
-    if (_parentp == NULL)
+    if (_isRoot)
         callbackString = "/v1.0/me/drive/root:/" + name + ":/createUploadSession";
     else
         callbackString = "/v1.0/me/drive/items/" + _id + ":/" + name + ":/createUploadSession";
@@ -303,6 +335,8 @@ CnodeMs::startSession( std::string name,
             tbuffer[code] = 0;
         }
         
+        inPipep->waitForEof();
+
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         if (code == 0) {
@@ -322,7 +356,6 @@ CnodeMs::startSession( std::string name,
             code = -1;
         }
 
-        inPipep->waitForEof();
         break;
     }
 
@@ -417,17 +450,18 @@ CnodeMs::sendData( std::string *sessionUrlp,
             tbuffer[code] = 0;
         }
         
+        inPipep->waitForEof();
+
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         if (code == 0) {
             jnodep->print();
         }
         else {
+            printf("bad parse data is '%s'\n", tp);
             break;
         }
         
-        /* not clear we care about what came back */
-        inPipep->waitForEof();
         break;
     }
 
@@ -507,24 +541,82 @@ int32_t
 CfsMs::root(Cnode **nodepp, CEnv *envp)
 {
     CnodeMs *rootp;
+    int32_t code;
 
     rootp = new CnodeMs();
     rootp->_cfsp = this;
-    *nodepp = rootp;
+    rootp->_isRoot = 1;
 
-    return 0;
+    code = rootp->fillAttrs(envp);
+
+    if (code == 0)
+        *nodepp = rootp;
+    else
+        *nodepp = NULL;
+
+    return code;
 }
 
 int32_t
 CfsMs::getCnode(std::string *idp, CnodeMs **cnodepp)
 {
-    /* TBD: hash table for finding existing cnodes; valid flag for attrs */
+    uint64_t hashValue;
     CnodeMs *cp;
 
-    cp = new CnodeMs();
-    cp->_cfsp = this;
-    cp->_id = *idp;
+    _lock.take();
+
+    hashValue = Cfs::fnvHash64(idp) % _hashSize;
+    for(cp = _hashTablep[hashValue]; cp; cp=cp->_nextIdHashp) {
+        if (cp->_id == *idp)
+            break;
+    }
+
+    if (!cp) {
+        cp = new CnodeMs();
+        cp->_cfsp = this;
+        cp->_id = *idp;
+    }
+    else {
+        cp->holdNL();
+    }
     *cnodepp = cp;
-    cp->_refCount = 1;
+
+    _lock.release();
+    return 0;
+}
+
+int32_t
+CfsMs::getCnodeLinked(CnodeMs *parentp, std::string name, std::string *idp, CnodeMs **cnodepp)
+{
+    CnodeMs *childp;
+    int32_t code;
+    CnodeBackEntry *entryp;
+
+    code = getCnode(idp, &childp);
+    if (code)
+        return code;
+
+    if (!parentp) {
+        childp->releaseNL();
+        return 0;
+    }
+
+    /* otherwise, thread us in */
+    for(entryp=childp->_backEntriesp; entryp; entryp=entryp->_nextSameChildp) {
+        if (entryp->_name == name)
+            break;
+    }
+
+    if (!entryp) {
+        entryp = new CnodeBackEntry();
+        entryp->_nextSameChildp = childp->_backEntriesp;
+        childp->_backEntriesp = entryp;
+        entryp->_name = name;
+        entryp->_parentp = parentp;
+        entryp->_childp = childp;
+        parentp->holdNL();
+    }
+
+    *cnodepp = childp;
     return 0;
 }

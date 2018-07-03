@@ -50,7 +50,9 @@ class CEnv {
 class Cnode {
  public:
     int32_t _refCount;
-    Cnode *_parentp;
+    uint8_t _valid;
+    CAttr _attrs;       /* valid iff _valid is set */
+    CThreadMutex _lock; /* protects fields in this, including refCount */
 
     /* read up to count bytes; only return a short read if you've hit EOF; you can
      * return 0 bytes to indicate EOF if you have nothing more to send.
@@ -72,7 +74,16 @@ class Cnode {
 
     Cnode() {
         _refCount = 1;
-        _parentp = NULL;
+        _valid = 0;
+    }
+
+    void holdNL() {
+        _refCount++;
+    }
+
+    void releaseNL() {
+        osp_assert(_refCount > 0);
+        _refCount--;
     }
 };
 
@@ -81,6 +92,9 @@ class Cnode {
 class Cfs {
  public:
     virtual int32_t root(Cnode **rootpp, CEnv *envp) = 0;
+
+    /* just a utility function for hashing IDs and/or names */
+    static uint64_t fnvHash64(std::string *strp);
 };
 
 #endif /* _CFS_H_ENV__ */
