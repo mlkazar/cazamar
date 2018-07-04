@@ -10,6 +10,7 @@ class CnOps;
 class Cnode;
 class CfsMs;
 class CnodeMs;
+class CnodeLockSet;
 
 class CnodeBackEntry {
  public:
@@ -138,7 +139,57 @@ class CfsMs : public Cfs {
     int32_t getCnodeLinked( CnodeMs *parentp,
                             std::string name,
                             std::string *idp,
-                            CnodeMs **cnodepp);
+                            CnodeMs **cnodepp,
+                            CnodeLockSet *lockSetp);
+};
+
+class CnodeLockSet {
+    static const uint32_t _maxLocks = 4;
+    uint8_t _nlocks;
+    CnodeMs *_cnodep[_maxLocks];
+
+ public:
+
+    CnodeLockSet() {
+        uint32_t i;
+
+        _nlocks = 0;
+        for(i=0;i<_maxLocks;i++)
+            _cnodep[i] = NULL;
+    }
+
+    /* returns 0 if caller doesn't need to revalidate locked data; for
+     * now, we're always locking from parent down, so there are no
+     * cases where we lock in wrong order.
+     */
+    int add(CnodeMs *cnodep) {
+        int32_t best = -1;
+        int32_t i;
+
+        for(i=0;i<_maxLocks;i++) {
+            if (_cnodep[i] == cnodep)
+                return 0;
+
+            if (_cnodep[i] == NULL && best < 0)
+                best = i;
+        }
+
+        osp_assert(best >= 0);
+        _cnodep[best] = cnodep;
+        cnodep->_lock.take();
+        return 0;
+    }
+
+    ~CnodeLockSet() {
+        int32_t i;
+
+        for(i=0;i<_maxLocks;i++) {
+            if (_cnodep[i]) {
+                _cnodep[i]->_lock.release();
+                _cnodep[i] = NULL;
+            }
+        }
+    }
 };
 
 #endif /* _CFSMS_H_ENV__ */

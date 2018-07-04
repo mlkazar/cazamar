@@ -77,6 +77,12 @@ class Cnode {
         _valid = 0;
     }
 
+    void hold() {
+        _lock.take();
+        holdNL();
+        _lock.release();
+    }
+
     void holdNL() {
         _refCount++;
     }
@@ -84,6 +90,12 @@ class Cnode {
     void releaseNL() {
         osp_assert(_refCount > 0);
         _refCount--;
+    }
+
+    void release() {
+        _lock.take();
+        releaseNL();
+        _lock.release();
     }
 };
 

@@ -86,7 +86,10 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     uint64_t modTime;
     uint64_t changeTime;
     CnodeMs *childp;
+    CnodeLockSet lockSet;
     
+    lockSet.add(this);
+
     if (_isRoot)
         callbackString = "/v1.0/me/drive/root/children";
     else
@@ -141,7 +144,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
         
         code = parseResults(jnodep, &id, &size, &changeTime, &modTime);
         if (code == 0) {
-            code = _cfsp->getCnodeLinked(this, name, &id, &childp);
+            code = _cfsp->getCnodeLinked(this, name, &id, &childp, &lockSet);
             if (code == 0) {
                 childp->_valid = 1;
                 childp->_attrs._length = size;
@@ -260,6 +263,9 @@ int32_t
 CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
 {
     int32_t code;
+    CnodeLockSet lockSet;
+    
+    lockSet.add(this);
 
     if (_valid)
         return 0;
@@ -501,12 +507,18 @@ CnodeMs::sendFile( std::string name,
     std::string sessionUrl;
     uint64_t remainingBytes;
     uint64_t currentOffset;
+    CnodeLockSet lockSet;
 
     /* MS claims in docs that multiples of this are only safe values;
      * commenters don't believe them.
      */
     uint32_t bytesPerPut = 320*1024;
     
+    /* this locks the whole directory when uploading a file; it would be nicer if
+     * we could get more concurrency here, but it isn't all that obviousl how.
+     */
+    lockSet.add(this);
+
     code = startSession( name, &sessionUrl);
     if (code)
         return code;
@@ -542,8 +554,10 @@ CfsMs::root(Cnode **nodepp, CEnv *envp)
 {
     CnodeMs *rootp;
     int32_t code;
+    CnodeLockSet lockSet;
 
     rootp = new CnodeMs();
+    lockSet.add(rootp);
     rootp->_cfsp = this;
     rootp->_isRoot = 1;
 
@@ -586,7 +600,11 @@ CfsMs::getCnode(std::string *idp, CnodeMs **cnodepp)
 }
 
 int32_t
-CfsMs::getCnodeLinked(CnodeMs *parentp, std::string name, std::string *idp, CnodeMs **cnodepp)
+CfsMs::getCnodeLinked( CnodeMs *parentp,
+                       std::string name,
+                       std::string *idp,
+                       CnodeMs **cnodepp,
+                       CnodeLockSet *lockSetp)
 {
     CnodeMs *childp;
     int32_t code;
@@ -600,6 +618,8 @@ CfsMs::getCnodeLinked(CnodeMs *parentp, std::string name, std::string *idp, Cnod
         childp->releaseNL();
         return 0;
     }
+
+    lockSetp->add(childp);
 
     /* otherwise, thread us in */
     for(entryp=childp->_backEntriesp; entryp; entryp=entryp->_nextSameChildp) {
