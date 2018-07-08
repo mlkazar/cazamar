@@ -60,9 +60,7 @@ class CnodeMs : public Cnode {
     /* virtual ops realized */
     int32_t getAttr(CAttr *attrsp, CEnv *envp);
 
-    int32_t lookup(std::string name, Cnode **nodepp, CEnv *envp) {
-        return -1;
-    }
+    int32_t lookup(std::string name, Cnode **nodepp, CEnv *envp);
 
     int32_t create(std::string name, Cnode **nodepp, CEnv *envp) {
         return -1;
@@ -100,7 +98,6 @@ class CnodeMs : public Cnode {
      */
     int32_t sendFile( std::string name,
                       CDataSource *sourcep,
-                      uint64_t size,
                       CEnv *envp);
     
     int32_t getPath(std::string *pathp, CEnv *envp);

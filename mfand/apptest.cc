@@ -208,7 +208,8 @@ HomeScreen::startMethod()
         printf("Cookie already set in homepage %p\n", appContextp);
     }
 
-    contextp = SApiLogin::getLoginCookie(this);
+    /* this does a get if it already exists */
+    contextp = SApiLogin::createLoginCookie(this);
 
     if (contextp && contextp->getActive())
         authToken = contextp->getActive()->getAuthToken();

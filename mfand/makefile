@@ -1,4 +1,4 @@
-all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv
+all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest
 
 install: all *.h
 	cp *.h ../include/.
@@ -6,7 +6,7 @@ install: all *.h
 
 clean:
 	rm -f *.o *.a mfand mfanc stream strload ssls sslc jsdbtest \
-          upnptest rcv.mp3 xapitest idtest sapitest apptest keyserv
+          upnptest rcv.mp3 xapitest idtest sapitest apptest cfstest keyserv
 
 #OSXVERSION=-mmacosx-version-min=10.7 
 OSXVERSION=
@@ -98,6 +98,8 @@ keyserv.o: keyserv.cc $(INCLS)
 
 apptest.o: apptest.cc $(INCLS)
 
+cfstest.o: cfstest.cc $(INCLS)
+
 jsdbtest: jsdbtest.o libjsdb.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSVERSION) -o jsdbtest jsdbtest.o libjsdb.a ../lib/libext.a ../lib/libcore.a
 
@@ -137,6 +139,14 @@ apptest: apptest.o librst.a ../lib/libext.a ../lib/libcore.a
 else
 apptest: apptest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
 	c++ $(OSXVERSION) -o apptest apptest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+endif
+
+ifeq ($(OS),Linux)
+cfstest: cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a
+	c++ $(OSXVERSION) -o cfstest cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
+else
+cfstest: cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+	c++ $(OSXVERSION) -o cfstest cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
 endif
 
 libstream.a: radiostream.o

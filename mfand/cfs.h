@@ -69,7 +69,6 @@ class Cnode {
     virtual int32_t read(CFile *cp, uint64_t offset, uint32_t length, CEnv *envp) = 0;
     virtual int32_t sendFile( std::string name,
                               CDataSource *sourcep,
-                              uint64_t size,
                               CEnv *envp) = 0;
 
     Cnode() {
@@ -104,6 +103,18 @@ class Cnode {
 class Cfs {
  public:
     virtual int32_t root(Cnode **rootpp, CEnv *envp) = 0;
+
+    int32_t splitPath(std::string path, std::string *dirPathp, std::string *namep);
+
+    int32_t namei(std::string path, Cnode **targetCnodepp, CEnv *envp);
+
+    int32_t stat(std::string path, CAttr *attrsp, CEnv *envp);
+
+    int32_t sendFile( std::string path,
+                      CDataSource *sourcep,
+                      CEnv *envp);
+
+    int32_t mkdir(std::string path, Cnode **newDirpp, CEnv *envp);
 
     /* just a utility function for hashing IDs and/or names */
     static uint64_t fnvHash64(std::string *strp);

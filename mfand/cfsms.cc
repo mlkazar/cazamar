@@ -7,7 +7,22 @@
 int32_t
 CnodeMs::getPath(std::string *pathp, CEnv *envp)
 {
-    pathp->erase();
+    std::string tempPath;
+    CnodeMs *tnodep = this;
+    CnodeBackEntry *bep;
+    while(tnodep) {
+        if (tnodep->_isRoot) {
+            break;
+        }
+        bep = tnodep->_backEntriesp;
+        if (!bep)
+            break;
+        tempPath = bep->_name + "/" + tempPath;
+    }
+    tempPath = "/" + tempPath;
+
+    *pathp = tempPath;
+
     /* TBD: figure out how to generate paths */
     return 0;
 }
@@ -61,6 +76,107 @@ CnodeMs::parseResults( Json::Node *jnodep,
         allFound = 0;
 
     return (allFound? 0 : -1);
+}
+
+int32_t
+CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
+{
+    /* perform getAttr operation */
+    char tbuffer[0x4000];
+    XApi *xapip;
+    XApi::ClientConn *connp;
+    BufGen *bufGenp;
+    XApi::ClientReq *reqp;
+    std::string postData;
+    CThreadPipe *inPipep;
+    CThreadPipe *outPipep;
+    const char *tp;
+    Json json;
+    Json::Node *jnodep = NULL;
+    std::string callbackString;
+    std::string authHeader;
+    std::string id;
+    std::string modTimeStr;
+    std::string sizeStr;
+    uint64_t size;
+    int32_t code;
+    uint64_t modTime;
+    uint64_t changeTime;
+    std::string dirPath;
+    CnodeMs *childp;
+    CnodeLockSet lockSet;
+
+    code = getPath(&dirPath, envp);
+    if (code != 0)
+        return code;
+
+    callbackString = "/v1.0/me/drive/root:" + dirPath + name;
+    
+    xapip = new XApi();
+    bufGenp = new BufTls("");
+    bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
+    
+    while(1) {
+        connp = xapip->addClientConn(bufGenp);
+        reqp = new XApi::ClientReq();
+        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        reqp->addHeader("Authorization", authHeader.c_str());
+        reqp->addHeader("Content-Type", "application/json");
+        reqp->startCall( connp,
+                         callbackString.c_str(),
+                         /* isPost */ XApi::reqGet);
+        
+        outPipep = reqp->getOutgoingPipe();
+        outPipep->write(postData.c_str(), postData.length());
+        outPipep->eof();
+        
+        code = reqp->waitForHeadersDone();
+        if (code) {
+            delete reqp;
+            reqp = NULL;
+            break;
+        }
+
+        inPipep = reqp->getIncomingPipe();
+        code = inPipep->read(tbuffer, sizeof(tbuffer));
+        if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
+            tbuffer[code] = 0;
+        }
+        
+        tp = tbuffer;
+        code = json.parseJsonChars((char **) &tp, &jnodep);
+        if (code == 0) {
+            jnodep->print();
+        }
+        
+        inPipep->waitForEof();
+        delete reqp;
+        reqp = NULL;
+
+        code = parseResults(jnodep, &id, &size, &changeTime, &modTime);
+        delete jnodep;
+        jnodep = NULL;
+
+        if (code == 0) {
+            code = _cfsp->getCnodeLinked(this, name, &id, &childp, &lockSet);
+            if (code == 0) {
+                childp->_valid = 1;
+                childp->_attrs._length = size;
+                childp->_attrs._ctime = changeTime;
+                childp->_attrs._mtime = modTime;
+                *childpp = childp;
+            }
+            else
+                break;
+        }
+        else
+            break;
+
+        code = 0;
+        break;
+    }
+
+    return code;
 }
 
 int32_t
@@ -500,14 +616,20 @@ CnodeMs::abortSession( std::string *sessionUrlp)
 int32_t
 CnodeMs::sendFile( std::string name,
                    CDataSource *sourcep,
-                   uint64_t size,
                    CEnv *envp)
 {
     int32_t code;
     std::string sessionUrl;
     uint64_t remainingBytes;
     uint64_t currentOffset;
+    uint64_t size;
     CnodeLockSet lockSet;
+    CAttr dataAttrs;
+
+    code = sourcep->getAttr(&dataAttrs);
+    if (code)
+        return code;
+    size = dataAttrs._length;
 
     /* MS claims in docs that multiples of this are only safe values;
      * commenters don't believe them.

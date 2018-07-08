@@ -18,3 +18,130 @@ Cfs::fnvHash64(std::string *strp)
     }
     return hash;
 }
+
+int32_t
+Cfs::splitPath(std::string path, std::string *dirPathp, std::string *namep)
+{
+    size_t slashPos;
+
+    slashPos = path.rfind('/');
+    if (slashPos == std::string::npos) {
+        *dirPathp = "";
+        *namep = path;
+    }
+    else {
+        *dirPathp = path.substr(0, slashPos+1);
+        *namep = path.substr(slashPos+1);
+    }
+    return 0;
+}
+
+int32_t
+Cfs::namei(std::string path, Cnode **targetCnodepp, CEnv *envp)
+{
+    Cnode *currentCnodep;
+    int32_t code;
+    size_t slashPos;
+    std::string name;
+    Cnode *nextCnodep;
+
+    *targetCnodepp = NULL;       /* in case of error */
+    code = root(&currentCnodep, envp);
+    if (code) return code;
+
+    code = 0;
+    while(path.length() > 0) {
+        /* eat multiple slashes */
+        if (path.c_str()[0] == '/') {
+            path = path.substr(1);
+            continue;
+        }
+
+        /* pull out a component */
+        slashPos = path.find('/');
+        if (slashPos == std::string::npos) {
+            name = path;
+            path = "";
+        }
+        else {
+            name = path.substr(0,slashPos);
+            path = path.substr(slashPos+1);
+        }
+
+        /* now do a lookup on the name */
+        code = currentCnodep->lookup(name, &nextCnodep, envp);
+        currentCnodep->release();
+        currentCnodep = NULL;
+        if (code != 0) {
+            break;
+        }
+        currentCnodep = nextCnodep;
+    }
+
+    if (code == 0) {
+        osp_assert(currentCnodep != NULL);
+        *targetCnodepp = currentCnodep;
+    }
+    else {
+        if (currentCnodep) {
+            currentCnodep->release();
+            currentCnodep = NULL;
+        }
+    }
+
+    return code;
+}
+
+int32_t
+Cfs::stat(std::string path, CAttr *attrsp, CEnv *envp)
+{
+    int32_t code;
+    Cnode *nodep;
+
+    code = namei(path, &nodep, envp);
+    if (code)
+        return code;
+    code = nodep->getAttr(attrsp, envp);
+    nodep->release();
+    return code;
+}
+
+int32_t
+Cfs::sendFile( std::string path,
+               CDataSource *sourcep,
+               CEnv *envp)
+{
+    int32_t code;
+    Cnode *dirNodep;
+    std::string dirPath;
+    std::string name;
+
+    code = splitPath(path, &dirPath, &name);
+    if (code)
+        return code;
+    code = namei(dirPath, &dirNodep, envp);
+    if (code)
+        return code;
+    code = dirNodep->sendFile( name, sourcep, envp);
+    dirNodep->release();
+    return code;
+}
+
+int32_t
+Cfs::mkdir(std::string path, Cnode **newDirpp, CEnv *envp)
+{
+    int32_t code;
+    Cnode *dirNodep;
+    std::string dirPath;
+    std::string name;
+
+    code = splitPath(path, &dirPath, &name);
+    if (code)
+        return code;
+    code = namei(dirPath, &dirNodep, envp);
+    if (code)
+        return code;
+    code = dirNodep->mkdir( name, newDirpp, envp);
+    dirNodep->release();
+    return code;
+}
