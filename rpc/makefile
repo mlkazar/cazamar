@@ -1,4 +1,4 @@
-all: librpc.a libext.a libcore.a rpctest jsontest xgmltest
+all: librpc.a libext.a libcore.a rpctest jsontest xgmltest cdisptest
 
 install: all
 	cp *.a ../lib
@@ -17,9 +17,13 @@ CXXFLAGS += -Wno-unused-but-set-variable
 endif
 
 
-INCLS=cthread.h dqueue.h json.h osp.h ospmbuf.h osptypes.h sdr.h restcall.h rpc.h xgml.h 
+INCLS=cdisp.h cthread.h dqueue.h json.h osp.h ospmbuf.h osptypes.h sdr.h restcall.h rpc.h xgml.h 
 
 rpc.o: rpc.cc $(INCLS)
+
+cdisp.o: cdisp.cc $(INCLS)
+
+cdisptest.o: cdisptest.cc $(INCLS)
 
 cthread.o: cthread.cc $(INCLS)
 
@@ -41,8 +45,8 @@ libext.a: sdr.o xgml.o json.o
 	ar cru libext.a sdr.o xgml.o json.o
 	ranlib libext.a
 
-libcore.a: osp.o cthread.o
-	ar cru libcore.a osp.o cthread.o
+libcore.a: osp.o cthread.o cdisp.o
+	ar cru libcore.a osp.o cthread.o cdisp.o
 	ranlib libcore.a
 
 librpc.a: rpc.o restcall.o
@@ -50,7 +54,10 @@ librpc.a: rpc.o restcall.o
 	ranlib librpc.a
 
 rpctest: rpctest.o librpc.a libext.a libcore.a
-	c++ $(OSXVERSION) -o rpctest rpctest.o librpc.a libext.a libcore.a  -lpthread
+	c++ $(OSXVERSION) -o rpctest rpctest.o librpc.a libext.a libcore.a -lpthread
+
+cdisptest: cdisptest.o libcore.a
+	c++ $(OSXVERSION) -o cdisptest cdisptest.o libcore.a -lpthread
 
 jsontest: jsontest.o libext.a
 	c++ $(OSXVERSION) -o jsontest jsontest.o libext.a
