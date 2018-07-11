@@ -1,4 +1,4 @@
-all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest
+all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a liblfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest walktest
 
 install: all *.h
 	cp *.h ../include/.
@@ -6,7 +6,7 @@ install: all *.h
 
 clean:
 	rm -f *.o *.a mfand mfanc stream strload ssls sslc jsdbtest \
-          upnptest rcv.mp3 xapitest idtest sapitest apptest cfstest keyserv
+          upnptest rcv.mp3 xapitest idtest sapitest apptest cfstest keyserv walktest
 
 #OSXVERSION=-mmacosx-version-min=10.7 
 OSXVERSION=
@@ -41,6 +41,10 @@ librst.a: rst.o bufsocket.o buftls.o bufgen.o xapi.o sapi.o sapilogin.o
 libjsdb.a: jsdb.o
 	ar cru libjsdb.a jsdb.o 
 	ranlib libjsdb.a
+
+liblfs.a: walkdisp.o
+	ar cru liblfs.a walkdisp.o
+	ranlib liblfs.a
 
 libcfs.a: cfs.o cfsms.o
 	ar cru libcfs.a cfs.o cfsms.o
@@ -100,6 +104,8 @@ apptest.o: apptest.cc $(INCLS)
 
 cfstest.o: cfstest.cc $(INCLS)
 
+walktest.o: walktest.cc $(INCLS)
+
 jsdbtest: jsdbtest.o libjsdb.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSVERSION) -o jsdbtest jsdbtest.o libjsdb.a ../lib/libext.a ../lib/libcore.a
 
@@ -147,6 +153,14 @@ cfstest: cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a
 else
 cfstest: cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
 	c++ $(OSXVERSION) -o cfstest cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+endif
+
+ifeq ($(OS),Linux)
+walktest: walktest.o liblfs.a ../lib/libext.a ../lib/libcore.a
+	c++ $(OSXVERSION) -o walktest walktest.o liblfs.a ../lib/libext.a ../lib/libcore.a -lpthread
+else
+walktest: walktest.o liblfs.a ../lib/libext.a ../lib/libcore.a
+	c++ $(OSXVERSION) -o walktest walktest.o liblfs.a ../lib/libext.a ../lib/libcore.a
 endif
 
 libstream.a: radiostream.o

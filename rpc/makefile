@@ -5,7 +5,7 @@ install: all
 	cp *.h ../include
 
 clean:
-	rm -f *.o *.a rpctest jsontest xgmltest
+	rm -f *.o *.a rpctest jsontest xgmltest cdisptest
 
 #OSXVERSION=-mmacosx-version-min=10.7
 OSXVERSION=

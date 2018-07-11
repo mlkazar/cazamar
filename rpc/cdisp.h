@@ -94,6 +94,16 @@ class CDisp {
 
     int32_t init(uint32_t ntasks);
 
+    int isActive() {
+        int rcode;
+
+        _lock.take();
+        rcode = (_activeTasks.count() != 0 || _pendingTasks.count() != 0);
+        _lock.release();
+
+        return rcode;
+    }
+
     void tryDispatches();
 };
 
