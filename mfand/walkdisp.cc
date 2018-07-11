@@ -9,10 +9,12 @@ WalkTask::start()
 {
     DIR *dirp;
     struct stat tstat;
-    char tbuffer[1024];
     int32_t code;
     struct dirent *entryp;
     WalkTask *childTaskp;
+#ifndef __linux__
+    char tbuffer[1024];
+#endif
 
     CDisp *disp = getDisp();
 
@@ -36,20 +38,36 @@ WalkTask::start()
         }
 
         while(1) {
+#ifdef __linux__
+            entryp = readdir(dirp);
+            if (!entryp)
+                break;
+#else
             code = readdir_r(dirp, (struct dirent *)tbuffer, &entryp);
             if (code)
                 break;
             if (!entryp)
                 break;
+#endif
 
             /* skip . and .. */
+#ifdef __linux__
+            if ( strcmp(entryp->d_name, ".") == 0 ||
+                 strcmp(entryp->d_name, "..") == 0)
+                continue;
+#else
             if (entryp->d_namlen == 1 && strncmp(entryp->d_name, ".", 1) == 0)
                 continue;
             if (entryp->d_namlen == 2 && strncmp(entryp->d_name, "..", 2) == 0)
                 continue;
+#endif
 
             childTaskp = new WalkTask();
+#ifdef __linux__
+            childTaskp->initWithPath(_path + "/" + std::string(entryp->d_name));
+#else
             childTaskp->initWithPath(_path + "/" + std::string(entryp->d_name, entryp->d_namlen));
+#endif
             childTaskp->setCallback(_callbackProcp, _callbackContextp);
             disp->queueTask(childTaskp);
         }
