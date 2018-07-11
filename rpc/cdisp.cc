@@ -38,13 +38,27 @@ CDispHelper::start(void *contextp)
         disp->_activeTasks.remove(taskp);
         taskp->_inQueue = CDispTask::_queueNone;
 
-        /* and put ourselves back in the idle queue */
+        osp_assert(_inQueue == CDispHelper::_queueActive);
+        disp->_activeHelpers.remove(this);
+        /* no need to change queue specifier, since we're changing it again below */
+
+        /* and put ourselves back in the available queue; once we're here, we can get
+         * a task queued to _taskp.
+         */
         disp->_availableHelpers.append(this);
         _inQueue = _queueAvailable;
+
+        /* now assign new tasks to helpers, since we've freed a helper.  Note that
+         * the helper assigned may be us, in which case we'll find the assigned
+         * task above, instead of going to sleep.
+         */
+        disp->tryDispatches();
 
         disp->_lock.release();
 
         delete taskp;
+
+        disp->_lock.take();
     }
 }
 
@@ -76,6 +90,7 @@ CDisp::queueTask(CDispTask *taskp)
 {
     _lock.take();
     _pendingTasks.append(taskp);
+    taskp->_inQueue = CDispTask::_queuePending;
     tryDispatches();
     _lock.release();
 

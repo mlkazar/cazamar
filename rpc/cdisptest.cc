@@ -39,6 +39,7 @@ main(int argc, char **argv)
     TestTask *taskp;
 
     disp = new CDisp();
+    printf("Created new cdisp at %p\n", disp);
     disp->init(4);
 
     printf("Starting tests\n");
