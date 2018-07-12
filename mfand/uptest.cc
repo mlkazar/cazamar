@@ -143,6 +143,8 @@ main(int argc, char **argv)
  */
 class HomeScreen : public SApi::ServerReq {
     CfsMs *_cfsp;
+    std::string _basePath;      /* not counting terminal '/' */
+    uint32_t _basePathLen;
 public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
 
@@ -166,18 +168,36 @@ HomeScreen::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
     int32_t code;
     HomeScreen *homeScreenp = (HomeScreen *) contextp;
     CfsMs *cfsp = homeScreenp->_cfsp;
+    Cnode *cnodep;
+    std::string relativeName;
+
+    /* e.g. remove /usr/home from /usr/home/foo/bar, leaving /foo/bar */
+    relativeName = pathp->substr(homeScreenp->_basePathLen);
 
     printf("In walkcallback %s\n", pathp->c_str());
-    cloudName = "/TestDir" + (*pathp);
-    code = dataFile.open(pathp->c_str());
-    if (code != 0) {
-        printf("Failed to open file %s\n", pathp->c_str());
-        return code;
+    cloudName = "/TestDir" + relativeName;
+    if ((statp->st_mode & S_IFMT) == S_IFDIR) {
+        /* do a mkdir */
+        code = cfsp->mkdir(cloudName, &cnodep, NULL);
+        if (code == 0)
+            cnodep->release();
+        printf("mkdir of %p done, code=%d\n", cloudName.c_str(), code);
     }
-    code = cfsp->sendFile(cloudName, &dataFile, NULL);
-    printf("path based sendfile test done, code=%d\n", code);
+    else if ((statp->st_mode & S_IFMT) == S_IFREG) {
+        code = dataFile.open(pathp->c_str());
+        if (code != 0) {
+            printf("Failed to open file %s\n", pathp->c_str());
+            return code;
+        }
+        code = cfsp->sendFile(cloudName, &dataFile, NULL);
+        printf("sendfile path=%s test done, code=%d\n", cloudName.c_str(), code);
 
-    /* dataFile destructor closes file */
+        /* dataFile destructor closes file */
+    }
+    else {
+        printf("Uptest: skipping file with weird type %s\n", pathp->c_str());
+        code = -1;
+    }
     return code;
 }
 
@@ -192,6 +212,7 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
     std::string uploadUrl;
     CDisp *disp;
     WalkTask *taskp;
+    const char *pathp = "/Users/kazar/bin";
 
     printf("cfstest: tests start login=%p\n", loginMSp);
     _cfsp = new CfsMs(loginMSp);
@@ -207,6 +228,12 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
         }
     }
 
+    /* setup base path so we know what part of the file system path
+     * to splice out.
+     */
+    _basePath = std::string(pathp);
+    _basePathLen = _basePath.length();
+
     /* lookup succeeded */
     code = testDirp->getAttr(&dirAttrs, NULL);
     if (code != 0) {
@@ -220,7 +247,7 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
 
     printf("Starting tests\n");
     taskp = new WalkTask();
-    taskp->initWithPath("/Users/kazar/bin");
+    taskp->initWithPath(pathp);
     taskp->setCallback(&HomeScreen::mainCallback, this);
     disp->queueTask(taskp);
 

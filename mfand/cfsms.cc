@@ -18,6 +18,7 @@ CnodeMs::getPath(std::string *pathp, CEnv *envp)
         if (!bep)
             break;
         tempPath = bep->_name + "/" + tempPath;
+        tnodep = bep->_parentp;
     }
     tempPath = "/" + tempPath;
 
