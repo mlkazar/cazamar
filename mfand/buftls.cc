@@ -282,9 +282,9 @@ BufTls::getc()
             }
 
             printf(" SSL read terminate with code=%d sslError=%d\n", code, sslError);
-            if (code == 0) {
-                // return -2;
-                continue;
+            if (code == 0 && sslError == SSL_ERROR_ZERO_RETURN) {
+                return -2;
+                // continue;
             }
             else {
                 disconnect();   /* so we reconnect at next write */

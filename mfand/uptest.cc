@@ -68,8 +68,8 @@ DataSourceFile::getAttr(CAttr *attrp)
 	return -1;
 
 #ifdef __linux__
-    attrp->_mtime = tstat.st_mtime.tv_sec *1000000 + tstat.st_mtime.tv_nsec;
-    attrp->_ctime = tstat.st_ctime.tv_sec *1000000 + tstat.st_ctime.tv_nsec;
+    attrp->_mtime = tstat.st_mtim.tv_sec *1000000 + tstat.st_mtim.tv_nsec;
+    attrp->_ctime = tstat.st_ctim.tv_sec *1000000 + tstat.st_ctim.tv_nsec;
 #else
     attrp->_mtime = tstat.st_mtimespec.tv_sec *1000000 + tstat.st_mtimespec.tv_nsec;
     attrp->_ctime = tstat.st_ctimespec.tv_sec *1000000 + tstat.st_ctimespec.tv_nsec;
@@ -215,7 +215,11 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
     std::string uploadUrl;
     CDisp *disp;
     WalkTask *taskp;
+#ifdef __linux__
+    const char *pathp = "/home/pi/UpTest";
+#else
     const char *pathp = "/Users/kazar/bin";
+#endif
 
     printf("cfstest: tests start login=%p\n", loginMSp);
     _cfsp = new CfsMs(loginMSp);
