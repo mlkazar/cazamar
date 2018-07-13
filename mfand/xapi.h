@@ -80,15 +80,17 @@ class XApi : public CThread {
         BufGen *_bufGenp;
         XApi *_xapip;
         Rst *_rstp;
+        uint8_t _busy;
 
         CThreadMutex _mutex;
 
         uint8_t _headersDone;
         CThreadCV _headersDoneCV;
+        CThreadCV _busyCV;
 
         ClientReq *_activeReqp;
 
-        ClientConn(XApi *xapip, BufGen *bufGenp) : _headersDoneCV(&_mutex) {
+        ClientConn(XApi *xapip, BufGen *bufGenp) : _headersDoneCV(&_mutex), _busyCV(&_mutex) {
             _bufGenp = bufGenp;
             _xapip = xapip;
 
@@ -96,7 +98,31 @@ class XApi : public CThread {
             _rstp->init(bufGenp);
 
             _headersDone = 0;
+            _busy = 0;
             _activeReqp = NULL;
+        }
+
+        /* if setting busy on a connection, wait until previous user is done with it;
+         * and if clearing busy, signal anyone waiting that they can proceed.
+         */
+        void setBusy(uint8_t busy) {
+            _mutex.take();
+            if (busy) {
+                while(_busy) {
+                    _busyCV.wait();
+                }
+                _busy = 1;
+            }
+            else {
+                _busy = 0;
+                _busyCV.broadcast();
+            }
+            _mutex.release();
+        }
+
+        uint8_t getBusy() {
+            /* no locking; busy can change right after this call anyway */
+            return _busy;
         }
 
         void setHeadersDone() {
@@ -185,6 +211,7 @@ class XApi : public CThread {
 
             /* userThread actually self-destructs when the call completes */
             _userThreadp = NULL;
+            _connp->setBusy(0);
         }
 
         Rst::Hdr *getRecvHeaders() {
@@ -489,5 +516,4 @@ class XApi : public CThread {
  private:
     /* internal functions */
 };
-
 #endif /* _XAPI_H_ENV__ */

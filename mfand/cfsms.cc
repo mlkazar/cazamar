@@ -84,9 +84,7 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
 {
     /* perform getAttr operation */
     char tbuffer[0x4000];
-    XApi *xapip;
     XApi::ClientConn *connp;
-    BufGen *bufGenp;
     XApi::ClientReq *reqp;
     std::string postData;
     CThreadPipe *inPipep;
@@ -107,18 +105,17 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
     CnodeMs *childp;
     CnodeLockSet lockSet;
 
+    printf("in lookup for id=%s %s\n", _id.c_str(), name.c_str());
     code = getPath(&dirPath, envp);
-    if (code != 0)
+    if (code != 0) {
+        printf("cfs lookup: getpath failed code=%d\n", code);
         return code;
+    }
 
     callbackString = "/v1.0/me/drive/root:" + dirPath + name;
     
-    xapip = new XApi();
-    bufGenp = new BufTls("");
-    bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
-    
     while(1) {
-        connp = xapip->addClientConn(bufGenp);
+        connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
@@ -146,13 +143,17 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
         
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
-        if (code == 0) {
-            jnodep->print();
+        if (code != 0) {
+            printf("json parse failed code=%d\n", code);
         }
         
         inPipep->waitForEof();
         delete reqp;
         reqp = NULL;
+
+        if (code) {
+            break;
+        }
 
         code = parseResults(jnodep, &id, &size, &changeTime, &modTime);
         delete jnodep;
@@ -177,6 +178,7 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
         break;
     }
 
+    printf("lookup: done code=%d\n", code);
     return code;
 }
 
@@ -185,9 +187,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
 {
     /* perform mkdir operation */
     char tbuffer[0x4000];
-    XApi *xapip;
     XApi::ClientConn *connp;
-    BufGen *bufGenp;
     XApi::ClientReq *reqp;
     CThreadPipe *inPipep;
     CThreadPipe *outPipep;
@@ -205,6 +205,8 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     CnodeMs *childp;
     CnodeLockSet lockSet;
     
+    printf("mkdir: id=%s name=%s\n", _id.c_str(), name.c_str());
+
     lockSet.add(this);
 
     if (_isRoot)
@@ -218,12 +220,8 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     postData += "\"@microsoft.graph.conflictBehavior\": \"fail\"\n";
     postData += "}\n";
     
-    xapip = new XApi();
-    bufGenp = new BufTls("");
-    bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
-    
     while(1) {
-        connp = xapip->addClientConn(bufGenp);
+        connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(postData.length());
         authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
@@ -252,10 +250,8 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
 
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
-        if (code == 0) {
-            jnodep->print();
-        }
-        else {
+        if (code != 0) {
+            printf("json parse failed code=%d\n", code);
             break;
         }
         
@@ -287,6 +283,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     if (code)
         *newDirpp = NULL;
 
+    printf("mkdir: done code=%d\n", code);
     return code;
 }
 
@@ -296,9 +293,7 @@ CnodeMs::fillAttrs( CEnv *envp)
 {
     /* perform getAttr operation */
     char tbuffer[0x4000];
-    XApi *xapip;
     XApi::ClientConn *connp;
-    BufGen *bufGenp;
     XApi::ClientReq *reqp;
     std::string postData;
     CThreadPipe *inPipep;
@@ -316,17 +311,14 @@ CnodeMs::fillAttrs( CEnv *envp)
     uint64_t modTime;
     uint64_t changeTime;
     
+    printf("fillAttrs: id=%s\n", _id.c_str());
     if (_isRoot)
         callbackString = "/v1.0/me/drive/root";
     else
         callbackString = "/v1.0/me/drive/items/" + _id;
     
-    xapip = new XApi();
-    bufGenp = new BufTls("");
-    bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
-    
     while(1) {
-        connp = xapip->addClientConn(bufGenp);
+        connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
@@ -354,12 +346,16 @@ CnodeMs::fillAttrs( CEnv *envp)
         
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
-        if (code == 0) {
-            jnodep->print();
+        if (code != 0) {
+            printf("json parse failed code=%d\n", code);
         }
         
         inPipep->waitForEof();
         delete reqp;
+        reqp = NULL;
+
+        if (code)
+            break;
 
         parseResults(jnodep, &id, &size, &changeTime, &modTime);
         _attrs._mtime = modTime;
@@ -373,6 +369,7 @@ CnodeMs::fillAttrs( CEnv *envp)
         break;
     }
 
+    printf("fillAtts: done code=%d\n", code);
     return code;
 }
 
@@ -396,9 +393,7 @@ CnodeMs::startSession( std::string name,
 {
     /* perform mkdir operation */
     char tbuffer[0x4000];
-    XApi *xapip;
     XApi::ClientConn *connp;
-    BufGen *bufGenp;
     XApi::ClientReq *reqp;
     CThreadPipe *inPipep;
     CThreadPipe *outPipep;
@@ -428,12 +423,8 @@ CnodeMs::startSession( std::string name,
     postData += "}\n";  /* close item */
     postData += "}\n";
     
-    xapip = new XApi();
-    bufGenp = new BufTls("");
-    bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
-    
     while(1) {
-        connp = xapip->addClientConn(bufGenp);
+        connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(postData.length());
         authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
@@ -462,10 +453,8 @@ CnodeMs::startSession( std::string name,
 
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
-        if (code == 0) {
-            jnodep->print();
-        }
-        else {
+        if (code != 0) {
+            printf("json parse failed code=%d\n", code);
             break;
         }
         
@@ -478,7 +467,6 @@ CnodeMs::startSession( std::string name,
         else {
             code = -1;
         }
-
         break;
     }
 
@@ -505,11 +493,9 @@ CnodeMs::sendData( std::string *sessionUrlp,
     /* perform mkdir operation */
     char tbuffer[0x4000];
     char *dataBufferp;
-    XApi *xapip;
     std::string sessionHost;
     std::string sessionRelativeUrl;
     XApi::ClientConn *connp;
-    BufGen *bufGenp;
     XApi::ClientReq *reqp = NULL;
     CThreadPipe *inPipep;
     CThreadPipe *outPipep;
@@ -526,11 +512,9 @@ CnodeMs::sendData( std::string *sessionUrlp,
 
     osp_assert(byteCount < 4*1024*1024);
     dataBufferp = new char[byteCount];
-    xapip = new XApi();
-    bufGenp = new BufTls("");
-    bufGenp->init(const_cast<char *>(sessionHost.c_str()), 443);
-    
+
     while(1) {
+        connp = _cfsp->_xapiPoolp->getConn(sessionHost, 443, /* TLS */ 1);
         /* read some bytes */
         readCount = (byteOffset + byteCount > fileLength?
                      fileLength - byteOffset :
@@ -543,7 +527,6 @@ CnodeMs::sendData( std::string *sessionUrlp,
             break;
         }
 
-        connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(actuallyReadCount);
         authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
@@ -568,7 +551,6 @@ CnodeMs::sendData( std::string *sessionUrlp,
 
         inPipep = reqp->getIncomingPipe();
         code = inPipep->read(tbuffer, sizeof(tbuffer));
-        printf("sendData received %d bytes from response pipe read\n", (int) code);
         if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
             tbuffer[code] = 0;
         }
@@ -577,14 +559,9 @@ CnodeMs::sendData( std::string *sessionUrlp,
 
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
-        if (code == 0) {
-            jnodep->print();
+        if (code != 0) {
+            printf("json parse failed code=%d\n", code);
         }
-        else {
-            printf("bad parse data is '%s'\n", tp);
-            break;
-        }
-        
         break;
     }
 
@@ -627,9 +604,12 @@ CnodeMs::sendFile( std::string name,
     CnodeLockSet lockSet;
     CAttr dataAttrs;
 
+    printf("sendFile: id=%s name=%s\n", _id.c_str(), name.c_str());
     code = sourcep->getAttr(&dataAttrs);
-    if (code)
+    if (code) {
+        printf("sendFile: local getattr failure\n");
         return code;
+    }
     size = dataAttrs._length;
 
     /* MS claims in docs that multiples of this are only safe values;
@@ -643,8 +623,10 @@ CnodeMs::sendFile( std::string name,
     lockSet.add(this);
 
     code = startSession( name, &sessionUrl);
-    if (code)
+    if (code) {
+        printf("sendFile: session start failed code=%d\n", code);
         return code;
+    }
 
     remainingBytes = size;
     currentOffset = 0;
@@ -655,6 +637,7 @@ CnodeMs::sendFile( std::string name,
                          currentOffset,
                          bytesPerPut);
         if (code < 0) {
+            printf("sendFile: sendData failed code=%d\n", code);
             abortSession( &sessionUrl);
             return code;
         }
@@ -669,6 +652,7 @@ CnodeMs::sendFile( std::string name,
         }
     }
 
+    printf("sendFile: done code=%d\n", code);
     return code;
 }
 

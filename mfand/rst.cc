@@ -558,10 +558,12 @@ Rst::Call::sendOperation()
         }
     }
 
+#if 0
     /* many servers close connection after each call; we won't
      * discover connection is closed right away unless we do this.
      */
     socketp->disconnect();
+#endif
 
     return 0;
 }

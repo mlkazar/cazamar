@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include "bufgen.h"
 #include "bufsocket.h"
 #include "xapi.h"
 
@@ -441,6 +442,8 @@ XApi::ClientReq::startCall(ClientConn *connp, const char *relativePathp, reqType
 {
     XApi *xapip = connp->_xapip;
 
+    connp->setBusy(1);
+
     _userThreadp = xapip->getUserThread();
     _relativePath = std::string(relativePathp);
     _isPost = isPost;
@@ -582,4 +585,3 @@ XApi::ClientReq::startMethod()
         _connp->_outgoingData.eof();
     }
 }
-

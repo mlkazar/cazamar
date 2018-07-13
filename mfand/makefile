@@ -20,7 +20,7 @@ endif
 
 RSTINCLS=rst.h bufsocket.h bufgen.h buftls.h jsdb.h
 
-INCLS=../include/*.h mfclient.h mfdata.h mfand.h $(RSTINCLS) radiostream.h xapi.h \
+INCLS=../include/*.h mfclient.h mfdata.h mfand.h $(RSTINCLS) radiostream.h xapi.h xapipool.h \
 strdb.h upnp.h radixtree.h streams.h sapi.h sapilogin.h
 
 liboauth.a: oahash.o oauth.o oasha1.o oapass.o oaxmalloc.o
@@ -34,8 +34,8 @@ libmf.a: mfclient.o
 	ar cru libmf.a mfclient.o 
 	ranlib libmf.a
 
-librst.a: rst.o bufsocket.o buftls.o bufgen.o xapi.o sapi.o sapilogin.o
-	ar cru librst.a rst.o bufsocket.o buftls.o bufgen.o xapi.o sapi.o sapilogin.o
+librst.a: rst.o bufsocket.o buftls.o bufgen.o xapi.o xapipool.o sapi.o sapilogin.o
+	ar cru librst.a rst.o bufsocket.o buftls.o bufgen.o xapi.o xapipool.o sapi.o sapilogin.o
 	ranlib librst.a
 
 libjsdb.a: jsdb.o
@@ -61,6 +61,8 @@ id.o: id.cc $(INCLS)
 idtest.o: idtest.cc $(INCLS)
 
 xapi.o: xapi.cc $(INCLS)
+
+xapipool.o: xapipool.cc $(INCLS)
 
 sapi.o: sapi.cc $(INCLS)
 

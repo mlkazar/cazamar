@@ -2,6 +2,8 @@
 #define _BUFGEN_H_ENV__ 1
 
 #include "osp.h"
+#include "cthread.h"
+#include "dqueue.h"
 #include <string>
 
 #include <sys/socket.h>
@@ -78,6 +80,14 @@ class BufGen {
         delete this;
     }
 
+    std::string *getFullHostName() {
+        return &_fullHostName;
+    }
+
+    uint32_t getPort() {
+        return _port;
+    }
+
     BufGen();
 
     virtual ~BufGen();
@@ -87,6 +97,5 @@ class BufGenFactory {
  public:
     virtual BufGen *allocate()= 0;
 };
-
 #endif /* _BUFGEN_H_ENV__ */
 

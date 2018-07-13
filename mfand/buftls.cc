@@ -49,6 +49,9 @@ BufTls::listen()
 void
 BufTls::reopen()
 {
+    if (!_closed)
+        return;
+
     disconnect();
 }
 
@@ -72,6 +75,7 @@ BufTls::accept(BufGen **remotepp)
     sockLen = sizeof(peerAddr);
     code = getpeername(fd, (struct sockaddr *) &peerAddr, &sockLen);
     if (code < 0) {
+        printf("buftls %p close accept fd=%d\n", this, fd);
         close(fd);
         return code;
     }
@@ -126,10 +130,12 @@ BufTls::doSetup(uint16_t srcPort)
     struct sockaddr_in srcAddr;
 
     if (_s != -1) {
+        printf("buftls %p close in doSetup fd=%d\n", this, _s);
         close(_s);
     }
 
     _s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    printf("buftls %p new socket %d\n", this, _s);
 
     if (srcPort != 0) {
         opt = 1;
@@ -206,8 +212,6 @@ BufTls::doConnect()
     if (code < 0)
         return code;
 
-    printf("BufTls: Connecting...!\n");
-
     code = ::connect(_s, (struct sockaddr *) &_destAddr, sizeof(_destAddr));
     if (code) {
         perror("connect");
@@ -229,9 +233,7 @@ BufTls::doConnect()
         return -1;
     }
 
-    printf("BufTls: connected!\n");
-
-    showCerts(_sslp);        /* get any certs */
+    // showCerts(_sslp);        /* get any certs */
 
     return 0;
 }
@@ -245,7 +247,9 @@ BufTls::disconnect()
     _connected = 0;
     SSL_shutdown(_sslp);
     _sslp = NULL;
+    printf("buftls %p close in disconnect fd=%d\n", this, _s);
     close(_s);
+    _s = -1;
 }
 
 /* return -1 on error or EOF (error will be 0 on normal EOF),
@@ -283,6 +287,7 @@ BufTls::getc()
                 continue;
             }
             else {
+                disconnect();   /* so we reconnect at next write */
                 return -1;
             }
         }
@@ -302,7 +307,6 @@ BufTls::read(char *bufferp, int32_t acount)
     code = doConnect();
     if (code) return code;
 
-    printf("SSL read TLS=%p read start ct=%d\n", this, acount);
     if (_verbose)
         printf("TLS=%p read start ct=%d:", this, acount);
     for(i=0;i<acount;i++) {
@@ -323,7 +327,6 @@ BufTls::read(char *bufferp, int32_t acount)
         }
     }
 
-    printf(" SSL read TLS=%p read done at count, ret=%d\n", this, acount);
     if (_verbose)
         printf("TLS=%p read done at count, ret=%d\n", this, acount);
     return acount;
@@ -575,6 +578,7 @@ BufTls::~BufTls()
     if (_s >= 0) {
         if (_verbose)
             printf("TLS=%p closing socket %d\n", this, _s);
+        printf("buftls %p  destructor close fd=%d\n", this, _s);
         ::close(_s);
         _s = -1;
     }

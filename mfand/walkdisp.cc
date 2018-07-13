@@ -32,6 +32,8 @@ WalkTask::start()
         if (!dirp)
             return -1;
 
+        printf("opendir %s fd=%d\n", _path.c_str(), dirfd(dirp));
+
         /* process the dir */
         if (_callbackProcp) {
             _callbackProcp(_callbackContextp, &_path, &tstat);
@@ -72,6 +74,7 @@ WalkTask::start()
             disp->queueTask(childTaskp);
         }
 
+        printf("closedir %s fd=%d\n", _path.c_str(), dirfd(dirp));
         closedir(dirp);
         return code;
     }

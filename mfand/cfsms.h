@@ -4,6 +4,7 @@
 #include "osp.h"
 #include "cfs.h"
 #include "json.h"
+#include "xapipool.h"
 
 class Cfs;
 class CnOps;
@@ -117,8 +118,10 @@ class CfsMs : public Cfs {
     SApiLoginMS *_loginp;
     CThreadMutex _lock;         /* protect hash table */
     CnodeMs *_hashTablep[_hashSize];
+    XApiPool *_xapiPoolp;
 
     CfsMs(SApiLoginMS *loginp) {
+        _xapiPoolp = new XApiPool();
         _loginp = loginp;
         memset(_hashTablep, 0, sizeof(_hashTablep));
     }

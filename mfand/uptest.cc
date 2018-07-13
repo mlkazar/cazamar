@@ -27,8 +27,11 @@ class DataSourceFile : public CDataSource {
     int32_t read( uint64_t offset, uint32_t count, char *bufferp);
 
     int32_t close() {
-        if (_fd >= 0)
+        if (_fd >= 0) {
+            printf("DataSourceFile closing fd=%d\n", _fd);
             ::close(_fd);
+            _fd = -1;
+        }
         return 0;
     }
 
