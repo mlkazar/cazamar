@@ -656,6 +656,7 @@ CnodeMs::sendFile( std::string name,
     return code;
 }
 
+/* returns held reference to root */
 int32_t
 CfsMs::root(Cnode **nodepp, CEnv *envp)
 {
@@ -663,15 +664,27 @@ CfsMs::root(Cnode **nodepp, CEnv *envp)
     int32_t code;
     CnodeLockSet lockSet;
 
-    rootp = new CnodeMs();
+    rootp = _rootp;
+    if (!rootp) {
+        rootp = new CnodeMs();
+        rootp->_cfsp = this;
+        rootp->_isRoot = 1;
+        _rootp = rootp;         /* reference from new goes to _rootp */
+    }
+
     lockSet.add(rootp);
-    rootp->_cfsp = this;
-    rootp->_isRoot = 1;
 
-    code = rootp->fillAttrs(envp);
+    if (rootp->_valid) {
+        code = 0;
+    }
+    else {
+        code = rootp->fillAttrs(envp);
+    }
 
-    if (code == 0)
+    if (code == 0) {
+        rootp->holdNL();          /* each call increments refCount for csller */
         *nodepp = rootp;
+    }
     else
         *nodepp = NULL;
 

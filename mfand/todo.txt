@@ -1,13 +1,15 @@
-writes
+check valid for CfsMs::root()
 
-reads
+search memory DNLC in lookup
 
-hash tables
+preserve tokens across runs / provide logout mechanism
 
-handle timeouts, delete client requests in rst, xapi and sapi
+check for memory leaks
 
-get app IDs out sapilogin code
+check for concurrency issues with sapi
 
-================
+check for concurrency issues with xapi
 
-add support for Google
+check for concurrency issues with cfsms
+
+crank up concurrency level to 2

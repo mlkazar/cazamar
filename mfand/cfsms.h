@@ -119,10 +119,12 @@ class CfsMs : public Cfs {
     CThreadMutex _lock;         /* protect hash table */
     CnodeMs *_hashTablep[_hashSize];
     XApiPool *_xapiPoolp;
+    CnodeMs *_rootp;
 
     CfsMs(SApiLoginMS *loginp) {
         _xapiPoolp = new XApiPool();
         _loginp = loginp;
+        _rootp = NULL;
         memset(_hashTablep, 0, sizeof(_hashTablep));
     }
 
