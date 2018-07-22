@@ -3,6 +3,7 @@
 #include <string>
 #ifdef __linux__
 #include <string.h>
+#include <signal.h>
 #endif
 #include "rst.h"
 
@@ -128,7 +129,7 @@ BufTls::doSetup(uint16_t srcPort)
     int opt;
     socklen_t optLen;
     struct sockaddr_in srcAddr;
-    static int disabledSigpipe = 0;
+    static int sigpipeDisabled = 0;
 
     if (_s != -1) {
         printf("buftls %p close in doSetup fd=%d\n", this, _s);
@@ -165,6 +166,11 @@ BufTls::doSetup(uint16_t srcPort)
     if (code < 0) {
         perror("setsock1");
         return -errno;
+    }
+#else
+    if (!sigpipeDisabled) {
+        sigpipeDisabled = 1;
+        signal(SIGPIPE, SIG_IGN);
     }
 #endif
 
