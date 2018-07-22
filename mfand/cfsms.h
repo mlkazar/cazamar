@@ -99,6 +99,8 @@ class CnodeMs : public Cnode {
 
     static int32_t abortSession( std::string *sessionUrlp);
 
+    int32_t sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp);
+
     /* send the whole file, whose final size is 'size'.  Use fillProc to obtain
      * data to send.  Creates a file with specified name in dir cp.
      */
@@ -112,7 +114,8 @@ class CnodeMs : public Cnode {
                           std::string *idp,
                           uint64_t *sizep,
                           uint64_t *changeTimep,
-                          uint64_t *modTimep);
+                          uint64_t *modTimep,
+                          uint8_t *allFoundp = NULL);
 };
 
 

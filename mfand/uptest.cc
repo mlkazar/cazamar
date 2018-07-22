@@ -250,7 +250,7 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
     /* copy the pictures directory to a subdir of testdir */
     disp = new CDisp();
     printf("Created new cdisp at %p\n", disp);
-    disp->init(1);      /* TBD: crank this up */
+    disp->init(8);      /* TBD: crank this up */
 
     printf("Starting tests\n");
     taskp = new WalkTask();

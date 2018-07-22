@@ -28,24 +28,31 @@ CnodeMs::getPath(std::string *pathp, CEnv *envp)
     return 0;
 }
 
+/* return success if everything was found, or if allFoundp is
+ * non-null, if id is present.  Set allFoundp if everything was found.
+ */
 int32_t
 CnodeMs::parseResults( Json::Node *jnodep,
                        std::string *idp,
                        uint64_t *sizep,
                        uint64_t *modTimep,
-                       uint64_t *changeTimep)
+                       uint64_t *changeTimep,
+                       uint8_t *allFoundp)
 {
     Json::Node *tnodep;
     std::string modTimeStr;
     std::string sizeStr;
     int allFound = 1;
+    int idFound = 1;
 
     tnodep = jnodep->searchForChild("id", 0);
     if (tnodep) {
         *idp = tnodep->_children.head()->_name;
     }
-    else
+    else {
         allFound = 0;
+        idFound = 0;
+    }
 
     tnodep = jnodep->searchForChild("lastModifiedDateTime", 0);
     if (tnodep) {
@@ -65,8 +72,9 @@ CnodeMs::parseResults( Json::Node *jnodep,
         *modTimep = secsSince70 * 1000000000;
         *changeTimep = *modTimep;
     }
-    else
+    else {
         allFound = 0;
+    }
 
     tnodep = jnodep->searchForChild("size", 0);
     if (tnodep) {
@@ -76,7 +84,17 @@ CnodeMs::parseResults( Json::Node *jnodep,
     else
         allFound = 0;
 
-    return (allFound? 0 : -1);
+    if (allFoundp) {
+        /* if can provide details, return success if we at least have the ID */
+        *allFoundp = allFound;
+        return (idFound? 0 : -1);
+    }
+    else {
+        /* caller doesn't care about details, so return success only iff we have
+         * all the info required.
+         */
+        return (allFound? 0 : -1);
+    }
 }
 
 /* called with dir lock held, but not child lock held */
@@ -212,6 +230,132 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
 }
 
 int32_t
+CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
+{
+    /* perform create operation */
+    char tbuffer[0x4000];
+    XApi::ClientConn *connp;
+    XApi::ClientReq *reqp;
+    CThreadPipe *inPipep;
+    CThreadPipe *outPipep;
+    std::string postData;
+    const char *tp;
+    Json json;
+    Json::Node *jnodep = NULL;
+    std::string callbackString;
+    std::string authHeader;
+    int32_t code;
+    std::string id;
+    uint64_t size;
+    uint64_t modTime;
+    uint64_t changeTime;
+    CnodeMs *childp;
+    CnodeLockSet lockSet;
+    CAttr dataAttrs;
+    char *dataBufferp = NULL;
+    uint32_t sendBytes;
+    uint8_t allFound;
+    static const uint32_t dataBufferBytes = 4*1024*1024;
+    
+    printf("sendSmallFile: id=%s name=%s\n", _id.c_str(), name.c_str());
+
+    if (_isRoot) {
+        callbackString = "/v1.0/me/drive/root:/" + name + ":/content";
+    }
+    else
+        callbackString = "/v1.0/me/drive/items/" + _id + ":/" + name + ":/content";
+    
+    /* no post data */
+    dataBufferp = new char[dataBufferBytes];
+
+    while(1) {
+        sourcep->getAttr(&dataAttrs);
+        sendBytes = dataAttrs._length;
+
+        connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
+        reqp = new XApi::ClientReq();
+        reqp->setSendContentLength(sendBytes);
+        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        reqp->addHeader("Authorization", authHeader.c_str());
+        reqp->addHeader("Content-Type", "text/plain");
+        reqp->startCall( connp,
+                         callbackString.c_str(),
+                         /* isPost */ XApi::reqPut);
+        
+        outPipep = reqp->getOutgoingPipe();
+        code = sourcep->read(0, sendBytes, dataBufferp);
+        outPipep->write(dataBufferp, sendBytes);
+        outPipep->eof();
+        if (code < 0) {
+            reqp->waitForHeadersDone();
+            delete reqp;
+            reqp = NULL;
+            break;
+        }
+        
+        code = reqp->waitForHeadersDone();
+        if (code != 0) {
+            delete reqp;
+            reqp = NULL;
+            break;
+        }
+
+        /* wait for a response, and then parse it */
+        inPipep = reqp->getIncomingPipe();
+        code = inPipep->read(tbuffer, sizeof(tbuffer));
+        if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
+            tbuffer[code] = 0;
+        }
+        
+        inPipep->waitForEof();
+
+        if (reqp) {
+            delete reqp;
+            reqp = NULL;
+        }
+
+        tp = tbuffer;
+        code = json.parseJsonChars((char **) &tp, &jnodep);
+        if (code != 0) {
+            printf("json parse failed code=%d\n", code);
+            break;
+        }
+        
+        /* don't need the lock until we're merging in the results */
+        lockSet.add(this);
+
+        code = parseResults(jnodep, &id, &size, &changeTime, &modTime, &allFound);
+        if (code == 0) {
+            code = _cfsp->getCnodeLinked(this, name, &id, &childp, &lockSet);
+            if (code == 0) {
+                if (allFound) {
+                    childp->_valid = 1;
+                    childp->_attrs._length = size;
+                    childp->_attrs._ctime = changeTime;
+                    childp->_attrs._mtime = modTime;
+                }
+                else {
+                    childp->_valid = 0;
+                }
+                childp->releaseNL();    /* lock held by getCnodeLinked */
+                childp = NULL;
+            }
+        }
+        break;
+    }
+
+    osp_assert(reqp == NULL);
+
+    if (jnodep) {
+        delete jnodep;
+        jnodep = NULL;
+    }
+
+    printf("sendSmallFile: done code=%d\n", code);
+    return code;
+}
+
+int32_t
 CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
 {
     /* perform mkdir operation */
@@ -266,6 +410,8 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
         
         code = reqp->waitForHeadersDone();
         if (code != 0) {
+            delete reqp;
+            reqp = NULL;
             break;
         }
 
@@ -281,9 +427,16 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
         code = json.parseJsonChars((char **) &tp, &jnodep);
         if (code != 0) {
             printf("json parse failed code=%d\n", code);
+            delete reqp;
+            reqp = NULL;
             break;
         }
         
+        if (reqp) {
+            delete reqp;
+            reqp = NULL;
+        }
+
         code = parseResults(jnodep, &id, &size, &changeTime, &modTime);
         if (code == 0) {
             code = _cfsp->getCnodeLinked(this, name, &id, &childp, &lockSet);
@@ -305,10 +458,9 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
         delete jnodep;
         jnodep = NULL;
     }
-    if (reqp) {
-        delete reqp;
-        reqp = NULL;
-    }
+
+    osp_assert(reqp == NULL);
+
     if (code)
         *newDirpp = NULL;
 
@@ -393,7 +545,6 @@ CnodeMs::fillAttrs( CEnv *envp)
         _valid = 1;
 
         delete jnodep;
-        reqp = NULL;
         code = 0;
         break;
     }
@@ -469,6 +620,8 @@ CnodeMs::startSession( std::string name,
         
         code = reqp->waitForHeadersDone();
         if (code != 0) {
+            delete reqp;
+            reqp = NULL;
             break;
         }
 
@@ -484,6 +637,8 @@ CnodeMs::startSession( std::string name,
         code = json.parseJsonChars((char **) &tp, &jnodep);
         if (code != 0) {
             printf("json parse failed code=%d\n", code);
+            delete reqp;
+            reqp = NULL;
             break;
         }
         
@@ -496,6 +651,12 @@ CnodeMs::startSession( std::string name,
         else {
             code = -1;
         }
+
+        if (reqp) {
+            delete reqp;
+            reqp = NULL;
+        }
+
         break;
     }
 
@@ -503,10 +664,7 @@ CnodeMs::startSession( std::string name,
         delete jnodep;
         jnodep = NULL;
     }
-    if (reqp) {
-        delete reqp;
-        reqp = NULL;
-    }
+    osp_assert(reqp == NULL);
 
     return code;
     
@@ -575,6 +733,8 @@ CnodeMs::sendData( std::string *sessionUrlp,
         
         code = reqp->waitForHeadersDone();
         if (code != 0) {
+            delete reqp;
+            reqp = NULL;
             break;
         }
 
@@ -585,6 +745,11 @@ CnodeMs::sendData( std::string *sessionUrlp,
         }
         
         inPipep->waitForEof();
+
+        if (reqp) {
+            delete reqp;
+            reqp = NULL;
+        }
 
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
@@ -601,10 +766,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
     if (dataBufferp) {
         delete [] dataBufferp;
     }
-    if (reqp) {
-        delete reqp;
-        reqp = NULL;
-    }
+    osp_assert(reqp == NULL);
 
     if (code == 0)
         return actuallyReadCount;
@@ -641,6 +803,12 @@ CnodeMs::sendFile( std::string name,
     }
     size = dataAttrs._length;
 
+    /* we can use simpler put mechanism which can use same connection */
+    if (size < 4*1024*1024) {
+        code = sendSmallFile(name, sourcep, envp);
+        return code;
+    }
+
     /* MS claims in docs that multiples of this are only safe values;
      * commenters don't believe them.
      */
@@ -648,6 +816,10 @@ CnodeMs::sendFile( std::string name,
     
     /* this locks the whole directory when uploading a file; it would be nicer if
      * we could get more concurrency here, but it isn't all that obviousl how.
+     *
+     * Actually, we should only grab the lock while creating the file in startSession,
+     * after the call starts.  And we should drop the lock and switch to a file lock
+     * afterwards.
      */
     lockSet.add(this);
 

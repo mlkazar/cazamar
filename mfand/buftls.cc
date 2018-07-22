@@ -128,6 +128,7 @@ BufTls::doSetup(uint16_t srcPort)
     int opt;
     socklen_t optLen;
     struct sockaddr_in srcAddr;
+    static int disabledSigpipe = 0;
 
     if (_s != -1) {
         printf("buftls %p close in doSetup fd=%d\n", this, _s);
@@ -459,16 +460,28 @@ BufTls::flush()
 {
     int32_t code;
     int32_t nbytes;
+    int sslError;
 
     nbytes = _outp->dataBytes();
-    code = SSL_write(_sslp, _outp->data(), nbytes);
-    if (code != nbytes) {
-        printf("TLS=%p flush failed\n", this);
-        return -1;
-    }
-    else {
-        _outp->reset();
+    if (nbytes == 0)
         return 0;
+
+    while(1) {
+        code = SSL_write(_sslp, _outp->data(), nbytes);
+        if (code != nbytes) {
+            sslError = SSL_get_error(_sslp, code);
+            printf("TLS=%p flush failed code=%d sslError=%d\n", this, code, sslError);
+            if (sslError == SSL_ERROR_WANT_READ || sslError == SSL_ERROR_WANT_WRITE) {
+                printf("  retrying...\n");
+                /* retry with same parameters */
+                continue;
+            }
+            return -1;
+        }
+        else {
+            _outp->reset();
+            return 0;
+        }
     }
 }
 

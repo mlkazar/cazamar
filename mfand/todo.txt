@@ -1,14 +1,14 @@
 * check valid for CfsMs::root()
 
-search memory DNLC in lookup
+* search memory DNLC in lookup
 
-single file upload when possible
+* single file upload when possible
 
 preserve tokens across runs / provide logout mechanism
 
 factor uptest into library, used by Upload
 
-check for memory leaks
+check for memory leaks (how)
 
 check for concurrency issues with sapi
 

@@ -17,19 +17,26 @@ class CThread {
 class CThreadMutex {
  private:
     pthread_mutex_t _pthreadMutex;
+    pthread_t _ownerId;
 
  public:
     CThreadMutex() {
         int32_t code;
+        _ownerId = 0;
         code = pthread_mutex_init(&_pthreadMutex, NULL);
         osp_assert(code == 0);
     }
 
     void take() {
+        pthread_t me;
+        me = pthread_self();
+        osp_assert(me != _ownerId);
         pthread_mutex_lock(&_pthreadMutex);
+        _ownerId = me;
     }
 
     void release() {
+        _ownerId = 0;
         pthread_mutex_unlock(&_pthreadMutex);
     }
 
