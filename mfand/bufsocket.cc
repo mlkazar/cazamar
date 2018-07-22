@@ -158,7 +158,9 @@ BufSocket::doSetup(uint16_t srcPort)
     int opt;
     socklen_t optLen;
     sockaddr_in srcAddr;
+#ifdef __linux__
     static int sigpipeDisabled = 0;
+#endif
 
     /* if connection has been manually closed or aborted */
     if (_closed)

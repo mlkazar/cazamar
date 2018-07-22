@@ -129,7 +129,9 @@ BufTls::doSetup(uint16_t srcPort)
     int opt;
     socklen_t optLen;
     struct sockaddr_in srcAddr;
+#ifdef __linux__
     static int sigpipeDisabled = 0;
+#endif
 
     if (_s != -1) {
         printf("buftls %p close in doSetup fd=%d\n", this, _s);
