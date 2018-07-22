@@ -3,6 +3,9 @@
 #include <string>
 #include <poll.h>
 #include "rst.h"
+#ifdef __linux__
+#include <signal.h>
+#endif
 
 /* Buffered socket abstraction */
 
@@ -155,6 +158,7 @@ BufSocket::doSetup(uint16_t srcPort)
     int opt;
     socklen_t optLen;
     sockaddr_in srcAddr;
+    static int sigpipeDisabled = 0;
 
     /* if connection has been manually closed or aborted */
     if (_closed)
@@ -197,6 +201,11 @@ BufSocket::doSetup(uint16_t srcPort)
     if (code < 0) {
         perror("setsock1");
         return -errno;
+    }
+#else
+    if (!sigpipeDisabled) {
+        sigpipeDisabled = 1;
+        signal(SIGPIPE, SIG_IGN);
     }
 #endif
 
