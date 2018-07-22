@@ -79,6 +79,25 @@ CnodeMs::parseResults( Json::Node *jnodep,
     return (allFound? 0 : -1);
 }
 
+/* called with dir lock held, but not child lock held */
+int32_t
+CnodeMs::nameSearch(std::string name, CnodeMs **childpp)
+{
+    CnodeBackEntry *backp;
+    CnodeMs *childp;
+
+    for(backp = _children.head(); backp; backp=backp->_dqNextp) {
+        if (name == backp->_name) {
+            /* return this one */
+            childp = backp->_childp;
+            childp->hold();
+            *childpp = childp;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 int32_t
 CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
 {
@@ -106,6 +125,16 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
     CnodeLockSet lockSet;
 
     printf("in lookup for id=%s %s\n", _id.c_str(), name.c_str());
+
+    /* lock parent */
+    lockSet.add(this);
+
+    code = nameSearch(name, (CnodeMs **) childpp);
+    if (code == 0) {
+        printf("lookup name search for %s found %p\n", name.c_str(), *childpp);
+        return 0;
+    }
+
     code = getPath(&dirPath, envp);
     if (code != 0) {
         printf("cfs lookup: getpath failed code=%d\n", code);
@@ -754,6 +783,7 @@ CfsMs::getCnodeLinked( CnodeMs *parentp,
         entryp->_name = name;
         entryp->_parentp = parentp;
         entryp->_childp = childp;
+        parentp->_children.append(entryp);
         parentp->holdNL();
     }
 

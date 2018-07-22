@@ -25,6 +25,8 @@ class CnodeBackEntry {
     CnodeBackEntry *_nextSameChildp;
 
     /* TBD: do we need to have a list of all entries belonging to a particular parent? */
+    CnodeBackEntry *_dqNextp;
+    CnodeBackEntry *_dqPrevp;
 
     CnodeBackEntry() {
         _parentp = NULL;
@@ -41,7 +43,8 @@ class CnodeMs : public Cnode {
     std::string _id;
 
     CnodeMs *_nextIdHashp;
-    CnodeBackEntry *_backEntriesp;
+    CnodeBackEntry *_backEntriesp;      /* our names in our parent */
+    dqueue<CnodeBackEntry> _children;   /* list of our children */
     uint8_t _isRoot;
 
  protected:
@@ -57,6 +60,8 @@ class CnodeMs : public Cnode {
     }
 
     int32_t fillAttrs( CEnv *envp);
+
+    int32_t nameSearch(std::string nanme, CnodeMs **childpp);
 
     /* virtual ops realized */
     int32_t getAttr(CAttr *attrsp, CEnv *envp);
