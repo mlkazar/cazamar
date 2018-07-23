@@ -59,8 +59,9 @@ CnodeMs::parseResults( Json::Node *jnodep,
         time_t secsSince70;
         modTimeStr = tnodep->_children.head()->_name;
         const char *tp = modTimeStr.c_str();
-        // USE mktime, gmtime, time to convert to local time_t
-        // format is "2016-03-21T20:01:37Z" Z for Zulu time zone
+        /* we return this in UTC, since that's what everyone uses for everything;
+         * our value is nanoseconds since midnight before 1/1/70 UTC.
+         */
         struct tm timeInfo;
         timeInfo.tm_year = atoi(tp) - 1900;
         timeInfo.tm_mon = atoi(tp+5) - 1;
@@ -492,7 +493,6 @@ CnodeMs::fillAttrs( CEnv *envp)
     uint64_t modTime;
     uint64_t changeTime;
     
-    printf("fillAttrs: id=%s\n", _id.c_str());
     if (_isRoot)
         callbackString = "/v1.0/me/drive/root";
     else
@@ -549,7 +549,7 @@ CnodeMs::fillAttrs( CEnv *envp)
         break;
     }
 
-    printf("fillAtts: done code=%d\n", code);
+    printf("fillAtts: id='%s' done code=%d\n", _id.c_str(), code);
     return code;
 }
 
@@ -561,9 +561,14 @@ CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
     
     lockSet.add(this);
 
-    if (_valid)
+    if (_valid) {
+        *attrp = _attrs;
         return 0;
+    }
     code = fillAttrs(envp);
+    if (code == 0) {
+        *attrp = _attrs;
+    }
     return code;
 }
 
@@ -795,7 +800,6 @@ CnodeMs::sendFile( std::string name,
     CnodeLockSet lockSet;
     CAttr dataAttrs;
 
-    printf("sendFile: id=%s name=%s\n", _id.c_str(), name.c_str());
     code = sourcep->getAttr(&dataAttrs);
     if (code) {
         printf("sendFile: local getattr failure\n");
@@ -808,6 +812,8 @@ CnodeMs::sendFile( std::string name,
         code = sendSmallFile(name, sourcep, envp);
         return code;
     }
+
+    printf("sendBigFile: id=%s name=%s\n", _id.c_str(), name.c_str());
 
     /* MS claims in docs that multiples of this are only safe values;
      * commenters don't believe them.

@@ -35,6 +35,17 @@ class DataSourceFile : public CDataSource {
         return 0;
     }
 
+    static void statToAttr(struct stat *tstatp, CAttr *attrp) {
+#ifdef __linux__
+        attrp->_mtime = tstatp->st_mtim.tv_sec *1000000 + tstatp->st_mtim.tv_nsec;
+        attrp->_ctime = tstatp->st_ctim.tv_sec *1000000 + tstatp->st_ctim.tv_nsec;
+#else
+        attrp->_mtime = tstatp->st_mtimespec.tv_sec *1000000 + tstatp->st_mtimespec.tv_nsec;
+        attrp->_ctime = tstatp->st_ctimespec.tv_sec *1000000 + tstatp->st_ctimespec.tv_nsec;
+#endif
+        attrp->_length = tstatp->st_size;
+    }
+
     DataSourceFile() {
         _fd = -1;
     }
@@ -67,14 +78,7 @@ DataSourceFile::getAttr(CAttr *attrp)
     if (code < 0)
 	return -1;
 
-#ifdef __linux__
-    attrp->_mtime = tstat.st_mtim.tv_sec *1000000 + tstat.st_mtim.tv_nsec;
-    attrp->_ctime = tstat.st_ctim.tv_sec *1000000 + tstat.st_ctim.tv_nsec;
-#else
-    attrp->_mtime = tstat.st_mtimespec.tv_sec *1000000 + tstat.st_mtimespec.tv_nsec;
-    attrp->_ctime = tstat.st_ctimespec.tv_sec *1000000 + tstat.st_ctimespec.tv_nsec;
-#endif
-    attrp->_length = tstat.st_size;
+    statToAttr(&tstat, attrp);
 
     return 0;
 }
@@ -173,12 +177,35 @@ HomeScreen::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
     CfsMs *cfsp = homeScreenp->_cfsp;
     Cnode *cnodep;
     std::string relativeName;
+    CAttr cloudAttr;
+    CAttr fsAttr;
 
     /* e.g. remove /usr/home from /usr/home/foo/bar, leaving /foo/bar */
     relativeName = pathp->substr(homeScreenp->_basePathLen);
 
     printf("In walkcallback %s\n", pathp->c_str());
     cloudName = "/TestDir" + relativeName;
+
+    /* before doing upload, stat the object to see if we've already done the copy; don't
+     * do this for dirs.
+     */
+    if ((statp->st_mode & S_IFMT) != S_IFDIR) {
+        code = cfsp->stat(cloudName, &cloudAttr, NULL);
+        if (code == 0) {
+            DataSourceFile::statToAttr(statp, &fsAttr);
+
+            if (fsAttr._length == cloudAttr._length &&
+                cloudAttr._mtime - fsAttr._mtime > 300*1000000000ULL) {
+                /* file size is same, and cloud timestamp is more than
+                 * 300 seconds later than file's timestamp, then we figure
+                 * we've already copied this file.
+                 */
+                printf("callback: skipping already copied %s\n", pathp->c_str());
+                return 0;
+            }
+        }
+    }
+
     if ((statp->st_mode & S_IFMT) == S_IFDIR) {
         /* do a mkdir */
         code = cfsp->mkdir(cloudName, &cnodep, NULL);
@@ -250,7 +277,7 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
     /* copy the pictures directory to a subdir of testdir */
     disp = new CDisp();
     printf("Created new cdisp at %p\n", disp);
-    disp->init(8);      /* TBD: crank this up */
+    disp->init(8);      /* TBD: crank this up to 8 */
 
     printf("Starting tests\n");
     taskp = new WalkTask();

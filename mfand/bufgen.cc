@@ -71,11 +71,6 @@ BufGen::init(char *namep, uint32_t defaultPort)
     _destAddr.sin_port = htons(destPort);
 
     hostAddr = htonl(_destAddr.sin_addr.s_addr);
-    printf("BufSocket: found host %d.%d.%d.%d\n",
-           (hostAddr>>24) & 0xFF,
-           (hostAddr>>16) & 0xFF,
-           (hostAddr>>8) & 0xFF,
-           hostAddr & 0xFF);
 
     /* set some defaults; they may be changed */
     _listening = 0;

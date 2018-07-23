@@ -18,6 +18,7 @@ class CAttr {
 
 class CDataSource {
  public:
+    /* time returned in UTC */
     virtual int32_t getAttr(CAttr *attrp) = 0;
     virtual int32_t read( uint64_t offset, uint32_t count, char *bufferp) = 0;
     virtual int32_t close() = 0;
@@ -115,6 +116,8 @@ class Cfs {
                       CEnv *envp);
 
     int32_t mkdir(std::string path, Cnode **newDirpp, CEnv *envp);
+
+    int32_t getAttr(std::string path, CAttr *attrp, CEnv *envp);
 
     /* just a utility function for hashing IDs and/or names */
     static uint64_t fnvHash64(std::string *strp);
