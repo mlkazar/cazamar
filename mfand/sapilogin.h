@@ -137,7 +137,14 @@ class SApiLoginApple : public SApiLoginGeneric {
     std::string _apiUrl;
 
 public: 
+    SApiLoginApple() {
+        _sapip = NULL;
+    }
+
     void init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl);
+
+    void initFromFile(SApiLoginCookie *cookiep, std::string authToken);
+
     int32_t getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep);
 
     void setAppParams(std::string apiUrl) {
@@ -164,7 +171,12 @@ public:
         _sapip = NULL;
     }
 
+    SApiLoginMS() {
+        _sapip = NULL;
+    }
+
     void init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl);
+    void initFromFile(SApiLoginCookie *cookiep, std::string authToken, std::string refreshToken);
     int32_t getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep);
 
     void setAppParams(std::string clientId, std::string clientSecret) {
@@ -247,16 +259,20 @@ public:
     SApiLoginMS *_loginMSp;
     SApiLoginGeneric *_loginActivep;    /* one currently being logged in for this cookie */
     std::string _pathPrefix;
+    uint8_t _saveRestoreEnabled;
 #ifdef __linux__
     random_data _randomBuf;
     char _randomState[64];
 #endif
     
     void logout() {
-        if (_loginApplep)
+        if (_loginApplep) {
             _loginApplep->logout();
-        if (_loginMSp)
+            /* TBD: should delete _loginApplep as soon as we add refcount to ensure not in use */
+        }
+        if (_loginMSp) {
             _loginMSp->logout();
+        }
 
         /* this points to one of the above login structures, so we don't have to log
          * this guy out.  But we do get rid of the pointer.
@@ -264,6 +280,15 @@ public:
         if (_loginActivep)
             _loginActivep = NULL;
     }
+
+    void enableSaveRestore() {
+        _saveRestoreEnabled = 1;
+        restore();
+    }
+
+    int32_t save();
+
+    int32_t restore();
 
     std::string getPathPrefix() {
         return _pathPrefix;
@@ -285,6 +310,7 @@ public:
         _loginApplep = NULL;
         _loginMSp = NULL;
         _loginActivep = NULL;
+        _saveRestoreEnabled = 0;
 #ifdef __linux__
         _randomBuf.state = NULL;
         initstate_r(time(0) + getpid(),

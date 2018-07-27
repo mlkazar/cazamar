@@ -277,7 +277,7 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
     /* copy the pictures directory to a subdir of testdir */
     disp = new CDisp();
     printf("Created new cdisp at %p\n", disp);
-    disp->init(8);      /* TBD: crank this up to 8 */
+    disp->init(1);      /* TBD: crank this up to 8 */
 
     printf("Starting tests\n");
     taskp = new WalkTask();
@@ -318,6 +318,7 @@ HomeScreen::startMethod()
 
     /* this does a get if it already exists */
     contextp = SApiLogin::createLoginCookie(this);
+    contextp->enableSaveRestore();
 
     if (contextp && contextp->getActive())
         authToken = contextp->getActive()->getAuthToken();

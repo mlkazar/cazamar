@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string>
 #include <stdlib.h>
+#include <sys/stat.h>
+
 #include "sapi.h"
 #include "sapilogin.h"
 #include "xapi.h"
@@ -172,6 +174,9 @@ AppleLoginKeyData::startMethod()
 
         /* this converts the once only token into a real authentication token */
         genLoginp->refineAuthToken(&authToken, cookiep);
+
+        /* save the updated authentication state, if enabled */
+        cookiep->save();
     }
 
     requestDone();
@@ -198,6 +203,14 @@ SApiLoginApple::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl
     cookiep->setActive(this);
     _finalUrl = finalUrl;
     sapip->registerUrl("/sapiKeyData", &AppleLoginKeyData::factory);
+}
+
+void
+SApiLoginApple::initFromFile(SApiLoginCookie *cookiep, std::string authToken)
+{
+    _authToken = authToken;
+    _sapip = NULL;
+    cookiep->setActive(this);
 }
 
 /* return a string representing the contents of a login web page for
@@ -314,6 +327,17 @@ SApiLoginMS::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl)
     _finalUrl = finalUrl;
     cookiep->setActive(this);
     sapip->registerUrl("/sapiKeyData", &AppleLoginKeyData::factory);
+}
+
+void
+SApiLoginMS::initFromFile( SApiLoginCookie *cookiep,
+                           std::string authToken,
+                           std::string refreshToken)
+{
+    _sapip = NULL;
+    _authToken = authToken;
+    _refreshToken = refreshToken;
+    cookiep->setActive(this);
 }
 
 /* return a string representing the contents of a login web page for
@@ -601,4 +625,157 @@ LogoutScreen::factory(std::string *opcodep, SApi *sapip)
     LogoutScreen *reqp;
     reqp = new LogoutScreen(sapip);
     return reqp;
+}
+
+int32_t
+SApiLoginCookie::save()
+{
+    FILE *filep;
+    int code;
+    Json::Node *dataNodep;
+    Json::Node *tnodep;
+    Json::Node *nnodep;
+    std::string result;
+
+    std::string stateFile;
+    if (!_saveRestoreEnabled || _loginActivep == NULL)
+        return 0;
+
+    stateFile = _pathPrefix + "auth.js";
+    filep = fopen(stateFile.c_str(), "w");
+    if (!filep)
+        return 0;
+
+    /* create a json structure with keys authToken, refreshToken and authid, each being
+     * a string.  Unmarshall it and write the data out.
+     */
+    dataNodep = new Json::Node();
+    dataNodep->initStruct();
+
+    tnodep = new Json::Node();
+    tnodep->initString(_loginActivep->getAuthToken().c_str(), 1);
+    nnodep = new Json::Node();
+    nnodep->initNamed("authToken", tnodep);
+    dataNodep->appendChild(nnodep);
+    
+    tnodep = new Json::Node();
+    tnodep->initString(_loginActivep->getRefreshToken().c_str(), 1);
+    nnodep = new Json::Node();
+    nnodep->initNamed("refreshToken", tnodep);
+    dataNodep->appendChild(nnodep);
+    
+    tnodep = new Json::Node();
+    tnodep->initString(_loginActivep->getAuthId().c_str(), 1);
+    nnodep = new Json::Node();
+    nnodep->initNamed("authId", tnodep);
+    dataNodep->appendChild(nnodep);
+
+    tnodep = new Json::Node();
+    if (_loginMSp)
+        tnodep->initString("ms", 1);
+    else if (_loginApplep)
+        tnodep->initString("apple", 1);
+    else
+        tnodep->initString("none", 1);
+    nnodep = new Json::Node();
+    nnodep->initNamed("authType", tnodep);
+    dataNodep->appendChild(nnodep);
+
+    dataNodep->unparse(&result);
+
+    code = fwrite(result.c_str(), result.length(), 1, filep);
+    if (code <= 0) {
+        /* failed to write data */
+        code = -1;
+    }
+    else
+        code = 0;
+
+    fclose(filep);
+
+    return code;
+}
+
+int32_t
+SApiLoginCookie::restore()
+{
+    int code;
+    FILE *filep;
+    size_t fileLength;
+    char *fileDatap;
+    char *origFileDatap;
+    std::string stateFile;
+    std::string authToken;
+    std::string authType;
+    std::string refreshToken;
+    Json::Node *rootNodep;
+    Json json;
+    Json::Node *tnodep;
+    struct stat tstat;
+
+    if (!_saveRestoreEnabled)
+        return 0;
+
+    stateFile = _pathPrefix + "auth.js";
+    filep = fopen(stateFile.c_str(), "r");
+    if (!filep)
+        return 0;
+
+    code = fstat(fileno(filep), &tstat);
+    if (code < 0) {
+        fclose(filep);
+        return code;
+    }
+
+    fileLength = tstat.st_size;
+    if (fileLength > 1000000) {  /* sanity check */
+        fclose(filep);
+        return -1;
+    }
+    origFileDatap = fileDatap = new char[fileLength];
+
+    code = fread(fileDatap, fileLength, 1, filep);
+    if (code <= 0){
+        fclose(filep);
+        delete [] origFileDatap;
+        return -2;
+    }
+
+    /* done with the file */
+    fclose(filep);
+    filep = NULL;
+
+    code = json.parseJsonChars(&fileDatap, &rootNodep);
+    if (code != 0) {
+        printf("sapilogin: failed to parse auth file code=%d\n", code);
+    }
+    else {
+        /* search children for stuff */
+        tnodep = rootNodep->searchForChild("authToken", 0);
+        if (tnodep)
+            authToken = tnodep->_children.head()->_name;
+        tnodep = rootNodep->searchForChild("refreshToken", 0);
+        if (tnodep)
+            refreshToken = tnodep->_children.head()->_name;
+        tnodep = rootNodep->searchForChild("authType", 0);
+        if (tnodep)
+            authType = tnodep->_children.head()->_name;
+
+        /* now create the SApiLoginGeneric objects */
+        if (authType == "ms") {
+            if (!_loginMSp) {
+                _loginMSp = new SApiLoginMS();
+            }
+            _loginMSp->initFromFile(this, authToken, refreshToken);
+        }
+        else if (authType == "apple") {
+            if (!_loginApplep) {
+                _loginApplep = new SApiLoginApple();
+            }
+            _loginApplep->initFromFile(this, authToken);
+        }
+    }
+
+    delete [] origFileDatap;
+    return code;
 }

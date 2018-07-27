@@ -621,6 +621,13 @@ SApi::registerUrl(const char *urlp, SApi::UrlCallback callback)
 {
     UrlEntry *urlEntryp;
 
+    for(urlEntryp = _allUrls.head(); urlEntryp; urlEntryp=urlEntryp->_dqNextp) {
+        if (strcmp(urlEntryp->_urlPath.c_str(), urlp) == 0) {
+            urlEntryp->_callback = callback;
+            return;
+        }
+    }
+
     urlEntryp = new UrlEntry();
     urlEntryp->_urlPath = std::string(urlp);
     urlEntryp->_callback = callback;
