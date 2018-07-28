@@ -285,11 +285,8 @@ public:
             _loginMSp->logout();
         }
 
-        /* this points to one of the above login structures, so we don't have to log
-         * this guy out.  But we do get rid of the pointer.
-         */
-        if (_loginActivep)
-            _loginActivep = NULL;
+        /* save the state, if we're doing that */
+        save();
     }
 
     void enableSaveRestore() {
