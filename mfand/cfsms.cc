@@ -196,12 +196,19 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
         }
         
         inPipep->waitForEof();
-        delete reqp;
-        reqp = NULL;
 
         if (code) {
             break;
         }
+
+        if (_cfsp->retryError(reqp, jnodep)) {
+            delete reqp;
+            reqp = NULL;
+            continue;
+        }
+
+        delete reqp;
+        reqp = NULL;
 
         code = parseResults(jnodep, &id, &size, &changeTime, &modTime);
         delete jnodep;
@@ -310,18 +317,28 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         
         inPipep->waitForEof();
 
+        tp = tbuffer;
+        code = json.parseJsonChars((char **) &tp, &jnodep);
+        if (code != 0) {
+            if (reqp) {
+                delete reqp;
+                reqp = NULL;
+            }
+            printf("json parse failed code=%d\n", code);
+            break;
+        }
+        
+        if (_cfsp->retryError(reqp, jnodep)) {
+            delete reqp;
+            reqp = NULL;
+            continue;
+        }
+
         if (reqp) {
             delete reqp;
             reqp = NULL;
         }
 
-        tp = tbuffer;
-        code = json.parseJsonChars((char **) &tp, &jnodep);
-        if (code != 0) {
-            printf("json parse failed code=%d\n", code);
-            break;
-        }
-        
         /* don't need the lock until we're merging in the results */
         lockSet.add(this);
 
@@ -433,6 +450,12 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             break;
         }
         
+        if (_cfsp->retryError(reqp, jnodep)) {
+            delete reqp;
+            reqp = NULL;
+            continue;
+        }
+
         if (reqp) {
             delete reqp;
             reqp = NULL;
@@ -532,6 +555,13 @@ CnodeMs::fillAttrs( CEnv *envp)
         }
         
         inPipep->waitForEof();
+
+        if (_cfsp->retryError(reqp, jnodep)) {
+            delete reqp;
+            reqp = NULL;
+            continue;
+        }
+
         delete reqp;
         reqp = NULL;
 
@@ -647,6 +677,12 @@ CnodeMs::startSession( std::string name,
             break;
         }
         
+        if (_cfsp->retryError(reqp, jnodep)) {
+            delete reqp;
+            reqp = NULL;
+            continue;
+        }
+
         /* search for uploadUrl */
         tnodep = jnodep->searchForChild("uploadUrl", 0);
         if (tnodep) {
@@ -751,16 +787,24 @@ CnodeMs::sendData( std::string *sessionUrlp,
         
         inPipep->waitForEof();
 
-        if (reqp) {
-            delete reqp;
-            reqp = NULL;
-        }
-
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         if (code != 0) {
             printf("json parse failed code=%d\n", code);
+            delete reqp;
+            reqp = NULL;
+            break;
         }
+
+        if (_cfsp->retryError(reqp, jnodep)) {
+            delete reqp;
+            reqp = NULL;
+            continue;
+        }
+
+        delete reqp;
+        reqp = NULL;
+
         break;
     }
 
@@ -967,4 +1011,30 @@ CfsMs::getCnodeLinked( CnodeMs *parentp,
 
     *cnodepp = childp;
     return 0;
+}
+
+int
+CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
+{
+    uint32_t httpError;
+    httpError = reqp->getHttpError();
+    int32_t code;
+
+    if (reqp->getError() != 0)
+        return 0;
+    else if (httpError >= 200 && httpError < 300)
+        return 0;
+    else if (httpError == 401) {
+        std::string refreshToken = _loginp->getRefreshToken();
+        /* authentication expired; use refresh token */
+        if (refreshToken.length() == 0) {
+            /* some login mechanisms don't have refresh tokens */
+            _loginp->logout();
+            return 0;
+        }
+        code = _loginp->refresh();
+        return (code == 0);
+    }
+    else
+        return 0;
 }

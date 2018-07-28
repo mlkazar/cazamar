@@ -454,6 +454,89 @@ SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
     return 0;
 }
 
+int32_t
+SApiLoginMS::refresh()
+{
+    /* make a call to get access token and refresh tokens from MS, using code */
+    {
+        char tbuffer[0x4000];
+        XApi *xapip;
+        XApi::ClientConn *connp;
+        BufGen *bufGenp;
+        XApi::ClientReq *reqp;
+        CThreadPipe *inPipep;
+        CThreadPipe *outPipep;
+        std::string postData;
+        const char *tp;
+        Json json;
+        Json::Node *authTokenNodep;
+        Json::Node *jnodep;
+        std::string callbackString;
+        int32_t code;
+        
+        callbackString = "/common/oauth2/v2.0/token";
+
+        postData = "client_id=" + _clientId;
+        postData += "&scope=files.readwrite";
+        postData += "&refresh_token=" + _refreshToken;
+        postData += "&redirect_uri=https%3a%2f%2fdjtogoapp.duckdns.org:7700%2flogin4ms";
+        postData += "&grant_type=refresh_token";
+        postData += "&client_secret=" + Rst::urlEncode(&_clientSecret);
+
+        xapip = new XApi();
+        bufGenp = new BufTls(_cookiep->getPathPrefix());
+        bufGenp->init(const_cast<char *>("login.microsoftonline.com"), 443);
+        connp = xapip->addClientConn(bufGenp);
+        reqp = new XApi::ClientReq();
+        reqp->setSendContentLength(postData.length());
+        reqp->startCall( connp,
+                         callbackString.c_str(),
+                         /* isPost */ XApi::reqPost);
+
+        outPipep = reqp->getOutgoingPipe();
+        outPipep->write(postData.c_str(), postData.length());
+        outPipep->eof();
+
+        code = reqp->waitForHeadersDone();
+        inPipep = reqp->getIncomingPipe();
+
+        printf("\n**refresh token code=%d\n", code);
+
+        if (code != 0) {
+            inPipep->waitForEof();
+            delete reqp;
+            reqp = NULL;
+            return code;
+        }
+
+        code = inPipep->read(tbuffer, sizeof(tbuffer));
+        if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
+            tbuffer[code] = 0;
+        }
+        
+        tp = tbuffer;
+        code = json.parseJsonChars((char **) &tp, &jnodep);
+        tp = (char *) "Default junk";
+        if (code == 0) {
+            authTokenNodep = jnodep->searchForChild("access_token", 0);
+            if (authTokenNodep) {
+                setAuthToken(authTokenNodep->_children.head()->_name);
+            }
+            authTokenNodep = jnodep->searchForChild("refresh_token", 0);
+            if (authTokenNodep) {
+                setRefreshToken(authTokenNodep->_children.head()->_name);
+            }
+        }
+
+        inPipep->waitForEof();
+        delete reqp;
+        delete jnodep;
+        reqp = NULL;
+    }
+    
+    return 0;
+}
+
 /* static */ SApiLoginCookie *
 SApiLogin::createLoginCookie(SApi::ServerReq *reqp) {
     SApiLoginCookie *cookiep;
@@ -766,12 +849,15 @@ SApiLoginCookie::restore()
             if (!_loginMSp) {
                 _loginMSp = new SApiLoginMS();
             }
+            _loginMSp->setAppParams( "60a94129-6c64-493e-b91f-1bd6d0c09cd1",
+                                     "awqdimBY081)~-nXYMPD19:");
             _loginMSp->initFromFile(this, authToken, refreshToken);
         }
         else if (authType == "apple") {
             if (!_loginApplep) {
                 _loginApplep = new SApiLoginApple();
             }
+            _loginApplep->setAppParams("/database/1/iCloud.com.Cazamar.Login1/development/public/users/caller?ckAPIToken=4e2811fdef054c7cb02aca853299b50151f5b7c40e5cdbd9a7762c135af3e99a");
             _loginApplep->initFromFile(this, authToken);
         }
     }

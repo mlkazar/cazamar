@@ -2,6 +2,8 @@ SApiLoginCookie needs save/restore functionality
 
 abort connections on bad errors, in case bytes are out of sequence.
 
+use refresh token
+
 * check valid for CfsMs::root()
 
 * search memory DNLC in lookup

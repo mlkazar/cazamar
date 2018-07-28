@@ -85,10 +85,16 @@ public:
         _refreshToken = newStr;
     }
 
+    /* by default, login mechanisms don't support refresh tokens */
+    virtual int32_t refresh() {
+        return -1;
+    }
+
     std::string _authToken;     /* auth token for authenticated calls */
     std::string _refreshToken;  /* refresh token if auth token has limited lifetime */
     std::string _finalUrl;      /* URL to switch to when authentication done */
     std::string _authId;        /* ID used as key in key server */
+    SApiLoginCookie *_cookiep;
 
 #ifdef __linux__
     random_data _randomBuf;
@@ -96,6 +102,7 @@ public:
 #endif
 
     SApiLoginGeneric() {
+        _cookiep = NULL;
 #ifdef __linux__
         _randomBuf.state = NULL;
         initstate_r(time(0) + getpid(),
@@ -106,6 +113,8 @@ public:
         srandomdev();
 #endif
     }
+
+    SApiLoginCookie *getCookie();
 
     void logout() {
         _authToken.erase();
@@ -185,6 +194,8 @@ public:
     }
 
     int32_t refineAuthToken(std::string *tokenp, SApiLoginCookie *cookiep);
+
+    int32_t refresh();
 };
 
 class AppleLoginKeyData : public SApi::ServerReq {
@@ -304,6 +315,7 @@ public:
 
     void setActive(SApiLoginGeneric *activep) {
         _loginActivep = activep;
+        activep->_cookiep = this;
     }
 
     SApiLoginCookie() {

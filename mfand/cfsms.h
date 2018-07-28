@@ -146,6 +146,8 @@ class CfsMs : public Cfs {
     
     int32_t getCnode(std::string *idp, CnodeMs **cnodepp);
 
+    int32_t retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep);
+
     int32_t getCnodeLinked( CnodeMs *parentp,
                             std::string name,
                             std::string *idp,
