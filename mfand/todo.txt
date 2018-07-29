@@ -1,8 +1,9 @@
-Get logout to work -- get rid of token and then do a cookie save
+* Get logout to work -- get rid of token and then do a cookie save
 
 * SApiLoginCookie needs save/restore functionality
 
-abort connections on bad errors, in case bytes are out of sequence.
+abort connections on bad errors, in case bytes are out of sequence.  make sure we
+abort connections if
 
 * use refresh token
 

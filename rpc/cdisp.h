@@ -87,18 +87,53 @@ class CDisp {
     dqueue<CDispTask> _activeTasks;
     dqueue<CDispTask> _pendingTasks;
 
+    uint8_t _stopping;
+    uint8_t _pausing;
+    uint8_t _stopped;
+    uint8_t _paused;
+
  public:
     CThreadMutex _lock;
+
+    CDisp() {
+        _stopping = 0;
+        _stopped = 0;
+        _pausing = 0;
+        _paused = 0;
+    }
 
     int32_t queueTask(CDispTask *taskp);
 
     int32_t init(uint32_t ntasks);
 
+    int32_t pause() {
+        return -1;
+    }
+
+    int32_t stop() {
+        return -1;
+    }
+
+    int32_t resume() {
+        return -1;
+    }
+
+    /* return true if still executing tasks */
     int isActive() {
         int rcode;
 
         _lock.take();
-        rcode = (_activeTasks.count() != 0 || _pendingTasks.count() != 0);
+        rcode = (_activeTasks.count() != 0);
+        _lock.release();
+        return rcode;
+    }
+
+    /* return true if all done, even if paused */
+    int isAllDone() {
+        int rcode;
+
+        _lock.take();
+        rcode = (_activeTasks.count() == 0 && _pendingTasks.count() == 0);
         _lock.release();
 
         return rcode;
