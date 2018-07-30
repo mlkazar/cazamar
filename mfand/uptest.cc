@@ -207,14 +207,14 @@ Uploader::start()
 void
 Uploader::stop()
 {
-    /* TBD: call the dispatcher to stop */
+    _disp->stop();
     return;
 }
 
 void
 Uploader::pause()
 {
-    /* TBD: call the dispatcher to pause */
+    _disp->pause();
     return;
 }
 
@@ -222,6 +222,7 @@ void
 Uploader::resume()
 {
     /* call the dispatcher to resume execution of tasks */
+    _disp->resume();
     return;
 }
 
@@ -246,6 +247,16 @@ public:
         _fsRoot = "/Users/kazar/bin";
 #endif
         _cloudRoot = "/TestDir";
+    }
+
+    void stop() {
+        if (_uploaderp)
+            _uploaderp->stop();
+    }
+
+    void pause() {
+        if (_uploaderp)
+            _uploaderp->pause();
     }
 
     void runTests(SApiLoginCookie *loginCookiep);
@@ -308,6 +319,17 @@ public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
 
     UploadStopScreen(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
+class UploadPauseScreen : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadPauseScreen(SApi *sapip) : SApi::ServerReq(sapip) {
         return;
     }
 
@@ -417,7 +439,8 @@ UploadHomeScreen::startMethod()
         loginHtml = "Logged in<p><a href=\"/logoutScreen\">Logout</a>";
         loggedIn = 1;
     }
-    loginHtml += "<p><a href=\"/startBackups\">Start backup</a>";
+    loginHtml += "<p><a href=\"/startBackups\">Start/resume backup</a>";
+    loginHtml += "<p><a href=\"/pauseBackups\">Pause backup</a>";
     loginHtml += "<p><a href=\"/stopBackups\">Stop backup</a>";
     
     dict.add("loginText", loginHtml);
@@ -567,6 +590,52 @@ UploadStopScreen::startMethod()
     outPipep->eof();
     
     requestDone();
+
+    uploadApp->stop();
+}
+
+void
+UploadPauseScreen::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    std::string authToken;
+        
+    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+        strcpy(tbuffer, "No app running to pause; visit home page first<p>"
+               "<a href=\"/\">Home screen</a>");
+        obufferp = tbuffer;
+    }
+    else {
+        code = getConn()->interpretFile((char *) "upload-pause.html", &dict, &response);
+
+        if (code != 0) {
+            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            obufferp = tbuffer;
+        }
+        else {
+            obufferp = const_cast<char *>(response.c_str());
+        }
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+
+    uploadApp->pause();
 }
 
 SApi::ServerReq *
@@ -593,6 +662,14 @@ UploadStopScreen::factory(std::string *opcodep, SApi *sapip)
     return reqp;
 }
 
+SApi::ServerReq *
+UploadPauseScreen::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadPauseScreen *reqp;
+    reqp = new UploadPauseScreen(sapip);
+    return reqp;
+}
+
 void
 server(int argc, char **argv, int port)
 {
@@ -608,6 +685,7 @@ server(int argc, char **argv, int port)
     sapip->registerUrl("/", &UploadHomeScreen::factory);
     sapip->registerUrl("/startBackups", &UploadStartScreen::factory);
     sapip->registerUrl("/stopBackups", &UploadStopScreen::factory);
+    sapip->registerUrl("/pauseBackups", &UploadPauseScreen::factory);
 
     while(1) {
         sleep(1);

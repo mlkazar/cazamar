@@ -36,6 +36,10 @@ CDispHelper::start(void *contextp)
         /* remove from queue in case destructor doesn't */
         osp_assert(taskp->_inQueue == CDispTask::_queueActive);
         disp->_activeTasks.remove(taskp);
+        if ( disp->_waitingForActive) {
+            disp->_waitingForActive = 0;
+            disp->_activeCv.broadcast();
+        }
         taskp->_inQueue = CDispTask::_queueNone;
 
         osp_assert(_inQueue == CDispHelper::_queueActive);
@@ -70,8 +74,20 @@ CDisp::tryDispatches()
     CDispTask *taskp;
 
     while(_pendingTasks.count() && _availableHelpers.count()) {
+        if (_runMode == _PAUSED)
+            break;
         /* assign the pending work item to the available helper */
         taskp = _pendingTasks.pop();
+
+        /* if stopped, take the pending tasks and just delete them */
+        if (_runMode == _STOPPED) {
+            taskp->_inQueue = CDispTask::_queueNone;
+            _lock.release();
+            delete taskp;
+            _lock.take();
+            continue;
+        }
+
         helperp = _availableHelpers.pop();
         _activeTasks.append(taskp);
         taskp->_inQueue = CDispTask::_queueActive;
@@ -88,10 +104,22 @@ CDisp::tryDispatches()
 int32_t
 CDisp::queueTask(CDispTask *taskp)
 {
+    taskp->_disp = this;
+
     _lock.take();
+    if (_runMode == _STOPPED) {
+        _lock.release();
+        /* drop lock before deleting task, since CDispTask destructor
+         * grabs locks.
+         */
+        delete taskp;
+        return -1;
+    }
+
     _pendingTasks.append(taskp);
     taskp->_inQueue = CDispTask::_queuePending;
     tryDispatches();
+
     _lock.release();
 
     return 0;
@@ -112,4 +140,87 @@ CDisp::init(uint32_t ntasks)
     }
 
     return 0;
+}
+
+int32_t
+CDisp::stop()
+{
+    CDispTask *taskp;
+    _lock.take();
+    _runMode = _STOPPED;
+
+    while(1) {
+        while((taskp = _pendingTasks.pop()) != NULL) {
+            taskp->_inQueue = CDispTask::_queueNone;
+            _lock.release();
+            delete taskp;
+            _lock.take();
+        }
+        if (_activeTasks.count() != 0) {
+            _waitingForActive = 1;
+            _activeCv.wait();
+            continue;
+        }
+        break;
+    }
+    _lock.release();
+
+    return 0;
+}
+
+int32_t
+CDisp::pause()
+{
+    _lock.take();
+    _runMode = _PAUSED;
+    while(1) {
+        if (_activeTasks.count() != 0) {
+            _waitingForActive = 1;
+            _activeCv.wait();
+            continue;
+        }
+        else
+            break;
+    }
+    /* may leave some tasks in pending queue until resume is called */
+    _lock.release();
+    return 0;
+}
+
+int32_t
+CDisp::resume()
+{
+    _lock.take();
+    if (_runMode == _STOPPED) {
+        /* start the dispatcher up again */
+        _runMode = _RUNNING;
+        tryDispatches();
+    }
+    else if (_runMode == _PAUSED) {
+        _runMode = _RUNNING;
+        tryDispatches();
+    }
+    _lock.release();
+    return 0;
+}
+
+CDispTask::~CDispTask() {
+    CDisp *disp = _disp;
+
+
+    /* if _disp isn't even set yet, we've never been queued */
+    if (disp) {
+        disp->_lock.take();
+
+        /* remove from queue */
+        if (_inQueue == _queueActive) {
+            disp->_activeTasks.remove(this);
+        }
+        else if (_inQueue == _queuePending) {
+            disp->_pendingTasks.remove(this);
+        }
+        _inQueue = _queueNone;
+
+        disp->_lock.release();
+    }
 }

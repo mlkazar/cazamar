@@ -34,17 +34,7 @@ class CDispTask {
 
     virtual int32_t start() = 0;
 
-    virtual int32_t stop() {
-        return -1;
-    }
-
-    virtual int32_t pctComplete() {
-        return 0;
-    }
-
-    virtual ~CDispTask() {
-        return;
-    }
+    virtual ~CDispTask();
 };
 
 class CDispHelper : public CThread {
@@ -76,6 +66,10 @@ class CDispHelper : public CThread {
 };
 
 class CDisp {
+    typedef enum {
+        _STOPPED = 1,
+        _PAUSED = 2,
+        _RUNNING = 3} Mode;
     friend class CDispHelper;
     friend class CDispTask;
 
@@ -87,36 +81,27 @@ class CDisp {
     dqueue<CDispTask> _activeTasks;
     dqueue<CDispTask> _pendingTasks;
 
-    uint8_t _stopping;
-    uint8_t _pausing;
-    uint8_t _stopped;
-    uint8_t _paused;
+    Mode _runMode;
+    uint8_t _waitingForActive;
 
  public:
     CThreadMutex _lock;
+    CThreadCV _activeCv;
 
-    CDisp() {
-        _stopping = 0;
-        _stopped = 0;
-        _pausing = 0;
-        _paused = 0;
+ CDisp() : _activeCv(&_lock) {
+        _runMode = _RUNNING;
+        _waitingForActive = 0;
     }
 
     int32_t queueTask(CDispTask *taskp);
 
     int32_t init(uint32_t ntasks);
 
-    int32_t pause() {
-        return -1;
-    }
+    int32_t pause();
 
-    int32_t stop() {
-        return -1;
-    }
+    int32_t stop();
 
-    int32_t resume() {
-        return -1;
-    }
+    int32_t resume();
 
     /* return true if still executing tasks */
     int isActive() {
