@@ -3,7 +3,11 @@
 <head>
 <style>
 h1 {text-align: center; color: blue}
-body {background: linear-gradient(90deg, rgba(255,192,96,0.9),rgba(128,64,191,0.9));
+th {text-align: left;}
+table {
+  border: 1px solid black;
+}
+body {background: linear-gradient(90deg, rgba(255,192,96,0.9),rgba(192,192,255,0.9),rgba(128,64,255,0.9));
       font-size: large;}
 </style>
 </head>
@@ -12,6 +16,43 @@ body {background: linear-gradient(90deg, rgba(255,192,96,0.9),rgba(128,64,191,0.
 <center>
 $v:loginText$
 </center>
+
+<script>
+function updateStatus() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        document.getElementById("statusData").innerHTML =
+          xhttp.responseText;
+      }
+  };
+  xhttp.open("GET", "statusData", true);
+  xhttp.send();
+}
+
+function loadConfig() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        document.getElementById("loadConfig").innerHTML =
+          xhttp.responseText;
+      }
+  };
+  xhttp.open("GET", "loadConfig", true);
+  xhttp.send();
+
+  setInterval(updateStatus, 10000);
+}
+
+window.onload=updateStatus
+
+</script>
+
+<center>
+<div id="statusData">[No update yet]</div>
+</center>
+
+<button type="button" onclick="updateStatus()">Update status now</button>
 
 </body>
 </html>

@@ -336,6 +336,28 @@ public:
     void startMethod();
 };
 
+class UploadStatusData : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadStatusData(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
+class UploadLoadConfig : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadLoadConfig(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
 /* static */ int32_t
 Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
 {
@@ -638,6 +660,78 @@ UploadPauseScreen::startMethod()
     uploadApp->pause();
 }
 
+void
+UploadStatusData::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    UploadApp *uploadApp;
+    std::string loginHtml;
+        
+    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+        strcpy(tbuffer, "No app running to pause; visit home page first<p>"
+               "<a href=\"/\">Home screen</a>");
+        obufferp = tbuffer;
+    }
+    else {
+        response = "<table style=\"width:80%\">";
+        response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>Bytes coped</th></tr>\n";
+        response += "<tr><td>/User...</td><td>/TestDir</td><td>0 files</td><td>0 bytes</td></tr>\n";
+        response += "</table>\n";
+        obufferp = const_cast<char *>(response.c_str());
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadLoadConfig::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    std::string authToken;
+        
+    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+        strcpy(tbuffer, "No app running to pause; visit home page first<p>"
+               "<a href=\"/\">Home screen</a>");
+        obufferp = tbuffer;
+    }
+    else {
+        strcpy(tbuffer, "Data From Config");
+        obufferp = tbuffer;
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
 SApi::ServerReq *
 UploadHomeScreen::factory(std::string *opcodep, SApi *sapip)
 {
@@ -670,6 +764,22 @@ UploadPauseScreen::factory(std::string *opcodep, SApi *sapip)
     return reqp;
 }
 
+SApi::ServerReq *
+UploadStatusData::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadStatusData *reqp;
+    reqp = new UploadStatusData(sapip);
+    return reqp;
+}
+
+SApi::ServerReq *
+UploadLoadConfig::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadLoadConfig *reqp;
+    reqp = new UploadLoadConfig(sapip);
+    return reqp;
+}
+
 void
 server(int argc, char **argv, int port)
 {
@@ -686,6 +796,8 @@ server(int argc, char **argv, int port)
     sapip->registerUrl("/startBackups", &UploadStartScreen::factory);
     sapip->registerUrl("/stopBackups", &UploadStopScreen::factory);
     sapip->registerUrl("/pauseBackups", &UploadPauseScreen::factory);
+    sapip->registerUrl("/statusData", &UploadStatusData::factory);
+    sapip->registerUrl("/loadConfig", &UploadLoadConfig::factory);
 
     while(1) {
         sleep(1);
