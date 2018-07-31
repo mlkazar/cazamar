@@ -13,7 +13,11 @@
 #include "cfsms.h"
 #include "walkdisp.h"
 
-void server(int argc, char **argv, int port);
+void server(int argc, char **argv, int port, std::string pathPrefix);
+
+class Uploader;
+class UploadApp;
+class UploadEntry;
 
 class DataSourceFile : public CDataSource {
     int _fd;
@@ -108,6 +112,27 @@ DataSourceFile::read( uint64_t offset, uint32_t count, char *bufferp)
     return code;
 }
 
+class UploadEntry {
+public:
+    Uploader *_uploaderp;
+    UploadApp *_app;
+    std::string _fsRoot;
+    std::string _cloudRoot;
+    uint64_t _lastFinishedTime;
+    uint64_t _lastFinishedErrors;
+    uint64_t _lastFinishedFiles;
+    uint64_t _lastFinishedBytes;
+
+    UploadEntry() {
+        _uploaderp = NULL;
+        _app = NULL;
+        _lastFinishedTime = 0;
+        _lastFinishedErrors = 0;
+        _lastFinishedFiles = 0;
+        _lastFinishedBytes = 0;
+    }
+};
+
 class Uploader {
 public:
     typedef enum { STOPPED = 1,
@@ -150,6 +175,15 @@ public:
 
     Status getStatus() {
         return _status;
+    }
+
+    std::string getStatusString() {
+        if (_status == STOPPED)
+            return "Stopped";
+        else if (_status == PAUSED)
+            return "Paused";
+        else
+            return "Running";
     }
 
     void getFullStatus( Status *statep,
@@ -231,35 +265,87 @@ Uploader::resume()
  */
 class UploadApp {
 public:
-    std::string _cloudRoot;
-    std::string _fsRoot;
-    Uploader *_uploaderp;
+    static const uint32_t _maxUploaders = 128;
+    UploadEntry *_uploadEntryp[_maxUploaders]; /* array of pointers to UploaderEntries */
     SApiLoginCookie *_loginCookiep;
+    std::string _pathPrefix;
 
-    UploadApp() {
-        _uploaderp = NULL;
+    UploadApp(std::string pathPrefix) {
+        uint32_t i;
+        for(i=0;i<_maxUploaders;i++) {
+            _uploadEntryp[i] = NULL;
+        }
+        _pathPrefix = pathPrefix;
         _loginCookiep = NULL;
+
+        readConfig(pathPrefix);
 
         /* TBD: get this from some configuration mechanism */
 #ifdef __linux__
-        _fsRoot = "/home/pi/UpTest";
+        addConfigEntry("/TestDir", "/home/pi/UpTest", 0);
 #else
-        _fsRoot = "/Users/kazar/bin";
+        addConfigEntry("/TestDir", "/Users/kazar/bin", 0);
 #endif
-        _cloudRoot = "/TestDir";
     }
 
+    int32_t addConfigEntry(std::string cloudRoot, std::string fsRoot, uint64_t lastFinishedTime);
+
     void stop() {
-        if (_uploaderp)
-            _uploaderp->stop();
+        uint32_t i;
+        UploadEntry *ep;
+        Uploader *uploaderp;
+        for(i=0; i<_maxUploaders; i++) {
+            ep = _uploadEntryp[i];
+            if (!ep)
+                continue;
+            uploaderp = ep->_uploaderp;
+            if (!uploaderp)
+                continue;
+            uploaderp->stop();
+        }
     }
 
     void pause() {
-        if (_uploaderp)
-            _uploaderp->pause();
+        uint32_t i;
+        UploadEntry *ep;
+        Uploader *uploaderp;
+        for(i=0; i<_maxUploaders; i++) {
+            ep = _uploadEntryp[i];
+            if (!ep)
+                continue;
+            uploaderp = ep->_uploaderp;
+            if (!uploaderp)
+                continue;
+            uploaderp->pause();
+        }
     }
 
-    void runTests(SApiLoginCookie *loginCookiep);
+    void start() {
+        uint32_t i;
+        UploadEntry *ep;
+        Uploader *uploaderp;
+        Uploader::Status upStatus;
+
+        for(i=0; i<_maxUploaders; i++) {
+            ep = _uploadEntryp[i];
+            if (!ep)
+                continue;
+            uploaderp = ep->_uploaderp;
+            if (!uploaderp) {
+                /* create the uploader */
+                uploaderp = new Uploader();
+                uploaderp->init(ep->_cloudRoot, ep->_fsRoot, _loginCookiep->_loginMSp);
+            }
+            upStatus = uploaderp->getStatus();
+            if (upStatus == Uploader::PAUSED)
+                uploaderp->resume();
+            else if (upStatus == Uploader::STOPPED)
+                uploaderp->start();
+            /* otherwise already running */
+        }
+    }
+
+    void readConfig(std::string pathPrefix);
 };
 
 /* This is the main program for the test application; it just runs the
@@ -279,7 +365,7 @@ main(int argc, char **argv)
     port = atoi(argv[1]);
 
     /* peel off command name and port */
-    server(argc-2, argv+2, port);
+    server(argc-2, argv+2, port, std::string(""));
 
     return 0;
 }
@@ -437,9 +523,11 @@ UploadHomeScreen::startMethod()
     SApiLoginCookie *contextp;
     std::string authToken;
     int loggedIn = 0;
+    std::string pathPrefix;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        uploadApp = new UploadApp();
+        pathPrefix = getSApi()->getPathPrefix();
+        uploadApp = new UploadApp(pathPrefix);
         setCookieKey("main", uploadApp);
         printf("Setting Cookie to %p\n", uploadApp);
     }
@@ -487,27 +575,97 @@ UploadHomeScreen::startMethod()
 }
 
 void
-UploadApp::runTests( SApiLoginCookie *loginCookiep)
+UploadApp::readConfig(std::string pathPrefix)
 {
-    if (_uploaderp && _uploaderp->getStatus() == Uploader::RUNNING)
+    Json json;
+    Json::Node *rootNodep;
+    FILE *filep;
+    std::string fileName;
+    Json::Node *tnodep;
+    Json::Node *nnodep;
+    std::string cloudRoot;
+    std::string fsRoot;
+    uint64_t lastFinishedTime;
+    int32_t code;
+
+    fileName = pathPrefix + "config.js";
+    filep = fopen(fileName.c_str(), "r");
+    if (!filep)
         return;
 
-    /* remember this */
-    _loginCookiep = loginCookiep;
-
-    if (!_uploaderp) {
-        _uploaderp = new Uploader();
-        _uploaderp->init( _cloudRoot,
-                          _fsRoot,
-                          loginCookiep->_loginMSp);
+    code = json.parseJsonFile(filep, &rootNodep);
+    if (code != 0) {
+        fclose(filep);
+        return;
     }
 
-    if (_uploaderp->getStatus() == Uploader::STOPPED) {
-        _uploaderp->start();
+    /* read the json from the file -- it's a structure with an array
+     * named backupEntries, each of which contains tags cloudRoot,
+     * fsRoot, lastFinishedTime, lastFinishedErrors, lastFinishedFiles
+     * and lastFinishedBytes.
+     */
+    tnodep = rootNodep->searchForChild("backupEntries"); /* find name node */
+    if (tnodep) {
+        tnodep=tnodep->_children.head(); /* first entry is array node */
+        tnodep = tnodep->_children.head(); /* first entry *in* array */
+        for(; tnodep; tnodep=tnodep->_dqNextp) {
+            /* tnode is a structure */
+            nnodep = tnodep->searchForChild("cloudRoot");
+            if (nnodep) {
+                cloudRoot = nnodep->_children.head()->_name;
+            }
+            nnodep = tnodep->searchForChild("fsRoot");
+            if (nnodep) {
+                fsRoot = nnodep->_children.head()->_name;
+            }
+            nnodep = tnodep->searchForChild("lastFinishedTime");
+            if (nnodep) {
+                lastFinishedTime = atoi(nnodep->_children.head()->_name.c_str());
+            }
+            else
+                lastFinishedTime = 0;
+
+            /* now add the entry */
+            addConfigEntry(cloudRoot, fsRoot, lastFinishedTime);
+        }
     }
-    else if (_uploaderp->getStatus() == Uploader::PAUSED) {
-        _uploaderp->resume();
+
+    fclose(filep);
+}
+
+int32_t
+UploadApp::addConfigEntry(std::string cloudRoot, std::string fsRoot, uint64_t lastFinishedTime)
+{
+    UploadEntry *ep;
+    uint32_t i;
+    int32_t bestFreeIx;
+
+    bestFreeIx = -1;
+    for(i=0;i<_maxUploaders;i++) {
+        ep = _uploadEntryp[i];
+        if (ep == NULL) {
+            if (bestFreeIx == -1)
+                bestFreeIx = i;
+            continue;
+        }
+        if (ep->_fsRoot == fsRoot) {
+            /* update in place */
+            ep->_cloudRoot = cloudRoot;
+            ep->_lastFinishedTime = lastFinishedTime;
+            return 0;
+        }
     }
+
+    /* here, no such entry */
+    if (bestFreeIx == -1)
+        return -1;      /* no room for another backup entry */
+    ep = new UploadEntry();
+    ep->_fsRoot = fsRoot;
+    ep->_app = this;
+    ep->_cloudRoot = cloudRoot;
+    ep->_lastFinishedTime = lastFinishedTime;
+    _uploadEntryp[bestFreeIx] = ep;
+    return 0;
 }
 
 void
@@ -531,14 +689,15 @@ UploadStartScreen::startMethod()
         obufferp = tbuffer;
     }
     else {
-        /* this does a get if it already exists */
+       /* this does a get if it already exists */
         loginCookiep = SApiLogin::createLoginCookie(this);
         loginCookiep->enableSaveRestore();
+        uploadApp->_loginCookiep = loginCookiep;
 
-        if (loginCookiep && loginCookiep->getActive())
+        if (loginCookiep->getActive())
             authToken = loginCookiep->getActive()->getAuthToken();
 
-        if (!loginCookiep || authToken.length() == 0) {
+        if (authToken.length() == 0) {
             strcpy(tbuffer, "Must login before doing backups<p><a href=\"/\"Home screen</a>");
             obufferp = tbuffer;
             code = 0;
@@ -568,7 +727,7 @@ UploadStartScreen::startMethod()
     requestDone();
 
     if (loggedIn) {
-        uploadApp->runTests(loginCookiep);
+        uploadApp->start();
     }
 }
 
@@ -672,6 +831,8 @@ UploadStatusData::startMethod()
     CThreadPipe *outPipep = getOutgoingPipe();
     UploadApp *uploadApp;
     std::string loginHtml;
+    UploadEntry *ep;
+    uint32_t i;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
         strcpy(tbuffer, "No app running to pause; visit home page first<p>"
@@ -680,8 +841,17 @@ UploadStatusData::startMethod()
     }
     else {
         response = "<table style=\"width:80%\">";
-        response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>Bytes coped</th></tr>\n";
-        response += "<tr><td>/User...</td><td>/TestDir</td><td>0 files</td><td>0 bytes</td></tr>\n";
+        response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>Bytes coped</th><th>State</th></tr>\n";
+        for(i=0;i<UploadApp::_maxUploaders;i++) {
+            ep = uploadApp->_uploadEntryp[i];
+            if (!ep)
+                continue;
+            response += ("<tr><td>"+ep->_fsRoot+"</td><td>" +
+                         ep->_cloudRoot+ "</td><td>" +
+                         "0 files"+ "</td><td>" +
+                         "0 bytes" + "</td><td>" +
+                         (ep->_uploaderp? ep->_uploaderp->getStatusString() : "Idle") + "</td></tr>\n");
+        }
         response += "</table>\n";
         obufferp = const_cast<char *>(response.c_str());
     }
@@ -781,11 +951,12 @@ UploadLoadConfig::factory(std::string *opcodep, SApi *sapip)
 }
 
 void
-server(int argc, char **argv, int port)
+server(int argc, char **argv, int port, std::string pathPrefix)
 {
     SApi *sapip;
 
     sapip = new SApi();
+    sapip->setPathPrefix(pathPrefix); /* this is where everyone gets the path prefix */
     sapip->initWithPort(port);
 
     /* setup login URL listeners */

@@ -495,6 +495,18 @@ Json::parseJsonChars(char **inDatapp, Json::Node **nodepp)
     return code;
 }
 
+/* external function */
+int32_t
+Json::parseJsonFile(FILE *filep, Json::Node **nodepp)
+{
+    int32_t code;
+    InStreamFile inStream(filep);
+
+    code = parseJsonValue(&inStream, nodepp);
+
+    return code;
+}
+
 void
 Pair::skipNewline(InStream *inp)
 {

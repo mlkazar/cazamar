@@ -275,6 +275,8 @@ class Json {
 
     int32_t parseJsonComplex(InStream *streamp, std::string *firstToken, Node **nodepp);
 
+    int32_t parseJsonFile(FILE *filep, Json::Node **nodepp);
+
     void parseFailed(const char *strp);
 
     /* return an std::string with the results of emitting the
