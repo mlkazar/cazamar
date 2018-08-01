@@ -18,12 +18,25 @@ $v:loginText$
 </center>
 
 <script>
+function updateStatusInternal() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        document.getElementById("statusData").innerHTML =
+          xhttp.responseText;
+      }
+  };
+  xhttp.open("GET", "statusData", true);
+  xhttp.send();
+}
+
 function updateStatus() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
       if (xhttp.readyState == 4 && xhttp.status == 200) {
         document.getElementById("statusData").innerHTML =
           xhttp.responseText;
+        setInterval(updateStatus, 10000);
       }
   };
   xhttp.open("GET", "statusData", true);
@@ -52,7 +65,7 @@ window.onload=updateStatus
 <div id="statusData">[No update yet]</div>
 </center>
 
-<button type="button" onclick="updateStatus()">Update status now</button>
+<button type="button" onclick="updateStatusInternal()">Update status now</button>
 
 </body>
 </html>

@@ -119,17 +119,11 @@ public:
     std::string _fsRoot;
     std::string _cloudRoot;
     uint64_t _lastFinishedTime;
-    uint64_t _lastFinishedErrors;
-    uint64_t _lastFinishedFiles;
-    uint64_t _lastFinishedBytes;
 
     UploadEntry() {
         _uploaderp = NULL;
         _app = NULL;
         _lastFinishedTime = 0;
-        _lastFinishedErrors = 0;
-        _lastFinishedFiles = 0;
-        _lastFinishedBytes = 0;
     }
 };
 
@@ -148,11 +142,23 @@ public:
     Status _status;
     std::string _cloudRoot;
 
+    /* some stats */
+    uint64_t _filesCopied;
+    uint64_t _bytesCopied;
+    uint64_t _filesSkipped;
+    uint64_t _fileCopiesFailed;
+
     Uploader() {
         _cfsp = NULL;
         _fsRootLen = 0;
         _status = STOPPED;
         _loginMSp = NULL;
+
+        _filesCopied = 0;
+        _bytesCopied = 0;
+        _filesSkipped = 0;
+        _fileCopiesFailed = 0;
+
         return;
     }
 
@@ -174,13 +180,19 @@ public:
     void resume();
 
     Status getStatus() {
+        /* see if we finished the tree walk, since we don't get callbacks when done */
+        if (_status != STOPPED) {
+            if (_disp->isAllDone())
+                _status = STOPPED;
+        }
         return _status;
     }
 
     std::string getStatusString() {
-        if (_status == STOPPED)
+        Status status = getStatus();
+        if (status == STOPPED)
             return "Stopped";
-        else if (_status == PAUSED)
+        else if (status == PAUSED)
             return "Paused";
         else
             return "Running";
@@ -235,6 +247,8 @@ Uploader::start()
     taskp->setCallback(&Uploader::mainCallback, this);
     _disp->queueTask(taskp);
 
+    _status = RUNNING;
+
     printf("uploader: started\n");
 }
 
@@ -242,6 +256,7 @@ void
 Uploader::stop()
 {
     _disp->stop();
+    _status = STOPPED;
     return;
 }
 
@@ -249,6 +264,7 @@ void
 Uploader::pause()
 {
     _disp->pause();
+    _status = PAUSED;
     return;
 }
 
@@ -257,6 +273,7 @@ Uploader::resume()
 {
     /* call the dispatcher to resume execution of tasks */
     _disp->resume();
+    _status = RUNNING;
     return;
 }
 
@@ -333,7 +350,7 @@ public:
             uploaderp = ep->_uploaderp;
             if (!uploaderp) {
                 /* create the uploader */
-                uploaderp = new Uploader();
+                ep->_uploaderp = uploaderp = new Uploader();
                 uploaderp->init(ep->_cloudRoot, ep->_fsRoot, _loginCookiep->_loginMSp);
             }
             upStatus = uploaderp->getStatus();
@@ -478,10 +495,14 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                  * we've already copied this file.
                  */
                 printf("callback: skipping already copied %s\n", pathp->c_str());
+                up->_filesSkipped++;
                 return 0;
             }
         }
     }
+
+    up->_filesCopied++;
+    up->_bytesCopied += statp->st_size;
 
     if ((statp->st_mode & S_IFMT) == S_IFDIR) {
         /* do a mkdir */
@@ -493,11 +514,14 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
     else if ((statp->st_mode & S_IFMT) == S_IFREG) {
         code = dataFile.open(pathp->c_str());
         if (code != 0) {
+            up->_fileCopiesFailed++;
             printf("Failed to open file %s\n", pathp->c_str());
             return code;
         }
         code = cfsp->sendFile(cloudName, &dataFile, NULL);
         printf("sendfile path=%s test done, code=%d\n", cloudName.c_str(), code);
+        if (code)
+            up->_fileCopiesFailed++;
 
         /* dataFile destructor closes file */
     }
@@ -790,7 +814,7 @@ UploadPauseScreen::startMethod()
     std::string authToken;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        strcpy(tbuffer, "No app running to pause; visit home page first<p>"
+        strcpy(tbuffer, "No app running to pause; visit home page first (1)<p>"
                "<a href=\"/\">Home screen</a>");
         obufferp = tbuffer;
     }
@@ -831,26 +855,44 @@ UploadStatusData::startMethod()
     CThreadPipe *outPipep = getOutgoingPipe();
     UploadApp *uploadApp;
     std::string loginHtml;
+    std::string filesString;
+    std::string bytesString;
+    std::string errorsString;
+    std::string skippedString;
+    Uploader *uploaderp;
     UploadEntry *ep;
     uint32_t i;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        strcpy(tbuffer, "No app running to pause; visit home page first<p>"
-               "<a href=\"/\">Home screen</a>");
+        strcpy(tbuffer, "[Initializing]");
         obufferp = tbuffer;
     }
     else {
         response = "<table style=\"width:80%\">";
-        response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>Bytes coped</th><th>State</th></tr>\n";
+        response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>"
+            "Bytes copied</th><th>"
+            "Files skipped</th><th>"
+            "Failures</th><th>State</th></tr>\n";
         for(i=0;i<UploadApp::_maxUploaders;i++) {
             ep = uploadApp->_uploadEntryp[i];
             if (!ep)
                 continue;
+            uploaderp = ep->_uploaderp;
+            sprintf(tbuffer, "%ld files", (long) (uploaderp? uploaderp->_filesCopied : 0));
+            filesString = std::string(tbuffer);
+            sprintf(tbuffer, "%ld bytes", (long) (uploaderp? uploaderp->_bytesCopied: 0));
+            bytesString = std::string(tbuffer);
+            sprintf(tbuffer, "%ld skipped", (long) (uploaderp? uploaderp->_filesSkipped : 0));
+            skippedString = std::string(tbuffer);
+            sprintf(tbuffer, "%ld failures", (long) (uploaderp? uploaderp->_fileCopiesFailed : 0));
+            errorsString = std::string(tbuffer);
             response += ("<tr><td>"+ep->_fsRoot+"</td><td>" +
                          ep->_cloudRoot+ "</td><td>" +
-                         "0 files"+ "</td><td>" +
-                         "0 bytes" + "</td><td>" +
-                         (ep->_uploaderp? ep->_uploaderp->getStatusString() : "Idle") + "</td></tr>\n");
+                         filesString + "</td><td>" +
+                         bytesString + "</td><td>" +
+                         skippedString + "</td><td>" +
+                         errorsString + "</td><td>" +
+                         (uploaderp? uploaderp->getStatusString() : "Idle") + "</td></tr>\n");
         }
         response += "</table>\n";
         obufferp = const_cast<char *>(response.c_str());
@@ -882,7 +924,7 @@ UploadLoadConfig::startMethod()
     std::string authToken;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        strcpy(tbuffer, "No app running to pause; visit home page first<p>"
+        strcpy(tbuffer, "No app running to load config; visit home page first<p>"
                "<a href=\"/\">Home screen</a>");
         obufferp = tbuffer;
     }
