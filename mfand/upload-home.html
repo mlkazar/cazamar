@@ -12,6 +12,34 @@ body {background: linear-gradient(90deg, rgba(255,192,96,0.9),rgba(192,192,255,0
 button {
  background-color: rgba(128,128,255,0.2);
 }
+
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    padding-top: 60px;
+}
+
+/* Modal Content/Box */
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+}
+
+.container {
+  padding: 16px;
+  background-color: rgba(255,192,0,1.0);
+  border: 2px solid black;
+}
+
 </style>
 </head>
 <body>
@@ -68,7 +96,29 @@ window.onload=updateStatus
 <div id="statusData">[No update yet]</div>
 <p>
 <button type="button" onclick="updateStatusInternal()">Update status now</button>
+<p>
+<button onclick="document.getElementById('id01').style.display='block'" style="width:auto;">Add Backup Entry</button>
+
 </center>
+
+<div id="id01" class="modal">
+  
+  <form class="modal-content animate" action="/createEntry">
+    <div class="container">
+      <center>
+      <label for="uname"><b>Local file path</b></label>
+      <input type="text" placeholder="Enter local directory" "size=50" name="uname" required>
+
+      <label for="psw"><b>Cloud path</b></label>
+      <input type="text" placeholder="Enter cloud directory" size="50" name="psw" required>
+        
+      <button type="submit">Create Entry</button>
+
+      <button type="button" onclick="document.getElementById('id01').style.display='none'" class="cancelbtn">Cancel</button>
+      </center>
+    </div>
+  </form>
+</div>
 
 </body>
 </html>
