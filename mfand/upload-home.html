@@ -9,6 +9,9 @@ table {
 }
 body {background: linear-gradient(90deg, rgba(255,192,96,0.9),rgba(192,192,255,0.9),rgba(128,64,255,0.9));
       font-size: large;}
+button {
+ background-color: rgba(128,128,255,0.2);
+}
 </style>
 </head>
 <body>
@@ -63,9 +66,9 @@ window.onload=updateStatus
 
 <center>
 <div id="statusData">[No update yet]</div>
-</center>
-
+<p>
 <button type="button" onclick="updateStatusInternal()">Update status now</button>
+</center>
 
 </body>
 </html>
