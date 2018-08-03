@@ -49,6 +49,20 @@ $v:loginText$
 </center>
 
 <script>
+function delConfirm(x) {
+    if (window.confirm("Really delete item " + (x+1) + "?")) {
+        var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function() {
+              alert("readystast status" + xhttp.readyState + " " + xhttp.status);
+              if (xhttp.readyState == 4 && xhttp.status == 200) {
+                  updateStatusInternal();
+              }
+          };
+        xhttp.open("GET", "deleteItem?ix=" + x, true);
+        xhttp.send();
+    }
+};
+
 function updateStatusInternal() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -72,20 +86,6 @@ function updateStatus() {
   };
   xhttp.open("GET", "statusData", true);
   xhttp.send();
-}
-
-function loadConfig() {
-  var xhttp = new XMLHttpRequest();
-  xhttp.onreadystatechange = function() {
-      if (xhttp.readyState == 4 && xhttp.status == 200) {
-        document.getElementById("loadConfig").innerHTML =
-          xhttp.responseText;
-      }
-  };
-  xhttp.open("GET", "loadConfig", true);
-  xhttp.send();
-
-  setInterval(updateStatus, 10000);
 }
 
 window.onload=updateStatus

@@ -461,6 +461,17 @@ public:
     void startMethod();
 };
 
+class UploadDeleteConfig : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadDeleteConfig(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
 /* static */ int32_t
 Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
 {
@@ -859,6 +870,7 @@ UploadStatusData::startMethod()
     std::string bytesString;
     std::string errorsString;
     std::string skippedString;
+    std::string editString;
     Uploader *uploaderp;
     UploadEntry *ep;
     uint32_t i;
@@ -872,7 +884,9 @@ UploadStatusData::startMethod()
         response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>"
             "Bytes copied</th><th>"
             "Files skipped</th><th>"
-            "Failures</th><th>State</th></tr>\n";
+            "Failures</th><th>"
+            "State</th><th>"
+            "Edit</th></tr>\n";
         for(i=0;i<UploadApp::_maxUploaders;i++) {
             ep = uploadApp->_uploadEntryp[i];
             if (!ep)
@@ -886,13 +900,16 @@ UploadStatusData::startMethod()
             skippedString = std::string(tbuffer);
             sprintf(tbuffer, "%ld failures", (long) (uploaderp? uploaderp->_fileCopiesFailed : 0));
             errorsString = std::string(tbuffer);
+            sprintf(tbuffer, "<a href=\"/\" onclick=\"delConfirm(%d); return false\">Delete</a>", i);
+            editString = std::string(tbuffer);
             response += ("<tr><td>"+ep->_fsRoot+"</td><td>" +
                          ep->_cloudRoot+ "</td><td>" +
                          filesString + "</td><td>" +
                          bytesString + "</td><td>" +
                          skippedString + "</td><td>" +
                          errorsString + "</td><td>" +
-                         (uploaderp? uploaderp->getStatusString() : "Idle") + "</td></tr>\n");
+                         (uploaderp? uploaderp->getStatusString() : "Idle") + "</td><td>" +
+                         editString + "</td></tr>\n");
         }
         response += "</table>\n";
         obufferp = const_cast<char *>(response.c_str());
@@ -931,6 +948,48 @@ UploadLoadConfig::startMethod()
     else {
         strcpy(tbuffer, "Data From Config");
         obufferp = tbuffer;
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadDeleteConfig::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    std::string authToken;
+        
+    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+        strcpy(tbuffer, "No app running to load config; visit home page first<p>"
+               "<a href=\"/\">Home screen</a>");
+        obufferp = tbuffer;
+    }
+    else {
+        code = getConn()->interpretFile((char *) "upload-edit.html", &dict, &response);
+
+        if (code != 0) {
+            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            obufferp = tbuffer;
+        }
+        else {
+            obufferp = const_cast<char *>(response.c_str());
+        }
     }
 
     setSendContentLength(strlen(obufferp));
@@ -992,6 +1051,14 @@ UploadLoadConfig::factory(std::string *opcodep, SApi *sapip)
     return reqp;
 }
 
+SApi::ServerReq *
+UploadDeleteConfig::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadDeleteConfig *reqp;
+    reqp = new UploadDeleteConfig(sapip);
+    return reqp;
+}
+
 void
 server(int argc, char **argv, int port, std::string pathPrefix)
 {
@@ -1010,7 +1077,8 @@ server(int argc, char **argv, int port, std::string pathPrefix)
     sapip->registerUrl("/stopBackups", &UploadStopScreen::factory);
     sapip->registerUrl("/pauseBackups", &UploadPauseScreen::factory);
     sapip->registerUrl("/statusData", &UploadStatusData::factory);
-    sapip->registerUrl("/loadConfig", &UploadLoadConfig::factory);
+    sapip->registerUrl("/loadConfig", &UploadLoadConfig::factory);// do we need this?
+    sapip->registerUrl("/deleteItem", &UploadDeleteConfig::factory);
 
     while(1) {
         sleep(1);
