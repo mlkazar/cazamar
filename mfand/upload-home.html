@@ -53,7 +53,6 @@ function delConfirm(x) {
     if (window.confirm("Really delete item " + (x+1) + "?")) {
         var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = function() {
-              alert("readystast status" + xhttp.readyState + " " + xhttp.status);
               if (xhttp.readyState == 4 && xhttp.status == 200) {
                   updateStatusInternal();
               }
@@ -106,11 +105,11 @@ window.onload=updateStatus
   <form class="modal-content animate" action="/createEntry">
     <div class="container">
       <center>
-      <label for="uname"><b>Local file path</b></label>
-      <input type="text" placeholder="Enter local directory" "size=50" name="uname" required>
+      <label for="fspath"><b>Local file path</b></label>
+      <input type="text" placeholder="Enter local directory" "size=50" name="fspath" required>
 
-      <label for="psw"><b>Cloud path</b></label>
-      <input type="text" placeholder="Enter cloud directory" size="50" name="psw" required>
+      <label for="cloudpath"><b>Cloud path</b></label>
+      <input type="text" placeholder="Enter cloud directory" size="50" name="cloudpath" required>
         
       <button type="submit">Create Entry</button>
 

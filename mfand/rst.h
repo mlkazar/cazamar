@@ -288,6 +288,8 @@ class Rst {
     static void dumpBytes(char *bufferp,  uint64_t inOffset, uint32_t count);
 
     static std::string urlEncode(std::string *inp);
+
+    static std::string urlDecode(std::string *inp);
 };
 
 #endif /*  __RST_H_ENV__ */

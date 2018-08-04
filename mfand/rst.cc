@@ -860,6 +860,46 @@ Rst::dumpBytes(char *bufferp, uint64_t inOffset, uint32_t count)
     }
 }
 
+/* static */ std::string
+Rst::urlDecode(std::string *inStrp)
+{
+    const char *inp = inStrp->c_str();
+    std::string result;
+    int tc;
+    int uc;
+
+    while((tc = *inp++) != 0) {
+        if (tc == '%') {
+            /* decode next two chars */
+            uc = *inp++;
+            if (uc >= '0' && uc <= '9')
+                tc = (uc - '0');
+            else if (uc >= 'A' && uc <= 'F')
+                tc = uc - 'A' + 10;
+            else if (uc >= 'a' && uc <= 'f')
+                tc = uc - 'a' + 10;
+            else
+                tc = 0;
+            tc = tc<<4;         /* first digit of hex number */
+
+            uc = *inp++;
+            if (uc >= '0' && uc <= '9')
+                tc += (uc - '0');
+            else if (uc >= 'A' && uc <= 'F')
+                tc += uc - 'A' + 10;
+            else if (uc >= 'a' && uc <= 'f')
+                tc += uc - 'a' + 10;
+
+            result.append(1, tc);
+
+        }
+        else
+            result.append(1, tc);
+    }
+
+    return result;
+}
+
 /* static */std::string
 Rst::urlEncode(std::string *inStrp)
 {

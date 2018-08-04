@@ -125,6 +125,10 @@ public:
         _app = NULL;
         _lastFinishedTime = 0;
     }
+
+    ~UploadEntry();
+
+    void stop();
 };
 
 class Uploader {
@@ -186,6 +190,13 @@ public:
                 _status = STOPPED;
         }
         return _status;
+    }
+
+    int isIdle() {
+        if (_status == STOPPED && _disp->isAllDone())
+            return 1;
+        else
+            return 0;
     }
 
     std::string getStatusString() {
@@ -306,6 +317,8 @@ public:
     }
 
     int32_t addConfigEntry(std::string cloudRoot, std::string fsRoot, uint64_t lastFinishedTime);
+
+    int32_t deleteConfigEntry(int32_t ix);
 
     void stop() {
         uint32_t i;
@@ -466,6 +479,17 @@ public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
 
     UploadDeleteConfig(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
+class UploadCreateConfig : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadCreateConfig(SApi *sapip) : SApi::ServerReq(sapip) {
         return;
     }
 
@@ -669,6 +693,24 @@ UploadApp::readConfig(std::string pathPrefix)
 }
 
 int32_t
+UploadApp::deleteConfigEntry(int32_t ix)
+{
+    UploadEntry *ep;
+
+    if (ix < 0 || ix >= _maxUploaders)
+        return -1;
+
+    if ((ep = _uploadEntryp[ix]) == NULL)
+        return -2;
+
+    ep->stop();
+    _uploadEntryp[ix] = NULL;
+    delete ep;
+
+    return 0;
+}
+
+int32_t
 UploadApp::addConfigEntry(std::string cloudRoot, std::string fsRoot, uint64_t lastFinishedTime)
 {
     UploadEntry *ep;
@@ -720,7 +762,7 @@ UploadStartScreen::startMethod()
     int loggedIn = 0;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        strcpy(tbuffer, "No app; visit home page first<p><a href=\"/\">Home screen</a>");
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">Home screen</a></html>");
         obufferp = tbuffer;
     }
     else {
@@ -733,21 +775,20 @@ UploadStartScreen::startMethod()
             authToken = loginCookiep->getActive()->getAuthToken();
 
         if (authToken.length() == 0) {
-            strcpy(tbuffer, "Must login before doing backups<p><a href=\"/\"Home screen</a>");
+            strcpy(tbuffer, "<html>Must login before doing backups<p><a href=\"/\">Home screen</a></html>");
             obufferp = tbuffer;
-            code = 0;
+            code = -1;
         }
         else {
             code = getConn()->interpretFile((char *) "upload-start.html", &dict, &response);
-        }
-
-        if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
-            obufferp = tbuffer;
-        }
-        else {
-            obufferp = const_cast<char *>(response.c_str());
-            loggedIn = 1;
+            if (code != 0) {
+                sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+                obufferp = tbuffer;
+            }
+            else {
+                obufferp = const_cast<char *>(response.c_str());
+                loggedIn = 1;
+            }
         }
     }
 
@@ -781,8 +822,8 @@ UploadStopScreen::startMethod()
     std::string authToken;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        strcpy(tbuffer, "No app running to stop; visit home page first<p>"
-               "<a href=\"/\">Home screen</a>");
+        strcpy(tbuffer, "<html>No app running to stop; visit home page first<p>"
+               "<a href=\"/\">Home screen</a></html>");
         obufferp = tbuffer;
     }
     else {
@@ -941,13 +982,79 @@ UploadLoadConfig::startMethod()
     std::string authToken;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        strcpy(tbuffer, "No app running to load config; visit home page first<p>"
-               "<a href=\"/\">Home screen</a>");
+        strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
+               "<a href=\"/\">Home screen</a></html>");
         obufferp = tbuffer;
     }
     else {
         strcpy(tbuffer, "Data From Config");
         obufferp = tbuffer;
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadCreateConfig::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    std::string authToken;
+    dqueue<Rst::Hdr> *urlPairsp;
+    Rst::Hdr *hdrp;
+    std::string filePath;
+    std::string cloudPath;
+    int noCreate = 0;
+        
+    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+        strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
+               "<a href=\"/\">Home screen</a></html>");
+        obufferp = tbuffer;
+        noCreate = 1;
+    }
+    else {
+        code = getConn()->interpretFile((char *) "upload-add.html", &dict, &response);
+
+        if (code != 0) {
+            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            obufferp = tbuffer;
+        }
+        else {
+            obufferp = const_cast<char *>(response.c_str());
+        }
+        
+    }
+
+    urlPairsp = getRstReq()->getUrlPairs();
+    for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
+        if (hdrp->_key == "fspath")
+            filePath = Rst::urlDecode(&hdrp->_value);
+        else if (hdrp->_key == "cloudpath")
+            cloudPath = Rst::urlDecode(&hdrp->_value);
+    }
+
+    if (filePath.length() == 0 || cloudPath.length() == 0) {
+        strcpy(tbuffer, "One of file or cloud path is empty");
+        noCreate = 1;
+    }
+
+    if (!noCreate) {
+        uploadApp->addConfigEntry(cloudPath, filePath, 0);
     }
 
     setSendContentLength(strlen(obufferp));
@@ -973,24 +1080,29 @@ UploadDeleteConfig::startMethod()
     CThreadPipe *outPipep = getOutgoingPipe();
     std::string loginHtml;
     UploadApp *uploadApp;
-    std::string authToken;
+    dqueue<Rst::Hdr> *urlPairsp;
+    Rst::Hdr *hdrp;
+    int ix;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        strcpy(tbuffer, "No app running to load config; visit home page first<p>"
-               "<a href=\"/\">Home screen</a>");
-        obufferp = tbuffer;
+        strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
+               "<a href=\"/\">Home screen</a></html>");
     }
     else {
-        code = getConn()->interpretFile((char *) "upload-edit.html", &dict, &response);
+        strcpy(tbuffer, "DONE");
+    }
+    obufferp = tbuffer;
 
-        if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
-            obufferp = tbuffer;
-        }
-        else {
-            obufferp = const_cast<char *>(response.c_str());
+    urlPairsp = getRstReq()->getUrlPairs();
+    ix = -1;
+    for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
+        if (hdrp->_key == "ix") {
+            ix = atoi(hdrp->_value.c_str());
         }
     }
+
+    if (ix >= 0)
+        uploadApp->deleteConfigEntry(ix);
 
     setSendContentLength(strlen(obufferp));
 
@@ -1059,6 +1171,14 @@ UploadDeleteConfig::factory(std::string *opcodep, SApi *sapip)
     return reqp;
 }
 
+SApi::ServerReq *
+UploadCreateConfig::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadCreateConfig *reqp;
+    reqp = new UploadCreateConfig(sapip);
+    return reqp;
+}
+
 void
 server(int argc, char **argv, int port, std::string pathPrefix)
 {
@@ -1079,8 +1199,24 @@ server(int argc, char **argv, int port, std::string pathPrefix)
     sapip->registerUrl("/statusData", &UploadStatusData::factory);
     sapip->registerUrl("/loadConfig", &UploadLoadConfig::factory);// do we need this?
     sapip->registerUrl("/deleteItem", &UploadDeleteConfig::factory);
+    sapip->registerUrl("/createEntry", &UploadCreateConfig::factory);
 
     while(1) {
+        sleep(1);
+    }
+}
+
+UploadEntry::~UploadEntry() {
+    osp_assert(!_uploaderp || _uploaderp->isIdle());
+    delete _uploaderp;
+}
+
+void
+UploadEntry::stop() {
+    if (!_uploaderp)
+        return;
+    _uploaderp->stop();
+    while(!_uploaderp->isIdle()) {
         sleep(1);
     }
 }
