@@ -297,6 +297,8 @@ public:
     UploadEntry *_uploadEntryp[_maxUploaders]; /* array of pointers to UploaderEntries */
     SApiLoginCookie *_loginCookiep;
     std::string _pathPrefix;
+    std::string fsRoot;
+    std::string cloudRoot;
 
     UploadApp(std::string pathPrefix) {
         uint32_t i;
@@ -309,10 +311,13 @@ public:
         readConfig(pathPrefix);
 
         /* TBD: get this from some configuration mechanism */
-#ifdef __linux__
-        addConfigEntry("/TestDir", "/home/pi/UpTest", 0);
-#else
-        addConfigEntry("/TestDir", "/Users/kazar/bin", 0);
+#ifndef __linux__
+        if (_uploadEntryp[0] == NULL) {
+            fsRoot = std::string(getenv("HOME")) + "/Pictures";
+            cloudRoot = "/" + std::string(getenv("USER")) + "_backups";
+            addConfigEntry(cloudRoot, fsRoot, 0);
+            writeConfig(pathPrefix);
+        }
 #endif
     }
 
@@ -376,6 +381,8 @@ public:
     }
 
     void readConfig(std::string pathPrefix);
+
+    int32_t writeConfig(std::string pathPrefix);
 };
 
 /* This is the main program for the test application; it just runs the
@@ -660,8 +667,7 @@ UploadApp::readConfig(std::string pathPrefix)
 
     /* read the json from the file -- it's a structure with an array
      * named backupEntries, each of which contains tags cloudRoot,
-     * fsRoot, lastFinishedTime, lastFinishedErrors, lastFinishedFiles
-     * and lastFinishedBytes.
+     * fsRoot, and lastFinishedTime.
      */
     tnodep = rootNodep->searchForChild("backupEntries"); /* find name node */
     if (tnodep) {
@@ -690,6 +696,90 @@ UploadApp::readConfig(std::string pathPrefix)
     }
 
     fclose(filep);
+}
+
+int32_t
+UploadApp::writeConfig(std::string pathPrefix)
+{
+    Json json;
+    Json::Node *rootNodep;
+    Json::Node *nnodep;
+    Json::Node *tnodep;
+    Json::Node *snodep;
+    Json::Node *arrayNodep;
+    FILE *filep;
+    uint32_t i;
+    UploadEntry *ep;
+    std::string fileName;
+    std::string result;
+    int32_t code;
+    int32_t tcode;
+
+    /* construct the json tree */
+    rootNodep = new Json::Node();
+    rootNodep->initStruct();
+
+    /* create array */
+    arrayNodep = new Json::Node();
+    arrayNodep->initArray();
+
+    /* wrap name around array, and plug it into the root node */
+    nnodep = new Json::Node();
+    nnodep->initNamed("backupEntries", arrayNodep);
+    rootNodep->appendChild(nnodep);
+
+    for(i=0;i<_maxUploaders;i++) {
+        if ((ep = _uploadEntryp[i]) != NULL) {
+            snodep = new Json::Node();
+            snodep->initStruct();
+
+            tnodep = new Json::Node();
+            tnodep->initString(ep->_cloudRoot.c_str(), 1);
+            nnodep = new Json::Node();
+            nnodep->initNamed("cloudRoot", tnodep);
+            snodep->appendChild(nnodep);
+
+            tnodep = new Json::Node();
+            tnodep->initString(ep->_fsRoot.c_str(), 1);
+            nnodep = new Json::Node();
+            nnodep->initNamed("fsRoot", tnodep);
+            snodep->appendChild(nnodep);
+
+            tnodep = new Json::Node();
+            tnodep->initInt(ep->_lastFinishedTime);
+            nnodep = new Json::Node();
+            nnodep->initNamed("lastFinishedTime", tnodep);
+            snodep->appendChild(nnodep);
+
+            arrayNodep->appendChild(snodep);
+        } /* entry exists */
+    } /* for each uploader */
+
+    /* at this point, we unmarshal the tree into the file */
+    fileName = pathPrefix + "config.js";
+    filep = fopen(fileName.c_str(), "w");
+    if (!filep) {
+        printf("can't open config.js\n");
+        delete rootNodep;
+        return -1;
+    }
+
+    /* create the string; we always have to close the file, but we only 
+     * care about the code from close if the write succeded.
+     */
+    rootNodep->unparse(&result);
+    code = fwrite(result.c_str(), result.length(), 1, filep);
+    if (code == 1)
+        code = 0;
+    else
+        code = -1;
+
+    tcode = fclose(filep);
+    if (code == 0)
+        code = tcode;
+
+    delete rootNodep;
+    return code;
 }
 
 int32_t
@@ -1055,6 +1145,7 @@ UploadCreateConfig::startMethod()
 
     if (!noCreate) {
         uploadApp->addConfigEntry(cloudPath, filePath, 0);
+        uploadApp->writeConfig(uploadApp->_pathPrefix);
     }
 
     setSendContentLength(strlen(obufferp));
@@ -1101,8 +1192,10 @@ UploadDeleteConfig::startMethod()
         }
     }
 
-    if (ix >= 0)
+    if (ix >= 0) {
         uploadApp->deleteConfigEntry(ix);
+        uploadApp->writeConfig(uploadApp->_pathPrefix);
+    }
 
     setSendContentLength(strlen(obufferp));
 
