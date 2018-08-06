@@ -24,6 +24,7 @@
 #include "bufgen.h"
 
 class BufTls : public BufGen {
+    static const uint32_t _defaultBaseTimeoutMs = 60000;
     int _s;
 
     OspMBuf *_outp;
@@ -38,6 +39,7 @@ class BufTls : public BufGen {
     static const SSL_METHOD *_sslClientMethodp;
     static const SSL_METHOD *_sslServerMethodp;
     SSL *_sslp;
+    uint32_t _baseTimeoutMs;
 
 
     int32_t fillFromSocket(OspMBuf *mbp);
@@ -96,6 +98,7 @@ class BufTls : public BufGen {
         _connected = 0;
         _verbose = 0;
         _sslp = NULL;
+        _baseTimeoutMs = _defaultBaseTimeoutMs;
     }
 
     ~BufTls();

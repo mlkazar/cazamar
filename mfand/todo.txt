@@ -3,7 +3,9 @@
 * SApiLoginCookie needs save/restore functionality
 
 abort connections on bad errors, in case bytes are out of sequence.  make sure we
-abort connections if
+abort connections if can't recognize HTTP response line or if we timeout
+  make connections reusable, but temporarily reset on protocol errors
+  reset on HTTP or ICY not showing up in Rst::Call::sendOperation
 
 * use refresh token
 
@@ -15,7 +17,7 @@ abort connections if
 
 factor uptest into library, used by Upload
 
-check for memory leaks (how)
+check for memory leaks (how?)
 
 check for concurrency issues with sapi
 
@@ -27,6 +29,6 @@ crank up concurrency level to 32
 
 URL encode file names in MS calls
 
-better GUI for tracking, controlling backup
+* better GUI for tracking, controlling backup
 
 age out old keyserv entries

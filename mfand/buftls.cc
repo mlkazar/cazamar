@@ -197,14 +197,37 @@ BufTls::doSetup(uint16_t srcPort)
         return -errno;
     }
 
-#if 0
-    opt = 30;
-    code = setsockopt(_s, IPPROTO_TCP, TCPCTL_KEEPINIT, &opt, sizeof(opt));
+#ifndef __linux__
+    opt = _baseTimeoutMs/1000;
+    code = setsockopt(_s, IPPROTO_TCP, TCP_CONNECTIONTIMEOUT, &opt, sizeof(opt));
     if (code < 0) {
-        perror("setsock2");
+        perror("setsock4");
+        return -errno;
+    }
+
+    opt = 5;
+    code = setsockopt(_s, IPPROTO_TCP, TCP_KEEPALIVE, &opt, sizeof(opt));
+    if (code < 0) {
+        perror("setsock5");
         return -errno;
     }
 #endif
+
+    opt = 5;
+    code = setsockopt(_s, IPPROTO_TCP, TCP_KEEPINTVL, &opt, sizeof(opt));
+    if (code < 0) {
+        perror("setsock6");
+        return -errno;
+    }
+
+    opt = _baseTimeoutMs / 5000;
+    if (opt <= 0)
+        opt = 1;
+    code = setsockopt(_s, IPPROTO_TCP, TCP_KEEPCNT, &opt, sizeof(opt));
+    if (code < 0) {
+        perror("setsock7");
+        return -errno;
+    }
 
     return 0;
 }
