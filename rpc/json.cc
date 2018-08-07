@@ -495,7 +495,9 @@ Json::parseJsonChars(char **inDatapp, Json::Node **nodepp)
     return code;
 }
 
-/* external function */
+/* external function; note that the FILE * gets closed and freed on both error
+ * and success returns.
+ */
 int32_t
 Json::parseJsonFile(FILE *filep, Json::Node **nodepp)
 {

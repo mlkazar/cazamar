@@ -338,13 +338,7 @@ int32_t
 BufTls::read(char *bufferp, int32_t acount)
 {
     int32_t i;
-    int32_t code;
     int tc;
-
-#if 0
-    code = doConnect();
-    if (code) return code;
-#endif
 
     if (_verbose)
         printf("TLS=%p read start ct=%d:", this, acount);

@@ -1,4 +1,4 @@
-all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a liblfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest walktest uptest
+all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libupload.a liblfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest walktest uptest
 
 install: all *.h
 	cp *.h ../include/.
@@ -21,7 +21,7 @@ endif
 RSTINCLS=rst.h bufsocket.h bufgen.h buftls.h jsdb.h
 
 INCLS=../include/*.h mfclient.h mfdata.h mfand.h $(RSTINCLS) radiostream.h xapi.h xapipool.h \
-strdb.h upnp.h radixtree.h streams.h sapi.h sapilogin.h
+strdb.h upnp.h radixtree.h streams.h sapi.h sapilogin.h upload.h
 
 liboauth.a: oahash.o oauth.o oasha1.o oapass.o oaxmalloc.o
 	ar cru liboauth.a oahash.o oauth.o oasha1.o oapass.o oaxmalloc.o 
@@ -49,6 +49,10 @@ liblfs.a: walkdisp.o
 libcfs.a: cfs.o cfsms.o
 	ar cru libcfs.a cfs.o cfsms.o
 	ranlib libcfs.a
+
+libupload.a: upload.o
+	ar cru libupload.a upload.o
+	ranlib libupload.a
 
 rst.o: $(RSTINCLS)
 
@@ -160,11 +164,11 @@ cfstest: cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local
 endif
 
 ifeq ($(OS),Linux)
-uptest: uptest.o libcfs.a liblfs.a  librst.a ../lib/libext.a ../lib/libcore.a
-	c++ $(OSXVERSION) -o uptest uptest.o libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
+uptest: uptest.o libupload.a libcfs.a liblfs.a  librst.a ../lib/libext.a ../lib/libcore.a
+	c++ $(OSXVERSION) -o uptest uptest.o libupload.a libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
 else
-uptest: uptest.o libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o uptest uptest.o libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+uptest: uptest.o libupload.a libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+	c++ $(OSXVERSION) -o uptest uptest.o libupload.a libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
 endif
 
 ifeq ($(OS),Linux)
