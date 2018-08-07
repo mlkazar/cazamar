@@ -15,9 +15,7 @@
 
 * single file upload when possible
 
-factor uptest into library, used by Upload
-
-check for memory leaks (how?)
+* factor uptest into library, used by Upload
 
 check for concurrency issues with sapi
 
@@ -32,3 +30,5 @@ URL encode file names in MS calls
 * better GUI for tracking, controlling backup
 
 age out old keyserv entries
+
+check for memory leaks (how?)
