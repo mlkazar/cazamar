@@ -12,6 +12,7 @@ SSL_CTX *BufTls::_sslServerContextp;
 const SSL_METHOD *BufTls::_sslClientMethodp;
 const SSL_METHOD *BufTls::_sslServerMethodp;
 
+/* server side */
 void
 BufTls::init(struct sockaddr *sockAddrp, int socklen)
 {
@@ -26,6 +27,7 @@ BufTls::init(struct sockaddr *sockAddrp, int socklen)
     _connected = 1;
     _listening = 0;
     _verbose = 0;
+    _server = 1;
 }
 
 int32_t
@@ -293,8 +295,11 @@ BufTls::getc()
     int32_t code;
     unsigned char tc;
 
+#if 0
+    // don't need to connect on a read, and might mess things up on protocol error recovery
     code = doConnect();
     if (code) return code;
+#endif
 
     while(1) {
         code = SSL_read(_sslp, (char *) &tc, sizeof(tc));
@@ -336,8 +341,10 @@ BufTls::read(char *bufferp, int32_t acount)
     int32_t code;
     int tc;
 
+#if 0
     code = doConnect();
     if (code) return code;
+#endif
 
     if (_verbose)
         printf("TLS=%p read start ct=%d:", this, acount);
@@ -516,6 +523,7 @@ BufTls::flush()
     }
 }
 
+/* client side */
 void
 BufTls::init(char *namep, uint32_t defaultPort)
 {
@@ -601,6 +609,7 @@ BufTls::init(char *namep, uint32_t defaultPort)
     _closed = 0;
     _connected = 0;
     _listening = (namep? 0 : 1);
+    _server = 0;
 }
 
 

@@ -2,8 +2,8 @@
 
 * SApiLoginCookie needs save/restore functionality
 
-abort connections on bad errors, in case bytes are out of sequence.  make sure we
-abort connections if can't recognize HTTP response line or if we timeout
+* abort connections on bad errors, in case bytes are out of sequence.  make sure we
+* abort connections if can't recognize HTTP response line or if we timeout
   make connections reusable, but temporarily reset on protocol errors
   reset on HTTP or ICY not showing up in Rst::Call::sendOperation
 

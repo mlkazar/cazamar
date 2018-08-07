@@ -22,6 +22,7 @@ BufSocket::openLog()
     }
 }
 
+/* create server side connection.  They stay open until EOF and don't get reopened */
 void
 BufSocket::init(struct sockaddr *sockAddrp, int socklen)
 {
@@ -39,6 +40,7 @@ BufSocket::init(struct sockaddr *sockAddrp, int socklen)
     _listening = 0;
     _verbose = 0;
     _baseTimeoutMs = _defaultBaseTimeoutMs;
+    _server = 1;
 }
 
 int32_t
@@ -115,22 +117,35 @@ BufSocket::fillFromSocket(OspMBuf *mbp)
     pollFd.events = POLLIN;
     pollFd.revents = 0;
     code = (int32_t) ::poll(&pollFd, 1, _baseTimeoutMs);
-    if (code == 1)
+    if (code == 1) {
+        /* we have data available to read */
         code = (int32_t) ::read(_s, mbp->data(), mbp->bytesAtEnd());
-    else
+        if (code <= 0) {
+            /* this includes both errors and EOF.  In both cases, we close the socket */
+            if (code < 0)
+                _error = errno;
+            disconnect();
+        }
+        else {
+            /* we have real data */
+            if (_verbose) {
+                printf("bufsocket: incoming data: %s\n", mbp->data());
+            }
+            mbp->pushNBytesNoCopy(code);
+        }
+    }
+    else if (code == 0) {
+        /* here on a poll timeout.  In this case, we abandon the call and close the
+         * connection.
+         */
+        disconnect();
         code = -1;
-
-    if (code <= 0) {
-        if (code < 0)
-            _error = errno;
-        _closed = 1;
     }
     else {
-        /* read some data */
-        if (_verbose) {
-            printf("bufsocket: incoming data: %s\n", mbp->data());
-        }
-        mbp->pushNBytesNoCopy(code);
+        /* poll call failed, return failure */
+        _error = errno;
+        disconnect();
+        code = -1;
     }
         
     return (code >= 0? 0 : -1);
@@ -163,7 +178,7 @@ BufSocket::doSetup(uint16_t srcPort)
 #endif
 
     /* if connection has been manually closed or aborted */
-    if (_closed)
+    if (_server && _closed)
         return -1;
 
     if (_s != -1) {
@@ -276,7 +291,8 @@ BufSocket::disconnect()
     _connected = 0;
     _closed = 1;
     printf("bufsocket close fd=%d\n", _s);
-    close(_s);
+    if (_s >= 0)
+        close(_s);
     _s = -1;
 }
 
@@ -288,7 +304,8 @@ BufSocket::doConnect()
     if (_connected)
         return 0;
 
-    if (_closed)
+    /* we can't reopen closed server conns -- they have to reconnect to us */
+    if (_server && _closed)
         return -1;
 
     code = doSetup(0);
@@ -319,9 +336,6 @@ BufSocket::getc()
 {
     char *datap;
     int32_t code;
-
-    code = doConnect();
-    if (code) return code;
 
     if (_inp->dataBytes() <= 0) {
         if (!_inp)
@@ -496,6 +510,16 @@ BufSocket::flush()
     }
 }
 
+/* create client side connection; rule for client-side conns is that
+ * they get opened on first write, and stay open until EOF, when we
+ * set closed and turn off connected.  On the next write afterwards,
+ * we reopen the connection.
+ *
+ * The idea is to be able to handle single request applications as
+ * well as multiple requests, and to be able to reopen a connection
+ * using the same bufsocket even after a protocol error that requires
+ * closing the connection for error recovery
+ */
 void
 BufSocket::init(char *namep, uint32_t defaultPort)
 {
@@ -516,6 +540,7 @@ BufSocket::init(char *namep, uint32_t defaultPort)
     _connected = 0;
     _listening = (namep? 0 : 1);
     _verbose = 0;
+    _server = 0;
 }
 
 

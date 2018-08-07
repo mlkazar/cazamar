@@ -526,6 +526,15 @@ Rst::Call::sendOperation()
         return code;
 
     /* skip "HTTP/1.x or ICY " */
+    if (strncasecmp(tbuffer, "ICY", 3) != 0 &&
+        strncasecmp(tbuffer, "HTTP", 4) != 0) {
+        /* serious protocol error, reset the connection and fail.  It will get reopened
+         * on the next call.
+         */
+        socketp->disconnect();
+        return -2;
+    }
+
     tp = strchr(tbuffer, ' ');
     if (tp)
         code = (int32_t) strtol(tp, NULL, 10);

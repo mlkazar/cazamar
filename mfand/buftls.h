@@ -32,6 +32,7 @@ class BufTls : public BufGen {
     uint8_t _closed;
     uint8_t _connected;
     uint8_t _verbose;
+    uint8_t _server;
     std::string _pathPrefix;
 
     static SSL_CTX *_sslClientContextp;

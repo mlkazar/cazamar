@@ -25,6 +25,7 @@ class BufSocket : public BufGen {
     uint8_t _closed;
     uint8_t _connected;
     uint8_t _verbose;
+    uint8_t _server;    /* server side connection */
     uint32_t _baseTimeoutMs;
 
     int32_t fillFromSocket(OspMBuf *mbp);
