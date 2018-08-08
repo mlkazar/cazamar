@@ -430,6 +430,7 @@ WriteTest::startMethod()
         std::string urlPath;
         XApi::ClientConn *uploadConnp;
         BufGen *uploadSocketp;
+        uint16_t port;
 
         const char *fileData = "This is a test for Jello Biafra\n";
 
@@ -438,9 +439,9 @@ WriteTest::startMethod()
 
         /* we should really be getting the default port from splitUrl */
         reqp->setSendContentLength(strlen(fileData));
-        Rst::splitUrl(&uploadUrl, &urlHost, &urlPath);
+        Rst::splitUrl(&uploadUrl, &urlHost, &urlPath, &port);
         uploadSocketp = new BufTls("");
-        uploadSocketp->init(const_cast<char *>(urlHost.c_str()), 443);
+        uploadSocketp->init(const_cast<char *>(urlHost.c_str()), port);
         uploadConnp = xapip->addClientConn(uploadSocketp);
         
         strcpy(tbuffer, urlPath.c_str());
@@ -788,15 +789,16 @@ ReadTest::startMethod()
         std::string urlPath;
         XApi::ClientConn *downloadConnp;
         BufGen *downloadSocketp;
+        uint16_t port;
 
         reqp = new XApi::ClientReq();
         printf("**sapitest req %p allocated\n", reqp);
 
         /* we should really be getting the default port from splitUrl */
         reqp->setSendContentLength(0);
-        Rst::splitUrl(&downloadUrl, &urlHost, &urlPath);
+        Rst::splitUrl(&downloadUrl, &urlHost, &urlPath, &port);
         downloadSocketp = new BufTls("");
-        downloadSocketp->init(const_cast<char *>(urlHost.c_str()), 443);
+        downloadSocketp->init(const_cast<char *>(urlHost.c_str()), port);
         downloadConnp = xapip->addClientConn(downloadSocketp);
         
         strcpy(tbuffer, urlPath.c_str());

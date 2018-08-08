@@ -735,14 +735,15 @@ CnodeMs::sendData( std::string *sessionUrlp,
     std::string id;
     uint32_t readCount;
     int32_t actuallyReadCount;
+    uint16_t port;
     
-    Rst::splitUrl(sessionUrlp, &sessionHost, &sessionRelativeUrl);
+    Rst::splitUrl(sessionUrlp, &sessionHost, &sessionRelativeUrl, &port);
 
     osp_assert(byteCount < 4*1024*1024);
     dataBufferp = new char[byteCount];
 
     while(1) {
-        connp = _cfsp->_xapiPoolp->getConn(sessionHost, 443, /* TLS */ 1);
+        connp = _cfsp->_xapiPoolp->getConn(sessionHost, port, /* TLS */ 1);
         /* read some bytes */
         readCount = (byteOffset + byteCount > fileLength?
                      fileLength - byteOffset :

@@ -425,22 +425,28 @@ Rst::Call::init( const char *relPathp,
     return code;
 }
 
-/* XXXX should return default port of 80 or 443 if https */
 /* static */ int32_t
-Rst::splitUrl(std::string *urlp, std::string *hostp, std::string *pathp)
+Rst::splitUrl(std::string *urlp, std::string *hostp, std::string *pathp, uint16_t *defaultPortp)
 {
     char *tp;
     char *urlStrp;
+    char *portp;
+    uint16_t defaultPort;
 
     urlStrp = const_cast<char *>(urlp->c_str());
 
     if (strncasecmp(urlStrp, "http://", 7) == 0) {
         urlp->erase(0,7);
         urlStrp = const_cast<char *>(urlp->c_str());
+        defaultPort = 80;
     }
     else if (strncasecmp(urlStrp, "https://", 8) == 0) {
         urlp->erase(0,8);
         urlStrp = const_cast<char *>(urlp->c_str());
+        defaultPort = 443;
+    }
+    else {
+        defaultPort = 80;
     }
 
     tp = strchr(urlStrp, '/');
@@ -453,6 +459,15 @@ Rst::splitUrl(std::string *urlp, std::string *hostp, std::string *pathp)
         *hostp = std::string(urlStrp, tp-urlStrp);
         *pathp = std::string(tp);
     }
+
+    /* if there's a ':' in the hostname, it is the TCP port to use */
+    portp = index(hostp->c_str(), ':');
+    if (portp != NULL) {
+        defaultPort = atoi(portp+1);
+    }
+
+    if (defaultPortp)
+        *defaultPortp = defaultPort;
     return 0;
 }
 

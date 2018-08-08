@@ -449,13 +449,13 @@ RadioStream::init( BufGenFactory *factoryp,
 
     /* parse incoming string */
     url = urlp;
-    Rst::splitUrl(&url, &hostName, &path);
+    _defaultPort = 80;
+    Rst::splitUrl(&url, &hostName, &path, &_defaultPort);
     hostNamep = hostName.c_str();
     pathp = path.c_str();
     
     _isIcecast = 0;
     _icecastSetup = 0;
-    _defaultPort = 80;
     _failedCallsSinceData = 0;
     _streaming = 0;     /* have we started streaming audio yet */
     _bufSocketp = NULL;
@@ -561,7 +561,7 @@ RadioStream::init( BufGenFactory *factoryp,
         playlistUrlp = &_playlistHost;
         if ( playlistUrlp->length() > 0) {
             /* playlist received and directs us to a new host */
-            code = Rst::splitUrl(playlistUrlp, &hostName, &path);
+            code = Rst::splitUrl(playlistUrlp, &hostName, &path, &_defaultPort);
             cleanup();
             if (code) {
                 break;

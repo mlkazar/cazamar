@@ -281,7 +281,10 @@ class Rst {
      * splits "foo" into "foo" and "/", i.e. special-cases non-existent relative path
      * to be "/".
      */
-    static int32_t splitUrl(std::string *urlp, std::string *hostp, std::string *pathp);
+    static int32_t splitUrl( std::string *urlp,
+                             std::string *hostp,
+                             std::string *pathp,
+                             uint16_t *defaultPortp = 0);
 
     static void freeHeaders(HdrQueue *hqp);
 

@@ -17,6 +17,8 @@
 
 * factor uptest into library, used by Upload
 
+* check for concurrency issues with rst
+
 check for concurrency issues with sapi
 
 check for concurrency issues with xapi

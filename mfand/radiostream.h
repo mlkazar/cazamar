@@ -60,7 +60,7 @@ class RadioStream {
     void *_contextp;
     dqueue<Rst::Hdr> _sendHeaders;
     dqueue<Rst::Hdr> _rcvHeaders;
-    uint32_t _defaultPort;
+    uint16_t _defaultPort;
     uint64_t _inOffset;
     char _icyMetaBuffer[_maxMeta+4];
     char *_icyMetap;
