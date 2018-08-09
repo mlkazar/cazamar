@@ -485,11 +485,14 @@ class SApi : public CThread {
 
     CookieEntry *findCookieEntry(std::string *strp) {
         CookieEntry *ep;
+        _lock.take();
         for(ep = _allCookieEntries.head(); ep; ep=ep->_dqNextp) {
             if (ep->_cookieId == *strp) {
+                _lock.release();
                 return ep;
             }
         }
+        _lock.release();
         return NULL;
     }
 

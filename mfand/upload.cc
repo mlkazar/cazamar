@@ -572,7 +572,8 @@ UploadStopScreen::startMethod()
     
     requestDone();
 
-    uploadApp->stop();
+    if (uploadApp)
+        uploadApp->stop();
 }
 
 void
@@ -616,7 +617,8 @@ UploadPauseScreen::startMethod()
     
     requestDone();
 
-    uploadApp->pause();
+    if (uploadApp)
+        uploadApp->pause();
 }
 
 void

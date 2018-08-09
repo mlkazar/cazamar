@@ -457,7 +457,9 @@ SApi::addCookieState(std::string cookieId)
 
     ep = new CookieEntry();
     ep->_cookieId = cookieId;
+    _lock.take();
     _allCookieEntries.append(ep);
+    _lock.release();
 
     return ep;
 }
@@ -621,9 +623,11 @@ SApi::registerUrl(const char *urlp, SApi::UrlCallback callback)
 {
     UrlEntry *urlEntryp;
 
+    _lock.take();
     for(urlEntryp = _allUrls.head(); urlEntryp; urlEntryp=urlEntryp->_dqNextp) {
         if (strcmp(urlEntryp->_urlPath.c_str(), urlp) == 0) {
             urlEntryp->_callback = callback;
+            _lock.release();
             return;
         }
     }
@@ -632,6 +636,7 @@ SApi::registerUrl(const char *urlp, SApi::UrlCallback callback)
     urlEntryp->_urlPath = std::string(urlp);
     urlEntryp->_callback = callback;
     _allUrls.append(urlEntryp);
+    _lock.release();
 }
 
 SApi::ServerReq *
@@ -639,14 +644,17 @@ SApi::dispatchUrl(std::string *urlp, SApi::ServerConn *connp, SApi *sapip)
 {
     UrlEntry *entryp;
     SApi::ServerReq *reqp;
+    UrlCallback *callbackp;
 
-    reqp = NULL;
-
+    _lock.take();
     for(entryp = sapip->_allUrls.head(); entryp; entryp = entryp->_dqNextp) {
         if (*urlp == entryp->_urlPath) {
-            reqp = entryp->_callback(urlp, sapip);
-            break;
+            callbackp = entryp->_callback;
+            _lock.release();
+            reqp = callbackp(urlp, sapip);
+            return reqp;
         }
     }
-    return reqp;
+    _lock.release();
+    return NULL;
 }
