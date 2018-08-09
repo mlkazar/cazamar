@@ -98,6 +98,12 @@ Uploader::start()
         printf("dir getattr failed code=%d\n", code);
     }
 
+    /* reset stats */
+    _filesCopied = 0;
+    _bytesCopied = 0;
+    _filesSkipped = 0;
+    _fileCopiesFailed = 0;
+
     /* copy the pictures directory to a subdir of testdir */
     _disp = new CDisp();
     printf("Created new cdisp at %p\n", _disp);
@@ -177,10 +183,11 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                 return 0;
             }
         }
-    }
 
-    up->_filesCopied++;
-    up->_bytesCopied += statp->st_size;
+        /* otherwise this is a data file we're copying */
+        up->_filesCopied++;
+        up->_bytesCopied += statp->st_size;
+    }
 
     if ((statp->st_mode & S_IFMT) == S_IFDIR) {
         /* do a mkdir */
@@ -661,7 +668,7 @@ UploadStatusData::startMethod()
             uploaderp = ep->_uploaderp;
             sprintf(tbuffer, "%ld files", (long) (uploaderp? uploaderp->_filesCopied : 0));
             filesString = std::string(tbuffer);
-            sprintf(tbuffer, "%ld bytes", (long) (uploaderp? uploaderp->_bytesCopied: 0));
+            sprintf(tbuffer, "%ld MB", (long) (uploaderp? uploaderp->_bytesCopied/1000000: 0));
             bytesString = std::string(tbuffer);
             sprintf(tbuffer, "%ld skipped", (long) (uploaderp? uploaderp->_filesSkipped : 0));
             skippedString = std::string(tbuffer);

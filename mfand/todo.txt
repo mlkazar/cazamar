@@ -27,7 +27,7 @@ check for concurrency issues with cfsms
 
 crank up concurrency level to 32
 
-URL encode file names in MS calls
+* URL encode file names in MS calls
   fix Rst::urlEncode to handle all unreserved chars
   implement urlPathEncode, including MS's examples except ":" and ";" which we will
     still encode
@@ -37,3 +37,5 @@ URL encode file names in MS calls
 age out old keyserv entries
 
 check for memory leaks (how?)
+
+reintegrate Upload mac app
