@@ -115,6 +115,7 @@ class CnodeMs : public Cnode {
                           uint64_t *sizep,
                           uint64_t *changeTimep,
                           uint64_t *modTimep,
+                          CAttr::FileType *fileTypep,
                           uint8_t *allFoundp = NULL);
 };
 

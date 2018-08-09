@@ -11,9 +11,16 @@ class Cnode;
 
 class CAttr {
  public:
+    enum FileType {
+        DIR,
+        FILE,
+        LINK,
+        UNKNOWN};
+
     uint64_t _length;
     uint64_t _mtime;    /* mod time in nanoseconds since 1/1/70 */
     uint64_t _ctime;    /* change time in same */
+    FileType _fileType;
 };
 
 class CDataSource {
@@ -103,11 +110,41 @@ class Cnode {
 /* one of these per file system instance */
 class Cfs {
  public:
+    typedef int32_t nameiProc( void *cxp,
+                               Cnode *nodep,
+                               std::string name,
+                               Cnode **outNodep,
+                               CEnv *envp);
+
     virtual int32_t root(Cnode **rootpp, CEnv *envp) = 0;
 
     int32_t splitPath(std::string path, std::string *dirPathp, std::string *namep);
 
-    int32_t namei(std::string path, Cnode **targetCnodepp, CEnv *envp);
+    int32_t nameInt( std::string path,
+                     nameiProc *procp,
+                     void *nameiContextp,
+                     Cnode **targetCnodepp,
+                     CEnv *envp);
+
+    int32_t namei( std::string path,
+                   Cnode **targetCnodepp,
+                   CEnv *envp);
+
+    int32_t mkpath( std::string path,
+                    Cnode **targetCnodepp,
+                    CEnv *envp);
+
+    static int32_t nameiCallback(void *cxp,
+                                 Cnode *nodep,
+                                 std::string name,
+                                 Cnode **outNodep,
+                                 CEnv *envp);
+
+    static int32_t mkpathCallback(void *cxp,
+                                  Cnode *nodep,
+                                  std::string name,
+                                  Cnode **outNodep,
+                                  CEnv *envp);
 
     int32_t stat(std::string path, CAttr *attrsp, CEnv *envp);
 

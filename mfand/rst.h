@@ -292,6 +292,8 @@ class Rst {
 
     static std::string urlEncode(std::string *inp);
 
+    static std::string urlPathEncode(std::string inStr);
+
     static std::string urlDecode(std::string *inp);
 };
 

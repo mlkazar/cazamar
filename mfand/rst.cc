@@ -930,46 +930,89 @@ Rst::urlEncode(std::string *inStrp)
     const char *inp = inStrp->c_str();
     std::string result;
     int tc;
+    int digit;
 
     while((tc = *inp++) != 0) {
-        if (tc == '!')
-            result += "%21";
-        else if (tc == '#')
-            result += "%23";
-        else if (tc == '$')
-            result += "%24";
-        else if (tc == '&')
-            result += "%26";
-        else if (tc == '\'')
-            result += "%27";
-        else if (tc == '(')
-            result += "%28";
-        else if (tc == ')')
-            result += "%29";
-        else if (tc == '*')
-            result += "%2A";
-        else if (tc == '+')
-            result += "%2B";
-        else if (tc == ',')
-            result += "%2C";
-        else if (tc == '/')
-            result += "%2F";
-        else if (tc == ':')
-            result += "%3A";
-        else if (tc == ';')
-            result += "%3B";
-        else if (tc == '=')
-            result += "%3D";
-        else if (tc == '?')
-            result += "%3F";
-        else if (tc == '@')
-            result += "%40";
-        else if (tc == '[')
-            result += "%5B";
-        else if (tc == ']')
-            result += "%5D";
-        else {
+        if ( (tc >= '0' && tc <= '9') ||
+             (tc >= 'a' && tc <= 'z') ||
+             (tc >= 'A' && tc <= 'Z') ||
+             tc == '-' ||
+             tc == '.' ||
+             tc == '_' ||
+             tc == '~') {
+            /* these must never be encoded */
             result.append(1, tc);
+        }
+        else {
+            /* encode all others */
+            result.append(1,'%');
+
+            digit = (tc & 0xF0) >> 4;
+            if (digit < 10)
+                result.append(1, '0' + digit);
+            else
+                result.append(1, 'A' + digit - 10);
+
+            digit = (tc & 0xF);
+            if (digit < 10)
+                result.append(1, '0' + digit);
+            else
+                result.append(1, 'A' + digit - 10);
+        }
+    }
+    return result;
+}
+
+/* static */std::string
+Rst::urlPathEncode(std::string inStr)
+{
+    const char *inp = inStr.c_str();
+    std::string result;
+    int tc;
+    int digit;
+
+    while((tc = *inp++) != 0) {
+        if ( (tc >= '0' && tc <= '9') ||
+             (tc >= 'a' && tc <= 'z') ||
+             (tc >= 'A' && tc <= 'Z') ||
+             tc == '-' ||
+             tc == '.' ||
+             tc == '_' ||
+             tc == '~' ||
+             tc == '@' ||
+             tc == '!' ||
+             tc == '$' ||
+             tc == '&' ||
+             tc == '\'' ||
+             tc == '(' ||
+             tc == ')' ||
+             tc == '*' ||
+             tc == '+' ||
+             tc == ',' ||
+             tc == '=') {
+            /* these are listed as not to be encoded in MS paths.
+             * Supposedly ':' and ';' also fit the bill, but we're
+             * ignoring that for now.  Colon is a delimeter in the MS
+             * paths, and ';' isn't listed in the Apple code they
+             * recommend.
+             */
+            result.append(1, tc);
+        }
+        else {
+            /* encode all others */
+            result.append(1,'%');
+
+            digit = (tc & 0xF0) >> 4;
+            if (digit < 10)
+                result.append(1, '0' + digit);
+            else
+                result.append(1, 'A' + digit - 10);
+
+            digit = (tc & 0xF);
+            if (digit < 10)
+                result.append(1, '0' + digit);
+            else
+                result.append(1, 'A' + digit - 10);
         }
     }
     return result;

@@ -36,8 +36,73 @@ Cfs::splitPath(std::string path, std::string *dirPathp, std::string *namep)
     return 0;
 }
 
+/* static */ int32_t
+Cfs::nameiCallback(void *cxp,
+                   Cnode *nodep,
+                   std::string name,
+                   Cnode **outNodepp,
+                   CEnv *envp)
+{
+    int32_t code;
+    code = nodep->lookup(name, outNodepp, envp);
+    return code;
+}
+
+/* static */ int32_t
+Cfs::mkpathCallback(void *cxp,
+                    Cnode *nodep,
+                    std::string name,
+                    Cnode **outNodepp,
+                    CEnv *envp)
+{
+    int32_t code;
+    Cnode *outNodep;
+
+    code = nodep->lookup(name, outNodepp, envp);
+    if (code == 0) {
+        outNodep = *outNodepp;
+        if (outNodep->_attrs._fileType == CAttr::DIR)
+            return 0;
+        else
+            return -4;  /* wrong type in path */
+    }
+    else {
+        /* try to create the dir at the next component */
+        code = nodep->mkdir(name, outNodepp, envp);
+        return code;
+    }
+}
+
+
+
 int32_t
-Cfs::namei(std::string path, Cnode **targetCnodepp, CEnv *envp)
+Cfs::namei( std::string path,
+            Cnode **targetCnodepp,
+            CEnv *envp)
+{
+    int32_t code;
+    code = nameInt(path, &Cfs::nameiCallback, NULL, targetCnodepp, envp);
+    return code;
+}
+
+
+int32_t
+Cfs::mkpath( std::string path,
+             Cnode **targetCnodepp,
+             CEnv *envp)
+{
+    int32_t code;
+    code = nameInt(path, &Cfs::mkpathCallback, NULL, targetCnodepp, envp);
+    return code;
+}
+
+
+int32_t
+Cfs::nameInt( std::string path,
+              nameiProc *procp,
+              void *nameiContextp,
+              Cnode **targetCnodepp,
+              CEnv *envp)
 {
     Cnode *currentCnodep;
     int32_t code;
@@ -69,7 +134,7 @@ Cfs::namei(std::string path, Cnode **targetCnodepp, CEnv *envp)
         }
 
         /* now do a lookup on the name */
-        code = currentCnodep->lookup(name, &nextCnodep, envp);
+        code = procp(nameiContextp, currentCnodep, name, &nextCnodep, envp);
         currentCnodep->release();
         currentCnodep = NULL;
         if (code != 0) {

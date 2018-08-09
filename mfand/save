@@ -1,3 +1,0 @@
-make clean
-cp -r ~/mac/mfand ~/safe
-echo saved

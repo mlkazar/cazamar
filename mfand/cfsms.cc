@@ -37,6 +37,7 @@ CnodeMs::parseResults( Json::Node *jnodep,
                        uint64_t *sizep,
                        uint64_t *modTimep,
                        uint64_t *changeTimep,
+                       CAttr::FileType *fileTypep,
                        uint8_t *allFoundp)
 {
     Json::Node *tnodep;
@@ -44,6 +45,7 @@ CnodeMs::parseResults( Json::Node *jnodep,
     std::string sizeStr;
     int allFound = 1;
     int idFound = 1;
+    CAttr::FileType fileType;
 
     tnodep = jnodep->searchForChild("id", 0);
     if (tnodep) {
@@ -84,6 +86,12 @@ CnodeMs::parseResults( Json::Node *jnodep,
     }
     else
         allFound = 0;
+
+    fileType = CAttr::FILE;
+    tnodep = jnodep->searchForChild("folder", 0);
+    if (tnodep != NULL)
+        fileType = CAttr::DIR;
+    *fileTypep = fileType;
 
     if (allFoundp) {
         /* if can provide details, return success if we at least have the ID */
@@ -142,6 +150,7 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
     std::string dirPath;
     CnodeMs *childp;
     CnodeLockSet lockSet;
+    CAttr::FileType fileType;
 
     printf("in lookup for id=%s %s\n", _id.c_str(), name.c_str());
 
@@ -160,7 +169,7 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
         return code;
     }
 
-    callbackString = "/v1.0/me/drive/root:" + dirPath + name;
+    callbackString = "/v1.0/me/drive/root:" + Rst::urlPathEncode(dirPath + name);
     
     while(1) {
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
@@ -210,7 +219,7 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
         delete reqp;
         reqp = NULL;
 
-        code = parseResults(jnodep, &id, &size, &changeTime, &modTime);
+        code = parseResults(jnodep, &id, &size, &changeTime, &modTime, &fileType);
         delete jnodep;
         jnodep = NULL;
 
@@ -221,6 +230,7 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
                 childp->_attrs._length = size;
                 childp->_attrs._ctime = changeTime;
                 childp->_attrs._mtime = modTime;
+                childp->_attrs._fileType = fileType;
                 *childpp = childp;
             }
             else
@@ -263,15 +273,17 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
     char *dataBufferp = NULL;
     uint32_t sendBytes;
     uint8_t allFound;
+    CAttr::FileType fileType;
     static const uint32_t dataBufferBytes = 4*1024*1024;
     
     printf("sendSmallFile: id=%s name=%s\n", _id.c_str(), name.c_str());
 
     if (_isRoot) {
-        callbackString = "/v1.0/me/drive/root:/" + name + ":/content";
+        callbackString = "/v1.0/me/drive/root:/" + Rst::urlPathEncode(name) + ":/content";
     }
     else
-        callbackString = "/v1.0/me/drive/items/" + _id + ":/" + name + ":/content";
+        callbackString = ("/v1.0/me/drive/items/" + _id + ":/" + Rst::urlPathEncode(name) +
+                          ":/content");
     
     /* no post data */
     dataBufferp = new char[dataBufferBytes];
@@ -342,7 +354,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         /* don't need the lock until we're merging in the results */
         lockSet.add(this);
 
-        code = parseResults(jnodep, &id, &size, &changeTime, &modTime, &allFound);
+        code = parseResults(jnodep, &id, &size, &changeTime, &modTime, &fileType, &allFound);
         if (code == 0) {
             code = _cfsp->getCnodeLinked(this, name, &id, &childp, &lockSet);
             if (code == 0) {
@@ -351,6 +363,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
                     childp->_attrs._length = size;
                     childp->_attrs._ctime = changeTime;
                     childp->_attrs._mtime = modTime;
+                    childp->_attrs._fileType = fileType;
                 }
                 else {
                     childp->_valid = 0;
@@ -395,6 +408,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     uint64_t changeTime;
     CnodeMs *childp;
     CnodeLockSet lockSet;
+    CAttr::FileType fileType;
     
     printf("mkdir: id=%s name=%s\n", _id.c_str(), name.c_str());
 
@@ -461,7 +475,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             reqp = NULL;
         }
 
-        code = parseResults(jnodep, &id, &size, &changeTime, &modTime);
+        code = parseResults(jnodep, &id, &size, &changeTime, &modTime, &fileType);
         if (code == 0) {
             code = _cfsp->getCnodeLinked(this, name, &id, &childp, &lockSet);
             if (code == 0) {
@@ -469,6 +483,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
                 childp->_attrs._length = size;
                 childp->_attrs._ctime = changeTime;
                 childp->_attrs._mtime = modTime;
+                childp->_attrs._fileType = fileType;
                 *newDirpp = childp;
             }
         }
@@ -515,6 +530,7 @@ CnodeMs::fillAttrs( CEnv *envp)
     int32_t code;
     uint64_t modTime;
     uint64_t changeTime;
+    CAttr::FileType fileType;
     
     if (_isRoot)
         callbackString = "/v1.0/me/drive/root";
@@ -568,10 +584,11 @@ CnodeMs::fillAttrs( CEnv *envp)
         if (code)
             break;
 
-        parseResults(jnodep, &id, &size, &changeTime, &modTime);
+        parseResults(jnodep, &id, &size, &changeTime, &modTime, &fileType);
         _attrs._mtime = modTime;
         _attrs._ctime = changeTime;
         _attrs._length = size;
+        _attrs._fileType = fileType;
         _valid = 1;
 
         delete jnodep;
@@ -628,9 +645,9 @@ CnodeMs::startSession( std::string name,
     // or .../items/{id}:/filename:/createUploadSession
     // based on a random comment
     if (_isRoot)
-        callbackString = "/v1.0/me/drive/root:/" + name + ":/createUploadSession";
+        callbackString = "/v1.0/me/drive/root:/" + Rst::urlPathEncode(name) + ":/createUploadSession";
     else
-        callbackString = "/v1.0/me/drive/items/" + _id + ":/" + name + ":/createUploadSession";
+        callbackString = "/v1.0/me/drive/items/" + _id + ":/" + Rst::urlPathEncode(name) + ":/createUploadSession";
     
     postData = "{\n";
     postData = "\"item\": {\n";

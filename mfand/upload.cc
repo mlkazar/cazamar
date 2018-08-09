@@ -85,9 +85,9 @@ Uploader::start()
 
     code = _cfsp->namei(_cloudRoot, (Cnode **) &testDirp, NULL);
     if (code != 0) {
-        code = _cfsp->mkdir(_cloudRoot, (Cnode **) &testDirp, NULL);
+        code = _cfsp->mkpath(_cloudRoot, (Cnode **) &testDirp, NULL);
         if (code != 0) {
-            printf("makedir failed code=%d\n", code);
+            printf("mkpath failed code=%d\n", code);
             return;
         }
     }
