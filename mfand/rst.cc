@@ -461,7 +461,7 @@ Rst::splitUrl(std::string *urlp, std::string *hostp, std::string *pathp, uint16_
     }
 
     /* if there's a ':' in the hostname, it is the TCP port to use */
-    portp = index(hostp->c_str(), ':');
+    portp = index(const_cast<char *>(hostp->c_str()), ':');
     if (portp != NULL) {
         defaultPort = atoi(portp+1);
     }
