@@ -4,7 +4,6 @@
 #include "osp.h"
 #include "dqueue.h"
 #include "bufsocket.h"
-#include "buftls.h"
 #include "xapi.h"
 
 /* manage a pool of TLS and regular connections, creating new

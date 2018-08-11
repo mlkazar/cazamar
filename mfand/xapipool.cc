@@ -1,4 +1,5 @@
 #include "xapipool.h"
+#include "buftls.h"
 
 XApi::ClientConn *
 XApiPool::getConn(std::string fullHostName, uint32_t port, uint8_t isTls)

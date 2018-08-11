@@ -292,7 +292,7 @@ SApi::ServerConn::listenConn(void *cxp)
 }
 
 /* static */ int32_t
-SApi::ServerConn::interpretFile(char *fileNamep, SApi::Dict *dictp, std::string *responsep)
+SApi::ServerConn::interpretFile(const char *fileNamep, SApi::Dict *dictp, std::string *responsep)
 {
     FILE *filep;
     int tc;

@@ -11,7 +11,7 @@
 #include "sapilogin.h"
 #include "xapi.h"
 #include "bufsocket.h"
-#include "buftls.h"
+// #include "buftls.h"
 #include "json.h"
 #include "cfsms.h"
 #include "walkdisp.h"
@@ -119,7 +119,7 @@ public:
     void init(std::string cloudRoot, std::string fsRoot, SApiLoginMS *loginMSp) {
         _cloudRoot = cloudRoot;
         _fsRoot = fsRoot;
-        _fsRootLen = _fsRoot.length();
+        _fsRootLen = (uint32_t) _fsRoot.length();
         _loginMSp = loginMSp;
     }
 
@@ -198,6 +198,8 @@ public:
     }
 
     int32_t initLoop(SApi *sapip);
+
+    int32_t init(SApi *sapip);
 
     int32_t addConfigEntry(std::string cloudRoot, std::string fsRoot, uint64_t lastFinishedTime);
 

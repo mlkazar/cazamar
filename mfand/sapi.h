@@ -237,7 +237,7 @@ class SApi : public CThread {
             return _sapip;
         }
 
-        static int32_t interpretFile(char *fileNamep, Dict *dictp, std::string *responsep);
+        static int32_t interpretFile(const char *fileNamep, Dict *dictp, std::string *responsep);
 
         static int32_t interpretParm( int opcode,
                                       std::string *parmNamep,

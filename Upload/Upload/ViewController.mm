@@ -7,7 +7,7 @@
 //
 
 #import "ViewController.h"
-#include "upload.h"
+#include "upobj.h"
 
 NSImage *
 resizeImage2(NSImage* image, NSSize newSize) 
@@ -63,27 +63,6 @@ NSTimer *_timer;
 }
 
 
-#if 0
-- (void) closeWindow {
-    NSLog(@"in close window");
-    _timer = [NSTimer scheduledTimerWithTimeInterval: 0.0
-		      target: self
-		      selector: @selector(closeWindow2)
-		      userInfo: nil
-		      repeats: NO];
-}
-
-- (void) closeWindow2 {
-    NSWindow *window;
-
-    window = self.view.window;
-    NSLog(@"main window is %p", window);
-
-    [window orderOut: self];
-    [window close];
-}
-#endif
-
 - (void) updateMenu
 {
     NSMenuItem *item;
@@ -92,7 +71,7 @@ NSTimer *_timer;
     _statusItem.menu = _menu;
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Login"
+	       initWithTitle: @"Setup"
 	       action: @selector(loginPressed)
 	       keyEquivalent: (NSString *) @"s"];
     item.target = self;
@@ -102,13 +81,6 @@ NSTimer *_timer;
 	       initWithTitle: @"Backup"
 	       action: @selector(backupPressed)
 	       keyEquivalent: @"b"];
-    item.target = self;
-    [_menu addItem: item];
-
-    item = [[NSMenuItem alloc]
-	       initWithTitle: @"Run tests"
-	       action: @selector(testPressed)
-	       keyEquivalent: @"t"];
     item.target = self;
     [_menu addItem: item];
 
@@ -126,20 +98,6 @@ NSTimer *_timer;
 - (void) backupPressed
 {
     NSLog(@"backup pressed");
-}
-
-- (void) testPressed
-{
-    if (!_uploadp) {
-	_alert = [[NSAlert alloc] init];
-	_alert.messageText = @"Not logged in";
-	_alert.informativeText = @"You must login before you can run the CFS tests";
-	[_alert runModal];
-	NSLog(@"alert done");
-    }
-    else {
-	_uploadp->runTests();
-    }
 }
 
 - (void) loginPressed {

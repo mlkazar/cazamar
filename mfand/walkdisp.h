@@ -1,9 +1,9 @@
 #ifndef __WALKDISP_H_ENV__
 #define __WALKDISP_H_ENV__ 1
 
-#include <osp.h>
-#include <dqueue.h>
-#include <cdisp.h>
+#include "osp.h"
+#include "dqueue.h"
+#include "cdisp.h"
 #include <string>
 #include <sys/stat.h>
 

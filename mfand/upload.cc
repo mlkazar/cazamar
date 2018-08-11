@@ -233,6 +233,7 @@ UploadHomeScreen::startMethod()
     std::string authToken;
     int loggedIn = 0;
     std::string pathPrefix;
+    std::string fileName;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
         pathPrefix = getSApi()->getPathPrefix();
@@ -262,8 +263,9 @@ UploadHomeScreen::startMethod()
     loginHtml += "<p><a href=\"/pauseBackups\">Pause backup</a>";
     loginHtml += "<p><a href=\"/stopBackups\">Stop backup</a>";
     
+    fileName = uploadApp->_pathPrefix + "upload-home.html";
     dict.add("loginText", loginHtml);
-    code = getConn()->interpretFile((char *) "upload-home.html", &dict, &response);
+    code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
     if (code != 0) {
         sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
@@ -491,6 +493,7 @@ UploadStartScreen::startMethod()
     SApiLoginCookie *loginCookiep;
     std::string authToken;
     int loggedIn = 0;
+    std::string fileName;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
         strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">Home screen</a></html>");
@@ -511,7 +514,8 @@ UploadStartScreen::startMethod()
             code = -1;
         }
         else {
-            code = getConn()->interpretFile((char *) "upload-start.html", &dict, &response);
+            fileName = uploadApp->_pathPrefix + "upload-start.html";
+            code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
             if (code != 0) {
                 sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
                 obufferp = tbuffer;
@@ -551,14 +555,16 @@ UploadStopScreen::startMethod()
     std::string loginHtml;
     UploadApp *uploadApp;
     std::string authToken;
-        
+    std::string fileName;
+
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
         strcpy(tbuffer, "<html>No app running to stop; visit home page first<p>"
                "<a href=\"/\">Home screen</a></html>");
         obufferp = tbuffer;
     }
     else {
-        code = getConn()->interpretFile((char *) "upload-stop.html", &dict, &response);
+        fileName = uploadApp->_pathPrefix + "upload-stop.html";
+        code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
 
         if (code != 0) {
             sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
@@ -596,6 +602,7 @@ UploadPauseScreen::startMethod()
     std::string loginHtml;
     UploadApp *uploadApp;
     std::string authToken;
+    std::string fileName;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
         strcpy(tbuffer, "No app running to pause; visit home page first (1)<p>"
@@ -603,7 +610,8 @@ UploadPauseScreen::startMethod()
         obufferp = tbuffer;
     }
     else {
-        code = getConn()->interpretFile((char *) "upload-pause.html", &dict, &response);
+        fileName = uploadApp->_pathPrefix + "upload-pause.html";
+        code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
 
         if (code != 0) {
             sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
@@ -752,6 +760,7 @@ UploadCreateConfig::startMethod()
     Rst::Hdr *hdrp;
     std::string filePath;
     std::string cloudPath;
+    std::string fileName;
     int noCreate = 0;
         
     if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
@@ -761,7 +770,8 @@ UploadCreateConfig::startMethod()
         noCreate = 1;
     }
     else {
-        code = getConn()->interpretFile((char *) "upload-add.html", &dict, &response);
+        fileName = uploadApp->_pathPrefix + "upload-add.html";
+        code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
 
         if (code != 0) {
             sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
@@ -916,7 +926,7 @@ UploadCreateConfig::factory(std::string *opcodep, SApi *sapip)
 }
 
 int32_t
-UploadApp::initLoop(SApi *sapip)
+UploadApp::init(SApi *sapip)
 {
     /* setup login URL listeners */
     SApiLogin::initSApi(sapip);
@@ -930,6 +940,14 @@ UploadApp::initLoop(SApi *sapip)
     sapip->registerUrl("/loadConfig", &UploadLoadConfig::factory);// do we need this?
     sapip->registerUrl("/deleteItem", &UploadDeleteConfig::factory);
     sapip->registerUrl("/createEntry", &UploadCreateConfig::factory);
+
+    return 0;
+}
+
+int32_t
+UploadApp::initLoop(SApi *sapip)
+{
+    init(sapip);
 
     while(1) {
         sleep(1);
