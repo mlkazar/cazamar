@@ -547,6 +547,7 @@ SApiLogin::createLoginCookie(SApi::ServerReq *reqp) {
     if ((cookiep = (SApiLoginCookie *) reqp->getCookieKey("sapiLogin")) == NULL) {
         cookiep = new SApiLoginCookie();
         reqp->setCookieKey("sapiLogin", cookiep);
+        cookiep->setPathPrefix(reqp->_sapip->getPathPrefix());
     }
 
     return cookiep;
