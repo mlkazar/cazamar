@@ -59,9 +59,13 @@ class CnodeMs : public Cnode {
         _isRoot = 0;
     }
 
-    int32_t fillAttrs( CEnv *envp);
+    int32_t fillAttrs( CEnv *envp, CnodeLockSet *lockSetp);
 
     int32_t nameSearch(std::string nanme, CnodeMs **childpp);
+
+    void hold();
+
+    void release();
 
     /* virtual ops realized */
     int32_t getAttr(CAttr *attrsp, CEnv *envp);
@@ -126,6 +130,7 @@ class CfsMs : public Cfs {
     static const uint32_t _hashSize = 997;
     SApiLoginMS *_loginp;
     CThreadMutex _lock;         /* protect hash table */
+    CThreadMutex _refLock;         /* protect hash table */
     CnodeMs *_hashTablep[_hashSize];
     XApiPool *_xapiPoolp;
     CnodeMs *_rootp;
@@ -193,7 +198,20 @@ class CnodeLockSet {
         return 0;
     }
 
-    ~CnodeLockSet() {
+    int remove(CnodeMs *cnodep) {
+        uint32_t i;
+
+        for(i=0;i<_maxLocks;i++) {
+            if (_cnodep[i] == cnodep) {
+                _cnodep[i]->_lock.release();
+                _cnodep[i] = NULL;
+                return 0;
+            }
+        }
+        return -1;
+    }
+
+    void reset() {
         int32_t i;
 
         for(i=0;i<_maxLocks;i++) {
@@ -202,6 +220,10 @@ class CnodeLockSet {
                 _cnodep[i] = NULL;
             }
         }
+    }
+
+    ~CnodeLockSet() {
+        reset();
     }
 };
 

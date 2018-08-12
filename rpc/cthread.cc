@@ -16,6 +16,7 @@ CThreadHandle::init(CThread::StartMethod startMethod, CThread *threadp, void *co
 CThreadHandle::startWrapper(void *ahandlep)
 {
     CThreadHandle *handlep = (CThreadHandle *) ahandlep;
+    handlep->_selfId = CThread::self();
 
     ((handlep->_threadp)->*(handlep->_startMethod))(handlep->_contextp);
 

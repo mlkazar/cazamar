@@ -11,7 +11,7 @@
  */
 class XApiPool {
  public:
-    static const uint32_t _maxConns = 4;        /* per address */
+    static const uint32_t _maxConns = 128;        /* per address */
     class Entry {
     public:
         Entry *_dqNextp;

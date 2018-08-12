@@ -208,7 +208,7 @@ UpnpProbe::init () {
             
             if (code == 0) {
                 /* now parse things */
-                Rst::splitUrl(&location, &host, &relativePath, NULL);
+                Rst::splitUrl(location, &host, &relativePath, NULL);
                 
                 devicep = findDeviceByHost(&host);
                 if (!devicep) {

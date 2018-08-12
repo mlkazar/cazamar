@@ -281,7 +281,7 @@ class Rst {
      * splits "foo" into "foo" and "/", i.e. special-cases non-existent relative path
      * to be "/".
      */
-    static int32_t splitUrl( std::string *urlp,
+    static int32_t splitUrl( std::string url,
                              std::string *hostp,
                              std::string *pathp,
                              uint16_t *defaultPortp = 0);

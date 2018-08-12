@@ -1,41 +1,19 @@
-* Get logout to work -- get rid of token and then do a cookie save
+* check for concurrency issues with cfsms
 
-* SApiLoginCookie needs save/restore functionality
+* make sure we can do mkdir's concurrently
 
-* abort connections on bad errors, in case bytes are out of sequence.  make sure we
-* abort connections if can't recognize HTTP response line or if we timeout
-  make connections reusable, but temporarily reset on protocol errors
-  reset on HTTP or ICY not showing up in Rst::Call::sendOperation
+* make sure we can do big file uploads concurrently
 
-* use refresh token
+* fix 409 from mkdir -> should return success
 
-* check valid for CfsMs::root()
+* check for concurrency issues with xapipool
 
-* search memory DNLC in lookup
-
-* single file upload when possible
-
-* factor uptest into library, used by Upload
-
-* check for concurrency issues with rst
-
-* check for concurrency issues with sapi
-
-check for concurrency issues with xapi
-
-check for concurrency issues with cfsms
+* check xapipool/buftls for concurrency issues when adding a new connection to the pool
 
 crank up concurrency level to 32
 
-* URL encode file names in MS calls
-  fix Rst::urlEncode to handle all unreserved chars
-  implement urlPathEncode, including MS's examples except ":" and ";" which we will
-    still encode
-
-* better GUI for tracking, controlling backup
+* TLS lock for SSL_CTX?
 
 age out old keyserv entries
 
 check for memory leaks (how?)
-
-reintegrate Upload mac app

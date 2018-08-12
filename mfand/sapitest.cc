@@ -439,7 +439,7 @@ WriteTest::startMethod()
 
         /* we should really be getting the default port from splitUrl */
         reqp->setSendContentLength(strlen(fileData));
-        Rst::splitUrl(&uploadUrl, &urlHost, &urlPath, &port);
+        Rst::splitUrl(uploadUrl, &urlHost, &urlPath, &port);
         uploadSocketp = new BufTls("");
         uploadSocketp->init(const_cast<char *>(urlHost.c_str()), port);
         uploadConnp = xapip->addClientConn(uploadSocketp);
@@ -796,7 +796,7 @@ ReadTest::startMethod()
 
         /* we should really be getting the default port from splitUrl */
         reqp->setSendContentLength(0);
-        Rst::splitUrl(&downloadUrl, &urlHost, &urlPath, &port);
+        Rst::splitUrl(downloadUrl, &urlHost, &urlPath, &port);
         downloadSocketp = new BufTls("");
         downloadSocketp->init(const_cast<char *>(urlHost.c_str()), port);
         downloadConnp = xapip->addClientConn(downloadSocketp);

@@ -426,23 +426,23 @@ Rst::Call::init( const char *relPathp,
 }
 
 /* static */ int32_t
-Rst::splitUrl(std::string *urlp, std::string *hostp, std::string *pathp, uint16_t *defaultPortp)
+Rst::splitUrl(std::string url, std::string *hostp, std::string *pathp, uint16_t *defaultPortp)
 {
     char *tp;
     char *urlStrp;
     char *portp;
     uint16_t defaultPort;
 
-    urlStrp = const_cast<char *>(urlp->c_str());
+    urlStrp = const_cast<char *>(url.c_str());
 
     if (strncasecmp(urlStrp, "http://", 7) == 0) {
-        urlp->erase(0,7);
-        urlStrp = const_cast<char *>(urlp->c_str());
+        url.erase(0,7);
+        urlStrp = const_cast<char *>(url.c_str());
         defaultPort = 80;
     }
     else if (strncasecmp(urlStrp, "https://", 8) == 0) {
-        urlp->erase(0,8);
-        urlStrp = const_cast<char *>(urlp->c_str());
+        url.erase(0,8);
+        urlStrp = const_cast<char *>(url.c_str());
         defaultPort = 443;
     }
     else {
@@ -452,7 +452,7 @@ Rst::splitUrl(std::string *urlp, std::string *hostp, std::string *pathp, uint16_
     tp = strchr(urlStrp, '/');
     if (tp == NULL) {
         /* no '/', so relPath is / and everything else is hostname */
-        *hostp = *urlp;
+        *hostp = url;
         *pathp = std::string("/");
     }
     else {

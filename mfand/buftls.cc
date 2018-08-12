@@ -6,11 +6,12 @@
 #include <signal.h>
 #endif
 #include "rst.h"
+#include "cthread.h"
 
-SSL_CTX *BufTls::_sslClientContextp;
 SSL_CTX *BufTls::_sslServerContextp;
 const SSL_METHOD *BufTls::_sslClientMethodp;
 const SSL_METHOD *BufTls::_sslServerMethodp;
+CThreadMutex BufTls::_mutex;
 
 /* server side */
 void
@@ -28,6 +29,7 @@ BufTls::init(struct sockaddr *sockAddrp, int socklen)
     _listening = 0;
     _verbose = 0;
     _server = 1;
+    _sslClientContextp = NULL;
 }
 
 int32_t
@@ -252,7 +254,11 @@ BufTls::doConnect()
         return -errno;
     }
 
-    _connected = 1;
+    _sslClientContextp = SSL_CTX_new(_sslClientMethodp);   /* Create new context */
+    if ( !_sslClientContextp) {
+        ERR_print_errors_fp(stdout);
+        osp_assert(0);
+    }
 
     _sslp = SSL_new(_sslClientContextp);
     if (!_sslp){
@@ -268,6 +274,7 @@ BufTls::doConnect()
     }
 
     // showCerts(_sslp);        /* get any certs */
+    _connected = 1;
 
     return 0;
 }
@@ -275,15 +282,22 @@ BufTls::doConnect()
 void
 BufTls::disconnect()
 {
-    if (!_connected)
-        return;
-
     _connected = 0;
-    SSL_shutdown(_sslp);
-    _sslp = NULL;
+    if (_sslp) {
+        SSL_shutdown(_sslp);
+        _sslp = NULL;
+    }
+
     printf("buftls %p close in disconnect fd=%d\n", this, _s);
-    close(_s);
-    _s = -1;
+
+    if (_s >= 0) {
+        close(_s);
+        _s = -1;
+    }
+    if (_sslClientContextp) {
+        SSL_CTX_free(_sslClientContextp);
+        _sslClientContextp = NULL;
+    }
 }
 
 /* return -1 on error or EOF (error will be 0 on normal EOF),
@@ -508,6 +522,18 @@ BufTls::flush()
                 /* retry with same parameters */
                 continue;
             }
+
+            disconnect();
+
+            if (sslError == SSL_ERROR_SYSCALL) {
+                code = doConnect();
+                if (code == 0) {
+                    printf("  retrying after ERROR_SYSCALL...\n");
+                    continue;
+                }
+                return -3;
+            }
+
             return -1;
         }
         else {
@@ -543,11 +569,6 @@ BufTls::init(char *namep, uint32_t defaultPort)
 #else
         _sslClientMethodp = TLSv1_2_client_method();  /* use for client conns */
 #endif
-        _sslClientContextp = SSL_CTX_new(_sslClientMethodp);   /* Create new context */
-        if ( !_sslClientContextp) {
-            ERR_print_errors_fp(stdout);
-            osp_assert(0);
-        }
 
         /* setup server side */
 #ifdef __linux__
@@ -590,6 +611,12 @@ BufTls::init(char *namep, uint32_t defaultPort)
         }
     }
 
+    _sslClientContextp = SSL_CTX_new(_sslClientMethodp);   /* Create new context */
+    if ( !_sslClientContextp) {
+        ERR_print_errors_fp(stdout);
+        osp_assert(0);
+    }
+
     _outp = OspMBuf::alloc(0);
     _s = -1;
 
@@ -616,11 +643,12 @@ BufTls::~BufTls()
         SSL_CTX_free(_sslServerContextp);
         _sslServerContextp = NULL;
     }
+#endif
+
     if (_sslClientContextp) {
         SSL_CTX_free(_sslClientContextp);
         _sslClientContextp = NULL;
     }
-#endif
 
     if (_s >= 0) {
         if (_verbose)

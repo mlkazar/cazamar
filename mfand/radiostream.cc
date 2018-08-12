@@ -450,7 +450,7 @@ RadioStream::init( BufGenFactory *factoryp,
     /* parse incoming string */
     url = urlp;
     _defaultPort = 80;
-    Rst::splitUrl(&url, &hostName, &path, &_defaultPort);
+    Rst::splitUrl(url, &hostName, &path, &_defaultPort);
     hostNamep = hostName.c_str();
     pathp = path.c_str();
     
@@ -561,7 +561,7 @@ RadioStream::init( BufGenFactory *factoryp,
         playlistUrlp = &_playlistHost;
         if ( playlistUrlp->length() > 0) {
             /* playlist received and directs us to a new host */
-            code = Rst::splitUrl(playlistUrlp, &hostName, &path, &_defaultPort);
+            code = Rst::splitUrl(*playlistUrlp, &hostName, &path, &_defaultPort);
             cleanup();
             if (code) {
                 break;

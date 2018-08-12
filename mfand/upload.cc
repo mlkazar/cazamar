@@ -107,7 +107,7 @@ Uploader::start()
     /* copy the pictures directory to a subdir of testdir */
     _disp = new CDisp();
     printf("Created new cdisp at %p\n", _disp);
-    _disp->init(8);      /* TBD: crank this up to 8 */
+    _disp->init(16);      /* TBD: crank this up to 8 */
 
     printf("Starting copy\n");
     taskp = new WalkTask();
@@ -180,6 +180,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                  */
                 printf("callback: skipping already copied %s\n", pathp->c_str());
                 up->_filesSkipped++;
+                up->_bytesCopied += fsAttr._length;
                 return 0;
             }
         }
@@ -664,7 +665,7 @@ UploadStatusData::startMethod()
     else {
         response = "<table style=\"width:80%\">";
         response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>"
-            "Bytes copied</th><th>"
+            "Bytes processed</th><th>"
             "Files skipped</th><th>"
             "Failures</th><th>"
             "State</th><th>"

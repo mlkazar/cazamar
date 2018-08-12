@@ -12,12 +12,22 @@ class CThread {
     typedef void (CThread::*StartMethod)(void *contextp);
 
     CThread() {};
+
+    static uint64_t self() {
+#ifdef __linux__
+        return syscall(SYS_gettid);
+#else
+        /* MacOS */
+        return (uint64_t) pthread_mach_thread_np(pthread_self());
+#endif
+    }
 };
 
 class CThreadMutex {
+    friend class CThreadCV;
  private:
     pthread_mutex_t _pthreadMutex;
-    pthread_t _ownerId;
+    uint64_t _ownerId;
 
  public:
     CThreadMutex() {
@@ -28,14 +38,18 @@ class CThreadMutex {
     }
 
     void take() {
-        pthread_t me;
-        me = pthread_self();
+        uint64_t me;
+        me = CThread::self();
         osp_assert(me != _ownerId);
         pthread_mutex_lock(&_pthreadMutex);
         _ownerId = me;
     }
 
     void release() {
+        uint64_t me;
+        me = CThread::self();
+
+        osp_assert(_ownerId == me);
         _ownerId = 0;
         pthread_mutex_unlock(&_pthreadMutex);
     }
@@ -71,8 +85,14 @@ class CThreadCV {
 
     void wait() {
         int code;
+        uint64_t me = CThread::self();
+
         osp_assert(_mutexp != NULL);
+        
+        osp_assert(_mutexp->_ownerId == me);
+        _mutexp->_ownerId = 0;
         code = pthread_cond_wait(&_pthreadCV, _mutexp->getPthreadMutex());
+        _mutexp->_ownerId = me;
         if (code)
             printf("cond wait code=%d\n", code);
     }
@@ -157,6 +177,7 @@ class CThreadHandle {
     CThread::StartMethod _startMethod;
     CThread *_threadp;
     void *_contextp;
+    uint64_t _selfId;
 
  public:
     void init(CThread::StartMethod startMethod, CThread *threadp, void *contextp);

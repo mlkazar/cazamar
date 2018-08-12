@@ -84,24 +84,15 @@ class Cnode {
         _valid = 0;
     }
 
-    void hold() {
+    virtual void hold() {
         _lock.take();
-        holdNL();
+        _refCount++;
         _lock.release();
     }
 
-    void holdNL() {
-        _refCount++;
-    }
-
-    void releaseNL() {
-        osp_assert(_refCount > 0);
-        _refCount--;
-    }
-
-    void release() {
+    virtual void release() {
         _lock.take();
-        releaseNL();
+        _refCount--;
         _lock.release();
     }
 };

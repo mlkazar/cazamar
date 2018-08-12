@@ -4,23 +4,47 @@
 #include "xapi.h"
 #include "buftls.h"
 
+/* called with THIS held; generate a path to it.  Since going up the tree violates
+ * our locking hierarchy, we have to be careful to lock only one thing at a time.
+ *
+ * Note that you can't modify a BackEntry chain without both the parent and child
+ * locked, which makes our lives a bit easier.
+ */
 int32_t
 CnodeMs::getPath(std::string *pathp, CEnv *envp)
 {
     std::string tempPath;
     CnodeMs *tnodep = this;
+    CnodeMs *unodep;
     CnodeBackEntry *bep;
+    int tnodeHeld = 0;
     while(tnodep) {
+        tnodep->_lock.take();
         if (tnodep->_isRoot) {
+            tnodep->_lock.release();
             break;
         }
         bep = tnodep->_backEntriesp;
-        if (!bep)
+        if (!bep) {
+            tnodep->_lock.release();
             break;
+        }
         tempPath = bep->_name + "/" + tempPath;
-        tnodep = bep->_parentp;
+        unodep = bep->_parentp;
+        unodep->hold();
+        tnodep->_lock.release();
+        if (tnodeHeld) {
+            tnodep->release();
+        }
+        tnodep = unodep;
+        tnodeHeld = 1;
     }
     tempPath = "/" + tempPath;
+
+    /* get rid of any leftover references; any obtained locks have already been released */
+    if (tnodeHeld && tnodep) {
+        tnodep->release();
+    }
 
     *pathp = tempPath;
 
@@ -162,6 +186,9 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
         printf("lookup name search for %s found %p\n", name.c_str(), *childpp);
         return 0;
     }
+
+    /* temporarily drop lock over getPath call */
+    lockSet.remove(this);
 
     code = getPath(&dirPath, envp);
     if (code != 0) {
@@ -368,7 +395,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
                 else {
                     childp->_valid = 0;
                 }
-                childp->releaseNL();    /* lock held by getCnodeLinked */
+                childp->release();    /* lock held by getCnodeLinked */
                 childp = NULL;
             }
         }
@@ -409,10 +436,9 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     CnodeMs *childp;
     CnodeLockSet lockSet;
     CAttr::FileType fileType;
+    uint32_t httpError;
     
     printf("mkdir: id=%s name=%s\n", _id.c_str(), name.c_str());
-
-    lockSet.add(this);
 
     if (_isRoot)
         callbackString = "/v1.0/me/drive/root/children";
@@ -446,6 +472,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             reqp = NULL;
             break;
         }
+        httpError = reqp->getHttpError();
 
         inPipep = reqp->getIncomingPipe();
         code = inPipep->read(tbuffer, sizeof(tbuffer));
@@ -507,9 +534,9 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     return code;
 }
 
-/* called with Cnode lock held */
+/* called without locks held */
 int32_t
-CnodeMs::fillAttrs( CEnv *envp)
+CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
 {
     /* perform getAttr operation */
     char tbuffer[0x4000];
@@ -584,6 +611,7 @@ CnodeMs::fillAttrs( CEnv *envp)
         if (code)
             break;
 
+        lockSetp->add(this);
         parseResults(jnodep, &id, &size, &changeTime, &modTime, &fileType);
         _attrs._mtime = modTime;
         _attrs._ctime = changeTime;
@@ -612,7 +640,10 @@ CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
         *attrp = _attrs;
         return 0;
     }
-    code = fillAttrs(envp);
+
+    lockSet.reset();
+
+    code = fillAttrs(envp, &lockSet);
     if (code == 0) {
         *attrp = _attrs;
     }
@@ -754,7 +785,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
     int32_t actuallyReadCount;
     uint16_t port;
     
-    Rst::splitUrl(sessionUrlp, &sessionHost, &sessionRelativeUrl, &port);
+    Rst::splitUrl(*sessionUrlp, &sessionHost, &sessionRelativeUrl, &port);
 
     osp_assert(byteCount < 4*1024*1024);
     dataBufferp = new char[byteCount];
@@ -882,15 +913,6 @@ CnodeMs::sendFile( std::string name,
      */
     uint32_t bytesPerPut = 320*1024;
     
-    /* this locks the whole directory when uploading a file; it would be nicer if
-     * we could get more concurrency here, but it isn't all that obviousl how.
-     *
-     * Actually, we should only grab the lock while creating the file in startSession,
-     * after the call starts.  And we should drop the lock and switch to a file lock
-     * afterwards.
-     */
-    lockSet.add(this);
-
     code = startSession( name, &sessionUrl);
     if (code) {
         printf("sendFile: session start failed code=%d\n", code);
@@ -925,6 +947,22 @@ CnodeMs::sendFile( std::string name,
     return code;
 }
 
+void
+CnodeMs::hold() {
+    _cfsp->_refLock.take();
+    _refCount++;
+    _cfsp->_refLock.release();
+}
+
+void
+CnodeMs::release() {
+    osp_assert(_refCount > 0);
+
+    _cfsp->_refLock.take();
+    _refCount--;
+    _cfsp->_refLock.release();
+}
+
 /* returns held reference to root */
 int32_t
 CfsMs::root(Cnode **nodepp, CEnv *envp)
@@ -947,11 +985,11 @@ CfsMs::root(Cnode **nodepp, CEnv *envp)
         code = 0;
     }
     else {
-        code = rootp->fillAttrs(envp);
+        code = rootp->fillAttrs(envp, &lockSet);
     }
 
     if (code == 0) {
-        rootp->holdNL();          /* each call increments refCount for csller */
+        rootp->hold();          /* each call increments refCount for csller */
         *nodepp = rootp;
     }
     else
@@ -980,7 +1018,7 @@ CfsMs::getCnode(std::string *idp, CnodeMs **cnodepp)
         cp->_id = *idp;
     }
     else {
-        cp->holdNL();
+        cp->hold();
     }
     *cnodepp = cp;
 
@@ -1004,10 +1042,11 @@ CfsMs::getCnodeLinked( CnodeMs *parentp,
         return code;
 
     if (!parentp) {
-        childp->releaseNL();
+        childp->release();
         return 0;
     }
 
+    lockSetp->add(parentp);
     lockSetp->add(childp);
 
     /* otherwise, thread us in */
@@ -1024,7 +1063,7 @@ CfsMs::getCnodeLinked( CnodeMs *parentp,
         entryp->_parentp = parentp;
         entryp->_childp = childp;
         parentp->_children.append(entryp);
-        parentp->holdNL();
+        parentp->hold();
     }
 
     *cnodepp = childp;
@@ -1052,6 +1091,11 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
         }
         code = _loginp->refresh();
         return (code == 0);
+    }
+    else if (httpError == 503) {
+        /* overloaded server */
+        sleep(1);
+        return 1;
     }
     else
         return 0;

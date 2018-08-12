@@ -22,6 +22,7 @@
 #include <openssl/err.h>
 
 #include "bufgen.h"
+#include "cthread.h"
 
 class BufTls : public BufGen {
     static const uint32_t _defaultBaseTimeoutMs = 60000;
@@ -34,11 +35,12 @@ class BufTls : public BufGen {
     uint8_t _verbose;
     uint8_t _server;
     std::string _pathPrefix;
+    SSL_CTX *_sslClientContextp;
 
-    static SSL_CTX *_sslClientContextp;
     static SSL_CTX *_sslServerContextp;
     static const SSL_METHOD *_sslClientMethodp;
     static const SSL_METHOD *_sslServerMethodp;
+    static CThreadMutex _mutex;
     SSL *_sslp;
     uint32_t _baseTimeoutMs;
 

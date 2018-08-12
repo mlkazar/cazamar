@@ -80,7 +80,7 @@ function updateStatus() {
       if (xhttp.readyState == 4 && xhttp.status == 200) {
         document.getElementById("statusData").innerHTML =
           xhttp.responseText;
-        setInterval(updateStatus, 10000);
+        setInterval(updateStatusInternal, 10000);
       }
   };
   xhttp.open("GET", "statusData", true);
