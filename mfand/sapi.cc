@@ -34,24 +34,36 @@ SApi::listener(void *cxp)
     BufGen *lsocketp;
     BufGen *socketp;
     int32_t code;
-
-    if (_useTls)
-        lsocketp = new BufTls(_pathPrefix);
-    else
-        lsocketp = new BufSocket();
-    
-    lsocketp->init((char *) NULL, _port);
-    lsocketp->listen();
+    int32_t errorCount = 0;
 
     while(1) {
-        code = lsocketp->accept(&socketp);
-        if (code < 0) {
-            printf("listening socket closed!\n");
-            return;
+        if (_useTls)
+            lsocketp = new BufTls(_pathPrefix);
+        else
+            lsocketp = new BufSocket();
+    
+        lsocketp->init((char *) NULL, _port);
+        lsocketp->listen();
+
+        while(1) {  
+            code = lsocketp->accept(&socketp);
+            if (code < 0) {
+                perror("accept");
+                sleep(1);
+                errorCount++;
+                if (errorCount > 4) {
+                    printf("SApi::listener reset listen socket\n");
+                    lsocketp->disconnect();
+                    delete lsocketp;
+                    break;
+                }
+                continue;
+            }
+            printf("Received incoming socket %p\n", socketp);
+            errorCount = 0;
+            addNewConn(socketp);
+            printf("sapi: spawning new listener for new socket\n");
         }
-        printf("Received incoming socket %p\n", socketp);
-        addNewConn(socketp);
-        printf("sapi: spawning new listener for new socket\n");
     }
 }
 

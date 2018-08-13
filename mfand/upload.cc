@@ -167,7 +167,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
     /* before doing upload, stat the object to see if we've already done the copy; don't
      * do this for dirs.
      */
-    if ((statp->st_mode & S_IFMT) != S_IFDIR) {
+    if ((statp->st_mode & S_IFMT) == S_IFREG) {
         code = cfsp->stat(cloudName, &cloudAttr, NULL);
         if (code == 0) {
             DataSourceFile::statToAttr(statp, &fsAttr);
@@ -189,12 +189,30 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
         up->_filesCopied++;
         up->_bytesCopied += statp->st_size;
     }
+    else if ((statp->st_mode & S_IFMT) == S_IFLNK) {
+        code = cfsp->stat(cloudName, &cloudAttr, NULL);
+        if (code == 0) {
+            DataSourceFile::statToAttr(statp, &fsAttr);
+            if (cloudAttr._mtime - fsAttr._mtime > 100*1000000000ULL) {
+                printf("callback: skipping already copied symlink %s\n", pathp->c_str());
+                up->_filesSkipped++;
+                up->_bytesCopied += fsAttr._length;
+                return 0;
+            }
+        }
+        up->_filesCopied++;
+    }
 
     if ((statp->st_mode & S_IFMT) == S_IFDIR) {
         /* do a mkdir */
         code = cfsp->mkdir(cloudName, &cnodep, NULL);
-        if (code == 0)
+        if (code == 0) {
             cnodep->release();
+            up->_filesCopied++;         /* dir created */
+        }
+        else {
+            up->_filesSkipped++;        /* dir exists */
+        }
         printf("mkdir of %p done, code=%d\n", cloudName.c_str(), code);
     }
     else if ((statp->st_mode & S_IFMT) == S_IFREG) {
@@ -210,6 +228,13 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
             up->_fileCopiesFailed++;
 
         /* dataFile destructor closes file */
+    }
+    else if ((statp->st_mode & S_IFMT) == S_IFLNK) {
+        DataSourceString dataString("Symbolic link\n");
+        code = cfsp->sendFile(cloudName, &dataString, NULL);
+        printf("sendfile path=%s link done code=%d\n", cloudName.c_str(), code);
+        if (code)
+            up->_fileCopiesFailed++;
     }
     else {
         printf("Uptest: skipping file with weird type %s\n", pathp->c_str());

@@ -1,19 +1,11 @@
-* check for concurrency issues with cfsms
-
-* make sure we can do mkdir's concurrently
-
-* make sure we can do big file uploads concurrently
-
-* fix 409 from mkdir -> should return success
-
-* check for concurrency issues with xapipool
-
-* check xapipool/buftls for concurrency issues when adding a new connection to the pool
+fix symlink processing
 
 crank up concurrency level to 32
 
-* TLS lock for SSL_CTX?
-
 age out old keyserv entries
 
+update stats more frequently for large files?
+
 check for memory leaks (how?)
+
+cdisp can queue unbounded number of tasks

@@ -20,6 +20,51 @@ class Uploader;
 class UploadApp;
 class UploadEntry;
 
+class DataSourceString : public CDataSource {
+    const char *_datap;
+    std::string _dataStr;
+
+ public:
+    int32_t getAttr(CAttr *attrp) {
+	attrp->_mtime = 1000000000ULL;
+	attrp->_ctime = 1000000000ULL;
+	attrp->_length = strlen(_datap)+1;
+	return 0;
+    }
+
+    int32_t read( uint64_t offset, uint32_t count, char *bufferp) {
+	int32_t tcount = count;
+	int32_t length = (int32_t) strlen(_datap)+1;
+
+	if (offset >= length)
+	    return 0;
+
+	if (tcount > length - offset)
+	    tcount = (int32_t) (length-offset);
+
+	memcpy(bufferp, _datap+offset, tcount);
+	return tcount;
+    }
+
+    int32_t close() {
+	return 0;
+    }
+
+    void setString( std::string data) {
+        _dataStr = data;
+        _datap = _dataStr.c_str();
+    }
+
+    DataSourceString ( std::string data) {
+        _dataStr = data;
+        _datap = _dataStr.c_str();
+    }
+
+    ~DataSourceString() {
+	return;
+    }
+};
+
 class DataSourceFile : public CDataSource {
     int _fd;
     CThreadMutex _lock;

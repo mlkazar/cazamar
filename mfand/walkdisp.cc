@@ -18,7 +18,7 @@ WalkTask::start()
 
     CDisp *disp = getDisp();
 
-    code = stat(_path.c_str(), &tstat);
+    code = lstat(_path.c_str(), &tstat);
     if (code < 0)
         return code;
     if ((tstat.st_mode & S_IFMT) == S_IFREG) {

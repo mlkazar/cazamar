@@ -1092,7 +1092,8 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
         code = _loginp->refresh();
         return (code == 0);
     }
-    else if (httpError == 503) {
+    else if ( (httpError >= 502 && httpError <= 504) ||
+              httpError == 429) {
         /* overloaded server */
         sleep(1);
         return 1;
