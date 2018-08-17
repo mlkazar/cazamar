@@ -226,6 +226,11 @@ class XApi : public CThread {
 
         int32_t waitForHeadersDone();
 
+        void resetConn() {
+            if (_connp)
+                _connp->_bufGenp->disconnect();
+        }
+
         int32_t getError() {
             return _error;
         }

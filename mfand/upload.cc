@@ -107,7 +107,7 @@ Uploader::start()
     /* copy the pictures directory to a subdir of testdir */
     _disp = new CDisp();
     printf("Created new cdisp at %p\n", _disp);
-    _disp->init(16);      /* TBD: crank this up to 8 */
+    _disp->init(24);      /* TBD: crank this up to 8 */
 
     printf("Starting copy\n");
     taskp = new WalkTask();

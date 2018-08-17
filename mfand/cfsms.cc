@@ -176,14 +176,11 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
     CnodeLockSet lockSet;
     CAttr::FileType fileType;
 
-    printf("in lookup for id=%s %s\n", _id.c_str(), name.c_str());
-
     /* lock parent */
     lockSet.add(this);
 
     code = nameSearch(name, (CnodeMs **) childpp);
     if (code == 0) {
-        printf("lookup name search for %s found %p\n", name.c_str(), *childpp);
         return 0;
     }
 
@@ -270,7 +267,6 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
         break;
     }
 
-    printf("lookup: done code=%d\n", code);
     return code;
 }
 
@@ -1094,10 +1090,12 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
     }
     else if ( (httpError >= 502 && httpError <= 504) ||
               httpError == 429) {
-        /* overloaded server */
+        /* overloaded server, or bad choice of server.  Must rebind */
+        reqp->resetConn();
         sleep(1);
         return 1;
     }
     else
         return 0;
 }
+
