@@ -299,7 +299,8 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
     CAttr::FileType fileType;
     static const uint32_t dataBufferBytes = 4*1024*1024;
     
-    printf("sendSmallFile: id=%s name=%s\n", _id.c_str(), name.c_str());
+    if (_cfsp->_verbose)
+        printf("sendSmallFile: id=%s name=%s\n", _id.c_str(), name.c_str());
 
     if (_isRoot) {
         callbackString = "/v1.0/me/drive/root:/" + Rst::urlPathEncode(name) + ":/content";
@@ -405,7 +406,8 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         jnodep = NULL;
     }
 
-    printf("sendSmallFile: done code=%d\n", code);
+    if (_cfsp->_verbose)
+        printf("sendSmallFile: done code=%d\n", code);
     return code;
 }
 
@@ -433,8 +435,10 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     CnodeLockSet lockSet;
     CAttr::FileType fileType;
     uint32_t httpError;
+    int errorOk = 0;
     
-    printf("mkdir: id=%s name=%s\n", _id.c_str(), name.c_str());
+    if (_cfsp->_verbose)
+        printf("mkdir: id=%s name=%s\n", _id.c_str(), name.c_str());
 
     if (_isRoot)
         callbackString = "/v1.0/me/drive/root/children";
@@ -487,7 +491,21 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             break;
         }
         
-        if (_cfsp->retryError(reqp, jnodep)) {
+        if (httpError == 409) {
+            Json::Node *tnodep;
+            tnodep = jnodep->searchForChild("code");
+            if (tnodep &&
+                tnodep->_children.head() &&
+                tnodep->_children.head()->_name == "nameAlreadyExists") {
+                code = 17;
+                errorOk = 1;    /* even though we had an error, this is OK */
+                delete reqp;
+                reqp = NULL;
+                break;
+            }
+        }
+        
+        if (!errorOk && _cfsp->retryError(reqp, jnodep)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -498,6 +516,9 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             reqp = NULL;
         }
 
+        /* this will fail with a 409 but that doesn't hurt us; we just won't fill
+         * in the attributes now.
+         */
         code = parseResults(jnodep, &id, &size, &changeTime, &modTime, &fileType);
         if (code == 0) {
             code = _cfsp->getCnodeLinked(this, name, &id, &childp, &lockSet);
@@ -510,9 +531,6 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
                 *newDirpp = childp;
             }
         }
-        else
-            break;
-
         break;
     }
 
@@ -526,7 +544,9 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     if (code)
         *newDirpp = NULL;
 
-    printf("mkdir: done code=%d\n", code);
+    if (_cfsp->_verbose)
+        printf("mkdir: done code=%d\n", code);
+
     return code;
 }
 
@@ -620,7 +640,8 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
         break;
     }
 
-    printf("fillAtts: id='%s' done code=%d\n", _id.c_str(), code);
+    if (_cfsp->_verbose)
+        printf("fillAtts: id='%s' done code=%d\n", _id.c_str(), code);
     return code;
 }
 
@@ -902,7 +923,8 @@ CnodeMs::sendFile( std::string name,
         return code;
     }
 
-    printf("sendBigFile: id=%s name=%s\n", _id.c_str(), name.c_str());
+    if (_cfsp->_verbose)
+        printf("sendBigFile: id=%s name=%s\n", _id.c_str(), name.c_str());
 
     /* MS claims in docs that multiples of this are only safe values;
      * commenters don't believe them.
@@ -939,7 +961,9 @@ CnodeMs::sendFile( std::string name,
         }
     }
 
-    printf("sendFile: done code=%d\n", code);
+    if (_cfsp->_verbose)
+        printf("sendFile: done code=%d\n", code);
+
     return code;
 }
 

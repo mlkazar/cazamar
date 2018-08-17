@@ -557,8 +557,9 @@ Rst::Call::sendOperation()
         code = (int32_t) strtol(tbuffer, NULL, 10);
     _httpError = code;
 
-    if (code < 200 || code >= 300) 
+    if (_rstp->_verbose && (code < 200 || code >= 300)) {
         printf("Rst: **error response with HTTP code=%d for %s\n", code, _relPathp);
+    }
 
     /* read header lines */
     code = readCommonHeaders();

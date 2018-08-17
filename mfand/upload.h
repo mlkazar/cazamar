@@ -78,7 +78,7 @@ class DataSourceFile : public CDataSource {
 
     int32_t close() {
         if (_fd >= 0) {
-            printf("DataSourceFile closing fd=%d\n", _fd);
+            // printf("DataSourceFile closing fd=%d\n", _fd);
             ::close(_fd);
             _fd = -1;
         }
@@ -138,6 +138,7 @@ public:
     WalkTask *_walkTaskp;
     Status _status;
     std::string _cloudRoot;
+    uint8_t _verbose;
 
     /* some stats */
     uint64_t _filesCopied;
@@ -150,6 +151,7 @@ public:
         _fsRootLen = 0;
         _status = STOPPED;
         _loginMSp = NULL;
+        _verbose = 0;
 
         _filesCopied = 0;
         _bytesCopied = 0;
@@ -166,6 +168,10 @@ public:
         _fsRoot = fsRoot;
         _fsRootLen = (uint32_t) _fsRoot.length();
         _loginMSp = loginMSp;
+    }
+
+    void setVerbose() {
+        _verbose = 1;
     }
 
     void pause();

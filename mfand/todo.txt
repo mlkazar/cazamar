@@ -1,11 +1,19 @@
-fix symlink processing
+* 503 errors should destroy the connection
 
-crank up concurrency level to 32
+* fix symlink processing
+
+clean up printfs
+
+crank up concurrency level to 24
+
+update stats more frequently for large files, and make sure stats only go up on success
+
+cdisp can queue unbounded number of tasks
+
+automatically schedule backups
+
+enable/disable backups
 
 age out old keyserv entries
 
-update stats more frequently for large files?
-
 check for memory leaks (how?)
-
-cdisp can queue unbounded number of tasks

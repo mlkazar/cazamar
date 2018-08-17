@@ -134,12 +134,18 @@ class CfsMs : public Cfs {
     CnodeMs *_hashTablep[_hashSize];
     XApiPool *_xapiPoolp;
     CnodeMs *_rootp;
+    uint8_t _verbose;
 
     CfsMs(SApiLoginMS *loginp) {
         _xapiPoolp = new XApiPool();
         _loginp = loginp;
         _rootp = NULL;
+        _verbose = 0;
         memset(_hashTablep, 0, sizeof(_hashTablep));
+    }
+
+    void setVerbose() {
+        _verbose = 1;
     }
 
     void setLogin(SApiLoginMS *loginp) {

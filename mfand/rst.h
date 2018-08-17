@@ -249,10 +249,16 @@ class Rst {
     BufGen *_bufGenp;
     std::string _hostName;
     dqueue<Hdr> _baseHeaders;
+    uint8_t _verbose;
 
     int32_t init(BufGen *sockp) {
         _bufGenp = sockp;
+        _verbose = 0;
         return 0;
+    }
+
+    void setVerbose() {
+        _verbose = 1;
     }
 
     void resetBaseHeaders() {

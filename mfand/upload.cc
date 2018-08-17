@@ -161,7 +161,8 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
     /* e.g. remove /usr/home from /usr/home/foo/bar, leaving /foo/bar */
     relativeName = pathp->substr(up->_fsRootLen);
 
-    printf("In walkcallback %s\n", pathp->c_str());
+    if (up->_verbose)
+        printf("In walkcallback %s\n", pathp->c_str());
     cloudName = up->_cloudRoot + relativeName;
 
     /* before doing upload, stat the object to see if we've already done the copy; don't
@@ -178,7 +179,8 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                  * 300 seconds later than file's timestamp, then we figure
                  * we've already copied this file.
                  */
-                printf("callback: skipping already copied %s\n", pathp->c_str());
+                if (up->_verbose)
+                    printf("callback: skipping already copied %s\n", pathp->c_str());
                 up->_filesSkipped++;
                 up->_bytesCopied += fsAttr._length;
                 return 0;
@@ -194,7 +196,8 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
         if (code == 0) {
             DataSourceFile::statToAttr(statp, &fsAttr);
             if (cloudAttr._mtime - fsAttr._mtime > 100*1000000000ULL) {
-                printf("callback: skipping already copied symlink %s\n", pathp->c_str());
+                if (up->_verbose)
+                    printf("callback: skipping already copied symlink %s\n", pathp->c_str());
                 up->_filesSkipped++;
                 up->_bytesCopied += fsAttr._length;
                 return 0;
@@ -211,33 +214,43 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
             up->_filesCopied++;         /* dir created */
         }
         else {
+            if (code != 17)
+                printf("Upload: mkdir failed with code=%d path=%s\n",
+                       (int) code, pathp->c_str());
             up->_filesSkipped++;        /* dir exists */
         }
-        printf("mkdir of %p done, code=%d\n", cloudName.c_str(), code);
+        if (up->_verbose)
+            printf("mkdir of %p done, code=%d\n", cloudName.c_str(), code);
     }
     else if ((statp->st_mode & S_IFMT) == S_IFREG) {
         code = dataFile.open(pathp->c_str());
         if (code != 0) {
             up->_fileCopiesFailed++;
-            printf("Failed to open file %s\n", pathp->c_str());
+            printf("Upload: failed to open file %s\n", pathp->c_str());
             return code;
         }
         code = cfsp->sendFile(cloudName, &dataFile, NULL);
-        printf("sendfile path=%s test done, code=%d\n", cloudName.c_str(), code);
-        if (code)
+        if (up->_verbose)
+            printf("sendfile path=%s test done, code=%d\n", cloudName.c_str(), code);
+        if (code) {
+            printf("Upload: sendfile path=%s failed code=%d\n", pathp->c_str(), code);
             up->_fileCopiesFailed++;
+        }
 
         /* dataFile destructor closes file */
     }
     else if ((statp->st_mode & S_IFMT) == S_IFLNK) {
         DataSourceString dataString("Symbolic link\n");
         code = cfsp->sendFile(cloudName, &dataString, NULL);
-        printf("sendfile path=%s link done code=%d\n", cloudName.c_str(), code);
-        if (code)
+        if (up->_verbose)
+            printf("sendfile path=%s link done code=%d\n", cloudName.c_str(), code);
+        if (code) {
+            printf("Upload: sendfile symlink path=%s link failed code=%d\n", pathp->c_str(), code);
             up->_fileCopiesFailed++;
+        }
     }
     else {
-        printf("Uptest: skipping file with weird type %s\n", pathp->c_str());
+        printf("Upload: skipping file with weird type %s\n", pathp->c_str());
         code = -1;
     }
     return code;
@@ -265,10 +278,6 @@ UploadHomeScreen::startMethod()
         pathPrefix = getSApi()->getPathPrefix();
         uploadApp = new UploadApp(pathPrefix);
         setCookieKey("main", uploadApp);
-        printf("Setting Cookie to %p\n", uploadApp);
-    }
-    else {
-        printf("Cookie already set in homepage %p\n", uploadApp);
     }
 
     /* this does a get if it already exists */

@@ -143,7 +143,7 @@ BufTls::doSetup(uint16_t srcPort)
     }
 
     _s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    printf("buftls %p new socket %d\n", this, _s);
+    // printf("buftls %p new socket %d\n", this, _s);
 
     if (srcPort != 0) {
         opt = 1;
@@ -288,7 +288,7 @@ BufTls::disconnect()
         _sslp = NULL;
     }
 
-    printf("buftls %p close in disconnect fd=%d\n", this, _s);
+    // printf("buftls %p close in disconnect fd=%d\n", this, _s);
 
     if (_s >= 0) {
         close(_s);
