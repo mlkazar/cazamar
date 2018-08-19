@@ -66,6 +66,8 @@ class CDispHelper : public CThread {
 };
 
 class CDisp {
+    typedef void CompletionProc(CDisp *cdisp, void *contextp);
+
     typedef enum {
         _STOPPED = 1,
         _PAUSED = 2,
@@ -84,6 +86,9 @@ class CDisp {
     Mode _runMode;
     uint8_t _waitingForActive;
 
+    CompletionProc *_completionProcp;
+    void *_completionContextp;
+
  public:
     CThreadMutex _lock;
     CThreadCV _activeCv;
@@ -91,6 +96,13 @@ class CDisp {
  CDisp() : _activeCv(&_lock) {
         _runMode = _RUNNING;
         _waitingForActive = 0;
+        _completionProcp = NULL;
+        _completionContextp = NULL;
+    }
+
+    void setCompletionProc(CompletionProc *procp, void *contextp) {
+        _completionProcp = procp;
+        _completionContextp = contextp;
     }
 
     int32_t queueTask(CDispTask *taskp);
@@ -113,12 +125,18 @@ class CDisp {
         return rcode;
     }
 
+    int isAllDoneNL() {
+        return (_activeTasks.count() == 0 &&
+                _pendingTasks.count() == 0 &&
+                _activeHelpers.count() == 0);
+    }
+
     /* return true if all done, even if paused */
     int isAllDone() {
         int rcode;
 
         _lock.take();
-        rcode = (_activeTasks.count() == 0 && _pendingTasks.count() == 0);
+        rcode = isAllDoneNL();
         _lock.release();
 
         return rcode;

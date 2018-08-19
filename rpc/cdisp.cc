@@ -33,6 +33,7 @@ CDispHelper::start(void *contextp)
         taskp->start();
 
         disp->_lock.take();
+
         /* remove from queue in case destructor doesn't */
         osp_assert(taskp->_inQueue == CDispTask::_queueActive);
         disp->_activeTasks.remove(taskp);
@@ -57,6 +58,24 @@ CDispHelper::start(void *contextp)
          * task above, instead of going to sleep.
          */
         disp->tryDispatches();
+
+        /* check if we should call completion proc; make sure it is called exactly once; do this
+         * after doing one dispatch, so that we don't trigger the completion callback before
+         * the first task is submitted.
+         *
+         * Note that after it triggers, you must call setCompletionProc again before it can
+         * trigger again.
+         */
+        if (disp->isAllDoneNL() && disp->_completionProcp != NULL) {
+            CDisp::CompletionProc *procp = disp->_completionProcp;
+            void *contextp = disp->_completionContextp;
+            disp->_completionProcp = NULL;
+            disp->_completionContextp = NULL;
+
+            disp->_lock.release();
+            procp(disp, contextp);
+            disp->_lock.take();
+        }
 
         disp->_lock.release();
 

@@ -498,7 +498,7 @@ SApiLoginMS::refresh()
     code = reqp->waitForHeadersDone();
     inPipep = reqp->getIncomingPipe();
     
-    printf("\n**refresh token code=%d\n", code);
+    printf("**refresh token code=%d\n", code);
     
     if (code != 0) {
         inPipep->waitForEof();

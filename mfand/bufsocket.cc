@@ -81,7 +81,7 @@ BufSocket::accept(BufGen **remotepp)
     sockLen = sizeof(peerAddr);
     code = getpeername(fd, (struct sockaddr *) &peerAddr, &sockLen);
     if (code < 0) {
-        printf("bufsocket close %d\n", fd);
+        // printf("bufsocket close %d\n", fd);
         close(fd);
         return code;
     }
@@ -160,7 +160,7 @@ BufSocket::reopen()
     _closed = 0;
     _connected = 0;
     if (_s != -1) {
-        printf("bufsocket close fd=%d\n", _s);
+        // printf("bufsocket close fd=%d\n", _s);
         close(_s);
         _s = -1;
     }
@@ -182,7 +182,7 @@ BufSocket::doSetup(uint16_t srcPort)
         return -1;
 
     if (_s != -1) {
-        printf("bufsocket close fd=%d\n", _s);
+        // printf("bufsocket close fd=%d\n", _s);
         close(_s);
     }
 
@@ -290,7 +290,7 @@ BufSocket::disconnect()
 
     _connected = 0;
     _closed = 1;
-    printf("bufsocket close fd=%d\n", _s);
+    // printf("bufsocket close fd=%d\n", _s);
     if (_s >= 0)
         close(_s);
     _s = -1;
@@ -549,7 +549,7 @@ BufSocket::~BufSocket()
     delete _inp;
     delete _outp;
     if (_s >= 0) {
-        printf("bufsocket close fd=%d\n", _s);
+        // printf("bufsocket close fd=%d\n", _s);
         ::close(_s);
         _s = -1;
     }

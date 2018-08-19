@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 class TestTask : public CDispTask {
     int _level;
@@ -32,6 +33,13 @@ public:
     }
 };
 
+void
+mainCallback(CDisp *disp, void *contextp)
+{
+    printf("All done callback performed\n");
+    exit(0);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -40,6 +48,7 @@ main(int argc, char **argv)
 
     disp = new CDisp();
     printf("Created new cdisp at %p\n", disp);
+    disp->setCompletionProc(mainCallback, NULL);
     disp->init(4);
 
     printf("Starting tests\n");

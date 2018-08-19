@@ -110,6 +110,7 @@ class CnodeMs : public Cnode {
      */
     int32_t sendFile( std::string name,
                       CDataSource *sourcep,
+                      uint64_t *bytesCopiedp,
                       CEnv *envp);
     
     int32_t getPath(std::string *pathp, CEnv *envp);

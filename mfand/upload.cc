@@ -67,6 +67,15 @@ DataSourceFile::read( uint64_t offset, uint32_t count, char *bufferp)
     return code;
 }
 
+/* static */ void
+Uploader::done(CDisp *disp, void *contextp)
+{
+    Uploader *up = (Uploader *) contextp;
+    printf("Uploader done for FS path=%s\n", up->_fsRoot.c_str());
+    if (up->_lastFinishedTimep)
+        *(up->_lastFinishedTimep) = osp_time_sec();
+}
+
 void
 Uploader::start()
 {
@@ -107,6 +116,7 @@ Uploader::start()
     /* copy the pictures directory to a subdir of testdir */
     _disp = new CDisp();
     printf("Created new cdisp at %p\n", _disp);
+    _disp->setCompletionProc(&Uploader::done, this);
     _disp->init(24);      /* TBD: crank this up to 8 */
 
     printf("Starting copy\n");
@@ -123,6 +133,9 @@ Uploader::start()
 void
 Uploader::stop()
 {
+    /* null this out so it doesn't look like a successful completion */
+    _lastFinishedTimep = NULL;
+
     _disp->stop();
     _status = STOPPED;
     return;
@@ -186,10 +199,6 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                 return 0;
             }
         }
-
-        /* otherwise this is a data file we're copying */
-        up->_filesCopied++;
-        up->_bytesCopied += statp->st_size;
     }
     else if ((statp->st_mode & S_IFMT) == S_IFLNK) {
         code = cfsp->stat(cloudName, &cloudAttr, NULL);
@@ -203,7 +212,6 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                 return 0;
             }
         }
-        up->_filesCopied++;
     }
 
     if ((statp->st_mode & S_IFMT) == S_IFDIR) {
@@ -229,24 +237,33 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
             printf("Upload: failed to open file %s\n", pathp->c_str());
             return code;
         }
-        code = cfsp->sendFile(cloudName, &dataFile, NULL);
+
+        /* send the file, updating bytesCopied on the fly */
+        code = cfsp->sendFile(cloudName, &dataFile, &up->_bytesCopied, NULL);
+
         if (up->_verbose)
             printf("sendfile path=%s test done, code=%d\n", cloudName.c_str(), code);
         if (code) {
             printf("Upload: sendfile path=%s failed code=%d\n", pathp->c_str(), code);
             up->_fileCopiesFailed++;
         }
+        else {
+            up->_filesCopied++;
+        }
 
         /* dataFile destructor closes file */
     }
     else if ((statp->st_mode & S_IFMT) == S_IFLNK) {
         DataSourceString dataString("Symbolic link\n");
-        code = cfsp->sendFile(cloudName, &dataString, NULL);
+        code = cfsp->sendFile(cloudName, &dataString, NULL, NULL);
         if (up->_verbose)
             printf("sendfile path=%s link done code=%d\n", cloudName.c_str(), code);
         if (code) {
             printf("Upload: sendfile symlink path=%s link failed code=%d\n", pathp->c_str(), code);
             up->_fileCopiesFailed++;
+        }
+        else {
+            up->_filesCopied++;
         }
     }
     else {
@@ -333,6 +350,7 @@ UploadApp::readConfig(std::string pathPrefix)
     std::string fsRoot;
     uint64_t lastFinishedTime;
     int32_t code;
+    uint8_t enabled;
 
     fileName = pathPrefix + "config.js";
     filep = fopen(fileName.c_str(), "r");
@@ -369,9 +387,15 @@ UploadApp::readConfig(std::string pathPrefix)
             }
             else
                 lastFinishedTime = 0;
+            nnodep = tnodep->searchForChild("enabled");
+            if (nnodep) {
+                enabled = atoi(nnodep->_children.head()->_name.c_str());
+            }
+            else
+                enabled = 1;
 
             /* now add the entry */
-            addConfigEntry(cloudRoot, fsRoot, lastFinishedTime);
+            addConfigEntry(cloudRoot, fsRoot, lastFinishedTime, enabled);
         }
     }
 }
@@ -429,6 +453,12 @@ UploadApp::writeConfig(std::string pathPrefix)
             nnodep->initNamed("lastFinishedTime", tnodep);
             snodep->appendChild(nnodep);
 
+            tnodep = new Json::Node();
+            tnodep->initInt(ep->_enabled);
+            nnodep = new Json::Node();
+            nnodep->initNamed("enabled", tnodep);
+            snodep->appendChild(nnodep);
+
             arrayNodep->appendChild(snodep);
         } /* entry exists */
     } /* for each uploader */
@@ -478,8 +508,28 @@ UploadApp::deleteConfigEntry(int32_t ix)
     return 0;
 }
 
+/* toggle the enabled flag */
 int32_t
-UploadApp::addConfigEntry(std::string cloudRoot, std::string fsRoot, uint64_t lastFinishedTime)
+UploadApp::setEnabledConfig(int32_t ix)
+{
+    UploadEntry *ep;
+
+    if (ix < 0 || ix >= _maxUploaders)
+        return -1;
+
+    if ((ep = _uploadEntryp[ix]) == NULL)
+        return -2;
+
+    ep->_enabled = !ep->_enabled;
+
+    return 0;
+}
+
+int32_t
+UploadApp::addConfigEntry( std::string cloudRoot,
+                           std::string fsRoot,
+                           uint32_t lastFinishedTime,
+                           int enabled)
 {
     UploadEntry *ep;
     uint32_t i;
@@ -509,6 +559,7 @@ UploadApp::addConfigEntry(std::string cloudRoot, std::string fsRoot, uint64_t la
     ep->_app = this;
     ep->_cloudRoot = cloudRoot;
     ep->_lastFinishedTime = lastFinishedTime;
+    ep->_enabled = enabled;
     _uploadEntryp[bestFreeIx] = ep;
     return 0;
 }
@@ -688,6 +739,7 @@ UploadStatusData::startMethod()
     std::string errorsString;
     std::string skippedString;
     std::string editString;
+    std::string enabledString;
     Uploader *uploaderp;
     UploadEntry *ep;
     uint32_t i;
@@ -703,6 +755,7 @@ UploadStatusData::startMethod()
             "Files skipped</th><th>"
             "Failures</th><th>"
             "State</th><th>"
+            "Enabled</th><th>"
             "Edit</th></tr>\n";
         for(i=0;i<UploadApp::_maxUploaders;i++) {
             ep = uploadApp->_uploadEntryp[i];
@@ -717,6 +770,9 @@ UploadStatusData::startMethod()
             skippedString = std::string(tbuffer);
             sprintf(tbuffer, "%ld failures", (long) (uploaderp? uploaderp->_fileCopiesFailed : 0));
             errorsString = std::string(tbuffer);
+            sprintf(tbuffer, "<a href=\"/\" onclick=\"setEnabled(%d); return false\">%s</a>",
+                    i, (ep->_enabled? "Enabled" : "Disabled"));
+            enabledString = std::string(tbuffer);
             sprintf(tbuffer, "<a href=\"/\" onclick=\"delConfirm(%d); return false\">Delete</a>", i);
             editString = std::string(tbuffer);
             response += ("<tr><td>"+ep->_fsRoot+"</td><td>" +
@@ -726,6 +782,7 @@ UploadStatusData::startMethod()
                          skippedString + "</td><td>" +
                          errorsString + "</td><td>" +
                          (uploaderp? uploaderp->getStatusString() : "Idle") + "</td><td>" +
+                         enabledString + "</td><td>" +
                          editString + "</td></tr>\n");
         }
         response += "</table>\n";
@@ -832,7 +889,7 @@ UploadCreateConfig::startMethod()
     }
 
     if (!noCreate) {
-        uploadApp->addConfigEntry(cloudPath, filePath, 0);
+        uploadApp->addConfigEntry(cloudPath, filePath, 0, 1);
         uploadApp->writeConfig(uploadApp->_pathPrefix);
     }
 
@@ -882,6 +939,55 @@ UploadDeleteConfig::startMethod()
 
     if (ix >= 0) {
         uploadApp->deleteConfigEntry(ix);
+        uploadApp->writeConfig(uploadApp->_pathPrefix);
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadSetEnabledConfig::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    dqueue<Rst::Hdr> *urlPairsp;
+    Rst::Hdr *hdrp;
+    int ix;
+        
+    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+        strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
+               "<a href=\"/\">Home screen</a></html>");
+    }
+    else {
+        strcpy(tbuffer, "DONE");
+    }
+    obufferp = tbuffer;
+
+    urlPairsp = getRstReq()->getUrlPairs();
+    ix = -1;
+    for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
+        if (hdrp->_key == "ix") {
+            ix = atoi(hdrp->_value.c_str());
+        }
+    }
+
+    if (ix >= 0) {
+        uploadApp->setEnabledConfig(ix);
         uploadApp->writeConfig(uploadApp->_pathPrefix);
     }
 
@@ -953,6 +1059,14 @@ UploadDeleteConfig::factory(std::string *opcodep, SApi *sapip)
 }
 
 SApi::ServerReq *
+UploadSetEnabledConfig::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadSetEnabledConfig *reqp;
+    reqp = new UploadSetEnabledConfig(sapip);
+    return reqp;
+}
+
+SApi::ServerReq *
 UploadCreateConfig::factory(std::string *opcodep, SApi *sapip)
 {
     UploadCreateConfig *reqp;
@@ -974,6 +1088,7 @@ UploadApp::init(SApi *sapip)
     sapip->registerUrl("/statusData", &UploadStatusData::factory);
     sapip->registerUrl("/loadConfig", &UploadLoadConfig::factory);// do we need this?
     sapip->registerUrl("/deleteItem", &UploadDeleteConfig::factory);
+    sapip->registerUrl("/setEnabled", &UploadSetEnabledConfig::factory);
     sapip->registerUrl("/createEntry", &UploadCreateConfig::factory);
 
     return 0;

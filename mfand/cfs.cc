@@ -174,6 +174,7 @@ Cfs::stat(std::string path, CAttr *attrsp, CEnv *envp)
 int32_t
 Cfs::sendFile( std::string path,
                CDataSource *sourcep,
+               uint64_t *bytesCopiedp,
                CEnv *envp)
 {
     int32_t code;
@@ -187,7 +188,7 @@ Cfs::sendFile( std::string path,
     code = namei(dirPath, &dirNodep, envp);
     if (code)
         return code;
-    code = dirNodep->sendFile( name, sourcep, envp);
+    code = dirNodep->sendFile( name, sourcep, bytesCopiedp, envp);
     dirNodep->release();
     return code;
 }

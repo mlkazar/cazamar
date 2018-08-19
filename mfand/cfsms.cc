@@ -900,6 +900,7 @@ CnodeMs::abortSession( std::string *sessionUrlp)
 int32_t
 CnodeMs::sendFile( std::string name,
                    CDataSource *sourcep,
+                   uint64_t *bytesCopiedp,
                    CEnv *envp)
 {
     int32_t code;
@@ -920,6 +921,8 @@ CnodeMs::sendFile( std::string name,
     /* we can use simpler put mechanism which can use same connection */
     if (size < 4*1024*1024) {
         code = sendSmallFile(name, sourcep, envp);
+        if (bytesCopiedp)
+            *bytesCopiedp += size;
         return code;
     }
 
@@ -952,11 +955,15 @@ CnodeMs::sendFile( std::string name,
         }
         else if (code < bytesPerPut) {
             /* we've hit EOF, so we're done */
+            if (bytesCopiedp)
+                *bytesCopiedp += code;
             code = 0;
             break;
         }
         else {
             /* update counters */
+            if (bytesCopiedp)
+                *bytesCopiedp += code;
             currentOffset += bytesPerPut;
         }
     }

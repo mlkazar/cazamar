@@ -62,6 +62,17 @@ function delConfirm(x) {
     }
 };
 
+function setEnabled(x) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+        }
+    };
+    xhttp.open("GET", "setEnabled?ix=" + x, true);
+    xhttp.send();
+};
+
 function updateStatusInternal() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {

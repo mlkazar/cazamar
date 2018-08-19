@@ -167,7 +167,7 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
 
     TestDataSource test2Source("This is test2 data\n");
 
-    code = cfsp->sendFile("/TestDir/test2file", &test2Source, NULL);
+    code = cfsp->sendFile("/TestDir/test2file", &test2Source, NULL, NULL);
     printf("path based sendfile test done, code=%d\n", code);
 
     printf("cfstest: tests done\n");

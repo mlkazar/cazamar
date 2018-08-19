@@ -111,12 +111,14 @@ public:
     UploadApp *_app;
     std::string _fsRoot;
     std::string _cloudRoot;
-    uint64_t _lastFinishedTime;
+    uint32_t _lastFinishedTime;
+    uint8_t _enabled;
 
     UploadEntry() {
         _uploaderp = NULL;
         _app = NULL;
         _lastFinishedTime = 0;
+        _enabled = 1;
     }
 
     ~UploadEntry();
@@ -139,6 +141,7 @@ public:
     Status _status;
     std::string _cloudRoot;
     uint8_t _verbose;
+    uint32_t *_lastFinishedTimep;
 
     /* some stats */
     uint64_t _filesCopied;
@@ -152,6 +155,7 @@ public:
         _status = STOPPED;
         _loginMSp = NULL;
         _verbose = 0;
+        _lastFinishedTimep = NULL;
 
         _filesCopied = 0;
         _bytesCopied = 0;
@@ -163,11 +167,15 @@ public:
 
     static int32_t mainCallback(void *contextp, std::string *pathp, struct stat *statp);
 
-    void init(std::string cloudRoot, std::string fsRoot, SApiLoginMS *loginMSp) {
+    void init(std::string cloudRoot,
+              std::string fsRoot,
+              SApiLoginMS *loginMSp,
+              uint32_t *lastFinishedTimep) {
         _cloudRoot = cloudRoot;
         _fsRoot = fsRoot;
         _fsRootLen = (uint32_t) _fsRoot.length();
         _loginMSp = loginMSp;
+        _lastFinishedTimep = lastFinishedTimep;
     }
 
     void setVerbose() {
@@ -181,6 +189,8 @@ public:
     void start();
 
     void resume();
+
+    static void done(CDisp *disp, void *contextp);
 
     Status getStatus() {
         /* see if we finished the tree walk, since we don't get callbacks when done */
@@ -242,7 +252,7 @@ public:
         if (_uploadEntryp[0] == NULL) {
             fsRoot = std::string(getenv("HOME")) + "/Pictures";
             cloudRoot = "/" + std::string(getenv("USER")) + "_backups";
-            addConfigEntry(cloudRoot, fsRoot, 0);
+            addConfigEntry(cloudRoot, fsRoot, 0, 1);
             writeConfig(pathPrefix);
         }
 #endif
@@ -252,9 +262,14 @@ public:
 
     int32_t init(SApi *sapip);
 
-    int32_t addConfigEntry(std::string cloudRoot, std::string fsRoot, uint64_t lastFinishedTime);
+    int32_t addConfigEntry( std::string cloudRoot,
+                            std::string fsRoot,
+                            uint32_t lastFinishedTime,
+                            int enabled);
 
     int32_t deleteConfigEntry(int32_t ix);
+
+    int32_t setEnabledConfig(int32_t ix);
 
     void stop() {
         uint32_t i;
@@ -294,20 +309,34 @@ public:
 
         for(i=0; i<_maxUploaders; i++) {
             ep = _uploadEntryp[i];
-            if (!ep)
+            if (!ep || !ep->_enabled)
                 continue;
             uploaderp = ep->_uploaderp;
+
+            if (uploaderp) {
+                upStatus = uploaderp->getStatus();
+                if (upStatus == Uploader::PAUSED) {
+                    uploaderp->resume();
+                    continue;
+                }
+                else if (upStatus == Uploader::RUNNING)
+                         continue;
+                else if (upStatus == Uploader::STOPPED) {
+                    delete uploaderp;
+                    ep->_uploaderp = NULL;
+                    uploaderp = NULL;
+                }
+            }
+            
             if (!uploaderp) {
                 /* create the uploader */
                 ep->_uploaderp = uploaderp = new Uploader();
-                uploaderp->init(ep->_cloudRoot, ep->_fsRoot, _loginCookiep->_loginMSp);
-            }
-            upStatus = uploaderp->getStatus();
-            if (upStatus == Uploader::PAUSED)
-                uploaderp->resume();
-            else if (upStatus == Uploader::STOPPED)
+                uploaderp->init(ep->_cloudRoot,
+                                ep->_fsRoot,
+                                _loginCookiep->_loginMSp,
+                                &ep->_lastFinishedTime);
                 uploaderp->start();
-            /* otherwise already running */
+            }
         }
     }
 
@@ -395,6 +424,17 @@ public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
 
     UploadDeleteConfig(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
+class UploadSetEnabledConfig : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadSetEnabledConfig(SApi *sapip) : SApi::ServerReq(sapip) {
         return;
     }
 

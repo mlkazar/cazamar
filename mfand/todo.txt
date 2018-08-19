@@ -2,9 +2,9 @@
 
 * fix symlink processing
 
-clean up printfs
+* clean up printfs
 
-crank up concurrency level to 24
+* crank up concurrency level to 24
 
 update stats more frequently for large files, and make sure stats only go up on success
 

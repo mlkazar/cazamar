@@ -77,6 +77,7 @@ class Cnode {
     virtual int32_t read(CFile *cp, uint64_t offset, uint32_t length, CEnv *envp) = 0;
     virtual int32_t sendFile( std::string name,
                               CDataSource *sourcep,
+                              uint64_t *bytesCopiedp,
                               CEnv *envp) = 0;
 
     Cnode() {
@@ -141,6 +142,7 @@ class Cfs {
 
     int32_t sendFile( std::string path,
                       CDataSource *sourcep,
+                      uint64_t *sendFilep,
                       CEnv *envp);
 
     int32_t mkdir(std::string path, Cnode **newDirpp, CEnv *envp);
