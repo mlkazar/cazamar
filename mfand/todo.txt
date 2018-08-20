@@ -1,12 +1,18 @@
+thread local should have thread id
+
 automatically schedule backups
-  parse backupInt as <number><h|d|m|s>
+  (un)parse backupInt as <number><h|d|m|s>
   create backup starting thread
   save backupInt in database
 
-better icon
+* better icon
 
 age out old keyserv entries
 
 check for memory leaks (how?)
+  cnodems
+  cnodebackentry
+  json::node from json::parsepair
+  rst::call from xapi::clientreq::startcall
 
 cdisp can queue unbounded number of tasks

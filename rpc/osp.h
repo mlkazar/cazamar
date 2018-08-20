@@ -3,6 +3,34 @@
 
 #include <sys/types.h>
 #include "osptypes.h"
+#include <pthread.h>
+#include "dqueue.h"
+
+class AllocCommonHeader {
+ public:
+    static const uint16_t _magicAlloc=0xA00A;
+    static const uint16_t _magicFree=0xF00F;
+
+    static const uint32_t _hashSize = 97;
+    static pthread_mutex_t _mutex;
+    static dqueue<AllocCommonHeader> _hash[_hashSize];
+
+    uint16_t _magic;
+    uint16_t _padding;
+    uint32_t _size;
+    void *_retAddrp;
+    AllocCommonHeader *_dqNextp;
+    AllocCommonHeader *_dqPrevp;
+
+    static uint32_t hashIx(void *x) {
+        uint64_t realX = (uint64_t) x;
+        return (realX & 0x7FFFFFFF) % _hashSize;
+    }
+
+    static void *commonNew(uint32_t size, void *retAddrp);
+
+    static void commonDelete(void *p);
+};
 
 #define osp_assert(x) do { \
     if (!(x)) {                            \

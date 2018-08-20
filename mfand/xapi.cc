@@ -557,7 +557,7 @@ XApi::ClientReq::startMethod()
     int32_t code;
     Rst::Call *callp;
 
-    callp = new Rst::Call(_connp->_rstp);
+    _callp = callp = new Rst::Call(_connp->_rstp);
 
     /* set parameters */
     callp->setSendContentLength(_sendContentLength);

@@ -186,6 +186,7 @@ class XApi : public CThread {
         int32_t _sendContentLength;
         dqueue<Rst::Hdr> _sendHeaders;
         dqueue<Rst::Hdr> _recvHeaders;
+        Rst::Call *_callp;
 
         ClientReq() {
             _connp = NULL;
@@ -193,6 +194,7 @@ class XApi : public CThread {
             _isPost = reqGet;
             _error = 0;
             _sendContentLength = 0;
+            _callp = NULL;
         }
 
         virtual ~ClientReq() {
@@ -212,6 +214,13 @@ class XApi : public CThread {
             /* userThread actually self-destructs when the call completes */
             _userThreadp = NULL;
             _connp->setBusy(0);
+
+#if 0
+            if (_callp) {
+                delete _callp;
+                _callp = NULL;
+            }
+#endif
         }
 
         Rst::Hdr *getRecvHeaders() {

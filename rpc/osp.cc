@@ -1,7 +1,14 @@
 #include <stdio.h>
 #include <sys/time.h>
+#include <stdlib.h>
+
+#include <new>
 
 #include "osp.h"
+
+/* stupid rabbit */
+pthread_mutex_t AllocCommonHeader::_mutex;
+dqueue<AllocCommonHeader> AllocCommonHeader::_hash[AllocCommonHeader::_hashSize];
 
 void
 osp_panic(char *why, char *filep, int line)
@@ -54,4 +61,85 @@ osp_time_sec()
     gettimeofday(&tv, NULL);
 
     return (uint32_t) tv.tv_sec;
+}
+
+/* static */ void *
+AllocCommonHeader::commonNew(uint32_t size, void *retAddrp)
+{
+    char *datap;
+    AllocCommonHeader *headerp;
+    uint32_t ix;
+
+    datap = (char *) malloc(size+sizeof(AllocCommonHeader));
+    headerp = (AllocCommonHeader *)datap;
+    datap += sizeof(AllocCommonHeader);
+    headerp->_magic = _magicAlloc;
+    headerp->_size = size;
+    headerp->_retAddrp = retAddrp;
+    
+    pthread_mutex_lock(&_mutex);
+    ix = hashIx(retAddrp);
+    _hash[ix].append(headerp);
+    pthread_mutex_unlock(&_mutex);
+
+    return datap;
+}
+
+/* static */ void
+AllocCommonHeader::commonDelete(void *p)
+{
+    char *datap;
+    AllocCommonHeader *headerp;
+    uint32_t ix;
+    
+    datap = (char *) p;
+    datap -= sizeof(AllocCommonHeader);
+    headerp = (AllocCommonHeader *)datap;
+
+    osp_assert(headerp->_magic = _magicAlloc);
+    headerp->_magic = _magicFree;
+    
+    pthread_mutex_lock(&_mutex);
+    ix = hashIx(headerp->_retAddrp);
+    osp_assert(_hash[ix].count() > 0);
+    _hash[ix].remove(headerp);
+    pthread_mutex_unlock(&_mutex);
+
+    free(datap);
+}
+
+void *
+operator new(size_t size, const std::nothrow_t) throw()
+{
+    return AllocCommonHeader::commonNew(size, __builtin_return_address(0));
+}
+
+void *
+operator new(size_t size) throw(std::bad_alloc)
+{
+    return AllocCommonHeader::commonNew(size, __builtin_return_address(0));
+}
+
+void *
+operator new[](size_t size, const std::nothrow_t) throw()
+{
+    return AllocCommonHeader::commonNew(size, __builtin_return_address(0));
+}
+
+void *
+operator new[](size_t size) throw(std::bad_alloc)
+{
+    return AllocCommonHeader::commonNew(size, __builtin_return_address(0));
+}
+
+void
+operator delete(void *p) throw()
+{
+    AllocCommonHeader::commonDelete(p);
+}
+
+void
+operator delete[](void *p) throw()
+{
+    AllocCommonHeader::commonDelete(p);
 }

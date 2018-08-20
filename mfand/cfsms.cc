@@ -406,6 +406,9 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         jnodep = NULL;
     }
 
+    if (dataBufferp)
+        delete [] dataBufferp;
+    
     if (_cfsp->_verbose)
         printf("sendSmallFile: done code=%d\n", code);
     return code;

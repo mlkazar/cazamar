@@ -4,6 +4,10 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <stdio.h>
+#include <unistd.h>
+#ifdef __linux__
+#include <sys/syscall.h>
+#endif
 
 #include "osp.h"
 
