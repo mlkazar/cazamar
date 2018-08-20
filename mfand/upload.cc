@@ -67,13 +67,27 @@ DataSourceFile::read( uint64_t offset, uint32_t count, char *bufferp)
     return code;
 }
 
+/* static */ std::string
+UploadApp::getDate(time_t secs)
+{
+    char tbuffer[100];
+
+    if (secs == 0)
+        return std::string("Never");
+    else {
+        ctime_r(&secs, tbuffer);
+        return std::string(tbuffer, 4, 15);
+    }
+}
+
 /* static */ void
 Uploader::done(CDisp *disp, void *contextp)
 {
     Uploader *up = (Uploader *) contextp;
     printf("Uploader done for FS path=%s\n", up->_fsRoot.c_str());
-    if (up->_lastFinishedTimep)
-        *(up->_lastFinishedTimep) = osp_time_sec();
+    if (up->_stateProcp) {
+        up->_stateProcp(up->_stateContextp);
+    }
 }
 
 void
@@ -134,8 +148,6 @@ void
 Uploader::stop()
 {
     /* null this out so it doesn't look like a successful completion */
-    _lastFinishedTimep = NULL;
-
     _disp->stop();
     _status = STOPPED;
     return;
@@ -314,7 +326,8 @@ UploadHomeScreen::startMethod()
     loginHtml += "<p><a href=\"/startBackups\">Start/resume backup</a>";
     loginHtml += "<p><a href=\"/pauseBackups\">Pause backup</a>";
     loginHtml += "<p><a href=\"/stopBackups\">Stop backup</a>";
-    
+    sprintf(tbuffer, "<p><a href=\"/\" onclick=\"getBackupInt(); return false\">Set backup interval (%d hours)</a>", uploadApp->_backupInterval/3600);
+    loginHtml += tbuffer;
     fileName = uploadApp->_pathPrefix + "upload-home.html";
     dict.add("loginText", loginHtml);
     code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
@@ -362,6 +375,8 @@ UploadApp::readConfig(std::string pathPrefix)
     if (code != 0) {
         return;
     }
+
+    _backupInterval = 3600;
 
     /* read the json from the file -- it's a structure with an array
      * named backupEntries, each of which contains tags cloudRoot,
@@ -740,6 +755,7 @@ UploadStatusData::startMethod()
     std::string skippedString;
     std::string editString;
     std::string enabledString;
+    std::string finishedString;
     Uploader *uploaderp;
     UploadEntry *ep;
     uint32_t i;
@@ -751,10 +767,11 @@ UploadStatusData::startMethod()
     else {
         response = "<table style=\"width:80%\">";
         response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>"
-            "Bytes processed</th><th>"
             "Files skipped</th><th>"
+            "Bytes @ dest</th><th>"
             "Failures</th><th>"
             "State</th><th>"
+            "Finished at</th><th>"
             "Enabled</th><th>"
             "Edit</th></tr>\n";
         for(i=0;i<UploadApp::_maxUploaders;i++) {
@@ -764,24 +781,26 @@ UploadStatusData::startMethod()
             uploaderp = ep->_uploaderp;
             sprintf(tbuffer, "%ld files", (long) (uploaderp? uploaderp->_filesCopied : 0));
             filesString = std::string(tbuffer);
-            sprintf(tbuffer, "%ld MB", (long) (uploaderp? uploaderp->_bytesCopied/1000000: 0));
-            bytesString = std::string(tbuffer);
             sprintf(tbuffer, "%ld skipped", (long) (uploaderp? uploaderp->_filesSkipped : 0));
             skippedString = std::string(tbuffer);
+            sprintf(tbuffer, "%ld MB", (long) (uploaderp? uploaderp->_bytesCopied/1000000: 0));
+            bytesString = std::string(tbuffer);
             sprintf(tbuffer, "%ld failures", (long) (uploaderp? uploaderp->_fileCopiesFailed : 0));
             errorsString = std::string(tbuffer);
             sprintf(tbuffer, "<a href=\"/\" onclick=\"setEnabled(%d); return false\">%s</a>",
                     i, (ep->_enabled? "Enabled" : "Disabled"));
             enabledString = std::string(tbuffer);
+            finishedString = UploadApp::getDate(ep->_lastFinishedTime);
             sprintf(tbuffer, "<a href=\"/\" onclick=\"delConfirm(%d); return false\">Delete</a>", i);
             editString = std::string(tbuffer);
             response += ("<tr><td>"+ep->_fsRoot+"</td><td>" +
                          ep->_cloudRoot+ "</td><td>" +
                          filesString + "</td><td>" +
-                         bytesString + "</td><td>" +
                          skippedString + "</td><td>" +
+                         bytesString + "</td><td>" +
                          errorsString + "</td><td>" +
                          (uploaderp? uploaderp->getStatusString() : "Idle") + "</td><td>" +
+                         finishedString + "</td><td>" +
                          enabledString + "</td><td>" +
                          editString + "</td></tr>\n");
         }
@@ -954,6 +973,65 @@ UploadDeleteConfig::startMethod()
 }
 
 void
+UploadBackupInterval::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    std::string authToken;
+    std::string fileName;
+    dqueue<Rst::Hdr> *urlPairsp;
+    Rst::Hdr *hdrp;
+    uint32_t hours;
+        
+    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+        strcpy(tbuffer, "No app running to pause; visit home page first (1)<p>"
+               "<a href=\"/\">Home screen</a>");
+        obufferp = tbuffer;
+    }
+    else {
+        fileName = uploadApp->_pathPrefix + "upload-backup-int.html";
+        code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
+
+        if (code != 0) {
+            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            obufferp = tbuffer;
+        }
+        else {
+            obufferp = const_cast<char *>(response.c_str());
+        }
+    }
+
+    urlPairsp = getRstReq()->getUrlPairs();
+    hours = -1;
+    for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
+        if (hdrp->_key == "interval") {
+            hours = atoi(hdrp->_value.c_str());
+        }
+    }
+
+    if (hours > 0) {
+        uploadApp->_backupInterval = hours;
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
 UploadSetEnabledConfig::startMethod()
 {
     char tbuffer[16384];
@@ -1067,6 +1145,14 @@ UploadSetEnabledConfig::factory(std::string *opcodep, SApi *sapip)
 }
 
 SApi::ServerReq *
+UploadBackupInterval::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadBackupInterval *reqp;
+    reqp = new UploadBackupInterval(sapip);
+    return reqp;
+}
+
+SApi::ServerReq *
 UploadCreateConfig::factory(std::string *opcodep, SApi *sapip)
 {
     UploadCreateConfig *reqp;
@@ -1090,6 +1176,7 @@ UploadApp::init(SApi *sapip)
     sapip->registerUrl("/deleteItem", &UploadDeleteConfig::factory);
     sapip->registerUrl("/setEnabled", &UploadSetEnabledConfig::factory);
     sapip->registerUrl("/createEntry", &UploadCreateConfig::factory);
+    sapip->registerUrl("/backupInterval", &UploadBackupInterval::factory);
 
     return 0;
 }
@@ -1102,6 +1189,16 @@ UploadApp::initLoop(SApi *sapip)
     while(1) {
         sleep(1);
     }
+}
+
+/* static */ void
+UploadApp::stateChanged(void *contextp)
+{
+    UploadEntry *ep = (UploadEntry *) contextp;
+    UploadApp *app = ep->_app;
+
+    ep->_lastFinishedTime = osp_time_sec();
+    app->writeConfig(app->_pathPrefix);
 }
 
 UploadEntry::~UploadEntry() {

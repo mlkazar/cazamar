@@ -62,6 +62,19 @@ function delConfirm(x) {
     }
 };
 
+function getBackupInt() {
+    hours = window.prompt("Enter time between backups (e.g. 1d or 5m)");
+
+    var xhttp = new XMLHttpRequest();
+      xhttp.onreadystatechange = function() {
+          if (xhttp.readyState == 4 && xhttp.status == 200) {
+            window.location.replace("/");
+          }
+      };
+    xhttp.open("GET", "backupInterval?interval=" + hours, true);
+    xhttp.send();
+};
+
 function setEnabled(x) {
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
@@ -91,7 +104,7 @@ function updateStatus() {
       if (xhttp.readyState == 4 && xhttp.status == 200) {
         document.getElementById("statusData").innerHTML =
           xhttp.responseText;
-        setInterval(updateStatusInternal, 10000);
+        setInterval(updateStatusInternal, 4000);
       }
   };
   xhttp.open("GET", "statusData", true);

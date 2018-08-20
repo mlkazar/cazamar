@@ -1,19 +1,12 @@
-* 503 errors should destroy the connection
-
-* fix symlink processing
-
-* clean up printfs
-
-* crank up concurrency level to 24
-
-update stats more frequently for large files, and make sure stats only go up on success
-
-cdisp can queue unbounded number of tasks
-
 automatically schedule backups
+  parse backupInt as <number><h|d|m|s>
+  create backup starting thread
+  save backupInt in database
 
-enable/disable backups
+better icon
 
 age out old keyserv entries
 
 check for memory leaks (how?)
+
+cdisp can queue unbounded number of tasks

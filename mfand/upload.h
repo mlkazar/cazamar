@@ -131,6 +131,7 @@ public:
     typedef enum { STOPPED = 1,
                    PAUSED = 2,
                    RUNNING = 3} Status;
+    typedef void StateProc(void *contextp);
     CfsMs *_cfsp;
     std::string _fsRoot;      /* not counting terminal '/' */
     uint32_t _fsRootLen;
@@ -141,7 +142,8 @@ public:
     Status _status;
     std::string _cloudRoot;
     uint8_t _verbose;
-    uint32_t *_lastFinishedTimep;
+    StateProc *_stateProcp;
+    void *_stateContextp;
 
     /* some stats */
     uint64_t _filesCopied;
@@ -155,7 +157,8 @@ public:
         _status = STOPPED;
         _loginMSp = NULL;
         _verbose = 0;
-        _lastFinishedTimep = NULL;
+        _stateProcp = NULL;
+        _stateContextp = NULL;
 
         _filesCopied = 0;
         _bytesCopied = 0;
@@ -170,12 +173,19 @@ public:
     void init(std::string cloudRoot,
               std::string fsRoot,
               SApiLoginMS *loginMSp,
-              uint32_t *lastFinishedTimep) {
+              StateProc *procp,
+              void *contextp) {
         _cloudRoot = cloudRoot;
         _fsRoot = fsRoot;
         _fsRootLen = (uint32_t) _fsRoot.length();
         _loginMSp = loginMSp;
-        _lastFinishedTimep = lastFinishedTimep;
+        _stateProcp = procp;
+        _stateContextp = contextp;
+    }
+
+    void setStateProc(StateProc *procp, void *contextp) {
+        _stateProcp = procp;
+        _stateContextp = contextp;
     }
 
     void setVerbose() {
@@ -236,6 +246,7 @@ public:
     std::string _pathPrefix;
     std::string fsRoot;
     std::string cloudRoot;
+    uint32_t _backupInterval;
 
     UploadApp(std::string pathPrefix) {
         uint32_t i;
@@ -261,6 +272,8 @@ public:
     int32_t initLoop(SApi *sapip);
 
     int32_t init(SApi *sapip);
+
+    static std::string getDate(time_t secs);
 
     int32_t addConfigEntry( std::string cloudRoot,
                             std::string fsRoot,
@@ -334,11 +347,14 @@ public:
                 uploaderp->init(ep->_cloudRoot,
                                 ep->_fsRoot,
                                 _loginCookiep->_loginMSp,
-                                &ep->_lastFinishedTime);
+                                &UploadApp::stateChanged,
+                                ep);
                 uploaderp->start();
             }
         }
     }
+
+    static void stateChanged(void *contextp);
 
     void readConfig(std::string pathPrefix);
 
@@ -435,6 +451,17 @@ public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
 
     UploadSetEnabledConfig(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
+class UploadBackupInterval : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadBackupInterval(SApi *sapip) : SApi::ServerReq(sapip) {
         return;
     }
 
