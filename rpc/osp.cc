@@ -69,9 +69,16 @@ AllocCommonHeader::commonNew(uint32_t size, void *retAddrp)
     char *datap;
     AllocCommonHeader *headerp;
     uint32_t ix;
+    static int didOnce = 0;
+
+    if (!didOnce) {
+        pthread_mutex_init(&_mutex, NULL);
+        didOnce = 1;
+    }
 
     datap = (char *) malloc(size+sizeof(AllocCommonHeader));
     headerp = (AllocCommonHeader *)datap;
+    osp_assert(headerp->_magic != _magicAlloc); /* TBD: remove */
     datap += sizeof(AllocCommonHeader);
     headerp->_magic = _magicAlloc;
     headerp->_size = size;

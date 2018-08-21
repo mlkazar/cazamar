@@ -108,6 +108,7 @@ client(int argc, char **argv, int port)
         }
         printf("client: call done\n");
 
+        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }

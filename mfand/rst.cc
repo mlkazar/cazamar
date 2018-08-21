@@ -403,6 +403,7 @@ Rst::Call::init( const char *relPathp,
                  CopyProc *rcvProcp,
                  HdrQueue *rcvHeadersp,
                  CompletionProc *headersDoneProcp,
+                 CompletionProc *allDoneProcp,
                  void *contextp)
 {
     int32_t code;
@@ -413,6 +414,7 @@ Rst::Call::init( const char *relPathp,
     _rcvProcp = rcvProcp;
     _rcvHeadersp = rcvHeadersp;
     _headersDoneProcp = headersDoneProcp;
+    _allDoneProcp = allDoneProcp;
     _inputDoneProcp = NULL;
     _contextp = contextp;
 
@@ -523,22 +525,30 @@ Rst::Call::sendOperation()
 
     code = (int32_t) socketp->write((char *) firstLine.c_str(),
                                     (int32_t) firstLine.length());
-    if (code < 0)
+    if (code < 0) {
+        finished();
         return code;
+    }
 
     code = socketp->flush();
-    if (code < 0)
+    if (code < 0) {
+        finished();
         return code;
+    }
 
     if ((_op == "PUT" || _op == "POST") && _sendContentLength != 0) {
         code = sendData();
-        if (code < 0)
+        if (code < 0) {
+            finished();
             return code;
+        }
     }
 
     code = socketp->readLine(tbuffer, sizeof(tbuffer));
-    if (code < 0)
+    if (code < 0) {
+        finished();
         return code;
+    }
 
     /* skip "HTTP/1.x or ICY " */
     if (strncasecmp(tbuffer, "ICY", 3) != 0 &&
@@ -547,6 +557,7 @@ Rst::Call::sendOperation()
          * on the next call.
          */
         socketp->disconnect();
+        finished();
         return -2;
     }
 
@@ -564,6 +575,7 @@ Rst::Call::sendOperation()
     /* read header lines */
     code = readCommonHeaders();
     if (code < 0) {
+        finished();
         return code;
     }
 
@@ -580,18 +592,26 @@ Rst::Call::sendOperation()
     if (_rcvContentLength != 0) {
         code = rcvData();
         if (code < 0) {
+            finished();
             return code;
         }
     }
 
-#if 0
-    /* many servers close connection after each call; we won't
-     * discover connection is closed right away unless we do this.
-     */
-    socketp->disconnect();
-#endif
+    /* call socketp->disconnect() here if you want to close after each call */
+
+    /* mark call done */
+    finished();
 
     return 0;
+}
+
+void
+Rst::Call::finished()
+{
+    if (_allDoneProcp) {
+        _allDoneProcp(_contextp, this, 0, _httpError);
+    }
+    
 }
 
 Rst::Call::Call(Rst *rstp)

@@ -101,7 +101,7 @@ AppleLoginKeyData::runTests(AppTestContext *contextp, SApiLoginGeneric *genLogin
             jnodep->print();
         }
 
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
         delete reqp;
         delete jnodep;
         reqp = NULL;
@@ -157,7 +157,7 @@ AppleLoginKeyData::runTests(AppTestContext *contextp, SApiLoginGeneric *genLogin
             jnodep->print();
         }
 
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
         delete reqp;
         delete jnodep;
         reqp = NULL;

@@ -131,7 +131,7 @@ Uploader::start()
     _disp = new CDisp();
     printf("Created new cdisp at %p\n", _disp);
     _disp->setCompletionProc(&Uploader::done, this);
-    _disp->init(24);      /* TBD: crank this up to 8 */
+    _disp->init(24);
 
     printf("Starting copy\n");
     taskp = new WalkTask();

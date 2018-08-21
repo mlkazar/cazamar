@@ -186,7 +186,7 @@ AppleLogin::startMethod()
                 tp = redirNodep->_children.head()->_name.c_str();
         }
 
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
         
@@ -415,7 +415,7 @@ WriteTest::startMethod()
             if (redirNodep)
                 uploadUrl = redirNodep->_children.head()->_name;
         }
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
@@ -479,7 +479,7 @@ WriteTest::startMethod()
                 printf("target value='%s'\n", tstring.c_str());
             }
         }
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
@@ -597,7 +597,7 @@ WriteTest::startMethod()
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         printf("json (record create) parse code=%d\n", code);
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
@@ -766,7 +766,6 @@ ReadTest::startMethod()
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         printf("json (record create) parse code=%d\n", code);
-        inPipep->waitForEof();
 
         /* find 'downloadURL' in returned structure */
         downloadNodep = jnodep->searchForChild(std::string("downloadURL"), 0);
@@ -776,6 +775,7 @@ ReadTest::startMethod()
         else
             downloadUrl = "";
 
+        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
@@ -826,7 +826,7 @@ ReadTest::startMethod()
         printf("Received (objtest2) %d bytes of data:'%s'\n", code, tbuffer);
         
         tp = tbuffer;
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
 
         delete reqp;
         reqp = NULL;
@@ -1040,7 +1040,7 @@ DeleteTest::startMethod()
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         printf("json (record create) parse code=%d\n", code);
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }

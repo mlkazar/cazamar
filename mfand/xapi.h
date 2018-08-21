@@ -86,11 +86,16 @@ class XApi : public CThread {
 
         uint8_t _headersDone;
         CThreadCV _headersDoneCV;
+        uint8_t _allDone;
+        CThreadCV _allDoneCV;
         CThreadCV _busyCV;
 
         ClientReq *_activeReqp;
 
-        ClientConn(XApi *xapip, BufGen *bufGenp) : _headersDoneCV(&_mutex), _busyCV(&_mutex) {
+        ClientConn(XApi *xapip, BufGen *bufGenp) :
+        _headersDoneCV(&_mutex),
+            _allDoneCV(&_mutex),
+            _busyCV(&_mutex) {
             _bufGenp = bufGenp;
             _xapip = xapip;
 
@@ -138,6 +143,23 @@ class XApi : public CThread {
                 if (_headersDone)
                     break;
                 _headersDoneCV.wait();
+            }
+            _mutex.release();
+        }
+
+        void setAllDone() {
+            _mutex.take();
+            _allDone = 1;
+            _mutex.release();
+            _allDoneCV.broadcast();
+        }
+
+        void waitForAllDone() {
+            _mutex.take();
+            while(1) {
+                if (_allDone)
+                    break;
+                _allDoneCV.wait();
             }
             _mutex.release();
         }
@@ -205,6 +227,8 @@ class XApi : public CThread {
                 delete hdrp;
             }
             _sendHeaders.init();
+
+            /* TBD: do we really need to do this and free it from the rst code, too? */
             for(hdrp = _recvHeaders.head(); hdrp; hdrp=nhdrp) {
                 nhdrp = hdrp->_dqNextp;
                 delete hdrp;
@@ -213,9 +237,16 @@ class XApi : public CThread {
 
             /* userThread actually self-destructs when the call completes */
             _userThreadp = NULL;
-            _connp->setBusy(0);
 
-#if 0
+            /* make sure we're done with the call on this connection, and then mark
+             * the connection as available for reallocation.  Don't reference connp after
+             * this, as it doesn't belong to us any more.
+             */
+            osp_assert(_connp->_allDone);
+            _connp->setBusy(0);
+            _connp = NULL;
+
+#if 1
             if (_callp) {
                 delete _callp;
                 _callp = NULL;
@@ -231,9 +262,16 @@ class XApi : public CThread {
             _sendContentLength = sendContentLength;
         }
 
+        static void allDoneProc( void *contextp,
+                                 Rst::Common *commonp,
+                                 int32_t errorCode,
+                                 int32_t httpCode);
+
         int32_t startCall(ClientConn *connp, const char *relativePathp, reqType isPost);
 
         int32_t waitForHeadersDone();
+
+        int32_t waitForAllDone();
 
         void resetConn() {
             if (_connp)

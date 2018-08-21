@@ -72,6 +72,7 @@ class Rst {
         CopyProc *_rcvProcp;
         HdrQueue *_rcvHeadersp;
         CompletionProc *_headersDoneProcp;
+        CompletionProc *_allDoneProcp;
         CompletionProc *_inputDoneProcp;
         void *_contextp;
         int32_t _error;
@@ -156,6 +157,7 @@ class Rst {
                       CopyProc *rcvProcp,
                       HdrQueue *rcvHeadersp,
                       CompletionProc *headersDoneProcp,
+                      CompletionProc *allDoneProcp,
                       void *contextp);
 
         /* abort a call in progress */
@@ -193,6 +195,8 @@ class Rst {
             else
                 return NULL;
         }
+
+        void finished();
     };
 
     class Request : public Common {

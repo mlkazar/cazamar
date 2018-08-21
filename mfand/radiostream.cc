@@ -510,6 +510,7 @@ RadioStream::init( BufGenFactory *factoryp,
                              &rcv,
                              &_rcvHeaders,
                              &haveHeaders,
+                             /* allDoneProc */ NULL,
                              this);
         if (code < 0) {
             break;

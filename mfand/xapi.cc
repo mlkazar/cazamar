@@ -488,6 +488,14 @@ XApi::ClientReq::waitForHeadersDone()
     return _error;
 }
 
+int32_t
+XApi::ClientReq::waitForAllDone()
+{
+    _connp->waitForAllDone();
+
+    return _error;
+}
+
 /* static */ int32_t
 XApi::ClientReq::callSendProc( void *contextp,
                                Rst::Common *commonp,
@@ -549,6 +557,22 @@ XApi::ClientReq::headersDoneProc( void *contextp,
     connp->setHeadersDone();
 }
 
+/* static */ void
+XApi::ClientReq::allDoneProc( void *contextp,
+                              Rst::Common *commonp,
+                              int32_t errorCode,
+                              int32_t httpCode)
+{
+    XApi::ClientReq *reqp = (XApi::ClientReq *) contextp;
+    XApi::ClientConn *connp = reqp->_connp;
+
+    /* save errors */
+    reqp->_error = errorCode;
+    reqp->_httpError = httpCode;
+
+    connp->setAllDone();
+}
+
 
 /* called with a client request to start an outgoing call */
 void
@@ -575,6 +599,7 @@ XApi::ClientReq::startMethod()
                         callRecvProc,
                         &_recvHeaders,
                         headersDoneProc,
+                        allDoneProc,
                         this);
     if (code != 0) {
         _error = code;

@@ -228,7 +228,7 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
             printf("json parse failed code=%d\n", code);
         }
         
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
 
         if (code) {
             break;
@@ -351,7 +351,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
             tbuffer[code] = 0;
         }
         
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
 
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
@@ -483,7 +483,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             tbuffer[code] = 0;
         }
         
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
 
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
@@ -616,7 +616,7 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
             printf("json parse failed code=%d\n", code);
         }
         
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
 
         if (_cfsp->retryError(reqp, jnodep)) {
             delete reqp;
@@ -734,7 +734,7 @@ CnodeMs::startSession( std::string name,
             tbuffer[code] = 0;
         }
         
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
 
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
@@ -854,7 +854,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
             tbuffer[code] = 0;
         }
         
-        inPipep->waitForEof();
+        reqp->waitForAllDone();
 
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
