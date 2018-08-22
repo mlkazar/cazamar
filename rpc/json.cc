@@ -491,6 +491,9 @@ Json::parseJsonChars(char **inDatapp, Json::Node **nodepp)
     if (code == 0) {
         *inDatapp = inStream.final();   /* get final position of string and return it */
     }
+    else {
+        *nodepp = NULL;
+    }   
 
     return code;
 }
@@ -505,6 +508,9 @@ Json::parseJsonFile(FILE *filep, Json::Node **nodepp)
     InStreamFile inStream(filep);
 
     code = parseJsonValue(&inStream, nodepp);
+    if (code) {
+        *nodepp = NULL;
+    }
 
     return code;
 }

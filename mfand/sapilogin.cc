@@ -165,7 +165,6 @@ AppleLoginKeyData::startMethod()
             }
         }
 
-        reqp->waitForAllDone();
         delete reqp;
         delete jnodep;
         reqp = NULL;
@@ -283,7 +282,6 @@ SApiLoginApple::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
         }
         _authId = tableKey;
 
-        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
         
@@ -445,7 +443,6 @@ SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
             }
         }
 
-        reqp->waitForAllDone();
         delete reqp;
         delete jnodep;
         reqp = NULL;
@@ -501,7 +498,6 @@ SApiLoginMS::refresh()
     printf("**refresh token code=%d\n", code);
     
     if (code != 0) {
-        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
         return code;
@@ -526,7 +522,6 @@ SApiLoginMS::refresh()
         }
     }
     
-    reqp->waitForAllDone();
     delete reqp;
     delete jnodep;
     reqp = NULL;

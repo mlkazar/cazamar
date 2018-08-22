@@ -488,12 +488,15 @@ XApi::ClientReq::waitForHeadersDone()
     return _error;
 }
 
-int32_t
-XApi::ClientReq::waitForAllDone()
-{
-    _connp->waitForAllDone();
-
-    return _error;
+void
+XApi::ClientReq::waitForAllDone() {
+    _mutex.take();
+    while(1) {
+        if (_allDone)
+            break;
+        _allDoneCV.wait();
+    }
+    _mutex.release();
 }
 
 /* static */ int32_t
@@ -564,13 +567,12 @@ XApi::ClientReq::allDoneProc( void *contextp,
                               int32_t httpCode)
 {
     XApi::ClientReq *reqp = (XApi::ClientReq *) contextp;
-    XApi::ClientConn *connp = reqp->_connp;
 
     /* save errors */
     reqp->_error = errorCode;
     reqp->_httpError = httpCode;
 
-    connp->setAllDone();
+    reqp->setAllDone();
 }
 
 
@@ -608,5 +610,40 @@ XApi::ClientReq::startMethod()
         }
         _connp->_incomingData.eof();
         _connp->_outgoingData.eof();
+    }
+}
+
+XApi::ClientReq::~ClientReq() {
+    Rst::Hdr *hdrp;
+    Rst::Hdr *nhdrp;
+
+    waitForAllDone();
+
+    for(hdrp = _sendHeaders.head(); hdrp; hdrp=nhdrp) {
+        nhdrp = hdrp->_dqNextp;
+        delete hdrp;
+    }
+    _sendHeaders.init();
+    
+    /* TBD: do we really need to do this and free it from the rst code, too? */
+    for(hdrp = _recvHeaders.head(); hdrp; hdrp=nhdrp) {
+        nhdrp = hdrp->_dqNextp;
+        delete hdrp;
+    }
+    _recvHeaders.init();
+    
+    /* userThread actually self-destructs when the call completes */
+    _userThreadp = NULL;
+    
+    /* make sure we're done with the call on this connection, and then mark
+     * the connection as available for reallocation.  Don't reference connp after
+     * this, as it doesn't belong to us any more.
+     */
+    _connp->setBusy(0); /* clears _allDone */
+    _connp = NULL;
+    
+    if (_callp) {
+        delete _callp;
+        _callp = NULL;
     }
 }

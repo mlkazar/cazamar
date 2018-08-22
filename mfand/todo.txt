@@ -14,5 +14,7 @@ check for memory leaks (how?)
   cnodebackentry
   json::node from json::parsepair
   rst::call from xapi::clientreq::startcall
+  all done shojuld be set from xapi::client::~clientreq
+  move _allDone from ClientConn to ClientReq.
 
 cdisp can queue unbounded number of tasks

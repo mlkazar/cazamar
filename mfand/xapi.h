@@ -86,15 +86,12 @@ class XApi : public CThread {
 
         uint8_t _headersDone;
         CThreadCV _headersDoneCV;
-        uint8_t _allDone;
-        CThreadCV _allDoneCV;
         CThreadCV _busyCV;
 
         ClientReq *_activeReqp;
 
         ClientConn(XApi *xapip, BufGen *bufGenp) :
         _headersDoneCV(&_mutex),
-            _allDoneCV(&_mutex),
             _busyCV(&_mutex) {
             _bufGenp = bufGenp;
             _xapip = xapip;
@@ -146,23 +143,6 @@ class XApi : public CThread {
             }
             _mutex.release();
         }
-
-        void setAllDone() {
-            _mutex.take();
-            _allDone = 1;
-            _mutex.release();
-            _allDoneCV.broadcast();
-        }
-
-        void waitForAllDone() {
-            _mutex.take();
-            while(1) {
-                if (_allDone)
-                    break;
-                _allDoneCV.wait();
-            }
-            _mutex.release();
-        }
     };
 
     /* The user begin by creating a new XApi::ClientReq, adding any
@@ -209,50 +189,30 @@ class XApi : public CThread {
         dqueue<Rst::Hdr> _sendHeaders;
         dqueue<Rst::Hdr> _recvHeaders;
         Rst::Call *_callp;
+        uint8_t _allDone;
+        CThreadCV _allDoneCV;
+        CThreadMutex _mutex;
 
-        ClientReq() {
+        ClientReq() : _allDoneCV(&_mutex) {
             _connp = NULL;
             _userThreadp = NULL;
             _isPost = reqGet;
             _error = 0;
+            _allDone = 0;
             _sendContentLength = 0;
             _callp = NULL;
         }
 
-        virtual ~ClientReq() {
-            Rst::Hdr *hdrp;
-            Rst::Hdr *nhdrp;
-            for(hdrp = _sendHeaders.head(); hdrp; hdrp=nhdrp) {
-                nhdrp = hdrp->_dqNextp;
-                delete hdrp;
-            }
-            _sendHeaders.init();
+        void waitForAllDone();
 
-            /* TBD: do we really need to do this and free it from the rst code, too? */
-            for(hdrp = _recvHeaders.head(); hdrp; hdrp=nhdrp) {
-                nhdrp = hdrp->_dqNextp;
-                delete hdrp;
-            }
-            _recvHeaders.init();
-
-            /* userThread actually self-destructs when the call completes */
-            _userThreadp = NULL;
-
-            /* make sure we're done with the call on this connection, and then mark
-             * the connection as available for reallocation.  Don't reference connp after
-             * this, as it doesn't belong to us any more.
-             */
-            osp_assert(_connp->_allDone);
-            _connp->setBusy(0);
-            _connp = NULL;
-
-#if 1
-            if (_callp) {
-                delete _callp;
-                _callp = NULL;
-            }
-#endif
+        void setAllDone() {
+            _mutex.take();
+            _allDone = 1;
+            _mutex.release();
+            _allDoneCV.broadcast();
         }
+
+        virtual ~ClientReq();
 
         Rst::Hdr *getRecvHeaders() {
             return _recvHeaders.head();
@@ -270,8 +230,6 @@ class XApi : public CThread {
         int32_t startCall(ClientConn *connp, const char *relativePathp, reqType isPost);
 
         int32_t waitForHeadersDone();
-
-        int32_t waitForAllDone();
 
         void resetConn() {
             if (_connp)

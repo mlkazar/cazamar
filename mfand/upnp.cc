@@ -277,7 +277,6 @@ UpnpProbe::contactDevice(UpnpDevice *devp) {
     responsep = response.c_str();
     
     /* we're done with the call now */
-    apiReqp->waitForAllDone();
     delete apiReqp;
     
     code = xgml.parse(const_cast<char **>(&responsep), &rootNodep);
@@ -834,7 +833,6 @@ UpnpAv::browse(UpnpDBase *dbasep, const char *idp, int rlevel) {
 
         responsep = response.c_str();
         
-        _reqp->waitForAllDone();
         delete _reqp;
         _reqp = NULL;
         

@@ -186,7 +186,6 @@ AppleLogin::startMethod()
                 tp = redirNodep->_children.head()->_name.c_str();
         }
 
-        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
         
@@ -415,7 +414,6 @@ WriteTest::startMethod()
             if (redirNodep)
                 uploadUrl = redirNodep->_children.head()->_name;
         }
-        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
@@ -479,7 +477,6 @@ WriteTest::startMethod()
                 printf("target value='%s'\n", tstring.c_str());
             }
         }
-        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
@@ -597,7 +594,6 @@ WriteTest::startMethod()
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         printf("json (record create) parse code=%d\n", code);
-        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
@@ -775,7 +771,6 @@ ReadTest::startMethod()
         else
             downloadUrl = "";
 
-        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
@@ -826,7 +821,6 @@ ReadTest::startMethod()
         printf("Received (objtest2) %d bytes of data:'%s'\n", code, tbuffer);
         
         tp = tbuffer;
-        reqp->waitForAllDone();
 
         delete reqp;
         reqp = NULL;
@@ -1040,7 +1034,6 @@ DeleteTest::startMethod()
         tp = tbuffer;
         code = json.parseJsonChars((char **) &tp, &jnodep);
         printf("json (record create) parse code=%d\n", code);
-        reqp->waitForAllDone();
         delete reqp;
         reqp = NULL;
     }
