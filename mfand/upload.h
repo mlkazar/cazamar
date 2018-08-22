@@ -275,6 +275,10 @@ public:
         _loginCookiep = loginCookiep;
     }
 
+    static std::string showInterval(int32_t interval);
+    
+    static int32_t parseInterval(std::string istring);
+
     static UploadApp *getGlobalApp() {
         return _globalApp;
     }

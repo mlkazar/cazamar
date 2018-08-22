@@ -70,6 +70,61 @@ DataSourceFile::read( uint64_t offset, uint32_t count, char *bufferp)
     return code;
 }
 
+/* static */ int32_t
+UploadApp::parseInterval(std::string istring)
+{
+    const char *tp = istring.c_str();
+    int tc;
+    int32_t interval;
+    
+    interval = atoi(tp);
+    while((tc = *tp++) != 0) {
+        if ((tc >= '0' && tc <= '9') || tc == ' ' || tc == '\t')
+            continue;
+        if (tc == 'd' || tc == 'D') {
+            interval *= 86400;
+            break;
+        }
+        else if (tc == 'h' || tc == 'H') {
+            interval *= 3600;
+        }
+        else if (tc == 'm' || tc == 'M') {
+            interval *= 60;
+            break;
+        }
+    }
+    return interval;
+}
+
+/* static */ std::string
+UploadApp::showInterval(int32_t interval)
+{
+    std::string istring;
+    const char *unitsp;
+    uint32_t divisor;
+    char tbuffer[128];
+
+    if (interval < 60) {
+        unitsp = " secs";
+        divisor = 1;
+    }
+    else if (interval < 3600) {
+        unitsp = " mins";
+        divisor = 60;
+    }
+    else if (interval < 86400) {
+        unitsp = " hours";
+        divisor = 3600;
+    }
+    else {
+        unitsp = " days";
+        divisor = 86400;
+    }
+    
+    sprintf(tbuffer, "%d %s", interval/divisor, unitsp);
+    return std::string(tbuffer);
+}
+
 /* static */ std::string
 UploadApp::getDate(time_t secs)
 {
@@ -325,7 +380,7 @@ UploadHomeScreen::startMethod()
     loginHtml += "<p><a href=\"/startBackups\">Start/resume backup</a>";
     loginHtml += "<p><a href=\"/pauseBackups\">Pause backup</a>";
     loginHtml += "<p><a href=\"/stopBackups\">Stop backup</a>";
-    sprintf(tbuffer, "<p><a href=\"/\" onclick=\"getBackupInt(); return false\">Set backup interval (%d hours)</a>", uploadApp->_backupInterval/3600);
+    sprintf(tbuffer, "<p><a href=\"/\" onclick=\"getBackupInt(); return false\">Set backup interval (%s)</a>", UploadApp::showInterval(uploadApp->_backupInterval).c_str());
     loginHtml += tbuffer;
     fileName = uploadApp->_pathPrefix + "upload-home.html";
     dict.add("loginText", loginHtml);
@@ -363,6 +418,7 @@ UploadApp::readConfig(std::string pathPrefix)
     uint64_t lastFinishedTime;
     int32_t code;
     uint8_t enabled;
+    uint32_t backupInt;
 
     fileName = pathPrefix + "config.js";
     filep = fopen(fileName.c_str(), "r");
@@ -376,6 +432,13 @@ UploadApp::readConfig(std::string pathPrefix)
     }
 
     _backupInterval = 3600;
+
+    tnodep = rootNodep->searchForChild("backupInt");
+    if (tnodep) {
+        backupInt = atoi(tnodep->_children.head()->_name.c_str());
+        if (backupInt != 0)
+            _backupInterval = backupInt;
+    }
 
     /* read the json from the file -- it's a structure with an array
      * named backupEntries, each of which contains tags cloudRoot,
@@ -434,6 +497,13 @@ UploadApp::writeConfig(std::string pathPrefix)
     /* construct the json tree */
     rootNodep = new Json::Node();
     rootNodep->initStruct();
+
+    /* add backup interval to the json data */
+    tnodep = new Json::Node();
+    tnodep->initInt(_backupInterval);
+    nnodep = new Json::Node();
+    nnodep->initNamed("backupInt", tnodep);
+    rootNodep->appendChild(nnodep);
 
     /* create array */
     arrayNodep = new Json::Node();
@@ -988,7 +1058,7 @@ UploadBackupInterval::startMethod()
     std::string fileName;
     dqueue<Rst::Hdr> *urlPairsp;
     Rst::Hdr *hdrp;
-    uint32_t hours;
+    int32_t secs;
         
     if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "No app running to pause; visit home page first (1)<p>"
@@ -1009,15 +1079,15 @@ UploadBackupInterval::startMethod()
     }
 
     urlPairsp = getRstReq()->getUrlPairs();
-    hours = -1;
+    secs = -1;
     for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
         if (hdrp->_key == "interval") {
-            hours = atoi(hdrp->_value.c_str());
+            secs = UploadApp::parseInterval(hdrp->_value);
         }
     }
 
-    if (hours > 0) {
-        uploadApp->_backupInterval = hours;
+    if (secs > 0) {
+        uploadApp->_backupInterval = secs;
     }
 
     setSendContentLength(strlen(obufferp));
@@ -1029,6 +1099,8 @@ UploadBackupInterval::startMethod()
     outPipep->eof();
     
     requestDone();
+
+    uploadApp->writeConfig(uploadApp->_pathPrefix);
 }
 
 void
@@ -1193,6 +1265,7 @@ UploadApp::schedule(void *cxp)
     UploadEntry *ep;
 
     while(1) {
+        sleep(60);
         printf("SCANNING\n");
         for(i=0;i<_maxUploaders;i++) {
             ep = _uploadEntryp[i];
@@ -1204,12 +1277,10 @@ UploadApp::schedule(void *cxp)
              * long enough since it last successfully ran, start it.
              */
             if (ep->_lastFinishedTime + _backupInterval < osp_time_sec()) {
-                printf("considering starting upload of dir %s\n", ep->_fsRoot.c_str());
                 startEntry(ep);
             }
         }
         printf("SLEEPING\n");
-        sleep(60);
     }
 }
 
