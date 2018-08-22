@@ -1,20 +1,14 @@
-thread local should have thread id
-
 automatically schedule backups
   (un)parse backupInt as <number><h|d|m|s>
   create backup starting thread
   save backupInt in database
-
-* better icon
 
 age out old keyserv entries
 
 check for memory leaks (how?)
   cnodems
   cnodebackentry
-  json::node from json::parsepair
-  rst::call from xapi::clientreq::startcall
-  all done shojuld be set from xapi::client::~clientreq
-  move _allDone from ClientConn to ClientReq.
+
+provide better menu items in mac app
 
 cdisp can queue unbounded number of tasks

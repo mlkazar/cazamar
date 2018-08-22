@@ -238,7 +238,7 @@ public:
 /* these fields should all be indexed by a cookie dictionary hanging
  * off of the SApi structure.
  */
-class UploadApp {
+class UploadApp : public CThread {
 public:
     static const uint32_t _maxUploaders = 128;
     UploadEntry *_uploadEntryp[_maxUploaders]; /* array of pointers to UploaderEntries */
@@ -268,6 +268,8 @@ public:
         }
 #endif
     }
+
+    void schedule(void *cxp);
 
     int32_t initLoop(SApi *sapip);
 
@@ -314,43 +316,16 @@ public:
         }
     }
 
+    void startEntry(UploadEntry *ep);
+
     void start() {
-        uint32_t i;
         UploadEntry *ep;
-        Uploader *uploaderp;
-        Uploader::Status upStatus;
+        uint32_t i;
 
         for(i=0; i<_maxUploaders; i++) {
             ep = _uploadEntryp[i];
-            if (!ep || !ep->_enabled)
-                continue;
-            uploaderp = ep->_uploaderp;
-
-            if (uploaderp) {
-                upStatus = uploaderp->getStatus();
-                if (upStatus == Uploader::PAUSED) {
-                    uploaderp->resume();
-                    continue;
-                }
-                else if (upStatus == Uploader::RUNNING)
-                         continue;
-                else if (upStatus == Uploader::STOPPED) {
-                    delete uploaderp;
-                    ep->_uploaderp = NULL;
-                    uploaderp = NULL;
-                }
-            }
-            
-            if (!uploaderp) {
-                /* create the uploader */
-                ep->_uploaderp = uploaderp = new Uploader();
-                uploaderp->init(ep->_cloudRoot,
-                                ep->_fsRoot,
-                                _loginCookiep->_loginMSp,
-                                &UploadApp::stateChanged,
-                                ep);
-                uploaderp->start();
-            }
+            if (ep)
+                startEntry(ep);
         }
     }
 

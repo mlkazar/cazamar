@@ -1163,6 +1163,8 @@ UploadCreateConfig::factory(std::string *opcodep, SApi *sapip)
 int32_t
 UploadApp::init(SApi *sapip)
 {
+    CThreadHandle *hp;
+
     /* setup login URL listeners */
     SApiLogin::initSApi(sapip);
 
@@ -1178,7 +1180,37 @@ UploadApp::init(SApi *sapip)
     sapip->registerUrl("/createEntry", &UploadCreateConfig::factory);
     sapip->registerUrl("/backupInterval", &UploadBackupInterval::factory);
 
+    hp = new CThreadHandle();
+    hp->init((CThread::StartMethod) &UploadApp::schedule, this, NULL);
+
     return 0;
+}
+
+void
+UploadApp::schedule(void *cxp)
+{
+    uint32_t i;
+    UploadEntry *ep;
+
+    while(1) {
+        printf("SCANNING\n");
+        for(i=0;i<_maxUploaders;i++) {
+            ep = _uploadEntryp[i];
+
+            if (!ep || !ep->_enabled)
+                continue;
+
+            /* here we have a valid entry in STOPPED state; if it has been
+             * long enough since it last successfully ran, start it.
+             */
+            if (ep->_lastFinishedTime + _backupInterval < osp_time_sec()) {
+                printf("considering starting upload of dir %s\n", ep->_fsRoot.c_str());
+                startEntry(ep);
+            }
+        }
+        printf("SLEEPING\n");
+        sleep(60);
+    }
 }
 
 int32_t
@@ -1199,6 +1231,43 @@ UploadApp::stateChanged(void *contextp)
 
     ep->_lastFinishedTime = osp_time_sec();
     app->writeConfig(app->_pathPrefix);
+}
+
+void
+UploadApp::startEntry(UploadEntry *ep) {
+    Uploader *uploaderp;
+    Uploader::Status upStatus;
+
+    if (!ep || !ep->_enabled || !_loginCookiep)
+        return;
+    uploaderp = ep->_uploaderp;
+
+    if (uploaderp) {
+        upStatus = uploaderp->getStatus();
+        if (upStatus == Uploader::PAUSED) {
+            uploaderp->resume();
+            return;
+        }
+        else if (upStatus == Uploader::RUNNING) {
+            return;
+        }
+        else if (upStatus == Uploader::STOPPED) {
+            delete uploaderp;
+            ep->_uploaderp = NULL;
+            uploaderp = NULL;
+        }
+    }
+            
+    if (!uploaderp) {
+        /* create the uploader */
+        ep->_uploaderp = uploaderp = new Uploader();
+        uploaderp->init(ep->_cloudRoot,
+                        ep->_fsRoot,
+                        _loginCookiep->_loginMSp,
+                        &UploadApp::stateChanged,
+                        ep);
+        uploaderp->start();
+    }
 }
 
 UploadEntry::~UploadEntry() {
