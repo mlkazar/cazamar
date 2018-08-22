@@ -2,6 +2,9 @@ all:
 	-mkdir include lib
 	(cd rpc;make install); (cd mfand; make install); (cd radio; make install)
 
+setup:
+	-mkdir include lib
+
 install: all
 
 clean:

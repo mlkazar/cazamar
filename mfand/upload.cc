@@ -14,6 +14,9 @@
 #include "walkdisp.h"
 #include "upload.h"
 
+/* stupid rabbit */
+UploadApp *UploadApp::_globalApp;
+
 int32_t
 DataSourceFile::open(const char *fileNamep)
 {
@@ -303,11 +306,7 @@ UploadHomeScreen::startMethod()
     std::string pathPrefix;
     std::string fileName;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
-        pathPrefix = getSApi()->getPathPrefix();
-        uploadApp = new UploadApp(pathPrefix);
-        setCookieKey("main", uploadApp);
-    }
+    uploadApp = UploadApp::getGlobalApp();
 
     /* this does a get if it already exists */
     contextp = SApiLogin::createLoginCookie(this);
@@ -596,15 +595,16 @@ UploadStartScreen::startMethod()
     int loggedIn = 0;
     std::string fileName;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">Home screen</a></html>");
         obufferp = tbuffer;
     }
     else {
        /* this does a get if it already exists */
         loginCookiep = SApiLogin::createLoginCookie(this);
-        loginCookiep->enableSaveRestore();
-        uploadApp->_loginCookiep = loginCookiep;
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
 
         if (loginCookiep->getActive())
             authToken = loginCookiep->getActive()->getAuthToken();
@@ -658,7 +658,7 @@ UploadStopScreen::startMethod()
     std::string authToken;
     std::string fileName;
 
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "<html>No app running to stop; visit home page first<p>"
                "<a href=\"/\">Home screen</a></html>");
         obufferp = tbuffer;
@@ -705,7 +705,7 @@ UploadPauseScreen::startMethod()
     std::string authToken;
     std::string fileName;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "No app running to pause; visit home page first (1)<p>"
                "<a href=\"/\">Home screen</a>");
         obufferp = tbuffer;
@@ -760,7 +760,7 @@ UploadStatusData::startMethod()
     UploadEntry *ep;
     uint32_t i;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "[Initializing]");
         obufferp = tbuffer;
     }
@@ -833,7 +833,7 @@ UploadLoadConfig::startMethod()
     UploadApp *uploadApp;
     std::string authToken;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
                "<a href=\"/\">Home screen</a></html>");
         obufferp = tbuffer;
@@ -874,7 +874,7 @@ UploadCreateConfig::startMethod()
     std::string fileName;
     int noCreate = 0;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
                "<a href=\"/\">Home screen</a></html>");
         obufferp = tbuffer;
@@ -939,7 +939,7 @@ UploadDeleteConfig::startMethod()
     Rst::Hdr *hdrp;
     int ix;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
                "<a href=\"/\">Home screen</a></html>");
     }
@@ -990,7 +990,7 @@ UploadBackupInterval::startMethod()
     Rst::Hdr *hdrp;
     uint32_t hours;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "No app running to pause; visit home page first (1)<p>"
                "<a href=\"/\">Home screen</a>");
         obufferp = tbuffer;
@@ -1047,7 +1047,7 @@ UploadSetEnabledConfig::startMethod()
     Rst::Hdr *hdrp;
     int ix;
         
-    if ((uploadApp = (UploadApp *) getCookieKey("main")) == NULL) {
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
         strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
                "<a href=\"/\">Home screen</a></html>");
     }

@@ -61,6 +61,8 @@
 class SApiLoginApple;
 class SApiLoginMS;
 
+SApiLoginCookie *SApiLogin::_globalCookiep = NULL;
+
 /* This is an internal class used by SApiAppleLogin to handle the callback
  * from Javascript once the login process has completed.  Basically, the
  * key server returns the contents of login-apple-done.html, which has a 
@@ -534,6 +536,25 @@ SApiLoginMS::refresh()
     }
     
     return code;
+}
+
+/* static */ SApiLoginCookie *
+SApiLogin::createGlobalCookie(std::string pathPrefix)
+{
+    SApiLoginCookie *cookiep;
+
+    cookiep = new SApiLoginCookie();
+    cookiep->setPathPrefix(pathPrefix);
+    _globalCookiep = cookiep;
+    return cookiep;
+}
+
+/* static */ SApiLoginCookie *
+SApiLogin::getLoginCookie(SApi::ServerReq *reqp) {
+    if (_globalCookiep)
+        return _globalCookiep;
+
+    return (SApiLoginCookie *) reqp->getCookieKey("sapiLogin");
 }
 
 /* static */ SApiLoginCookie *

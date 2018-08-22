@@ -241,6 +241,7 @@ public:
 class UploadApp : public CThread {
 public:
     static const uint32_t _maxUploaders = 128;
+    static UploadApp *_globalApp;
     UploadEntry *_uploadEntryp[_maxUploaders]; /* array of pointers to UploaderEntries */
     SApiLoginCookie *_loginCookiep;
     std::string _pathPrefix;
@@ -267,6 +268,15 @@ public:
             writeConfig(pathPrefix);
         }
 #endif
+        _globalApp = this;
+    }
+
+    void setGlobalLoginCookie(SApiLoginCookie *loginCookiep) {
+        _loginCookiep = loginCookiep;
+    }
+
+    static UploadApp *getGlobalApp() {
+        return _globalApp;
     }
 
     void schedule(void *cxp);

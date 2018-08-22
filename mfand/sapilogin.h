@@ -246,17 +246,19 @@ public:
 class SApiLogin {
  public:
     
+    static SApiLoginCookie *_globalCookiep;
+
     static void initSApi (SApi *sapip) {
         sapip->registerUrl("/appleLoginScreen", &AppleLoginScreen::factory);
         sapip->registerUrl("/msLoginScreen", &MSLoginScreen::factory);
         sapip->registerUrl("/logoutScreen", &LogoutScreen::factory);
     }
 
-    static SApiLoginCookie *getLoginCookie(SApi::ServerReq *reqp) {
-        return (SApiLoginCookie *) reqp->getCookieKey("sapiLogin");
-    }
+    static SApiLoginCookie *getLoginCookie(SApi::ServerReq *reqp);
 
     static SApiLoginCookie *createLoginCookie(SApi::ServerReq *reqp);
+
+    static SApiLoginCookie *createGlobalCookie(std::string pathPrefix);
 
     virtual ~SApiLogin() {
         return;
@@ -290,8 +292,10 @@ public:
     }
 
     void enableSaveRestore() {
-        _saveRestoreEnabled = 1;
-        restore();
+        if (!_saveRestoreEnabled) {
+            _saveRestoreEnabled = 1;
+            restore();
+        }
     }
 
     int32_t save();
