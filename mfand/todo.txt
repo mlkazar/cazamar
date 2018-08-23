@@ -1,11 +1,11 @@
-automatically schedule backups
+* automatically schedule backups
   (un)parse backupInt as <number><h|d|m|s>
   create backup starting thread
   save backupInt in database
 
 age out old keyserv entries
 
-check for memory leaks (how?)
+check for memory leaks
   cnodems
   cnodebackentry
 
