@@ -13,6 +13,8 @@ class CfsMs;
 class CnodeMs;
 class CnodeLockSet;
 
+/* Lock order: cnode lock, hash lock, ref count lock */
+
 class CnodeBackEntry {
  public:
     std::string _name;
@@ -46,6 +48,12 @@ class CnodeMs : public Cnode {
     CnodeBackEntry *_backEntriesp;      /* our names in our parent */
     dqueue<CnodeBackEntry> _children;   /* list of our children */
     uint8_t _isRoot;
+    uint8_t _inLru;
+
+public:
+    /* queue entries for CfsMs LRU queue */
+    CnodeMs *_dqNextp;
+    CnodeMs *_dqPrevp;
 
  protected:
     CfsMs *_cfsp;
@@ -57,6 +65,7 @@ class CnodeMs : public Cnode {
         _nextIdHashp = NULL;
         _backEntriesp = NULL;
         _isRoot = 0;
+        _inLru = 0;
     }
 
     int32_t fillAttrs( CEnv *envp, CnodeLockSet *lockSetp);
@@ -66,6 +75,10 @@ class CnodeMs : public Cnode {
     void hold();
 
     void release();
+
+    void holdNL();
+
+    void releaseNL();
 
     /* virtual ops realized */
     int32_t getAttr(CAttr *attrsp, CEnv *envp);
@@ -129,13 +142,15 @@ class CnodeMs : public Cnode {
 class CfsMs : public Cfs {
  public:
     static const uint32_t _hashSize = 997;
+    static const uint32_t _maxLruCount = 2000;
     SApiLoginMS *_loginp;
     CThreadMutex _lock;         /* protect hash table */
-    CThreadMutex _refLock;         /* protect hash table */
+    CThreadMutex _refLock;         /* protect ref count and LRU */
     CnodeMs *_hashTablep[_hashSize];
     XApiPool *_xapiPoolp;
     CnodeMs *_rootp;
     uint8_t _verbose;
+    dqueue<CnodeMs> _lruQueue;
 
     CfsMs(SApiLoginMS *loginp) {
         _xapiPoolp = new XApiPool();
@@ -157,6 +172,10 @@ class CfsMs : public Cfs {
 
     int32_t root(Cnode **rootpp, CEnv *envp);
     
+    void recycle();
+
+    void checkRecycle();
+
     int32_t getCnode(std::string *idp, CnodeMs **cnodepp);
 
     int32_t retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep);

@@ -967,17 +967,63 @@ CnodeMs::sendFile( std::string name,
 void
 CnodeMs::hold() {
     _cfsp->_refLock.take();
-    _refCount++;
+    holdNL();
     _cfsp->_refLock.release();
 }
 
 void
-CnodeMs::release() {
-    osp_assert(_refCount > 0);
+CnodeMs::holdNL() {
+    _refCount++;
+    if (_inLru) {
+        _cfsp->_lruQueue.remove(this);
+        _inLru = 0;
+    }
+}
 
-    _cfsp->_refLock.take();
+void
+CnodeMs::release()
+{
+    CfsMs *cfsp = _cfsp;
+    cfsp->_refLock.take();
+    releaseNL();
+    cfsp->_refLock.release();
+
+    cfsp->checkRecycle();
+}
+
+/* if call this, must call check recycle once locks are done */
+void
+CnodeMs::releaseNL() {
+    int didAdd = 0;
+    osp_assert(_refCount > 0);
+    CfsMs *cfsp;
+
+    cfsp = _cfsp;               /* once ref count hits zero, all bets are off */
     _refCount--;
-    _cfsp->_refLock.release();
+    if (_refCount == 0 && !_inLru) {
+        _inLru = 1;
+        cfsp->_lruQueue.append(this);
+        didAdd = 1;
+    }
+}
+
+/* called without any locks held */
+void
+CfsMs::checkRecycle()
+{
+    if (_lruQueue.count() > CfsMs::_maxLruCount)
+        recycle();
+}
+
+void
+CfsMs::recycle()
+{
+    CnodeMs *tnodep;
+    _refLock.take();
+    while(_lruQueue.count() > _maxLruCount) {
+        tnodep = _lruQueue.pop();
+    }
+    _refLock.release();
 }
 
 /* returns held reference to root */
