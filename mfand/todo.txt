@@ -1,3 +1,7 @@
+uploader creates new cdisp on each run -- pass in from uploadapp
+
+uploader doesn't free walkdisp
+
 * automatically schedule backups
   (un)parse backupInt as <number><h|d|m|s>
   create backup starting thread

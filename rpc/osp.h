@@ -19,6 +19,7 @@ class AllocCommonHeader {
     uint16_t _padding;
     uint32_t _size;
     void *_retAddrp;
+    void *_delRetAddrp;
     AllocCommonHeader *_dqNextp;
     AllocCommonHeader *_dqPrevp;
 
@@ -29,7 +30,7 @@ class AllocCommonHeader {
 
     static void *commonNew(uint32_t size, void *retAddrp);
 
-    static void commonDelete(void *p);
+    static void commonDelete(void *p, void *retAddrp);
 };
 
 #define osp_assert(x) do { \

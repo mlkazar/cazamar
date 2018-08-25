@@ -159,8 +159,7 @@ Uploader::start()
     std::string uploadUrl;
     WalkTask *taskp;
 
-    printf("cfstest: tests start login=%p\n", _loginMSp);
-    _cfsp = new CfsMs(_loginMSp);
+    printf("cfstest: tests start\n");
     _cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attrs, NULL);
 
@@ -235,7 +234,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
     DataSourceFile dataFile;
     int32_t code;
     Uploader *up = (Uploader *) contextp;
-    CfsMs *cfsp = up->_cfsp;
+    Cfs *cfsp = up->_cfsp;
     Cnode *cnodep;
     std::string relativeName;
     CAttr cloudAttr;
@@ -1330,11 +1329,16 @@ UploadApp::startEntry(UploadEntry *ep) {
     }
             
     if (!uploaderp) {
+        if (!_cfsp) {
+            _cfsp = new CfsMs(_loginCookiep->_loginMSp);
+        }
+
         /* create the uploader */
         ep->_uploaderp = uploaderp = new Uploader();
         uploaderp->init(ep->_cloudRoot,
                         ep->_fsRoot,
-                        _loginCookiep->_loginMSp,
+                        _cdisp,
+                        _cfsp,
                         &UploadApp::stateChanged,
                         ep);
         uploaderp->start();

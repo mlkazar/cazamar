@@ -41,6 +41,19 @@ class CThreadMutex {
         osp_assert(code == 0);
     }
 
+    /* returns zero if we got the lock, non-zero otherwise */
+    int tryTake() {
+        uint64_t me;
+        int code;
+        me = CThread::self();
+        osp_assert(me != _ownerId);
+        code = pthread_mutex_trylock(&_pthreadMutex);
+        if (code == 0) {
+            _ownerId = me;
+        }
+        return code;
+    }
+
     void take() {
         uint64_t me;
         me = CThread::self();

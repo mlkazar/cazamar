@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <sys/time.h>
 #include <stdlib.h>
 
@@ -83,6 +84,7 @@ AllocCommonHeader::commonNew(uint32_t size, void *retAddrp)
     headerp->_magic = _magicAlloc;
     headerp->_size = size;
     headerp->_retAddrp = retAddrp;
+    memset(datap, 0xcd, size);  /* XXX debug */
     
     pthread_mutex_lock(&_mutex);
     ix = hashIx(retAddrp);
@@ -93,23 +95,31 @@ AllocCommonHeader::commonNew(uint32_t size, void *retAddrp)
 }
 
 /* static */ void
-AllocCommonHeader::commonDelete(void *p)
+AllocCommonHeader::commonDelete(void *p, void *retAddrp)
 {
     char *datap;
     AllocCommonHeader *headerp;
     uint32_t ix;
     
     datap = (char *) p;
+
     datap -= sizeof(AllocCommonHeader);
     headerp = (AllocCommonHeader *)datap;
 
+#if 0
+    printf("FREE block at %p with size 0x%x allocRet=%p deleteRet=%p\n",
+           p, headerp->_size, headerp->_retAddrp, retAddrp);
+#endif
     osp_assert(headerp->_magic = _magicAlloc);
     headerp->_magic = _magicFree;
     
+    memset(p, 0xab, headerp->_size);
+
     pthread_mutex_lock(&_mutex);
     ix = hashIx(headerp->_retAddrp);
     osp_assert(_hash[ix].count() > 0);
     _hash[ix].remove(headerp);
+    headerp->_delRetAddrp = retAddrp;
     pthread_mutex_unlock(&_mutex);
 
     free(datap);
@@ -142,11 +152,11 @@ operator new[](size_t size) throw(std::bad_alloc)
 void
 operator delete(void *p) throw()
 {
-    AllocCommonHeader::commonDelete(p);
+    AllocCommonHeader::commonDelete(p, __builtin_return_address(0));
 }
 
 void
 operator delete[](void *p) throw()
 {
-    AllocCommonHeader::commonDelete(p);
+    AllocCommonHeader::commonDelete(p, __builtin_return_address(0));
 }

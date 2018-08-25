@@ -987,8 +987,6 @@ CnodeMs::release()
     cfsp->_refLock.take();
     releaseNL();
     cfsp->_refLock.release();
-
-    cfsp->checkRecycle();
 }
 
 /* if call this, must call check recycle once locks are done */
@@ -1000,30 +998,11 @@ CnodeMs::releaseNL() {
 
     cfsp = _cfsp;               /* once ref count hits zero, all bets are off */
     _refCount--;
-    if (_refCount == 0 && !_inLru) {
+    if (recyclable() && !_inLru) {
         _inLru = 1;
         cfsp->_lruQueue.append(this);
         didAdd = 1;
     }
-}
-
-/* called without any locks held */
-void
-CfsMs::checkRecycle()
-{
-    if (_lruQueue.count() > CfsMs::_maxLruCount)
-        recycle();
-}
-
-void
-CfsMs::recycle()
-{
-    CnodeMs *tnodep;
-    _refLock.take();
-    while(_lruQueue.count() > _maxLruCount) {
-        tnodep = _lruQueue.pop();
-    }
-    _refLock.release();
 }
 
 /* returns held reference to root */
@@ -1036,7 +1015,13 @@ CfsMs::root(Cnode **nodepp, CEnv *envp)
 
     rootp = _rootp;
     if (!rootp) {
-        rootp = new CnodeMs();
+        while(1) {
+            /* allocCnode returns NULL on certain race conditions */
+            rootp = allocCnode(NULL);
+            if (rootp)
+                break;
+        }
+
         rootp->_cfsp = this;
         rootp->_isRoot = 1;
         _rootp = rootp;         /* reference from new goes to _rootp */
@@ -1061,29 +1046,174 @@ CfsMs::root(Cnode **nodepp, CEnv *envp)
     return code;
 }
 
+/* returns null if lost race condition and had to drop hash lock; if it returns a
+ * real cnode, it means that the hash lock hadn't been dropped.
+ */
+CnodeMs *
+CfsMs::allocCnode(CThreadMutex *hashLockp)
+{
+    CnodeMs *cnodep;
+    CnodeMs *tnodep;
+    CnodeMs **lnodepp;
+    CnodeMs *parentp;
+    CnodeBackEntry *backp;
+    int doRelease;
+
+    _refLock.take();
+
+    /* we just want to create a new one, since we haven't populated the entire
+     * cache yet.
+     */
+
+    if (_cnodeCount < _maxCnodeCount) {
+        cnodep = new CnodeMs();
+        cnodep->_cfsp = this;
+        _cnodeCount++;
+        _refLock.release();
+        return cnodep;
+    }
+
+    /* otherwise, try LRU queue, and if that doesn't find anyone, just allocate a new
+     * one anyway, and bump a counter.
+     */
+    while(1) {
+        /* see if we have an already recycled cnode */
+        if ((cnodep = _freeListp) != NULL) {
+            _freeListp = cnodep->_nextFreep;
+            _refLock.release();
+            return cnodep;
+        }
+
+        /* try to get one from the LRU queue */
+        cnodep = _lruQueue.pop();
+        if (!cnodep) {
+            _cnodeCount++;
+            cnodep = new CnodeMs();
+            cnodep->_cfsp = this;
+            _refLock.release();
+            return cnodep;
+        }
+        cnodep->_inLru = 0;
+
+        if (!cnodep->recyclable()) {
+            /* can't recycle this one; they'll get added to LRU queue again
+             * once their children disppear or their ref count hits zero
+             */
+            continue;
+        }
+
+        /* here, cnodep is recyclable, but we can't recycle it without adding
+         * the hash lock for this entry, so we can hash it out.
+         */
+        if (hashLockp == &_lock) {
+            doRelease = 0;
+        }
+        else if (_lock.tryTake() == 0) {
+            doRelease = 1;
+        }
+        else {
+            /* couldn't get the hash lock directly; because we're going to
+             * drop the lock, our caller can't do anything with our cnode anyway.
+             * So, we'll just wait for the lock we wanted to get with lock.try
+             * above, and then return failure.
+             */
+            _refLock.release();
+            if (hashLockp)
+                hashLockp->release();
+            _lock.take(); /* if we use multiple hash locks, ensure this one matches cnodep */
+            _refLock.take();
+            _lock.release();
+
+            /* rather than recheck conditions, just put cnodep in the LRU queue
+             * if it isn't, but should be.  And then return failure.
+             */
+            if (!cnodep->_inLru && cnodep->recyclable()) {
+                cnodep->_inLru = 1;
+                _lruQueue.append(cnodep);
+            }
+            _refLock.release();
+            return NULL;
+        }
+
+        /* if we make it here, we have the hash lock for the old cnode
+         * we're trying to recycle.  It should still be recyclable,
+         * since we never dropped the _refLock, and we still have our
+         * caller's hash lock, if one was held.
+         */
+        if (cnodep->_inHash) {
+            cnodep->_inHash = 0;
+            for( lnodepp = &_hashTablep[cnodep->_hashIx], tnodep = *lnodepp;
+                 tnodep;
+                 lnodepp = &tnodep->_nextHashp, tnodep = *lnodepp) {
+                if (tnodep == cnodep) {
+                    break;
+                }
+            }
+            osp_assert(tnodep);
+            *lnodepp = cnodep->_nextHashp;
+        }
+
+        if ((backp = cnodep->_backEntriesp) != NULL) {
+            parentp = backp->_parentp;
+            parentp->_children.remove(backp);
+            cnodep->_backEntriesp = NULL;
+            /* and see if parent should be in LRU */
+            if (parentp->recyclable() && !parentp->_inLru) {
+                parentp->_inLru = 1;
+                _lruQueue.append(parentp);
+            }
+        }
+
+        osp_assert(!cnodep->_inLru);
+        if (doRelease)
+            _lock.release();
+        _refLock.release();
+        return cnodep;
+    } /* loop */
+
+    /* not reached */
+    return NULL;
+}
+
 int32_t
 CfsMs::getCnode(std::string *idp, CnodeMs **cnodepp)
 {
     uint64_t hashValue;
     CnodeMs *cp;
 
-    _lock.take();
-
     hashValue = Cfs::fnvHash64(idp) % _hashSize;
-    for(cp = _hashTablep[hashValue]; cp; cp=cp->_nextIdHashp) {
-        if (cp->_id == *idp)
-            break;
-    }
 
-    if (!cp) {
-        cp = new CnodeMs();
-        cp->_cfsp = this;
-        cp->_id = *idp;
+    while(1) {
+        _lock.take();
+
+        for(cp = _hashTablep[hashValue]; cp; cp=cp->_nextHashp) {
+            if (cp->_id == *idp)
+                break;
+        }
+
+        if (!cp) {
+            cp = allocCnode(&_lock);
+            if (!cp) {
+                /* _lockp was released on failure */
+                continue;
+            }
+
+            cp->_cfsp = this;
+            cp->_id = *idp;
+            cp->_refCount = 1;
+
+            /* hash in */
+            cp->_hashIx = hashValue;
+            cp->_inHash = 1;
+            cp->_nextHashp = _hashTablep[hashValue];
+            _hashTablep[hashValue] = cp;
+        }
+        else {
+            cp->hold();
+        }
+        *cnodepp = cp;
+        break;
     }
-    else {
-        cp->hold();
-    }
-    *cnodepp = cp;
 
     _lock.release();
     return 0;

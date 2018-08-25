@@ -13,20 +13,28 @@ class CfsMs;
 class CnodeMs;
 class CnodeLockSet;
 
-/* Lock order: cnode lock, hash lock, ref count lock */
-
+/* Lock order: cnode lock, hash lock, ref count lock.
+ *
+ * You can't remove a node from the parent/child tree without holding the refCount
+ * lock, seeing that the child has a zero ref count, and that the node being
+ * removed has no children.
+ *
+ * You must hold a reference count on a child to advance the child
+ * search to the new node.  Once you hold the reference, you can
+ * release the refCount lock.
+ */
 class CnodeBackEntry {
  public:
     std::string _name;
-    CnodeMs *_parentp;                  /* hard reference */
-    CnodeMs *_childp;                   /* sort reference */
+    CnodeMs *_parentp;                  /* soft reference */
+    CnodeMs *_childp;                   /* soft reference */
 
     /* next entry belonging to this same child, i.e. another hard link to this same
      * file.
      */
     CnodeBackEntry *_nextSameChildp;
 
-    /* TBD: do we need to have a list of all entries belonging to a particular parent? */
+    /* list of all same parent */
     CnodeBackEntry *_dqNextp;
     CnodeBackEntry *_dqPrevp;
 
@@ -44,11 +52,14 @@ class CnodeMs : public Cnode {
 
     std::string _id;
 
-    CnodeMs *_nextIdHashp;
+    CnodeMs *_nextHashp;
+    CnodeMs *_nextFreep;                /* union with nextHashp? */
     CnodeBackEntry *_backEntriesp;      /* our names in our parent */
     dqueue<CnodeBackEntry> _children;   /* list of our children */
+    uint32_t _hashIx;
     uint8_t _isRoot;
     uint8_t _inLru;
+    uint8_t _inHash;
 
 public:
     /* queue entries for CfsMs LRU queue */
@@ -62,10 +73,20 @@ public:
 
     CnodeMs() {
         _cfsp = NULL;
-        _nextIdHashp = NULL;
+        _nextHashp = NULL;
         _backEntriesp = NULL;
         _isRoot = 0;
         _inLru = 0;
+        _hashIx = 0;
+        _inHash = 0;
+    }
+
+    int recyclable() {
+        if ( _refCount > 0 ||
+             _children.count() > 0)
+            return 0;
+        else
+            return 1;
     }
 
     int32_t fillAttrs( CEnv *envp, CnodeLockSet *lockSetp);
@@ -142,7 +163,8 @@ public:
 class CfsMs : public Cfs {
  public:
     static const uint32_t _hashSize = 997;
-    static const uint32_t _maxLruCount = 2000;
+    static const uint32_t _maxCnodeCount = 200;
+    uint32_t _cnodeCount;
     SApiLoginMS *_loginp;
     CThreadMutex _lock;         /* protect hash table */
     CThreadMutex _refLock;         /* protect ref count and LRU */
@@ -151,12 +173,15 @@ class CfsMs : public Cfs {
     CnodeMs *_rootp;
     uint8_t _verbose;
     dqueue<CnodeMs> _lruQueue;
+    CnodeMs *_freeListp;
 
     CfsMs(SApiLoginMS *loginp) {
         _xapiPoolp = new XApiPool();
         _loginp = loginp;
         _rootp = NULL;
         _verbose = 0;
+        _cnodeCount = 0;
+        _freeListp = NULL;
         memset(_hashTablep, 0, sizeof(_hashTablep));
     }
 
@@ -172,6 +197,8 @@ class CfsMs : public Cfs {
 
     int32_t root(Cnode **rootpp, CEnv *envp);
     
+    CnodeMs *allocCnode(CThreadMutex *hashLockp);
+
     void recycle();
 
     void checkRecycle();

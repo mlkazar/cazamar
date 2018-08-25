@@ -132,10 +132,10 @@ public:
                    PAUSED = 2,
                    RUNNING = 3} Status;
     typedef void StateProc(void *contextp);
-    CfsMs *_cfsp;
+    CDisp *_cdisp;
+    Cfs *_cfsp;
     std::string _fsRoot;      /* not counting terminal '/' */
     uint32_t _fsRootLen;
-    SApiLoginMS *_loginMSp;
     CDisp *_disp;
     CThreadMutex _lock;
     WalkTask *_walkTaskp;
@@ -152,10 +152,10 @@ public:
     uint64_t _fileCopiesFailed;
 
     Uploader() {
+        _cdisp = NULL;
         _cfsp = NULL;
         _fsRootLen = 0;
         _status = STOPPED;
-        _loginMSp = NULL;
         _verbose = 0;
         _stateProcp = NULL;
         _stateContextp = NULL;
@@ -172,13 +172,15 @@ public:
 
     void init(std::string cloudRoot,
               std::string fsRoot,
-              SApiLoginMS *loginMSp,
+              CDisp *cdisp,
+              Cfs *cfsp,
               StateProc *procp,
               void *contextp) {
         _cloudRoot = cloudRoot;
+        _cdisp = cdisp;
+        _cfsp = cfsp;
         _fsRoot = fsRoot;
         _fsRootLen = (uint32_t) _fsRoot.length();
-        _loginMSp = loginMSp;
         _stateProcp = procp;
         _stateContextp = contextp;
     }
@@ -248,6 +250,8 @@ public:
     std::string fsRoot;
     std::string cloudRoot;
     uint32_t _backupInterval;
+    Cfs *_cfsp;
+    CDisp *_cdisp;
 
     UploadApp(std::string pathPrefix) {
         uint32_t i;
@@ -256,6 +260,8 @@ public:
         }
         _pathPrefix = pathPrefix;
         _loginCookiep = NULL;
+        _cfsp = NULL;
+        _cdisp = NULL;
 
         readConfig(pathPrefix);
 
