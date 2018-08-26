@@ -11,4 +11,9 @@ mystery 2 over _name crash (zero uninitialized memory?)
   curr=json::parsejsoncomplex prev=getcnodelinked's backentry
 
 
+different state for slowed down server
+
+pthread destroy_XXX
+
+
 cdisp can queue unbounded number of tasks

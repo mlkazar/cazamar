@@ -91,7 +91,7 @@ AllocCommonHeader::commonNew(uint32_t size, void *retAddrp)
     _hash[ix].append(headerp);
     pthread_mutex_unlock(&_mutex);
 
-    osp_assert((int) (headerp->_dqNextp) != 2);
+    osp_assert((intptr_t) (headerp->_dqNextp) != 2);
 
     return datap;
 }
@@ -121,12 +121,16 @@ AllocCommonHeader::commonDelete(void *p, void *retAddrp)
     ix = hashIx(headerp->_retAddrp);
     osp_assert(_hash[ix].count() > 0);
     _hash[ix].remove(headerp);
-    headerp->_delRetAddrp = retAddrp;
+    // headerp->_delRetAddrp = retAddrp;
     pthread_mutex_unlock(&_mutex);
 
     free(datap);
 }
 
+// #define MLK_NEW
+#undef MLK_NEW
+
+#ifdef MLK_NEW
 void *
 operator new(size_t size, const std::nothrow_t) throw()
 {
@@ -162,3 +166,4 @@ operator delete[](void *p) throw()
 {
     AllocCommonHeader::commonDelete(p, __builtin_return_address(0));
 }
+#endif /* MLK_NEW */

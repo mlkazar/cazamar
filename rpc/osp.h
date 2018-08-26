@@ -19,7 +19,7 @@ class AllocCommonHeader {
     uint16_t _padding;
     uint32_t _size;
     void *_retAddrp;
-    void *_delRetAddrp;
+    // void *_delRetAddrp;
     AllocCommonHeader *_dqNextp;
     AllocCommonHeader *_dqPrevp;
 
