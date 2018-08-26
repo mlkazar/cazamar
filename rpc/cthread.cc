@@ -1,5 +1,7 @@
 #include "cthread.h"
 
+CThreadMutex CThread::_libcMutex;
+
 void
 CThreadHandle::init(CThread::StartMethod startMethod, CThread *threadp, void *contextp)
 {

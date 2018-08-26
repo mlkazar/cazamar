@@ -1,7 +1,5 @@
 age out old keyserv entries
 
-provide better menu items in mac app
-
 log failures
 
 mystery 2 over _name crash (zero uninitialized memory?)
@@ -12,8 +10,5 @@ mystery 2 over _name crash (zero uninitialized memory?)
 
 
 different state for slowed down server
-
-pthread destroy_XXX
-
 
 cdisp can queue unbounded number of tasks

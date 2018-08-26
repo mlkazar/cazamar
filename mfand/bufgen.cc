@@ -50,16 +50,19 @@ BufGen::init(char *namep, uint32_t defaultPort)
             _hostName = _hostName.substr(0, portp - namep);
         }
 
+        CThread::_libcMutex.take();
         hostp = gethostbyname(_hostName.c_str());
         if (hostp) {
             memcpy(&_destAddr.sin_addr.s_addr, hostp->h_addr_list[0], 4);
         }
         else {
+            CThread::_libcMutex.release();
             printf("BufSocket: can't lookup host '%s'\n", _hostName.c_str());
             _destAddr.sin_addr.s_addr = 0;
             _error = -1;
             return;
         }
+        CThread::_libcMutex.release();
     }
     else {
         /* null hostname, typically only used for listening sockets */

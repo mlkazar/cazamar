@@ -8,7 +8,7 @@
 #include "osp.h"
 
 /* stupid rabbit */
-pthread_mutex_t AllocCommonHeader::_mutex;
+pthread_mutex_t AllocCommonHeader::_mutex;      /* not initialized unless MLK_NEW is set */
 dqueue<AllocCommonHeader> AllocCommonHeader::_hash[AllocCommonHeader::_hashSize];
 
 void

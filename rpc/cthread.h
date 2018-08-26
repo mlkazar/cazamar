@@ -11,6 +11,8 @@
 
 #include "osp.h"
 
+class CThreadMutex;
+
 class CThread {
  public:
     typedef void (CThread::*StartMethod)(void *contextp);
@@ -25,6 +27,8 @@ class CThread {
         return (uint64_t) pthread_mach_thread_np(pthread_self());
 #endif
     }
+
+    static CThreadMutex _libcMutex;
 };
 
 class CThreadMutex {
