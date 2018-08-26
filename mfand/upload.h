@@ -130,8 +130,11 @@ class Uploader {
 public:
     typedef enum { STOPPED = 1,
                    PAUSED = 2,
-                   RUNNING = 3} Status;
+                   RUNNING = 3,
+                   STALLED = 4 } Status;
+
     typedef void StateProc(void *contextp);
+
     CDisp *_cdisp;
     CDispGroup *_group;
     Cfs *_cfsp;
@@ -214,12 +217,20 @@ public:
     static void done(CDisp *disp, void *contextp);
 
     Status getStatus() {
+        Status status;
+
         /* see if we finished the tree walk, since we don't get callbacks when done */
         if (_status != STOPPED) {
             if (_group->isAllDone())
                 _status = STOPPED;
         }
-        return _status;
+
+        status = _status;
+
+        if (_cfsp->getStalling() && status == RUNNING)
+            status = STALLED;
+            
+        return status;
     }
 
     int isIdle() {
@@ -235,6 +246,8 @@ public:
             return "Stopped";
         else if (status == PAUSED)
             return "Paused";
+        else if (status == STALLED)
+            return "Server2Busy";
         else
             return "Running";
     }

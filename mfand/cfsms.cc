@@ -1283,6 +1283,9 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
     httpError = reqp->getHttpError();
     int32_t code;
 
+    /* add in a 1 in the stalling cases below */
+    _stalledErrors <<= 1;
+
     if (reqp->getError() != 0)
         return 0;
     else if (httpError >= 200 && httpError < 300)
@@ -1299,6 +1302,7 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
         return (code == 0);
     }
     else if (httpError == 409) {
+        _stalledErrors |= 1;
         sleep(4);
         printf("retrying 409 error\n");
         return 1;
@@ -1306,6 +1310,7 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
     else if ( (httpError >= 500 && httpError <= 504) ||
               httpError == 429) {
         /* overloaded server, or bad choice of server.  Must rebind */
+        _stalledErrors |= 1;
         reqp->resetConn();
         sleep(2);
         return 1;

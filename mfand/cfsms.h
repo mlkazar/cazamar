@@ -175,6 +175,7 @@ class CfsMs : public Cfs {
     dqueue<CnodeMs> _lruQueue;
     std::string _pathPrefix;
     CnodeMs *_freeListp;
+    uint64_t _stalledErrors;
 
     CfsMs(SApiLoginMS *loginp, std::string pathPrefix) {
         _pathPrefix = pathPrefix;
@@ -183,6 +184,7 @@ class CfsMs : public Cfs {
         _rootp = NULL;
         _verbose = 0;
         _cnodeCount = 0;
+        _stalledErrors = 0;
         _freeListp = NULL;
         memset(_hashTablep, 0, sizeof(_hashTablep));
     }
@@ -195,6 +197,16 @@ class CfsMs : public Cfs {
         if (_loginp)
             delete _loginp;
         _loginp = loginp;
+    }
+
+    /* if any of the last 8 operations failed with a stalling code,
+     * return that we're stalling.
+     */
+    int getStalling() {
+        if ((_stalledErrors & 0xFF) == 0)
+            return 0;
+        else
+            return 1;
     }
 
     int32_t root(Cnode **rootpp, CEnv *envp);

@@ -110,6 +110,8 @@ class Cfs {
 
     virtual int32_t root(Cnode **rootpp, CEnv *envp) = 0;
 
+    virtual int getStalling() = 0;
+
     int32_t splitPath(std::string path, std::string *dirPathp, std::string *namep);
 
     int32_t nameInt( std::string path,
