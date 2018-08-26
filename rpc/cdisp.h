@@ -7,6 +7,7 @@
 class CDisp;
 class CDispHelper;
 class CDispTask;
+class CDispGroup;
 
 class CDispTask {
     friend class CDisp;
@@ -16,11 +17,12 @@ class CDispTask {
      * thread; pending means that task is waiting for an available
      * helper thread.
      */
-    static const uint8_t _queueNone = 0;
-    static const uint8_t _queueActive = 1;
-    static const uint8_t _queuePending = 2;
+    static const uint8_t _queueNone = 1;
+    static const uint8_t _queueActive = 2;
+    static const uint8_t _queuePending = 3;
 
     CDisp *_disp;
+    CDispGroup *_group;
     CDispHelper *_helperp;              /* valid once active */
 
     /* in children queue, active, or pending */
@@ -30,6 +32,10 @@ class CDispTask {
 
     CDisp *getDisp() {
         return _disp;
+    }
+
+    CDispGroup *getGroup() {
+        return _group;
     }
 
     virtual int32_t start() = 0;
@@ -66,6 +72,9 @@ class CDispHelper : public CThread {
 };
 
 class CDisp {
+ public:
+    friend class CDispGroup;
+
     typedef void CompletionProc(CDisp *cdisp, void *contextp);
 
     typedef enum {
@@ -75,6 +84,7 @@ class CDisp {
     friend class CDispHelper;
     friend class CDispTask;
 
+ private:
     uint8_t _ntasks;
 
     dqueue<CDispHelper> _activeHelpers;
@@ -86,9 +96,6 @@ class CDisp {
     Mode _runMode;
     uint8_t _waitingForActive;
 
-    CompletionProc *_completionProcp;
-    void *_completionContextp;
-
  public:
     CThreadMutex _lock;
     CThreadCV _activeCv;
@@ -96,17 +103,20 @@ class CDisp {
  CDisp() : _activeCv(&_lock) {
         _runMode = _RUNNING;
         _waitingForActive = 0;
-        _completionProcp = NULL;
-        _completionContextp = NULL;
     }
 
-    void setCompletionProc(CompletionProc *procp, void *contextp) {
-        _completionProcp = procp;
-        _completionContextp = contextp;
-    }
-
+ private:
     int32_t queueTask(CDispTask *taskp);
 
+    int isAllDoneNL() {
+        return (_activeTasks.count() == 0 &&
+                _pendingTasks.count() == 0 &&
+                _activeHelpers.count() == 0);
+    }
+
+    void tryDispatches();
+
+ public:
     int32_t init(uint32_t ntasks);
 
     int32_t pause();
@@ -125,12 +135,6 @@ class CDisp {
         return rcode;
     }
 
-    int isAllDoneNL() {
-        return (_activeTasks.count() == 0 &&
-                _pendingTasks.count() == 0 &&
-                _activeHelpers.count() == 0);
-    }
-
     /* return true if all done, even if paused */
     int isAllDone() {
         int rcode;
@@ -141,8 +145,72 @@ class CDisp {
 
         return rcode;
     }
+};
 
-    void tryDispatches();
+class CDispGroup {
+    friend class CDisp;
+    friend class CDispHelper;
+
+    uint32_t _activeCount;
+    CDisp::CompletionProc *_completionProcp;
+    void *_completionContextp;
+    CDisp *_cdisp;
+    CThreadCV _activeCV;     /* associated with cdisp's _lock mutex */
+    uint8_t _activeWaiting;
+    
+ public:
+    CDispGroup() : _activeCV(NULL) {
+        _completionProcp = NULL;
+        _completionContextp = NULL;
+    }
+
+    void init(CDisp *disp) {
+        _cdisp = disp;
+        _activeCount = 0;
+        _activeWaiting = 0;
+        _activeCV.setMutex(&disp->_lock);
+    }
+
+    void setCompletionProc(CDisp::CompletionProc *procp, void *contextp) {
+        _completionProcp = procp;
+        _completionContextp = contextp;
+    }
+
+
+    int32_t queueTask(CDispTask *taskp);
+
+    int isAllDoneNL()
+    {
+        int rcode;
+        
+        if (_activeCount == 0)
+            rcode = 1;
+        else
+            rcode = 0;
+        return rcode;
+    }
+
+    void stop() {
+        _cdisp->stop();
+    }
+
+    void resume() {
+        _cdisp->resume();
+    }
+
+    void pause() {
+        _cdisp->pause();
+    }
+
+    int isAllDone() {
+        int rcode;
+
+        _cdisp->_lock.take();
+        rcode = isAllDoneNL();
+        _cdisp->_lock.release();
+
+        return rcode;
+    }
 };
 
 #endif /* __CDISP_H_ENV__ */

@@ -25,6 +25,7 @@ int
 main(int argc, char **argv)
 {
     CDisp *disp;
+    CDispGroup *group;
     WalkTask *taskp;
     int nhelpers = 4;
 
@@ -41,14 +42,16 @@ main(int argc, char **argv)
     disp = new CDisp();
     printf("Created new cdisp at %p\n", disp);
     disp->init(nhelpers);
+    group = new CDispGroup();
+    group->init(disp);
 
     printf("Starting tests\n");
     taskp = new WalkTask();
     taskp->initWithPath(std::string(argv[1]));
     taskp->setCallback(&mainCallback, NULL);
-    disp->queueTask(taskp);
+    group->queueTask(taskp);
 
-    while(disp->isActive())
+    while(!group->isAllDone())
         sleep(1);
 
     return 0;

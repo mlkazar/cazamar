@@ -11,14 +11,14 @@ public:
     int32_t start() {
         uint32_t i;
         TestTask *childp[2];
-        CDisp *disp = getDisp();
+        CDispGroup *group = getGroup();
 
         printf("Task %p at level %d starts\n", this, _level);
 
         if (_level > 0) {
             for(i=0;i<2;i++) {
                 childp[i] = new TestTask(_level-1);
-                disp->queueTask(childp[i]);
+                group->queueTask(childp[i]);
             }
         }
 
@@ -44,16 +44,20 @@ int
 main(int argc, char **argv)
 {
     CDisp *disp;
+    CDispGroup *group;
     TestTask *taskp;
 
     disp = new CDisp();
     printf("Created new cdisp at %p\n", disp);
-    disp->setCompletionProc(mainCallback, NULL);
     disp->init(4);
+
+    group = new CDispGroup();
+    group->init(disp);
+    group->setCompletionProc(mainCallback, NULL);
 
     printf("Starting tests\n");
     taskp = new TestTask(6);
-    disp->queueTask(taskp);
+    group->queueTask(taskp);
 
     while(1) {
         sleep(1);

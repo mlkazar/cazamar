@@ -185,16 +185,16 @@ Uploader::start()
     _fileCopiesFailed = 0;
 
     /* copy the pictures directory to a subdir of testdir */
-    _disp = new CDisp();
-    printf("Created new cdisp at %p\n", _disp);
-    _disp->setCompletionProc(&Uploader::done, this);
-    _disp->init(24);
+    _group = new CDispGroup();
+    _group->init(_cdisp);
+    printf("Created new CDispGroup at %p\n", _group);
+    _group->setCompletionProc(&Uploader::done, this);
 
     printf("Starting copy\n");
     taskp = new WalkTask();
     taskp->initWithPath(_fsRoot);
     taskp->setCallback(&Uploader::mainCallback, this);
-    _disp->queueTask(taskp);
+    _group->queueTask(taskp);
 
     _status = RUNNING;
 
@@ -205,7 +205,7 @@ void
 Uploader::stop()
 {
     /* null this out so it doesn't look like a successful completion */
-    _disp->stop();
+    _group->stop();
     _status = STOPPED;
     return;
 }
@@ -213,7 +213,7 @@ Uploader::stop()
 void
 Uploader::pause()
 {
-    _disp->pause();
+    _group->pause();
     _status = PAUSED;
     return;
 }
@@ -222,7 +222,7 @@ void
 Uploader::resume()
 {
     /* call the dispatcher to resume execution of tasks */
-    _disp->resume();
+    _group->resume();
     _status = RUNNING;
     return;
 }
@@ -419,6 +419,8 @@ UploadApp::readConfig(std::string pathPrefix)
     uint8_t enabled;
     uint32_t backupInt;
 
+    _backupInterval = 3600;
+
     fileName = pathPrefix + "config.js";
     filep = fopen(fileName.c_str(), "r");
     if (!filep)
@@ -429,8 +431,6 @@ UploadApp::readConfig(std::string pathPrefix)
     if (code != 0) {
         return;
     }
-
-    _backupInterval = 3600;
 
     tnodep = rootNodep->searchForChild("backupInt");
     if (tnodep) {
@@ -1251,6 +1251,9 @@ UploadApp::init(SApi *sapip)
     sapip->registerUrl("/createEntry", &UploadCreateConfig::factory);
     sapip->registerUrl("/backupInterval", &UploadBackupInterval::factory);
 
+    _cdisp = new CDisp();
+    _cdisp->init(24);
+
     hp = new CThreadHandle();
     hp->init((CThread::StartMethod) &UploadApp::schedule, this, NULL);
 
@@ -1308,7 +1311,7 @@ UploadApp::startEntry(UploadEntry *ep) {
     Uploader *uploaderp;
     Uploader::Status upStatus;
 
-    if (!ep || !ep->_enabled || !_loginCookiep)
+    if (!ep || !ep->_enabled || !_loginCookiep || !_loginCookiep->_loginMSp)
         return;
     uploaderp = ep->_uploaderp;
 

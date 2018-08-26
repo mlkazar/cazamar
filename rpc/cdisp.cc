@@ -6,6 +6,8 @@ CDispHelper::start(void *contextp)
 {
     CDisp *disp = (CDisp *) contextp;
     CDispTask *taskp;
+    CDispGroup *group;
+
     disp->_lock.take();
     _inQueue = _queueAvailable;
     disp->_availableHelpers.append(this);
@@ -29,6 +31,8 @@ CDispHelper::start(void *contextp)
         _taskp = NULL;
         taskp->_disp = disp;
         disp->_lock.release();
+
+        group = taskp->_group;
 
         taskp->start();
 
@@ -59,6 +63,14 @@ CDispHelper::start(void *contextp)
          */
         disp->tryDispatches();
 
+        disp->_lock.release();
+
+        delete taskp;
+
+        disp->_lock.take();
+        osp_assert(group->_activeCount > 0);
+        group->_activeCount--;
+
         /* check if we should call completion proc; make sure it is called exactly once; do this
          * after doing one dispatch, so that we don't trigger the completion callback before
          * the first task is submitted.
@@ -66,22 +78,16 @@ CDispHelper::start(void *contextp)
          * Note that after it triggers, you must call setCompletionProc again before it can
          * trigger again.
          */
-        if (disp->isAllDoneNL() && disp->_completionProcp != NULL) {
-            CDisp::CompletionProc *procp = disp->_completionProcp;
-            void *contextp = disp->_completionContextp;
-            disp->_completionProcp = NULL;
-            disp->_completionContextp = NULL;
+        if (group->isAllDoneNL() && group->_completionProcp != NULL) {
+            CDisp::CompletionProc *procp = group->_completionProcp;
+            void *contextp = group->_completionContextp;
+            group->_completionProcp = NULL;
+            group->_completionContextp = NULL;
 
             disp->_lock.release();
             procp(disp, contextp);
             disp->_lock.take();
         }
-
-        disp->_lock.release();
-
-        delete taskp;
-
-        disp->_lock.take();
     }
 }
 
@@ -91,6 +97,7 @@ CDisp::tryDispatches()
 {
     CDispHelper *helperp;
     CDispTask *taskp;
+    CDispGroup *group;
 
     while(_pendingTasks.count() && _availableHelpers.count()) {
         if (_runMode == _PAUSED)
@@ -101,6 +108,9 @@ CDisp::tryDispatches()
         /* if stopped, take the pending tasks and just delete them */
         if (_runMode == _STOPPED) {
             taskp->_inQueue = CDispTask::_queueNone;
+            group = taskp->_group;
+            osp_assert(group->_activeCount > 0);
+            group->_activeCount--;
             _lock.release();
             delete taskp;
             _lock.take();
@@ -120,14 +130,13 @@ CDisp::tryDispatches()
     }
 }
 
+/* called with disp lock held */
 int32_t
 CDisp::queueTask(CDispTask *taskp)
 {
     taskp->_disp = this;
 
-    _lock.take();
     if (_runMode == _STOPPED) {
-        _lock.release();
         /* drop lock before deleting task, since CDispTask destructor
          * grabs locks.
          */
@@ -139,9 +148,21 @@ CDisp::queueTask(CDispTask *taskp)
     taskp->_inQueue = CDispTask::_queuePending;
     tryDispatches();
 
-    _lock.release();
-
     return 0;
+}
+
+int32_t
+CDispGroup::queueTask(CDispTask *taskp)
+{
+    int32_t rcode;
+    
+    _cdisp->_lock.take();
+    taskp->_group = this;
+    _activeCount++;
+    rcode = _cdisp->queueTask(taskp);
+    _cdisp->_lock.release();
+
+    return rcode;
 }
 
 int32_t

@@ -16,7 +16,7 @@ WalkTask::start()
     char tbuffer[1024];
 #endif
 
-    CDisp *disp = getDisp();
+    CDispGroup *group = getGroup();
 
     code = lstat(_path.c_str(), &tstat);
     if (code < 0)
@@ -71,7 +71,7 @@ WalkTask::start()
             childTaskp->initWithPath(_path + "/" + std::string(entryp->d_name, entryp->d_namlen));
 #endif
             childTaskp->setCallback(_callbackProcp, _callbackContextp);
-            disp->queueTask(childTaskp);
+            group->queueTask(childTaskp);
         }
 
         // printf("closedir %s fd=%d\n", _path.c_str(), dirfd(dirp));

@@ -133,10 +133,10 @@ public:
                    RUNNING = 3} Status;
     typedef void StateProc(void *contextp);
     CDisp *_cdisp;
+    CDispGroup *_group;
     Cfs *_cfsp;
     std::string _fsRoot;      /* not counting terminal '/' */
     uint32_t _fsRootLen;
-    CDisp *_disp;
     CThreadMutex _lock;
     WalkTask *_walkTaskp;
     Status _status;
@@ -153,6 +153,7 @@ public:
 
     Uploader() {
         _cdisp = NULL;
+        _group = NULL;
         _cfsp = NULL;
         _fsRootLen = 0;
         _status = STOPPED;
@@ -166,6 +167,14 @@ public:
         _fileCopiesFailed = 0;
 
         return;
+    }
+
+    ~Uploader() {
+        if (_group) {
+            delete _group;
+            _group = NULL;
+        }
+        /* don't delete walkTaskp, since it auto deletes */
     }
 
     static int32_t mainCallback(void *contextp, std::string *pathp, struct stat *statp);
@@ -207,14 +216,14 @@ public:
     Status getStatus() {
         /* see if we finished the tree walk, since we don't get callbacks when done */
         if (_status != STOPPED) {
-            if (_disp->isAllDone())
+            if (_group->isAllDone())
                 _status = STOPPED;
         }
         return _status;
     }
 
     int isIdle() {
-        if (_status == STOPPED && _disp->isAllDone())
+        if (_status == STOPPED && _group->isAllDone())
             return 1;
         else
             return 0;
