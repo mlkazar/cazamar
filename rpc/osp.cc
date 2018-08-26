@@ -84,12 +84,14 @@ AllocCommonHeader::commonNew(uint32_t size, void *retAddrp)
     headerp->_magic = _magicAlloc;
     headerp->_size = size;
     headerp->_retAddrp = retAddrp;
-    memset(datap, 0xcd, size);  /* XXX debug */
+    memset(datap, 0, size);
     
     pthread_mutex_lock(&_mutex);
     ix = hashIx(retAddrp);
     _hash[ix].append(headerp);
     pthread_mutex_unlock(&_mutex);
+
+    osp_assert((int) (headerp->_dqNextp) != 2);
 
     return datap;
 }

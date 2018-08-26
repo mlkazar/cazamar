@@ -295,6 +295,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
     uint8_t allFound;
     CAttr::FileType fileType;
     static const uint32_t dataBufferBytes = 4*1024*1024;
+    int32_t httpError;
     
     if (_cfsp->_verbose)
         printf("sendSmallFile: id=%s name=%s\n", _id.c_str(), name.c_str());
@@ -328,6 +329,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         outPipep->write(dataBufferp, sendBytes);
         outPipep->eof();
         if (code < 0) {
+            printf("read code=%d\n", code);
             reqp->waitForHeadersDone();
             delete reqp;
             reqp = NULL;
@@ -336,6 +338,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         
         code = reqp->waitForHeadersDone();
         if (code != 0) {
+            printf("sendsmallfile header done %d\n", code);
             delete reqp;
             reqp = NULL;
             break;
@@ -352,6 +355,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         code = json.parseJsonChars((char **) &tp, &jnodep);
         if (code != 0) {
             if (reqp) {
+                printf("sendsmallfile parsejson %d\n", code);
                 delete reqp;
                 reqp = NULL;
             }
@@ -366,8 +370,12 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         }
 
         if (reqp) {
+            httpError = reqp->getHttpError();
             delete reqp;
             reqp = NULL;
+        }
+        else {
+            httpError = 1000;
         }
 
         /* don't need the lock until we're merging in the results */
@@ -385,11 +393,16 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
                     childp->_attrs._fileType = fileType;
                 }
                 else {
+                    printf("json analyze failed code=%d\n", code);
                     childp->_valid = 0;
                 }
                 childp->release();    /* lock held by getCnodeLinked */
                 childp = NULL;
             }
+        }
+        else {
+            jnodep->print();
+            printf("json parseresults failed code=%d httpError=%d\n", code, httpError);
         }
         break;
     }
@@ -1285,11 +1298,16 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
         code = _loginp->refresh();
         return (code == 0);
     }
-    else if ( (httpError >= 502 && httpError <= 504) ||
+    else if (httpError == 409) {
+        sleep(4);
+        printf("retrying 409 error\n");
+        return 1;
+    }
+    else if ( (httpError >= 500 && httpError <= 504) ||
               httpError == 429) {
         /* overloaded server, or bad choice of server.  Must rebind */
         reqp->resetConn();
-        sleep(1);
+        sleep(2);
         return 1;
     }
     else

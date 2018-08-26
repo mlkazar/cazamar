@@ -6,5 +6,9 @@ log failures
 
 mystery 2 over _name crash (zero uninitialized memory?)
   not always over name
+  curr=std::string prev=json::parseJsonValue
+  curr=json::parsepair prev=getcnodelinked's backentry
+  curr=json::parsejsoncomplex prev=getcnodelinked's backentry
+
 
 cdisp can queue unbounded number of tasks
