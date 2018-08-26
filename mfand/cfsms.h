@@ -173,10 +173,12 @@ class CfsMs : public Cfs {
     CnodeMs *_rootp;
     uint8_t _verbose;
     dqueue<CnodeMs> _lruQueue;
+    std::string _pathPrefix;
     CnodeMs *_freeListp;
 
-    CfsMs(SApiLoginMS *loginp) {
-        _xapiPoolp = new XApiPool();
+    CfsMs(SApiLoginMS *loginp, std::string pathPrefix) {
+        _pathPrefix = pathPrefix;
+        _xapiPoolp = new XApiPool(pathPrefix);
         _loginp = loginp;
         _rootp = NULL;
         _verbose = 0;

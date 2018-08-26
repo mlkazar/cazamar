@@ -115,7 +115,7 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
     std::string uploadUrl;
 
     printf("cfstest: tests start login=%p\n", loginMSp);
-    cfsp = new CfsMs(loginMSp);
+    cfsp = new CfsMs(loginMSp, "");
     cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attrs, NULL);
 

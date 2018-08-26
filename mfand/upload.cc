@@ -1333,7 +1333,7 @@ UploadApp::startEntry(UploadEntry *ep) {
             
     if (!uploaderp) {
         if (!_cfsp) {
-            _cfsp = new CfsMs(_loginCookiep->_loginMSp);
+            _cfsp = new CfsMs(_loginCookiep->_loginMSp, _pathPrefix);
         }
 
         /* create the uploader */

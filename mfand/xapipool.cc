@@ -46,7 +46,7 @@ XApiPool::getConn(std::string fullHostName, uint32_t port, uint8_t isTls)
         ep->_isTls = isTls;
         if (isTls) {
             BufTls *tlsp;
-            ep->_bufGenp = tlsp = new BufTls("");
+            ep->_bufGenp = tlsp = new BufTls(_pathPrefix);
             tlsp->init(const_cast<char *>(fullHostName.c_str()), port);
             connp = ep->_connp = _xapip->addClientConn(tlsp);
         }

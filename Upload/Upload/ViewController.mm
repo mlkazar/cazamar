@@ -71,8 +71,8 @@ NSTimer *_timer;
     _statusItem.menu = _menu;
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Setup"
-	       action: @selector(loginPressed)
+	       initWithTitle: @"Details"
+	       action: @selector(detailsPressed)
 	       keyEquivalent: (NSString *) @"s"];
     item.target = self;
     [_menu addItem: item];
@@ -95,15 +95,24 @@ NSTimer *_timer;
     [_menu addItem: item];
 }
 
+- (void) ensureSetup
+{
+    if (!_uploadp) {
+	_uploadp = new Upload();
+	_uploadp->init(NULL, NULL);
+    }
+}
+
 - (void) backupPressed
 {
     NSLog(@"backup pressed");
+    [self ensureSetup];
+    _uploadp->backup();
 }
 
-- (void) loginPressed {
-    NSLog(@"start pressed!!");
-    _uploadp = new Upload();
-    _uploadp->init(NULL, NULL);
+- (void) detailsPressed {
+    NSLog(@"details pressed!!");
+    [self ensureSetup];
 
     [[NSWorkspace sharedWorkspace] openURL: [NSURL URLWithString: @"http://localhost:7701"]];
 }

@@ -32,8 +32,10 @@ class XApiPool {
     dqueue<Entry> _allConns;
     CThreadMutex _lock;
     uint16_t _loop;
+    std::string _pathPrefix;
 
-    XApiPool() {
+    XApiPool(std::string pathPrefix) {
+        _pathPrefix = pathPrefix;
         _xapip = new XApi();
         _loop = 0;
         return;

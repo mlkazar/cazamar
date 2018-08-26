@@ -4,6 +4,7 @@
 #include "sapi.h"
 #include "sapilogin.h"
 #include "cfsms.h"
+#include "upload.h"
 
 class Upload {
  public:
@@ -11,6 +12,8 @@ class Upload {
 
     SApi *_sapip;
     SApiLoginMS *_loginMSp;
+
+    UploadApp *_uploadApp;
 
     notifyProc *_notifyProcp;
     void *_notifyContextp;
@@ -20,7 +23,7 @@ class Upload {
 
     void init(notifyProc *procp, void *notifyContextp);
 
-    void runTests();
+    void backup();
 
     /* pthread callback */
     static void *server(void *contextp);
