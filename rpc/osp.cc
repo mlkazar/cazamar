@@ -91,7 +91,9 @@ AllocCommonHeader::commonNew(uint32_t size, void *retAddrp)
     _hash[ix].append(headerp);
     pthread_mutex_unlock(&_mutex);
 
-    osp_assert((intptr_t) (headerp->_dqNextp) != 2);
+#ifdef __linux__
+    osp_assert((uint32_t) (headerp->_dqNextp) != 2);
+#endif
 
     return datap;
 }
