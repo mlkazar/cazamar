@@ -164,7 +164,19 @@ operator delete(void *p) throw()
 }
 
 void
+operator delete(void *p, const std::nothrow_t) throw()
+{
+    AllocCommonHeader::commonDelete(p, __builtin_return_address(0));
+}
+
+void
 operator delete[](void *p) throw()
+{
+    AllocCommonHeader::commonDelete(p, __builtin_return_address(0));
+}
+
+void
+operator delete[](void *p, const std::nothrow_t) throw()
 {
     AllocCommonHeader::commonDelete(p, __builtin_return_address(0));
 }
