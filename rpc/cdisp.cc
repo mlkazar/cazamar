@@ -71,23 +71,29 @@ CDispHelper::start(void *contextp)
         osp_assert(group->_activeCount > 0);
         group->_activeCount--;
 
-        /* check if we should call completion proc; make sure it is called exactly once; do this
-         * after doing one dispatch, so that we don't trigger the completion callback before
-         * the first task is submitted.
-         *
-         * Note that after it triggers, you must call setCompletionProc again before it can
-         * trigger again.
-         */
-        if (group->isAllDoneNL() && group->_completionProcp != NULL) {
-            CDisp::CompletionProc *procp = group->_completionProcp;
-            void *contextp = group->_completionContextp;
-            group->_completionProcp = NULL;
-            group->_completionContextp = NULL;
+        group->checkCompletionNL(disp);
+    }
+}
 
-            disp->_lock.release();
-            procp(disp, contextp);
-            disp->_lock.take();
-        }
+void
+CDispGroup::checkCompletionNL(CDisp *disp)
+{
+    /* check if we should call completion proc; make sure it is called exactly once; do this
+     * after doing one dispatch, so that we don't trigger the completion callback before
+     * the first task is submitted.
+     *
+     * Note that after it triggers, you must call setCompletionProc again before it can
+     * trigger again.
+     */
+    if (isAllDoneNL() && _completionProcp != NULL) {
+        CDisp::CompletionProc *procp = _completionProcp;
+        void *contextp = _completionContextp;
+        _completionProcp = NULL;
+        _completionContextp = NULL;
+
+        disp->_lock.release();
+        procp(disp, contextp);
+        disp->_lock.take();
     }
 }
 
@@ -140,7 +146,10 @@ CDisp::queueTask(CDispTask *taskp)
         /* drop lock before deleting task, since CDispTask destructor
          * grabs locks.
          */
+         _lock.release();
         delete taskp;
+        _lock.take();
+
         return -1;
     }
 

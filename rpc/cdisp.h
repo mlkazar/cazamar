@@ -169,6 +169,11 @@ class CDispGroup {
         _activeCount = 0;
         _activeWaiting = 0;
         _activeCV.setMutex(&disp->_lock);
+
+        /* dispatcher may have stopped, so when creating a new dispatcher group,
+         * make sure it is running again.
+         */
+        disp->resume();
     }
 
     void setCompletionProc(CDisp::CompletionProc *procp, void *contextp) {
@@ -211,6 +216,8 @@ class CDispGroup {
 
         return rcode;
     }
+
+    void checkCompletionNL(CDisp *disp);
 };
 
 #endif /* __CDISP_H_ENV__ */
