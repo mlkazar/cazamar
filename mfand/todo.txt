@@ -1,6 +1,6 @@
 age out old keyserv entries
 
-log failures
+log failures -- get the code from the MS response, and save the last 16.
 
 mystery 2 over _name crash (zero uninitialized memory?)
   not always over name
@@ -8,7 +8,6 @@ mystery 2 over _name crash (zero uninitialized memory?)
   curr=json::parsepair prev=getcnodelinked's backentry
   curr=json::parsejsoncomplex prev=getcnodelinked's backentry
 
-
-different state for slowed down server
+* different state for slowed down server
 
 cdisp can queue unbounded number of tasks

@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string>
+#include <unistd.h>
+#include <time.h>
 
 #include "sapi.h"
 #include "xapi.h"
@@ -15,7 +17,7 @@ std::string main_webAuthToken;
 #define BIGSTR  4096
 
 /* context for sapi */
-class KeyServ {
+class KeyServ : public CThread {
 public:
     class Entry {
     public:
@@ -31,7 +33,34 @@ public:
     };
 
     dqueue<Entry> _allKeys;
+    CThreadMutex _lock;
+
+    void prune(void *contextp);
 };
+
+void
+KeyServ::prune( void *cxp)
+{
+    Entry *ep;
+    Entry *nep;
+    uint32_t now;
+
+    while(1) {
+        sleep(60);
+        _lock.take();
+        now = time(0);
+        for(ep = _allKeys.head(); ep; ep=nep) {
+            nep = ep->_dqNextp;
+
+            if (now > ep->_timeSet + 120) {
+                printf("deleting token with key=%s\n", ep->_oauthId.c_str());
+                _allKeys.remove(ep);
+                delete ep;
+            }
+        }
+        _lock.release();
+    }
+}
 
 int
 main(int argc, char **argv)
@@ -97,12 +126,14 @@ AppleLoginKeyData::startMethod()
         return;
     }
 
+    keyServp->_lock.take();
     for(ksep = keyServp->_allKeys.head(); ksep; ksep=ksep->_dqNextp) {
         if (ksep->_oauthId == id)
             break;
     }
 
     if (!ksep) {
+        keyServp->_lock.release();
         sendResponse(101, "id not found", "");
         return;
     }
@@ -110,6 +141,7 @@ AppleLoginKeyData::startMethod()
     printf("ret>> key='%s' value='%s'\n", ksep->_oauthId.c_str(), ksep->_oauthKey.c_str());
 
     sendResponse(0, "", ksep->_oauthKey.c_str());
+    keyServp->_lock.release();
 }
 
 void
@@ -306,7 +338,11 @@ AppleLogin::startMethod()
         KeyServ::Entry *entryp = new KeyServ::Entry();
         entryp->_oauthId = tableKey;
         entryp->_oauthKey = tableValue;
+        entryp->_timeSet = time(0);
+
+        keyServp->_lock.take();
         keyServp->_allKeys.prepend(entryp);
+        keyServp->_lock.release();
     }
 
     printf("\nReads (generic login) done\n");
@@ -352,6 +388,7 @@ server(int argc, char **argv, int port)
 {
     SApi *sapip;
     KeyServ *keyServp;
+    CThreadHandle *cp;
 
     keyServp = new KeyServ();
     sapip = new SApi();
@@ -365,6 +402,9 @@ server(int argc, char **argv, int port)
     /* called by our application to retrieve a stored key */
     sapip->registerUrl("/keyData", &AppleLoginKeyData::factory);
     sapip->initWithPort(port);
+
+    cp = new CThreadHandle();
+    cp->init((CThread::StartMethod) &KeyServ::prune, keyServp, NULL);
 
     while(1) {
         sleep(1);
