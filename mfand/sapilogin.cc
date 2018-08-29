@@ -84,7 +84,7 @@ AppleLoginKeyData::startMethod()
     SApi::Dict dict;
     Json json;
     const char *urlp;
-    SApiLoginCookie *cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
+    SApiLoginCookie *cookiep = SApiLogin::getLoginCookie(this);
 
     printf("SApiLoginCookie=%p\n", cookiep);
 
@@ -560,6 +560,10 @@ SApiLogin::getLoginCookie(SApi::ServerReq *reqp) {
 /* static */ SApiLoginCookie *
 SApiLogin::createLoginCookie(SApi::ServerReq *reqp) {
     SApiLoginCookie *cookiep;
+
+    if (_globalCookiep)
+        return _globalCookiep;
+
     if ((cookiep = (SApiLoginCookie *) reqp->getCookieKey("sapiLogin")) == NULL) {
         cookiep = new SApiLoginCookie();
         reqp->setCookieKey("sapiLogin", cookiep);
@@ -582,7 +586,7 @@ AppleLoginScreen::startMethod()
     SApiLoginCookie *cookiep;
     std::string authToken;
         
-    cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
+    cookiep = SApiLogin::getLoginCookie(this);
     if (cookiep == NULL) {
         cookiep = new SApiLoginCookie();
         setCookieKey("sapiLogin", cookiep);
@@ -633,7 +637,7 @@ MSLoginScreen::startMethod()
     SApi::Dict dict;
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
-    SApiLoginCookie *cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
+    SApiLoginCookie *cookiep = SApiLogin::getLoginCookie(this);
     std::string authToken;
 
     if (cookiep == NULL) {
@@ -687,7 +691,7 @@ LogoutScreen::startMethod()
     SApi::Dict dict;
     Json json;
     CThreadPipe *outPipep = getOutgoingPipe();
-    SApiLoginCookie *cookiep = (SApiLoginCookie *) getCookieKey("sapiLogin");
+    SApiLoginCookie *cookiep = SApiLogin::getLoginCookie(this);
     std::string logoutPath;
 
     if (cookiep == NULL) {

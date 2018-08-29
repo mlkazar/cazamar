@@ -71,14 +71,14 @@ NSTimer *_timer;
     _statusItem.menu = _menu;
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Details"
+	       initWithTitle: @"Setup/Settings"
 	       action: @selector(detailsPressed)
 	       keyEquivalent: (NSString *) @"s"];
     item.target = self;
     [_menu addItem: item];
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Backup"
+	       initWithTitle: @"Backup now"
 	       action: @selector(backupPressed)
 	       keyEquivalent: @"b"];
     item.target = self;
