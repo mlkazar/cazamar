@@ -1388,8 +1388,10 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
     /* add in a 1 in the stalling cases below */
     _stalledErrors <<= 1;
 
-    if (reqp->getError() != 0)
+    if (reqp->getError() != 0) {
+        logError(1000000+reqp->getError(), "RPC error");
         return 0;
+    }
     else if (httpError >= 200 && httpError < 300)
         return 0;
     else if (httpError == 401) {
@@ -1397,10 +1399,14 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
         /* authentication expired; use refresh token */
         if (refreshToken.length() == 0) {
             /* some login mechanisms don't have refresh tokens */
+            logError(httpError, "authentication error");
             _loginp->logout();
             return 0;
         }
         code = _loginp->refresh();
+        if (code) {
+            logError(code, "authentication refresh error");
+        }
         return (code == 0);
     }
     else if (httpError == 409) {
@@ -1417,7 +1423,24 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
         sleep(2);
         return 1;
     }
-    else
+    else if (httpError == 404) {
         return 0;
+    }
+    else {
+        Json::Node *tnodep;
+        tnodep = parsedNodep->searchForChild("code");
+        if ( tnodep && tnodep->_children.head()) {
+            logError(httpError, tnodep->_children.head()->_name);
+        }
+        else {
+            logError(httpError, "unknown");
+        }
+        return 0;
+    }
 }
 
+void
+CfsMs::logError(int32_t code, std::string errorString)
+{
+    printf("Operation failed, code=%d details=%s\n", code, errorString.c_str());
+}
