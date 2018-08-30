@@ -114,7 +114,7 @@ public:
     /* virtual ops realized */
     int32_t getAttr(CAttr *attrsp, CEnv *envp);
 
-    int32_t lookup(std::string name, Cnode **nodepp, CEnv *envp);
+    int32_t lookup(std::string name, int forceBackend, Cnode **nodepp, CEnv *envp);
 
     int32_t create(std::string name, Cnode **nodepp, CEnv *envp) {
         return -1;
@@ -173,7 +173,7 @@ public:
 class CfsMs : public Cfs {
  public:
     static const uint32_t _hashSize = 997;
-    static const uint32_t _maxCnodeCount = 200;
+    static const uint32_t _maxCnodeCount = 1000;
     uint32_t _cnodeCount;
     SApiLoginMS *_loginp;
     CThreadMutex _lock;         /* protect hash table */

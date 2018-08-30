@@ -40,11 +40,12 @@ Cfs::splitPath(std::string path, std::string *dirPathp, std::string *namep)
 Cfs::nameiCallback(void *cxp,
                    Cnode *nodep,
                    std::string name,
+                   int forceBackend,
                    Cnode **outNodepp,
                    CEnv *envp)
 {
     int32_t code;
-    code = nodep->lookup(name, outNodepp, envp);
+    code = nodep->lookup(name, forceBackend, outNodepp, envp);
     return code;
 }
 
@@ -52,13 +53,14 @@ Cfs::nameiCallback(void *cxp,
 Cfs::mkpathCallback(void *cxp,
                     Cnode *nodep,
                     std::string name,
+                    int forceBackend,
                     Cnode **outNodepp,
                     CEnv *envp)
 {
     int32_t code;
     Cnode *outNodep;
 
-    code = nodep->lookup(name, outNodepp, envp);
+    code = nodep->lookup(name, forceBackend, outNodepp, envp);
     if (code == 0) {
         outNodep = *outNodepp;
         if (outNodep->_attrs._fileType == CAttr::DIR)
@@ -77,11 +79,12 @@ Cfs::mkpathCallback(void *cxp,
 
 int32_t
 Cfs::namei( std::string path,
+            int forceBackend,
             Cnode **targetCnodepp,
             CEnv *envp)
 {
     int32_t code;
-    code = nameInt(path, &Cfs::nameiCallback, NULL, targetCnodepp, envp);
+    code = nameInt(path, &Cfs::nameiCallback, NULL, forceBackend, targetCnodepp, envp);
     return code;
 }
 
@@ -92,7 +95,7 @@ Cfs::mkpath( std::string path,
              CEnv *envp)
 {
     int32_t code;
-    code = nameInt(path, &Cfs::mkpathCallback, NULL, targetCnodepp, envp);
+    code = nameInt(path, &Cfs::mkpathCallback, NULL, /* forceBackend */ 1, targetCnodepp, envp);
     return code;
 }
 
@@ -101,6 +104,7 @@ int32_t
 Cfs::nameInt( std::string path,
               nameiProc *procp,
               void *nameiContextp,
+              int forceBackend,
               Cnode **targetCnodepp,
               CEnv *envp)
 {
@@ -134,7 +138,7 @@ Cfs::nameInt( std::string path,
         }
 
         /* now do a lookup on the name */
-        code = procp(nameiContextp, currentCnodep, name, &nextCnodep, envp);
+        code = procp(nameiContextp, currentCnodep, name, forceBackend, &nextCnodep, envp);
         currentCnodep->release();
         currentCnodep = NULL;
         if (code != 0) {
@@ -163,7 +167,7 @@ Cfs::stat(std::string path, CAttr *attrsp, CEnv *envp)
     int32_t code;
     Cnode *nodep;
 
-    code = namei(path, &nodep, envp);
+    code = namei(path, 0, &nodep, envp);
     if (code)
         return code;
     code = nodep->getAttr(attrsp, envp);
@@ -185,7 +189,7 @@ Cfs::sendFile( std::string path,
     code = splitPath(path, &dirPath, &name);
     if (code)
         return code;
-    code = namei(dirPath, &dirNodep, envp);
+    code = namei(dirPath, 0, &dirNodep, envp);
     if (code)
         return code;
     code = dirNodep->sendFile( name, sourcep, bytesCopiedp, envp);
@@ -204,7 +208,7 @@ Cfs::mkdir(std::string path, Cnode **newDirpp, CEnv *envp)
     code = splitPath(path, &dirPath, &name);
     if (code)
         return code;
-    code = namei(dirPath, &dirNodep, envp);
+    code = namei(dirPath, 0, &dirNodep, envp);
     if (code)
         return code;
     code = dirNodep->mkdir( name, newDirpp, envp);

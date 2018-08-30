@@ -163,7 +163,7 @@ Uploader::start()
     _cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attrs, NULL);
 
-    code = _cfsp->namei(_cloudRoot, (Cnode **) &testDirp, NULL);
+    code = _cfsp->namei(_cloudRoot, /* force*/ 1, (Cnode **) &testDirp, NULL);
     if (code != 0) {
         code = _cfsp->mkpath(_cloudRoot, (Cnode **) &testDirp, NULL);
         if (code != 0) {
@@ -1259,7 +1259,7 @@ UploadApp::init(SApi *sapip)
     sapip->registerUrl("/backupInterval", &UploadBackupInterval::factory);
 
     _cdisp = new CDisp();
-    _cdisp->init(24);
+    _cdisp->init(24);   /*24*/
 
     hp = new CThreadHandle();
     hp->init((CThread::StartMethod) &UploadApp::schedule, this, NULL);

@@ -87,11 +87,15 @@ class DataSourceFile : public CDataSource {
 
     static void statToAttr(struct stat *tstatp, CAttr *attrp) {
 #ifdef __linux__
-        attrp->_mtime = tstatp->st_mtim.tv_sec *1000000 + tstatp->st_mtim.tv_nsec;
-        attrp->_ctime = tstatp->st_ctim.tv_sec *1000000 + tstatp->st_ctim.tv_nsec;
+        attrp->_mtime = ((uint64_t) tstatp->st_mtim.tv_sec *1000000000ULL + 
+                         tstatp->st_mtim.tv_nsec);
+        attrp->_ctime = ((uint64_t) tstatp->st_ctim.tv_sec *1000000000ULL + 
+                         tstatp->st_ctim.tv_nsec);
 #else
-        attrp->_mtime = tstatp->st_mtimespec.tv_sec *1000000 + tstatp->st_mtimespec.tv_nsec;
-        attrp->_ctime = tstatp->st_ctimespec.tv_sec *1000000 + tstatp->st_ctimespec.tv_nsec;
+        attrp->_mtime = ((uint64_t) tstatp->st_mtimespec.tv_sec *1000000000ULL + 
+                         tstatp->st_mtimespec.tv_nsec);
+        attrp->_ctime = ((uint64_t) tstatp->st_ctimespec.tv_sec *1000000000ULL + 
+                         tstatp->st_ctimespec.tv_nsec);
 #endif
         attrp->_length = tstatp->st_size;
     }

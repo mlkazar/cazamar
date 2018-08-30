@@ -60,10 +60,39 @@ CnodeMs::getPath(std::string *pathp, CEnv *envp)
     return 0;
 }
 
-/* mark all nodes as invalid and clear out their names starting from THIS */
+/* mark all nodes as invalid and clear out their names starting from THIS;
+ * cnode must be held by caller.
+ */
 void
 CnodeMs::invalidateTree()
 {
+    CnodeBackEntry *bep;
+    CnodeBackEntry *nbep;
+    CfsMs *cfsp = _cfsp;
+    CnodeMs *childp;
+    
+    _lock.take();
+    _valid = 0;
+    
+    cfsp->_refLock.take();
+    for(bep = _children.head(); bep; bep=nbep) {
+        childp = bep->_childp;
+        childp->holdNL();
+        bep->_name = "";        /* invalidate the name */
+        cfsp->_refLock.release();       /* child hold now protects bep from deallocation */
+
+        /* now recurse */
+        _lock.release();
+        childp->invalidateTree();
+        _lock.take();
+
+        cfsp->_refLock.take();
+        nbep = bep->_dqNextp;
+        childp->releaseNL();
+    }
+    cfsp->_refLock.release();
+
+    _lock.release();
 }
 
 /* return success if everything was found, or if allFoundp is
@@ -103,6 +132,7 @@ CnodeMs::parseResults( Json::Node *jnodep,
          * our value is nanoseconds since midnight before 1/1/70 UTC.
          */
         struct tm timeInfo;
+        memset(&timeInfo, 0, sizeof(timeInfo));
         timeInfo.tm_year = atoi(tp) - 1900;
         timeInfo.tm_mon = atoi(tp+5) - 1;
         timeInfo.tm_mday = atoi(tp+8);
@@ -110,7 +140,7 @@ CnodeMs::parseResults( Json::Node *jnodep,
         timeInfo.tm_min = atoi(tp+14);
         timeInfo.tm_sec = atoi(tp+17);
         secsSince70 = timegm(&timeInfo);
-        *modTimep = secsSince70 * 1000000000;
+        *modTimep = (uint64_t) secsSince70 * 1000000000ULL;
         *changeTimep = *modTimep;
     }
     else {
@@ -174,7 +204,7 @@ CnodeMs::nameSearch(std::string name, CnodeMs **childpp)
 }
 
 int32_t
-CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
+CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
 {
     /* perform getAttr operation */
     char tbuffer[0x4000];
@@ -203,9 +233,11 @@ CnodeMs::lookup(std::string name, Cnode **childpp, CEnv *envp)
     /* lock parent */
     lockSet.add(this);
 
-    code = nameSearch(name, (CnodeMs **) childpp);
-    if (code == 0) {
-        return 0;
+    if (!forceBackend) {
+        code = nameSearch(name, (CnodeMs **) childpp);
+        if (code == 0) {
+            return 0;
+        }
     }
 
     /* temporarily drop lock over getPath call */
@@ -1191,7 +1223,8 @@ CfsMs::allocCnode(CThreadMutex *hashLockp)
             *lnodepp = cnodep->_nextHashp;
         }
 
-        if ((backp = cnodep->_backEntriesp) != NULL) {
+        while ((backp = cnodep->_backEntriesp) != NULL) {
+            osp_assert(backp->_childp == cnodep);
             parentp = backp->_parentp;
             parentp->_children.remove(backp);
             cnodep->unthreadEntry(backp);
@@ -1298,6 +1331,7 @@ CfsMs::getCnodeLinked( CnodeMs *parentp,
                 oldChildp->unthreadEntry(entryp);
 
                 /* and add it into the new child's back pointer list */
+                osp_assert(childp->_backEntriesp == NULL); /* debugging only */
                 entryp->_nextSameChildp = childp->_backEntriesp;
                 childp->_backEntriesp = entryp;
 
@@ -1336,7 +1370,7 @@ CnodeMs::unthreadEntry(CnodeBackEntry *entryp)
          tentryp;
          lentrypp = &tentryp->_nextSameChildp, tentryp = *lentrypp) {
         if (tentryp == entryp) {
-            *lentrypp = entryp->_dqNextp;
+            *lentrypp = entryp->_nextSameChildp;
             break;
         }
     }

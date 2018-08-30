@@ -68,7 +68,7 @@ class Cnode {
     typedef int32_t (fillProc)(void *contextp, uint64_t offset, uint32_t count, char *bufferp);
 
     virtual int32_t getAttr(CAttr *attrsp, CEnv *envp) = 0;
-    virtual int32_t lookup(std::string name, Cnode **nodepp, CEnv *envp) = 0;
+    virtual int32_t lookup(std::string name, int forceBackend, Cnode **nodepp, CEnv *envp) = 0;
     virtual int32_t create(std::string name, Cnode **nodepp, CEnv *envp) = 0;
     virtual int32_t mkdir(std::string name, Cnode **nodepp, CEnv *envp) = 0;
     virtual int32_t open(uint32_t flags, CFile **filepp) = 0;
@@ -105,6 +105,7 @@ class Cfs {
     typedef int32_t nameiProc( void *cxp,
                                Cnode *nodep,
                                std::string name,
+                               int forceBackend,
                                Cnode **outNodep,
                                CEnv *envp);
 
@@ -117,10 +118,12 @@ class Cfs {
     int32_t nameInt( std::string path,
                      nameiProc *procp,
                      void *nameiContextp,
+                     int forceBackend,
                      Cnode **targetCnodepp,
                      CEnv *envp);
 
     int32_t namei( std::string path,
+                   int forceBackend,
                    Cnode **targetCnodepp,
                    CEnv *envp);
 
@@ -131,12 +134,14 @@ class Cfs {
     static int32_t nameiCallback(void *cxp,
                                  Cnode *nodep,
                                  std::string name,
+                                 int forceBackend,
                                  Cnode **outNodep,
                                  CEnv *envp);
 
     static int32_t mkpathCallback(void *cxp,
                                   Cnode *nodep,
                                   std::string name,
+                                  int forceBackend,
                                   Cnode **outNodep,
                                   CEnv *envp);
 

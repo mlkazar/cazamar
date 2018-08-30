@@ -119,7 +119,7 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
     cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attrs, NULL);
 
-    code = rootp->lookup("TestDir", (Cnode **)&testDirp, NULL);
+    code = rootp->lookup("TestDir", 0, (Cnode **)&testDirp, NULL);
     if (code != 0) {
         code = rootp->mkdir("TestDir", (Cnode **) &testDirp, NULL);
         if (code != 0) {
