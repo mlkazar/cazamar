@@ -7,36 +7,44 @@
 /* called with THIS held; generate a path to it.  Since going up the tree violates
  * our locking hierarchy, we have to be careful to lock only one thing at a time.
  *
- * Note that you can't modify a BackEntry chain without both the parent and child
- * locked, which makes our lives a bit easier.
+ * The structure of the tree is actually protected by the _refLock.
  */
 int32_t
 CnodeMs::getPath(std::string *pathp, CEnv *envp)
 {
     std::string tempPath;
     CnodeMs *tnodep = this;
-    CnodeMs *unodep;
+    CnodeMs *pnodep;
     CnodeBackEntry *bep;
+
     int tnodeHeld = 0;
     while(tnodep) {
-        tnodep->_lock.take();
         if (tnodep->_isRoot) {
-            tnodep->_lock.release();
             break;
         }
+
+        /* cnode is held, so bep is won't be freed */
         bep = tnodep->_backEntriesp;
         if (!bep) {
-            tnodep->_lock.release();
             break;
         }
+
+        /* pnodep is stable as well, due to the hold */
+        pnodep = bep->_parentp;
+
+        /* prevent changes to the name from some sort of invalidation */
+        pnodep->_lock.take();
         tempPath = bep->_name + "/" + tempPath;
-        unodep = bep->_parentp;
-        unodep->hold();
-        tnodep->_lock.release();
+        pnodep->_lock.release();
+
+        /* move our reference up one level, but preserving the reference
+         * on the original THIS.
+         */
+        pnodep->hold();
         if (tnodeHeld) {
             tnodep->release();
         }
-        tnodep = unodep;
+        tnodep = pnodep;
         tnodeHeld = 1;
     }
     tempPath = "/" + tempPath;
@@ -50,6 +58,12 @@ CnodeMs::getPath(std::string *pathp, CEnv *envp)
 
     /* TBD: figure out how to generate paths */
     return 0;
+}
+
+/* mark all nodes as invalid and clear out their names starting from THIS */
+void
+CnodeMs::invalidateTree()
+{
 }
 
 /* return success if everything was found, or if allFoundp is
@@ -130,22 +144,32 @@ CnodeMs::parseResults( Json::Node *jnodep,
     }
 }
 
-/* called with dir lock held, but not child lock held */
+/* called with dir lock held, but not child lock held; returns held child
+ * pointer.  Drops refLock periodically to let others in.
+ */
 int32_t
 CnodeMs::nameSearch(std::string name, CnodeMs **childpp)
 {
     CnodeBackEntry *backp;
     CnodeMs *childp;
+    CfsMs *cfsp = _cfsp;
 
+    cfsp->_refLock.take();
     for(backp = _children.head(); backp; backp=backp->_dqNextp) {
+        childp = backp->_childp;
+        childp->holdNL();
+        cfsp->_refLock.release();
+
         if (name == backp->_name) {
-            /* return this one */
-            childp = backp->_childp;
-            childp->hold();
+            /* return this one; already held from above */
             *childpp = childp;
             return 0;
         }
+        cfsp->_refLock.take();
+        childp->releaseNL();    /* release hold from above */
     }
+    cfsp->_refLock.release();
+    *childpp = NULL;
     return -1;
 }
 
@@ -1090,7 +1114,7 @@ CfsMs::allocCnode(CThreadMutex *hashLockp)
      * one anyway, and bump a counter.
      */
     while(1) {
-        /* see if we have an already recycled cnode */
+        /* see if we have an already recycled cnode; currently unused */
         if ((cnodep = _freeListp) != NULL) {
             _freeListp = cnodep->_nextFreep;
             _refLock.release();
@@ -1138,7 +1162,8 @@ CfsMs::allocCnode(CThreadMutex *hashLockp)
             _lock.release();
 
             /* rather than recheck conditions, just put cnodep in the LRU queue
-             * if it isn't, but should be.  And then return failure.
+             * if it isn't, but should be.  And then return failure.  Our caller
+             * will retry.
              */
             if (!cnodep->_inLru && cnodep->recyclable()) {
                 cnodep->_inLru = 1;
@@ -1169,7 +1194,7 @@ CfsMs::allocCnode(CThreadMutex *hashLockp)
         if ((backp = cnodep->_backEntriesp) != NULL) {
             parentp = backp->_parentp;
             parentp->_children.remove(backp);
-            cnodep->_backEntriesp = NULL;
+            cnodep->unthreadEntry(backp);
             /* and see if parent should be in LRU */
             if (parentp->recyclable() && !parentp->_inLru) {
                 parentp->_inLru = 1;
@@ -1207,7 +1232,7 @@ CfsMs::getCnode(std::string *idp, CnodeMs **cnodepp)
         if (!cp) {
             cp = allocCnode(&_lock);
             if (!cp) {
-                /* _lockp was released on failure */
+                /* _lockp was released on failure; must reverify hash table search */
                 continue;
             }
 
@@ -1242,38 +1267,81 @@ CfsMs::getCnodeLinked( CnodeMs *parentp,
     CnodeMs *childp;
     int32_t code;
     CnodeBackEntry *entryp;
+    CnodeMs *oldChildp;
+
+    if (!parentp) {
+        return 0;
+    }
 
     code = getCnode(idp, &childp);
     if (code)
         return code;
 
-    if (!parentp) {
-        childp->release();
-        return 0;
-    }
-
     lockSetp->add(parentp);
     lockSetp->add(childp);
 
     /* otherwise, thread us in */
-    for(entryp=childp->_backEntriesp; entryp; entryp=entryp->_nextSameChildp) {
-        if (entryp->_name == name)
+    _refLock.take();
+    for( entryp = parentp->_children.head(); entryp; entryp=entryp->_dqNextp) {
+        if (entryp->_name == name) {
+            if (childp != entryp->_childp) {
+                /* we have the object with this name, so replace the object and
+                 * unsplice the back entry from the old child.
+                 *
+                 * This could just be one name out of many for the
+                 * child, so we have to find the entry in the child's
+                 * back pointer list.
+                 */
+                oldChildp = entryp->_childp;
+
+                /* remove this back entry structure from the wrong child */
+                oldChildp->unthreadEntry(entryp);
+
+                /* and add it into the new child's back pointer list */
+                entryp->_nextSameChildp = childp->_backEntriesp;
+                childp->_backEntriesp = entryp;
+
+                /* and set the downward pointer */
+                entryp->_childp = childp;
+            } /* child doesn't match */
             break;
-    }
+        } /* name matches */
+    } /* see if name already exists in parent dir */
+    _refLock.release();
 
     if (!entryp) {
         entryp = new CnodeBackEntry();
+        _refLock.take();
         entryp->_nextSameChildp = childp->_backEntriesp;
         childp->_backEntriesp = entryp;
         entryp->_name = name;
         entryp->_parentp = parentp;
         entryp->_childp = childp;
         parentp->_children.append(entryp);
-        parentp->hold();
+        _refLock.release();
     }
 
     *cnodepp = childp;
     return 0;
+}
+
+/* must be called with refLock held */
+void
+CnodeMs::unthreadEntry(CnodeBackEntry *entryp)
+{
+    CnodeBackEntry **lentrypp;
+    CnodeBackEntry *tentryp;
+
+    for( lentrypp = &_backEntriesp, tentryp = *lentrypp;
+         tentryp;
+         lentrypp = &tentryp->_nextSameChildp, tentryp = *lentrypp) {
+        if (tentryp == entryp) {
+            *lentrypp = entryp->_dqNextp;
+            break;
+        }
+    }
+
+    osp_assert(tentryp != NULL);
 }
 
 int

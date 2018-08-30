@@ -159,7 +159,7 @@ Uploader::start()
     std::string uploadUrl;
     WalkTask *taskp;
 
-    printf("cfstest: tests start\n");
+    printf("Uploader %p starts with cfsp=%p\n", this, _cfsp);
     _cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attrs, NULL);
 
@@ -172,11 +172,18 @@ Uploader::start()
         }
     }
 
+    /* in case the tree was changed at the server, we clear out our
+     * name and attribute caches.
+     */
+    testDirp->invalidateTree();
+
     /* lookup succeeded */
     code = testDirp->getAttr(&dirAttrs, NULL);
     if (code != 0) {
         printf("dir getattr failed code=%d\n", code);
     }
+    testDirp->release();
+    testDirp = NULL;
 
     /* reset stats */
     _filesCopied = 0;

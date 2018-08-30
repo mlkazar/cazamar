@@ -13,15 +13,21 @@ class CfsMs;
 class CnodeMs;
 class CnodeLockSet;
 
-/* Lock order: cnode lock, hash lock, ref count lock.
+/* Lock order: cnode lock (parent to child), hash lock, ref count lock.
  *
  * You can't remove a node from the parent/child tree without holding the refCount
  * lock, seeing that the child has a zero ref count, and that the node being
  * removed has no children.
  *
+ * You can't modify a CnodeBackEntry without holding the parent's lock and a reference
+ * on the child cnode (to prevent it from being freed).  Once you're doing this, you
+ * can change the name or do other things to the entry, as long as its parent, child
+ * and queue pointers all remain unchanged.  That is you can change the name, or turn
+ * on or off the _valid flag, should we add one.
+ *
  * You must hold a reference count on a child to advance the child
  * search to the new node.  Once you hold the reference, you can
- * release the refCount lock.
+ * release the _refLock.
  */
 class CnodeBackEntry {
  public:
@@ -100,6 +106,10 @@ public:
     void holdNL();
 
     void releaseNL();
+
+    void invalidateTree();
+
+    void unthreadEntry(CnodeBackEntry *ep);
 
     /* virtual ops realized */
     int32_t getAttr(CAttr *attrsp, CEnv *envp);
