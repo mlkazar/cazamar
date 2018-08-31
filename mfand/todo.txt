@@ -1,5 +1,7 @@
 log failures -- get the code from the MS response, and save the last 128
 
-invalidate tree at start
+retry on 400 / invalidRequest errors, but only up to a count, with 1 second sleep, only on mkdir
+
+* invalidate tree at start
 
 cdisp can queue unbounded number of tasks

@@ -279,6 +279,17 @@ public:
     Cfs *_cfsp;
     CDisp *_cdisp;
 
+    class Log : public CfsLog {
+    public:
+        void logError( CfsLog::OpType type,
+                       int32_t httpError,
+                       std::string errorString,
+                       std::string longErrorString) {
+            printf("Operation %d httpCode=%d '%s'\n",
+                   type, httpError, errorString.c_str());
+        }
+    } _log;
+
     UploadApp(std::string pathPrefix) {
         uint32_t i;
         for(i=0;i<_maxUploaders;i++) {

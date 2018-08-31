@@ -287,7 +287,7 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
             break;
         }
 
-        if (_cfsp->retryError(reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opLookup, reqp, jnodep)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -419,7 +419,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
             break;
         }
         
-        if (_cfsp->retryError(reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -570,7 +570,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             }
         }
         
-        if (!errorOk && _cfsp->retryError(reqp, jnodep)) {
+        if (!errorOk && _cfsp->retryError(CfsLog::opMkdir, reqp, jnodep)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -678,7 +678,7 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
             printf("json parse failed code=%d\n", code);
         }
         
-        if (_cfsp->retryError(reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opGetAttr, reqp, jnodep)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -803,7 +803,7 @@ CnodeMs::startSession( std::string name,
             break;
         }
         
-        if (_cfsp->retryError(reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -921,7 +921,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
             break;
         }
 
-        if (_cfsp->retryError(reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -1379,7 +1379,7 @@ CnodeMs::unthreadEntry(CnodeBackEntry *entryp)
 }
 
 int
-CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
+CfsMs::retryError(CfsLog::OpType type, XApi::ClientReq *reqp, Json::Node *parsedNodep)
 {
     uint32_t httpError;
     httpError = reqp->getHttpError();
@@ -1389,7 +1389,8 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
     _stalledErrors <<= 1;
 
     if (reqp->getError() != 0) {
-        logError(1000000+reqp->getError(), "RPC error");
+        if (_logp)
+            _logp->logError(type, 1000000+reqp->getError(), "RPC error", "");
         return 0;
     }
     else if (httpError >= 200 && httpError < 300)
@@ -1399,13 +1400,15 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
         /* authentication expired; use refresh token */
         if (refreshToken.length() == 0) {
             /* some login mechanisms don't have refresh tokens */
-            logError(httpError, "authentication error");
+            if (_logp)
+                _logp->logError(type, httpError, "authentication error", "");
             _loginp->logout();
             return 0;
         }
         code = _loginp->refresh();
         if (code) {
-            logError(code, "authentication refresh error");
+            if (_logp)
+                _logp->logError(type, code, "authentication refresh error", "");
         }
         return (code == 0);
     }
@@ -1430,17 +1433,13 @@ CfsMs::retryError(XApi::ClientReq *reqp, Json::Node *parsedNodep)
         Json::Node *tnodep;
         tnodep = parsedNodep->searchForChild("code");
         if ( tnodep && tnodep->_children.head()) {
-            logError(httpError, tnodep->_children.head()->_name);
+            if (_logp)
+                _logp->logError(type, httpError, tnodep->_children.head()->_name, "");
         }
         else {
-            logError(httpError, "unknown");
+            if (_logp)
+                _logp->logError(type, httpError, "unknown", "");
         }
         return 0;
     }
-}
-
-void
-CfsMs::logError(int32_t code, std::string errorString)
-{
-    printf("Operation failed, code=%d details=%s\n", code, errorString.c_str());
 }

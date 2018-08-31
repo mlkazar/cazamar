@@ -9,6 +9,28 @@ class Cfs;
 class CnOps;
 class Cnode;
 
+class CfsLog {
+    public:
+    typedef enum {
+        opGetAttr = 1,
+        opLookup,
+        opCreate,
+        opMkdir,
+        opOpen,
+        opClose,
+        opRead,
+        opWrite,
+        opSendFile} OpType;
+
+    virtual void logError( OpType type,
+                           int32_t httpCode,
+                           std::string errorString,
+                           std::string longErrorString) = 0;
+    virtual ~CfsLog() {
+        return;
+    }
+};
+
 class CAttr {
  public:
     enum FileType {
@@ -101,7 +123,10 @@ class Cnode {
 
 /* one of these per file system instance */
 class Cfs {
+ protected:
+    CfsLog *_logp;
  public:
+
     typedef int32_t nameiProc( void *cxp,
                                Cnode *nodep,
                                std::string name,
@@ -112,6 +137,10 @@ class Cfs {
     virtual int32_t root(Cnode **rootpp, CEnv *envp) = 0;
 
     virtual int getStalling() = 0;
+
+    virtual void setLog(CfsLog *logp) {
+        _logp = logp;
+    }
 
     int32_t splitPath(std::string path, std::string *dirPathp, std::string *namep);
 
@@ -158,6 +187,14 @@ class Cfs {
 
     /* just a utility function for hashing IDs and/or names */
     static uint64_t fnvHash64(std::string *strp);
+
+    Cfs() {
+        _logp = NULL;
+    }
+
+    virtual ~Cfs() {
+        return;
+    }
 };
 
 #endif /* _CFS_H_ENV__ */
