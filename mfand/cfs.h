@@ -9,6 +9,32 @@ class Cfs;
 class CnOps;
 class Cnode;
 
+class CfsStats {
+ public:
+    /* error stats */
+    uint64_t _authRequired;
+    uint64_t _overloaded5xx;
+    uint64_t _busy429;
+    uint64_t _busy409;
+    uint64_t _mysteryErrors;
+    uint64_t _xapiErrors;
+
+    /* call counter */
+    uint64_t _getAttrCalls;
+    uint64_t _totalCalls;
+    uint64_t _getPathCalls;
+    uint64_t _lookupCalls;
+    uint64_t _sendSmallFilesCalls;
+    uint64_t _sendLargeFilesCalls;
+    uint64_t _sendDataCalls;
+    uint64_t _fillAttrCalls;
+    uint64_t _mkdirCalls;
+
+    CfsStats() {
+        memset(this, 0, sizeof(*this));
+    }
+};
+
 class CfsLog {
     public:
     typedef enum {
@@ -29,6 +55,8 @@ class CfsLog {
     virtual ~CfsLog() {
         return;
     }
+
+    static std::string opToString(OpType type);
 };
 
 class CAttr {
@@ -133,6 +161,8 @@ class Cfs {
                                int forceBackend,
                                Cnode **outNodep,
                                CEnv *envp);
+
+    virtual CfsStats *getStats() = 0;
 
     virtual int32_t root(Cnode **rootpp, CEnv *envp) = 0;
 

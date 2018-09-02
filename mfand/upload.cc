@@ -388,6 +388,7 @@ UploadHomeScreen::startMethod()
     loginHtml += "<p><a href=\"/stopBackups\">Stop backup</a>";
     sprintf(tbuffer, "<p><a href=\"/\" onclick=\"getBackupInt(); return false\">Set backup interval (%s)</a>", UploadApp::showInterval(uploadApp->_backupInterval).c_str());
     loginHtml += tbuffer;
+    loginHtml += "<p><a href=\"/info\">Look inside</a>";
     fileName = uploadApp->_pathPrefix + "upload-home.html";
     dict.add("loginText", loginHtml);
     code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
@@ -720,6 +721,50 @@ UploadStartScreen::startMethod()
 }
 
 void
+UploadInfoScreen::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    std::string authToken;
+    std::string fileName;
+
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app running to stop; visit home page first<p>"
+               "<a href=\"/\">Home screen</a></html>");
+        obufferp = tbuffer;
+    }
+    else {
+        fileName = uploadApp->_pathPrefix + "upload-info.html";
+        code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
+
+        if (code != 0) {
+            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            obufferp = tbuffer;
+        }
+        else {
+            obufferp = const_cast<char *>(response.c_str());
+        }
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
 UploadStopScreen::startMethod()
 {
     char tbuffer[16384];
@@ -881,6 +926,155 @@ UploadStatusData::startMethod()
                          editString + "</td></tr>\n");
         }
         response += "</table>\n";
+        obufferp = const_cast<char *>(response.c_str());
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadInfoData::startMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    UploadApp *uploadApp;
+    std::string loginHtml;
+    std::string filesString;
+    std::string bytesString;
+    std::string errorsString;
+    std::string skippedString;
+    std::string editString;
+    std::string enabledString;
+    std::string finishedString;
+    UploadErrorEntry *errorp;
+    CfsStats *sp;
+    CDispStats ds;
+        
+    if ( (uploadApp = UploadApp::getGlobalApp()) == NULL ||
+         uploadApp->_cfsp == NULL) {
+        strcpy(tbuffer, "[Initializing]");
+        obufferp = tbuffer;
+    }
+    else {
+        sp = uploadApp->_cfsp->getStats();
+
+        /* put out one line for each logged error */
+        response = "<p><center>Error log</center><p>";
+        response += "<table style=\"width:80%\">";
+        response += "<tr><th>Operation</th><th>HTTP code</th><th>Short Error</th></tr>";
+
+        /* put in a loop over all bad errors */
+        uploadApp->_lock.take();
+        for( errorp = uploadApp->_errorEntries.head();
+             errorp;
+             errorp=errorp->_dqNextp) {
+            sprintf(tbuffer, "<td>%s</td><td>%d</td><td>%s</td>\n",
+                    errorp->_op.c_str(), errorp->_httpError, errorp->_shortError.c_str());
+            response += tbuffer;
+        }
+
+        uploadApp->_lock.release();
+
+        response += "</table>\n";
+
+        /* print out detailed stats */
+        response += "<p><center>Call totals</center><p>";
+        response += "<table style=\"width:50%\">\n";
+        response += "<tr><th>Stat</th><th>Value</th></tr>\n";
+
+        sprintf(tbuffer, "<tr><td>Total calls</td><td>%llu</td></tr>\n",
+                (long long) sp->_totalCalls);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>FillAttr calls</td><td>%llu</td></tr>\n",
+                (long long) sp->_fillAttrCalls);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>GetAttr calls</td><td>%llu</td></tr>\n",
+                (long long) sp->_getAttrCalls);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>GetPath calls</td><td>%llu</td></tr>\n",
+                (long long) sp->_getPathCalls);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Lookup calls</td><td>%llu</td></tr>\n",
+                (long long) sp->_lookupCalls);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>SendSmallFiles</td><td>%llu</td></tr>\n",
+                (long long) sp->_sendSmallFilesCalls);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>SendLargeFiles</td><td>%llu</td></tr>\n",
+                (long long) sp->_sendLargeFilesCalls);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>SendDataCalls</td><td>%llu</td></tr>\n",
+                (long long) sp->_sendDataCalls);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Mkdir calls</td><td>%llu</td></tr>\n",
+                (long long) sp->_mkdirCalls);
+        response += tbuffer;
+
+        response += "</table>\n";
+
+        response += "<p><center>Error stats</center><p>";
+        response += "<table style=\"width:50%\">\n";
+        response += "<tr><th>Stat</th><th>Value</th></tr>\n";
+
+        sprintf(tbuffer, "<tr><td>Auth required</td><td>%llu</td></tr>\n",
+                (long long) sp->_authRequired);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Overloaded 5XX</td><td>%llu</td></tr>\n",
+                (long long) sp->_overloaded5xx);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Busy 429</td><td>%llu</td></tr>\n",
+                (long long) sp->_busy429);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>409 stalls</td><td>%llu</td></tr>\n",
+                (long long) sp->_busy409);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Unknown HTTP fail</td><td>%llu</td></tr>\n",
+                (long long) sp->_mysteryErrors);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>XApi fail</td><td>%llu</td></tr>\n",
+                (long long) sp->_xapiErrors);
+        response += tbuffer;
+
+        response += "</table>\n";
+
+        if (uploadApp->_cdisp)
+            uploadApp->_cdisp->getStats(&ds);
+
+        response += "<p><center>Dispatcher stats</center><p>";
+        response += "<table style=\"width:50%\">\n";
+        response += "<tr><th>Stat</th><th>Value</th></tr>\n";
+
+        sprintf(tbuffer, "<tr><td>Active Helpers</td><td>%llu</td></tr>\n",
+                (long long) ds._activeHelpers);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Available Helpers</td><td>%llu</td></tr>\n",
+                (long long) ds._availableHelpers);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Active Tasks</td><td>%llu</td></tr>\n",
+                (long long) ds._activeTasks);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Pending Tasks</td><td>%llu</td></tr>\n",
+                (long long) ds._pendingTasks);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>CDisp run mode</td><td>%llu</td></tr>\n",
+                (long long) ds._runMode);
+        response += tbuffer;
+
+        response += "</table>\n";
+
         obufferp = const_cast<char *>(response.c_str());
     }
 
@@ -1183,6 +1377,14 @@ UploadStopScreen::factory(std::string *opcodep, SApi *sapip)
 }
 
 SApi::ServerReq *
+UploadInfoScreen::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadInfoScreen *reqp;
+    reqp = new UploadInfoScreen(sapip);
+    return reqp;
+}
+
+SApi::ServerReq *
 UploadPauseScreen::factory(std::string *opcodep, SApi *sapip)
 {
     UploadPauseScreen *reqp;
@@ -1195,6 +1397,14 @@ UploadStatusData::factory(std::string *opcodep, SApi *sapip)
 {
     UploadStatusData *reqp;
     reqp = new UploadStatusData(sapip);
+    return reqp;
+}
+
+SApi::ServerReq *
+UploadInfoData::factory(std::string *opcodep, SApi *sapip)
+{
+    UploadInfoData *reqp;
+    reqp = new UploadInfoData(sapip);
     return reqp;
 }
 
@@ -1252,11 +1462,13 @@ UploadApp::init(SApi *sapip)
     sapip->registerUrl("/stopBackups", &UploadStopScreen::factory);
     sapip->registerUrl("/pauseBackups", &UploadPauseScreen::factory);
     sapip->registerUrl("/statusData", &UploadStatusData::factory);
+    sapip->registerUrl("/infoData", &UploadInfoData::factory);
     sapip->registerUrl("/loadConfig", &UploadLoadConfig::factory);// do we need this?
     sapip->registerUrl("/deleteItem", &UploadDeleteConfig::factory);
     sapip->registerUrl("/setEnabled", &UploadSetEnabledConfig::factory);
     sapip->registerUrl("/createEntry", &UploadCreateConfig::factory);
     sapip->registerUrl("/backupInterval", &UploadBackupInterval::factory);
+    sapip->registerUrl("/info", &UploadInfoScreen::factory);
 
     _cdisp = new CDisp();
     _cdisp->init(24);   /*24*/
@@ -1369,4 +1581,31 @@ UploadEntry::stop() {
     while(!_uploaderp->isIdle()) {
         sleep(1);
     }
+}
+
+void
+UploadApp::Log::logError( CfsLog::OpType type,
+                          int32_t httpError,
+                          std::string errorString,
+                          std::string longErrorString) {
+    UploadApp *up = _uploadApp;
+    UploadErrorEntry *ep;
+
+    printf("Operation %d httpCode=%d '%s'\n",
+           type, httpError, errorString.c_str());
+    ep = new UploadErrorEntry();
+    ep->_op = CfsLog::opToString(type);
+    ep->_httpError = httpError;
+    ep->_shortError = errorString;
+
+    up->_lock.take();
+    up->_errorEntries.append(ep);
+
+    /* and don't let us queue too many; just keep the most recent maxErrorEntries */
+    while(up->_errorEntries.count() > UploadApp::_maxErrorEntries) {
+        ep = up->_errorEntries.pop();
+        delete ep;
+    }
+
+    up->_lock.release();
 }

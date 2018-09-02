@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+h1 {text-align: center; color: blue}
+th {text-align: left;}
+table {
+  border: 1px solid black;
+}
+body {background: linear-gradient(90deg, rgba(255,192,96,0.9),rgba(192,192,255,0.9),rgba(128,64,255,0.9));
+      font-size: large;}
+button {
+ background-color: rgba(128,128,255,0.2);
+}
+
+.container {
+  padding: 16px;
+  background-color: rgba(255,192,0,1.0);
+  border: 2px solid black;
+}
+
+table {
+  border: 2px solid black;
+  border-collapse: collapse;
+}
+
+th {
+  border: 2px solid black;
+  border-collapse: collapse;
+}
+
+td {
+  border: 1px solid rgba(128,128,128,128);
+  border-collapse: collapse;
+}
+
+</style>
+</head>
+<body>
+<h1>Cloud Home</h1>
+<center>
+<a href="/">Back home</a>
+</center>
+
+<script>
+function updateInfoInternal() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        document.getElementById("infoData").innerHTML =
+          xhttp.responseText;
+      }
+  };
+  xhttp.open("GET", "infoData", true);
+  xhttp.send();
+}
+
+function updateInfo() {
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+      if (xhttp.readyState == 4 && xhttp.status == 200) {
+        document.getElementById("infoData").innerHTML =
+          xhttp.responseText;
+        setInterval(updateInfoInternal, 1000);
+      }
+  };
+  xhttp.open("GET", "infoData", true);
+  xhttp.send();
+}
+
+window.onload=updateInfo
+
+</script>
+
+<center>
+<div id="infoData">[No update yet]</div>
+<p>
+<button type="button" onclick="updateInfoInternal()">Update info now</button>
+</center>
+
+</body>
+</html>

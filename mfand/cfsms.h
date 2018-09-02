@@ -186,6 +186,7 @@ class CfsMs : public Cfs {
     std::string _pathPrefix;
     CnodeMs *_freeListp;
     uint64_t _stalledErrors;
+    CfsStats _stats;
 
     CfsMs(SApiLoginMS *loginp, std::string pathPrefix) {
         _pathPrefix = pathPrefix;
@@ -197,6 +198,10 @@ class CfsMs : public Cfs {
         _stalledErrors = 0;
         _freeListp = NULL;
         memset(_hashTablep, 0, sizeof(_hashTablep));
+    }
+
+    CfsStats *getStats() {
+        return &_stats;
     }
 
     void setVerbose() {

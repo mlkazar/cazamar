@@ -215,3 +215,44 @@ Cfs::mkdir(std::string path, Cnode **newDirpp, CEnv *envp)
     dirNodep->release();
     return code;
 }
+
+/* static */ std::string
+CfsLog::opToString(OpType type)
+{
+    std::string result;
+
+    switch(type) {
+        case opGetAttr:
+            result = "getAttr";
+            break;
+        case opLookup:
+            result = "lookup";
+            break;
+        case opCreate:
+            result = "create";
+            break;
+        case opMkdir:
+            result = "mkdir";
+            break;
+        case opOpen:
+            result = "open";
+            break;
+        case opClose:
+            result = "close";
+            break;
+        case opRead:
+            result = "read";
+            break;
+        case opWrite:
+            result = "write";
+            break;
+        case opSendFile:
+            result = "sendFile";
+            break;
+        default:
+            result = "badOp";
+            break;
+    }
+
+    return result;
+}

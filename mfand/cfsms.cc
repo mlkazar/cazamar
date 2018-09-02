@@ -18,6 +18,8 @@ CnodeMs::getPath(std::string *pathp, CEnv *envp)
     CnodeBackEntry *bep;
 
     int tnodeHeld = 0;
+
+    _cfsp->_stats._getPathCalls++;
     while(tnodep) {
         if (tnodep->_isRoot) {
             break;
@@ -249,9 +251,11 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
         return code;
     }
 
+    _cfsp->_stats._lookupCalls++;
     callbackString = "/v1.0/me/drive/root:" + Rst::urlPathEncode(dirPath + name);
     
     while(1) {
+        _cfsp->_stats._totalCalls++;
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
@@ -363,6 +367,8 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         callbackString = ("/v1.0/me/drive/items/" + _id + ":/" + Rst::urlPathEncode(name) +
                           ":/content");
     
+    _cfsp->_stats._sendSmallFilesCalls++;
+
     /* no post data */
     dataBufferp = new char[dataBufferBytes];
 
@@ -370,6 +376,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         sourcep->getAttr(&dataAttrs);
         sendBytes = dataAttrs._length;
 
+        _cfsp->_stats._totalCalls++;
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(sendBytes);
@@ -511,6 +518,8 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
         callbackString = "/v1.0/me/drive/root/children";
     else
         callbackString = "/v1.0/me/drive/items/" + _id + "/children";
+
+    _cfsp->_stats._mkdirCalls++;
     
     postData = "{\n";
     postData += "\"name\": \"" + name + "\",\n";
@@ -519,6 +528,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     postData += "}\n";
     
     while(1) {
+        _cfsp->_stats._totalCalls++;
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(postData.length());
@@ -645,7 +655,10 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
     else
         callbackString = "/v1.0/me/drive/items/" + _id;
     
+    _cfsp->_stats._fillAttrCalls++;
+
     while(1) {
+        _cfsp->_stats._totalCalls++;
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
@@ -721,6 +734,8 @@ CnodeMs::getAttr(CAttr *attrp, CEnv *envp)
         return 0;
     }
 
+    _cfsp->_stats._getAttrCalls++;
+
     lockSet.reset();
 
     code = fillAttrs(envp, &lockSet);
@@ -750,6 +765,9 @@ CnodeMs::startSession( std::string name,
     int32_t code;
     std::string id;
     
+    /* one per large file transfer */
+    _cfsp->_stats._sendLargeFilesCalls++;
+
     sessionUrlp->erase();
 
     // perhaps syntax is .../root:/filename:/createUploadSession
@@ -767,6 +785,7 @@ CnodeMs::startSession( std::string name,
     postData += "}\n";
     
     while(1) {
+        _cfsp->_stats._totalCalls++;
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(postData.length());
@@ -867,8 +886,10 @@ CnodeMs::sendData( std::string *sessionUrlp,
 
     osp_assert(byteCount < 4*1024*1024);
     dataBufferp = new char[byteCount];
+    _cfsp->_stats._sendDataCalls++;
 
     while(1) {
+        _cfsp->_stats._totalCalls++;
         connp = _cfsp->_xapiPoolp->getConn(sessionHost, port, /* TLS */ 1);
         /* read some bytes */
         readCount = (byteOffset + byteCount > fileLength?
@@ -1391,12 +1412,14 @@ CfsMs::retryError(CfsLog::OpType type, XApi::ClientReq *reqp, Json::Node *parsed
     if (reqp->getError() != 0) {
         if (_logp)
             _logp->logError(type, 1000000+reqp->getError(), "RPC error", "");
+        _stats._xapiErrors++;
         return 0;
     }
     else if (httpError >= 200 && httpError < 300)
         return 0;
     else if (httpError == 401) {
         std::string refreshToken = _loginp->getRefreshToken();
+        _stats._authRequired++;
         /* authentication expired; use refresh token */
         if (refreshToken.length() == 0) {
             /* some login mechanisms don't have refresh tokens */
@@ -1413,6 +1436,7 @@ CfsMs::retryError(CfsLog::OpType type, XApi::ClientReq *reqp, Json::Node *parsed
         return (code == 0);
     }
     else if (httpError == 409) {
+        _stats._busy409++;
         _stalledErrors |= 1;
         sleep(4);
         printf("retrying 409 error\n");
@@ -1421,6 +1445,10 @@ CfsMs::retryError(CfsLog::OpType type, XApi::ClientReq *reqp, Json::Node *parsed
     else if ( (httpError >= 500 && httpError <= 504) ||
               httpError == 429) {
         /* overloaded server, or bad choice of server.  Must rebind */
+        if (httpError == 429)
+            _stats._busy429++;
+        else
+            _stats._overloaded5xx++;
         _stalledErrors |= 1;
         reqp->resetConn();
         sleep(2);
@@ -1431,6 +1459,7 @@ CfsMs::retryError(CfsLog::OpType type, XApi::ClientReq *reqp, Json::Node *parsed
     }
     else {
         Json::Node *tnodep;
+        _stats._mysteryErrors++;
         tnodep = parsedNodep->searchForChild("code");
         if ( tnodep && tnodep->_children.head()) {
             if (_logp)

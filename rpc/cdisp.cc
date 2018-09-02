@@ -273,3 +273,14 @@ CDispTask::~CDispTask() {
         disp->_lock.release();
     }
 }
+
+void
+CDisp::getStats( CDispStats *statsp) {
+    _lock.take();
+    statsp->_activeHelpers = _activeHelpers.count();
+    statsp->_availableHelpers = _availableHelpers.count();
+    statsp->_activeTasks = _activeTasks.count();
+    statsp->_pendingTasks = _pendingTasks.count();
+    statsp->_runMode = _runMode;
+    _lock.release();
+}

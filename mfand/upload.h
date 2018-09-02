@@ -109,6 +109,15 @@ class DataSourceFile : public CDataSource {
     }
 };
 
+class UploadErrorEntry {
+ public:
+    std::string _op;
+    int32_t _httpError;
+    std::string _shortError;
+    UploadErrorEntry *_dqNextp;
+    UploadErrorEntry *_dqPrevp;
+};
+
 class UploadEntry {
 public:
     Uploader *_uploaderp;
@@ -269,6 +278,7 @@ public:
 class UploadApp : public CThread {
 public:
     static const uint32_t _maxUploaders = 128;
+    static const uint32_t _maxErrorEntries = 64;
     static UploadApp *_globalApp;
     UploadEntry *_uploadEntryp[_maxUploaders]; /* array of pointers to UploaderEntries */
     SApiLoginCookie *_loginCookiep;
@@ -278,19 +288,23 @@ public:
     uint32_t _backupInterval;
     Cfs *_cfsp;
     CDisp *_cdisp;
+    CThreadMutex _lock; /* protect error entries */
+    dqueue<UploadErrorEntry> _errorEntries;
 
     class Log : public CfsLog {
+        UploadApp *_uploadApp;
     public:
         void logError( CfsLog::OpType type,
                        int32_t httpError,
                        std::string errorString,
-                       std::string longErrorString) {
-            printf("Operation %d httpCode=%d '%s'\n",
-                   type, httpError, errorString.c_str());
+                       std::string longErrorString);
+
+        Log(UploadApp *uploadApp) {
+            _uploadApp = uploadApp;
         }
     } _log;
 
-    UploadApp(std::string pathPrefix) {
+    UploadApp(std::string pathPrefix) : _log(this) {
         uint32_t i;
         for(i=0;i<_maxUploaders;i++) {
             _uploadEntryp[i] = NULL;
@@ -306,7 +320,7 @@ public:
 #ifndef __linux__
         if (_uploadEntryp[0] == NULL) {
             fsRoot = std::string(getenv("HOME")) + "/Pictures";
-            cloudRoot = "/" + std::string(getenv("USER")) + "_backups";
+            cloudRoot = "/" + std::string(getenv("USER")) + "_pictures";
             addConfigEntry(cloudRoot, fsRoot, 0, 1);
             writeConfig(pathPrefix);
         }
@@ -434,6 +448,17 @@ public:
     void startMethod();
 };
 
+class UploadInfoScreen : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadInfoScreen(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
 class UploadPauseScreen : public SApi::ServerReq {
 public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
@@ -450,6 +475,17 @@ public:
     static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
 
     UploadStatusData(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void startMethod();
+};
+
+class UploadInfoData : public SApi::ServerReq {
+public:
+    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+
+    UploadInfoData(SApi *sapip) : SApi::ServerReq(sapip) {
         return;
     }
 

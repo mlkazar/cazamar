@@ -71,6 +71,19 @@ class CDispHelper : public CThread {
     void start(void *contextp);
 };
 
+class CDispStats {
+ public:
+    uint32_t _activeHelpers;
+    uint32_t _availableHelpers;
+    uint32_t _activeTasks;
+    uint32_t _pendingTasks;
+    uint32_t _runMode;
+
+    CDispStats() {
+        memset(this, 0, sizeof(CDispStats));
+    }
+};
+
 class CDisp {
  public:
     friend class CDispGroup;
@@ -117,6 +130,8 @@ class CDisp {
     void tryDispatches();
 
  public:
+    void getStats( CDispStats *statsp);
+
     int32_t init(uint32_t ntasks);
 
     int32_t pause();
