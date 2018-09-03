@@ -6,6 +6,18 @@
 #include "bufsocket.h"
 #include "xapi.h"
 
+class XApiPoolStats {
+ public:
+    uint32_t _longestMs;
+    uint32_t _averageMs;
+    uint32_t _healthyCount;
+    uint32_t _activeCount;
+
+    XApiPoolStats() {
+        memset(this, 0, sizeof(*this));
+    }
+};
+
 /* manage a pool of TLS and regular connections, creating new
  * connections up to a configured maximum if connections are busy.
  */
@@ -44,6 +56,11 @@ class XApiPool {
     XApi::ClientConn *getConn( std::string fullHostName,
                                uint32_t port,
                                uint8_t isTls);
+
+    /* return the longest busy running call, the average of all busy calls, and the
+     * number of conns that are busy and haven't been running for over 20 seconds.
+     */
+    void getStats(XApiPoolStats *statsp);
 };
 
 #endif /* __XAPIPOOL_H_ENV__ */

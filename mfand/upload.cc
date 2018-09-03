@@ -380,7 +380,7 @@ UploadHomeScreen::startMethod()
         authToken = contextp->getActive()->getAuthToken();
 
     if (!contextp || authToken.length() == 0) {
-        loginHtml = "<a href=\"/appleLoginScreen\">Apple Login</a><p><a href=\"/msLoginScreen\">        MS Login</a>";
+        loginHtml = "<a href=\"/msLoginScreen\">MS Login</a>";
     }
     else {
         loginHtml = "Logged in<p><a href=\"/logoutScreen\">Logout</a>";
@@ -965,6 +965,8 @@ UploadInfoData::startMethod()
     UploadErrorEntry *errorp;
     CfsStats *sp;
     CDispStats ds;
+    XApiPoolStats poolStats;
+    XApiPool *xapiPoolp;
         
     if ( (uploadApp = UploadApp::getGlobalApp()) == NULL ||
          uploadApp->_cfsp == NULL) {
@@ -998,7 +1000,7 @@ UploadInfoData::startMethod()
         response += "<table style=\"width:50%\">\n";
         response += "<tr><th>Stat</th><th>Value</th></tr>\n";
 
-        sprintf(tbuffer, "<tr><td>Total calls</td><td>%llu</td></tr>\n",
+        sprintf(tbuffer, "<tr><td>Total REST calls</td><td>%llu</td></tr>\n",
                 (long long) sp->_totalCalls);
         response += tbuffer;
         sprintf(tbuffer, "<tr><td>FillAttr calls</td><td>%llu</td></tr>\n",
@@ -1055,6 +1057,9 @@ UploadInfoData::startMethod()
 
         if (uploadApp->_cdisp)
             uploadApp->_cdisp->getStats(&ds);
+        xapiPoolp = uploadApp->_cfsp->getPool();
+        if (xapiPoolp)
+            xapiPoolp->getStats(&poolStats);
 
         response += "<p><center>Dispatcher stats</center><p>";
         response += "<table style=\"width:50%\">\n";
@@ -1074,6 +1079,12 @@ UploadInfoData::startMethod()
         response += tbuffer;
         sprintf(tbuffer, "<tr><td>CDisp run mode</td><td>%llu</td></tr>\n",
                 (long long) ds._runMode);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Avg/Max Busy time / # Healthy</td><td>%llu ms / %llu ms / %llu healthy / %llu total active</td></tr>\n",
+                (long long) poolStats._averageMs,
+                (long long) poolStats._longestMs,
+                (long long) poolStats._healthyCount,
+                (long long) poolStats._activeCount);
         response += tbuffer;
 
         response += "</table>\n";

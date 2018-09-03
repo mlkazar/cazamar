@@ -119,7 +119,7 @@ class CDisp {
     }
 
  private:
-    int32_t queueTask(CDispTask *taskp);
+    int32_t queueTask(CDispTask *taskp, int head=0);
 
     int isAllDoneNL() {
         return (_activeTasks.count() == 0 &&
@@ -197,7 +197,7 @@ class CDispGroup {
     }
 
 
-    int32_t queueTask(CDispTask *taskp);
+    int32_t queueTask(CDispTask *taskp, int head=0);
 
     int isAllDoneNL()
     {

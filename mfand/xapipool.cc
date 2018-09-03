@@ -67,3 +67,48 @@ XApiPool::getConn(std::string fullHostName, uint32_t port, uint8_t isTls)
 
     return connp;
 }
+
+void
+XApiPool::getStats(XApiPoolStats *statsp)
+{
+    Entry *ep;
+    XApi::ClientConn *connp;
+    uint32_t totalActiveMs;
+    uint32_t longestActiveMs;
+    uint32_t healthyCount;
+    uint32_t now;
+    int32_t delta;
+    uint32_t activeCount;
+
+    _lock.take();
+
+    totalActiveMs = 0;
+    longestActiveMs = 0;
+    healthyCount = 0;
+    activeCount = 0;
+    now = osp_time_ms();
+
+    for(ep = _allConns.head(); ep; ep=ep->_dqNextp) {
+        connp = ep->_connp;
+        if (connp && connp->getBusy()) {
+            activeCount++;
+            delta = now - connp->getStartMs();
+            totalActiveMs += delta;
+            if (delta > longestActiveMs)
+                longestActiveMs = delta;
+            if (delta < 20000)
+                healthyCount++;
+        }
+    }
+    
+    _lock.release();
+
+    statsp->_longestMs = longestActiveMs;
+    if (activeCount > 0)
+        statsp->_averageMs = totalActiveMs / activeCount;
+    else
+        statsp->_averageMs = 0;
+    statsp->_healthyCount = healthyCount;
+    statsp->_activeCount = activeCount;
+}
+

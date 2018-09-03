@@ -12,6 +12,7 @@ WalkTask::start()
     int32_t code;
     struct dirent *entryp;
     WalkTask *childTaskp;
+    std::string childPath;
 #ifndef __linux__
     char tbuffer[1024];
 #endif
@@ -66,12 +67,17 @@ WalkTask::start()
 
             childTaskp = new WalkTask();
 #ifdef __linux__
-            childTaskp->initWithPath(_path + "/" + std::string(entryp->d_name));
+            childPath = _path + "/" + std::string(entryp->d_name);
 #else
-            childTaskp->initWithPath(_path + "/" + std::string(entryp->d_name, entryp->d_namlen));
+            childPath = _path + "/" + std::string(entryp->d_name, entryp->d_namlen);
 #endif
+            code = lstat(childPath.c_str(), &tstat);
+            childTaskp->initWithPath(childPath);
             childTaskp->setCallback(_callbackProcp, _callbackContextp);
-            group->queueTask(childTaskp);
+            if ((tstat.st_mode & S_IFMT) == S_IFREG)
+                group->queueTask(childTaskp, /* queue at head */ 1);
+            else
+                group->queueTask(childTaskp, /* !queue at head */ 0);
         }
 
         // printf("closedir %s fd=%d\n", _path.c_str(), dirfd(dirp));

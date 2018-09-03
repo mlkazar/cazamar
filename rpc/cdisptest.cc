@@ -18,7 +18,7 @@ public:
         if (_level > 0) {
             for(i=0;i<2;i++) {
                 childp[i] = new TestTask(_level-1);
-                group->queueTask(childp[i]);
+                group->queueTask(childp[i], (i&1));
             }
         }
 

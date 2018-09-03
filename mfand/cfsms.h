@@ -221,6 +221,10 @@ class CfsMs : public Cfs {
         _verbose = 1;
     }
 
+    XApiPool *getPool() {
+        return _xapiPoolp;
+    }
+
     void setLogin(SApiLoginMS *loginp) {
         if (_loginp)
             delete _loginp;

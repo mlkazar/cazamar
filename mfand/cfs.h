@@ -8,6 +8,7 @@
 class Cfs;
 class CnOps;
 class Cnode;
+class XApiPool;
 
 class CfsStats {
  public:
@@ -171,6 +172,8 @@ class Cfs {
     virtual void setLog(CfsLog *logp) {
         _logp = logp;
     }
+
+    virtual XApiPool *getPool() = 0;
 
     int32_t splitPath(std::string path, std::string *dirPathp, std::string *namep);
 

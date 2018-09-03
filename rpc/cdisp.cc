@@ -138,7 +138,7 @@ CDisp::tryDispatches()
 
 /* called with disp lock held */
 int32_t
-CDisp::queueTask(CDispTask *taskp)
+CDisp::queueTask(CDispTask *taskp, int head)
 {
     taskp->_disp = this;
 
@@ -153,7 +153,11 @@ CDisp::queueTask(CDispTask *taskp)
         return -1;
     }
 
-    _pendingTasks.append(taskp);
+    if (head)
+        _pendingTasks.prepend(taskp);
+    else
+        _pendingTasks.append(taskp);
+
     taskp->_inQueue = CDispTask::_queuePending;
     tryDispatches();
 
@@ -161,14 +165,14 @@ CDisp::queueTask(CDispTask *taskp)
 }
 
 int32_t
-CDispGroup::queueTask(CDispTask *taskp)
+CDispGroup::queueTask(CDispTask *taskp, int head)
 {
     int32_t rcode;
     
     _cdisp->_lock.take();
     taskp->_group = this;
     _activeCount++;
-    rcode = _cdisp->queueTask(taskp);
+    rcode = _cdisp->queueTask(taskp, head);
     _cdisp->_lock.release();
 
     return rcode;

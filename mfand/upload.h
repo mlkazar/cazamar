@@ -234,7 +234,7 @@ public:
 
         /* see if we finished the tree walk, since we don't get callbacks when done */
         if (_status != STOPPED) {
-            if (_group->isAllDone())
+            if (_group && _group->isAllDone())
                 _status = STOPPED;
         }
 
