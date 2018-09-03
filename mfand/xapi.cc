@@ -462,6 +462,7 @@ XApi::ClientReq::startCall(ClientConn *connp, const char *relativePathp, reqType
 
     connp->_mutex.take();
     connp->_headersDone = 0;
+    connp->_allDone = 0;
     connp->_activeReqp = this;
     connp->_bufGenp->reopen();
     connp->_mutex.release();
@@ -480,21 +481,24 @@ XApi::ClientReq::addHeader(const char *keyp, const char *valuep)
     _sendHeaders.append(hdrp);
 }
 
-int32_t
-XApi::ClientReq::waitForHeadersDone()
-{
-    _connp->waitForHeadersDone();
-
-    return _error;
-}
-
 void
-XApi::ClientReq::waitForAllDone() {
+XApi::ClientConn::waitForAllDone() {
     _mutex.take();
     while(1) {
         if (_allDone)
             break;
-        _allDoneCV.wait();
+        _doneCV.wait();
+    }
+    _mutex.release();
+}
+
+void
+XApi::ClientConn::waitForHeadersDone() {
+    _mutex.take();
+    while(1) {
+        if (_headersDone)
+            break;
+        _doneCV.wait();
     }
     _mutex.release();
 }
@@ -567,12 +571,13 @@ XApi::ClientReq::allDoneProc( void *contextp,
                               int32_t httpCode)
 {
     XApi::ClientReq *reqp = (XApi::ClientReq *) contextp;
+    XApi::ClientConn *connp = reqp->_connp;
 
     /* save errors */
     reqp->_error = errorCode;
     reqp->_httpError = httpCode;
 
-    reqp->setAllDone();
+    connp->setAllDone();
 }
 
 
@@ -603,14 +608,6 @@ XApi::ClientReq::startMethod()
                         headersDoneProc,
                         allDoneProc,
                         this);
-    if (code != 0) {
-        _error = code;
-        if (!_connp->_headersDone) {
-            _connp->setHeadersDone();
-        }
-        _connp->_incomingData.eof();
-        _connp->_outgoingData.eof();
-    }
 }
 
 XApi::ClientReq::~ClientReq() {

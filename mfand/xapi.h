@@ -85,13 +85,15 @@ class XApi : public CThread {
         CThreadMutex _mutex;
 
         uint8_t _headersDone;
-        CThreadCV _headersDoneCV;
+        uint8_t _allDone;
+        CThreadCV _doneCV;
+
         CThreadCV _busyCV;
 
         ClientReq *_activeReqp;
 
         ClientConn(XApi *xapip, BufGen *bufGenp) :
-        _headersDoneCV(&_mutex),
+            _doneCV(&_mutex),
             _busyCV(&_mutex) {
             _bufGenp = bufGenp;
             _xapip = xapip;
@@ -100,6 +102,7 @@ class XApi : public CThread {
             _rstp->init(bufGenp);
 
             _headersDone = 0;
+            _allDone = 0;
             _busy = 0;
             _activeReqp = NULL;
         }
@@ -131,18 +134,23 @@ class XApi : public CThread {
             _mutex.take();
             _headersDone = 1;
             _mutex.release();
-            _headersDoneCV.broadcast();
+            _doneCV.broadcast();
         }
 
-        void waitForHeadersDone() {
+        void waitForHeadersDone();
+
+        void waitForAllDone();
+
+        void setAllDone() {
             _mutex.take();
-            while(1) {
-                if (_headersDone)
-                    break;
-                _headersDoneCV.wait();
-            }
+            _allDone = 1;
+            _headersDone = 1;
+            _incomingData.eof();
+            _outgoingData.eof();
             _mutex.release();
+            _doneCV.broadcast();
         }
+
     };
 
     /* The user begin by creating a new XApi::ClientReq, adding any
@@ -189,27 +197,15 @@ class XApi : public CThread {
         dqueue<Rst::Hdr> _sendHeaders;
         dqueue<Rst::Hdr> _recvHeaders;
         Rst::Call *_callp;
-        uint8_t _allDone;
-        CThreadCV _allDoneCV;
         CThreadMutex _mutex;
 
-        ClientReq() : _allDoneCV(&_mutex) {
+        ClientReq() {
             _connp = NULL;
             _userThreadp = NULL;
             _isPost = reqGet;
             _error = 0;
-            _allDone = 0;
             _sendContentLength = 0;
             _callp = NULL;
-        }
-
-        void waitForAllDone();
-
-        void setAllDone() {
-            _mutex.take();
-            _allDone = 1;
-            _mutex.release();
-            _allDoneCV.broadcast();
         }
 
         virtual ~ClientReq();
@@ -229,7 +225,15 @@ class XApi : public CThread {
 
         int32_t startCall(ClientConn *connp, const char *relativePathp, reqType isPost);
 
-        int32_t waitForHeadersDone();
+        int32_t waitForHeadersDone() {
+            _connp->waitForHeadersDone();
+            return _error;
+        }
+
+        int32_t waitForAllDone() {
+            _connp->waitForAllDone();
+            return _error;
+        }
 
         void resetConn() {
             if (_connp)
