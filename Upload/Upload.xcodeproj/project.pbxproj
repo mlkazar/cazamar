@@ -41,7 +41,7 @@
 		7F2F8CAB211F06E4001B9C13 /* upobj.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = upobj.mm; sourceTree = "<group>"; };
 		7F2F8CAD211F0716001B9C13 /* upload.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = upload.h; path = ../../include/upload.h; sourceTree = "<group>"; };
 		7F2F8CAE211F2D7A001B9C13 /* liblfs.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liblfs.a; path = ../lib/liblfs.a; sourceTree = "<group>"; };
-		7F5037B620E4FE140046A2A3 /* Upload.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Upload.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F5037B620E4FE140046A2A3 /* Kite.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kite.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F5037B920E4FE140046A2A3 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		7F5037BA20E4FE140046A2A3 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		7F5037BC20E4FE160046A2A3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -122,7 +122,7 @@
 		7F5037B720E4FE140046A2A3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7F5037B620E4FE140046A2A3 /* Upload.app */,
+				7F5037B620E4FE140046A2A3 /* Kite.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -212,9 +212,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7F5037B520E4FE140046A2A3 /* Upload */ = {
+		7F5037B520E4FE140046A2A3 /* Kite */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7F5037C720E4FE160046A2A3 /* Build configuration list for PBXNativeTarget "Upload" */;
+			buildConfigurationList = 7F5037C720E4FE160046A2A3 /* Build configuration list for PBXNativeTarget "Kite" */;
 			buildPhases = (
 				7F5037B220E4FE140046A2A3 /* Sources */,
 				7F5037B320E4FE140046A2A3 /* Frameworks */,
@@ -224,9 +224,9 @@
 			);
 			dependencies = (
 			);
-			name = Upload;
+			name = Kite;
 			productName = Upload;
-			productReference = 7F5037B620E4FE140046A2A3 /* Upload.app */;
+			productReference = 7F5037B620E4FE140046A2A3 /* Kite.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -256,7 +256,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7F5037B520E4FE140046A2A3 /* Upload */,
+				7F5037B520E4FE140046A2A3 /* Kite */,
 			);
 		};
 /* End PBXProject section */
@@ -484,7 +484,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7F5037C720E4FE160046A2A3 /* Build configuration list for PBXNativeTarget "Upload" */ = {
+		7F5037C720E4FE160046A2A3 /* Build configuration list for PBXNativeTarget "Kite" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7F5037C820E4FE160046A2A3 /* Debug */,
