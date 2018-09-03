@@ -231,6 +231,7 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
     CnodeMs *childp;
     CnodeLockSet lockSet;
     CAttr::FileType fileType;
+    CfsRetryError retryState;
 
     /* lock parent */
     lockSet.add(this);
@@ -291,7 +292,7 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
             break;
         }
 
-        if (_cfsp->retryError(CfsLog::opLookup, reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opLookup, reqp, jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -356,6 +357,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
     CAttr::FileType fileType;
     static const uint32_t dataBufferBytes = 4*1024*1024;
     int32_t httpError;
+    CfsRetryError retryState;
     
     if (_cfsp->_verbose)
         printf("sendSmallFile: id=%s name=%s\n", _id.c_str(), name.c_str());
@@ -426,7 +428,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
             break;
         }
         
-        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -510,6 +512,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
     CAttr::FileType fileType;
     uint32_t httpError;
     int errorOk = 0;
+    CfsRetryError retryState;
     
     if (_cfsp->_verbose)
         printf("mkdir: id=%s name=%s\n", _id.c_str(), name.c_str());
@@ -580,7 +583,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             }
         }
         
-        if (!errorOk && _cfsp->retryError(CfsLog::opMkdir, reqp, jnodep)) {
+        if (!errorOk && _cfsp->retryError(CfsLog::opMkdir, reqp, jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -649,6 +652,7 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
     uint64_t modTime;
     uint64_t changeTime;
     CAttr::FileType fileType;
+    CfsRetryError retryState;
     
     if (_isRoot)
         callbackString = "/v1.0/me/drive/root";
@@ -691,7 +695,7 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
             printf("json parse failed code=%d\n", code);
         }
         
-        if (_cfsp->retryError(CfsLog::opGetAttr, reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opGetAttr, reqp, jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -764,6 +768,7 @@ CnodeMs::startSession( std::string name,
     std::string authHeader;
     int32_t code;
     std::string id;
+    CfsRetryError retryState;
     
     /* one per large file transfer */
     _cfsp->_stats._sendLargeFilesCalls++;
@@ -822,7 +827,7 @@ CnodeMs::startSession( std::string name,
             break;
         }
         
-        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -881,6 +886,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
     uint32_t readCount;
     int32_t actuallyReadCount;
     uint16_t port;
+    CfsRetryError retryState;
     
     Rst::splitUrl(*sessionUrlp, &sessionHost, &sessionRelativeUrl, &port);
 
@@ -942,7 +948,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
             break;
         }
 
-        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -1400,7 +1406,10 @@ CnodeMs::unthreadEntry(CnodeBackEntry *entryp)
 }
 
 int
-CfsMs::retryError(CfsLog::OpType type, XApi::ClientReq *reqp, Json::Node *parsedNodep)
+CfsMs::retryError( CfsLog::OpType type,
+                   XApi::ClientReq *reqp,
+                   Json::Node *parsedNodep,
+                   CfsRetryError *retryStatep)
 {
     uint32_t httpError;
     httpError = reqp->getHttpError();
@@ -1417,6 +1426,21 @@ CfsMs::retryError(CfsLog::OpType type, XApi::ClientReq *reqp, Json::Node *parsed
     }
     else if (httpError >= 200 && httpError < 300)
         return 0;
+    else if (type == CfsLog::opMkdir && httpError == 400) {
+        /* this error claims we sent bad parameters, but it shows up
+         * randomly on mkdirs so we retry a few times before giving
+         * up.
+         */
+        if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
+            _logp->logError(type, httpError, "too many 400's", "");
+            _stats._mysteryErrors++;
+            return 0;
+        }
+        else {
+            sleep(2);
+            return 1;
+        }
+    }
     else if (httpError == 401) {
         std::string refreshToken = _loginp->getRefreshToken();
         _stats._authRequired++;

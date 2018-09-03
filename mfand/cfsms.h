@@ -168,6 +168,19 @@ public:
                           uint8_t *allFoundp = NULL);
 };
 
+/* state for retryError calls */
+class CfsRetryError {
+ public:
+    /* max # of retries for errors that by definition should be fatal immediately, but
+     * which Azure nevertheless returns intermittently.
+     */
+    static const uint32_t _maxRetries=4;
+    uint32_t _retries;
+
+    CfsRetryError() {
+        _retries = 0;
+    }
+};
 
 /* one of these per file system instance */
 class CfsMs : public Cfs {
@@ -236,7 +249,10 @@ class CfsMs : public Cfs {
 
     int32_t getCnode(std::string *idp, CnodeMs **cnodepp);
 
-    int32_t retryError(CfsLog::OpType type, XApi::ClientReq *reqp, Json::Node *parsedNodep);
+    int32_t retryError( CfsLog::OpType type,
+                        XApi::ClientReq *reqp,
+                        Json::Node *parsedNodep,
+                        CfsRetryError *statep);
 
     int32_t getCnodeLinked( CnodeMs *parentp,
                             std::string name,

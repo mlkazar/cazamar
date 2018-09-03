@@ -212,7 +212,8 @@ void
 Uploader::stop()
 {
     /* null this out so it doesn't look like a successful completion */
-    _group->stop();
+    if (_group)
+        _group->stop();
     _status = STOPPED;
     return;
 }
@@ -220,7 +221,8 @@ Uploader::stop()
 void
 Uploader::pause()
 {
-    _group->pause();
+    if (_group) 
+        _group->pause();
     _status = PAUSED;
     return;
 }
@@ -229,7 +231,8 @@ void
 Uploader::resume()
 {
     /* call the dispatcher to resume execution of tasks */
-    _group->resume();
+    if (_group)
+        _group->resume();
     _status = RUNNING;
     return;
 }
