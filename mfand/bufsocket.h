@@ -53,6 +53,8 @@ class BufSocket : public BufGen {
 
     int32_t write(const char *tbuffer, int32_t count);
 
+    void abort();
+
     void setVerbose() {
         _verbose = 1;
     }

@@ -46,7 +46,7 @@ main(int argc, char **argv)
     CDisp *disp;
     CDispGroup *group;
     TestTask *taskp;
-
+    
     disp = new CDisp();
     printf("Created new cdisp at %p\n", disp);
     disp->init(4);
@@ -63,3 +63,4 @@ main(int argc, char **argv)
         sleep(1);
     }
 }
+        

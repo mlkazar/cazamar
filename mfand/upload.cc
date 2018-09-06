@@ -430,7 +430,7 @@ UploadApp::readConfig(std::string pathPrefix)
     uint8_t enabled;
     uint32_t backupInt;
 
-    _backupInterval = 3600;
+    _backupInterval = 24 * 3600;
 
     fileName = pathPrefix + "config.js";
     filep = fopen(fileName.c_str(), "r");
@@ -1043,8 +1043,11 @@ UploadInfoData::startMethod()
         sprintf(tbuffer, "<tr><td>Busy 429</td><td>%llu</td></tr>\n",
                 (long long) sp->_busy429);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>409 stalls</td><td>%llu</td></tr>\n",
+        sprintf(tbuffer, "<tr><td>Stalled 409</td><td>%llu</td></tr>\n",
                 (long long) sp->_busy409);
+        response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Mkdir random 400</td><td>%llu</td></tr>\n",
+                (long long) sp->_bad400);
         response += tbuffer;
         sprintf(tbuffer, "<tr><td>Unknown HTTP fail</td><td>%llu</td></tr>\n",
                 (long long) sp->_mysteryErrors);

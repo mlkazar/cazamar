@@ -58,6 +58,8 @@ class BufTls : public BufGen {
 
     int32_t getc();
 
+    void abort();
+
     int32_t read(char *tbuffer, int32_t count);
 
     int32_t readLine(char *tbuffer, int32_t count);

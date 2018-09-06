@@ -1437,6 +1437,7 @@ CfsMs::retryError( CfsLog::OpType type,
             return 0;
         }
         else {
+            _stats._bad400++;
             sleep(2);
             return 1;
         }

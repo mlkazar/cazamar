@@ -57,6 +57,8 @@ class BufGen {
 
     virtual void setTimeoutMs(uint32_t ms) = 0;
 
+    virtual void abort() = 0;
+
     std::string *getHostname() {
         return &_hostName;
     }

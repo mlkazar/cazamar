@@ -1,11 +1,11 @@
-all: librpc.a libext.a libcore.a rpctest jsontest xgmltest cdisptest
+all: librpc.a libext.a libcore.a rpctest jsontest xgmltest cdisptest timertest
 
 install: all
 	cp *.a ../lib
 	cp *.h ../include
 
 clean:
-	rm -f *.o *.a rpctest jsontest xgmltest cdisptest
+	rm -f *.o *.a rpctest jsontest xgmltest cdisptest timertest
 
 #OSXVERSION=-mmacosx-version-min=10.7
 OSXVERSION=
@@ -17,7 +17,7 @@ CXXFLAGS += -Wno-unused-but-set-variable
 endif
 
 
-INCLS=cdisp.h cthread.h dqueue.h json.h osp.h ospmbuf.h osptypes.h sdr.h restcall.h rpc.h xgml.h 
+INCLS=cdisp.h cthread.h dqueue.h json.h osp.h ospmbuf.h osptypes.h osptimer.h sdr.h restcall.h rpc.h xgml.h 
 
 rpc.o: rpc.cc $(INCLS)
 
@@ -25,9 +25,13 @@ cdisp.o: cdisp.cc $(INCLS)
 
 cdisptest.o: cdisptest.cc $(INCLS)
 
+timertest.o: timertest.cc $(INCLS)
+
 cthread.o: cthread.cc $(INCLS)
 
 osp.o: osp.cc $(INCLS)
+
+osptimer.o: osptimer.cc $(INCLS)
 
 sdr.o: sdr.cc $(INCLS)
 
@@ -45,8 +49,8 @@ libext.a: sdr.o xgml.o json.o
 	ar cru libext.a sdr.o xgml.o json.o
 	ranlib libext.a
 
-libcore.a: osp.o cthread.o cdisp.o
-	ar cru libcore.a osp.o cthread.o cdisp.o
+libcore.a: osp.o cthread.o cdisp.o osptimer.o
+	ar cru libcore.a osp.o cthread.o cdisp.o osptimer.o
 	ranlib libcore.a
 
 librpc.a: rpc.o restcall.o
@@ -58,6 +62,9 @@ rpctest: rpctest.o librpc.a libext.a libcore.a
 
 cdisptest: cdisptest.o libcore.a
 	c++ $(OSXVERSION) -o cdisptest cdisptest.o libcore.a -lpthread
+
+timertest: timertest.o libcore.a
+	c++ $(OSXVERSION) -o timertest timertest.o libcore.a -lpthread
 
 jsontest: jsontest.o libext.a
 	c++ $(OSXVERSION) -o jsontest jsontest.o libext.a

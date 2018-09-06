@@ -82,7 +82,7 @@ BufSocket::accept(BufGen **remotepp)
     code = getpeername(fd, (struct sockaddr *) &peerAddr, &sockLen);
     if (code < 0) {
         // printf("bufsocket close %d\n", fd);
-        close(fd);
+        ::close(fd);
         return code;
     }
 
@@ -152,6 +152,17 @@ BufSocket::fillFromSocket(OspMBuf *mbp)
 }
 
 void
+BufSocket::abort()
+{
+    int s;
+    s = _s;
+    _s = -1;
+    _connected = 0;
+    if (s >= 0)
+        ::close(s);
+}
+
+void
 BufSocket::reopen()
 {
     if (!_closed)
@@ -161,7 +172,7 @@ BufSocket::reopen()
     _connected = 0;
     if (_s != -1) {
         // printf("bufsocket close fd=%d\n", _s);
-        close(_s);
+        ::close(_s);
         _s = -1;
     }
 }
@@ -183,7 +194,7 @@ BufSocket::doSetup(uint16_t srcPort)
 
     if (_s != -1) {
         // printf("bufsocket close fd=%d\n", _s);
-        close(_s);
+        ::close(_s);
     }
 
     _s = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -292,7 +303,7 @@ BufSocket::disconnect()
     _closed = 1;
     // printf("bufsocket close fd=%d\n", _s);
     if (_s >= 0)
-        close(_s);
+        ::close(_s);
     _s = -1;
 }
 
