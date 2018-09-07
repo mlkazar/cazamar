@@ -986,7 +986,7 @@ UploadInfoData::startMethod()
         for( errorp = uploadApp->_errorEntries.head();
              errorp;
              errorp=errorp->_dqNextp) {
-            sprintf(tbuffer, "<td>%s</td><td>%d</td><td>%s</td>\n",
+            sprintf(tbuffer, "<tr><td>%s</td><td>%d</td><td>%s</td></tr>\n",
                     errorp->_op.c_str(), errorp->_httpError, errorp->_shortError.c_str());
             response += tbuffer;
         }

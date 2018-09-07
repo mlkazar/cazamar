@@ -666,6 +666,8 @@ Rst::Call::Call(Rst *rstp)
 
 Rst::Call::~Call()
 {
+    osp_assert(_timerp == NULL);
+
     /* delete rcvHeaders and sendHeaders */
     if (_rcvHeadersp) {
         freeHeaders(_rcvHeadersp);
