@@ -442,8 +442,6 @@ XApi::ClientReq::startCall(ClientConn *connp, const char *relativePathp, reqType
 {
     XApi *xapip = connp->_xapip;
 
-    connp->setBusy(1);
-
     _userThreadp = xapip->getUserThread();
     _relativePath = std::string(relativePathp);
     _isPost = isPost;
@@ -590,6 +588,8 @@ XApi::ClientReq::startMethod()
 
     _callp = callp = new Rst::Call(_connp->_rstp);
 
+    _connp->_startMs = osp_time_ms();
+
     /* set parameters */
     callp->setSendContentLength(_sendContentLength);
     if (_isPost == reqPost)
@@ -610,6 +610,9 @@ XApi::ClientReq::startMethod()
                         this);
 }
 
+/* note that we have to delete the ClientReq after each call to xapipool::getconn, since
+ * getconn marks the connection as busy, and we clear the busy flag here.
+ */
 XApi::ClientReq::~ClientReq() {
     Rst::Hdr *hdrp;
     Rst::Hdr *nhdrp;
@@ -636,7 +639,7 @@ XApi::ClientReq::~ClientReq() {
      * the connection as available for reallocation.  Don't reference connp after
      * this, as it doesn't belong to us any more.
      */
-    _connp->setBusy(0); /* clears _allDone */
+    _connp->setBusy(0);
     _connp = NULL;
     
     if (_callp) {

@@ -104,6 +104,7 @@ class XApi : public CThread {
 
             _headersDone = 0;
             _allDone = 0;
+            _startMs = 0;
             _busy = 0;
             _activeReqp = NULL;
         }
@@ -118,7 +119,6 @@ class XApi : public CThread {
                     _busyCV.wait();
                 }
                 _busy = 1;
-                _startMs = osp_time_ms();
             }
             else {
                 _busy = 0;
@@ -127,13 +127,13 @@ class XApi : public CThread {
             _mutex.release();
         }
 
+        uint32_t getStartMs() {
+            return _startMs;
+        }
+
         uint8_t getBusy() {
             /* no locking; busy can change right after this call anyway */
             return _busy;
-        }
-
-        uint32_t getStartMs() {
-            return _startMs;
         }
 
         void setHeadersDone() {

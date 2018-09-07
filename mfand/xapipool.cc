@@ -63,6 +63,12 @@ XApiPool::getConn(std::string fullHostName, uint32_t port, uint8_t isTls)
         /* we have to reuse an existing conn */
         connp = randomBusyEp->_connp;
     }
+
+    /* we mark it as busy before releasing the pool lock so that noone else finds the
+     * same connection when there are better non-busy conns.  We release the busy
+     * flag in xapi as soon as the call is done.
+     */
+    connp->setBusy(1);
     _lock.release();
 
     return connp;

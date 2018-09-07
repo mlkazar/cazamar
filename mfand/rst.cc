@@ -17,6 +17,8 @@
 
 #define RST_COMMON_MAX_BYTES    16384
 
+CThreadMutex Rst::Call::_timerMutex;
+
 /* at the point this function is called, we know the # of bytes to transfer or we're
  * doing using chunked transfer encoding.
  */
@@ -417,6 +419,7 @@ Rst::Call::init( const char *relPathp,
     _allDoneProcp = allDoneProcp;
     _inputDoneProcp = NULL;
     _contextp = contextp;
+    _timerp = NULL;
 
     _error = 0;
     _httpError = 200;
@@ -482,6 +485,10 @@ Rst::Call::sendOperation()
     Hdr *hdrp;
     BufGen *socketp = _rstp->_bufGenp;
     char *tp;
+
+    /* start timer */
+    _timerp = new OspTimer();
+    _timerp->init(60000, &Rst::Call::callExpired, this);
 
     firstLine = _op;
     firstLine += " ";
@@ -605,9 +612,46 @@ Rst::Call::sendOperation()
     return 0;
 }
 
+/* static */ void
+Rst::Call::callExpired(OspTimer *timerp, void *contextp)
+{
+    Rst::Call *callp = (Rst::Call *) contextp;
+
+    /* we need a mutex that will remain allocated even if the call is freed and 
+     * the timer canceled (while timer thread is preparing the callback).  It's held
+     * over very short periods, so we just make it static.
+     */
+    _timerMutex.take();
+    if (timerp->canceled()) {
+        /* don't reference callp in this branch since it may be free */
+        _timerMutex.release();
+        return;
+    }
+    
+    /* canceled by timer system on callback */
+    callp->_timerp = NULL;
+
+    printf("timer expired -- call=%p bufgen=%p\n", callp, callp->_rstp->_bufGenp);
+
+    /* abort the call; this will close the socket and mark it to be reopened,
+     * which should abort all pending reads and writes to the socket.
+     */
+    callp->_rstp->_bufGenp->abort();
+
+    _timerMutex.release();
+}
+
 void
 Rst::Call::finished()
 {
+    /* stop timer */
+    _timerMutex.take();
+    if (_timerp) {
+        _timerp->cancel();
+        _timerp = NULL;
+    }
+    _timerMutex.release();
+
     if (_allDoneProcp) {
         _allDoneProcp(_contextp, this, 0, _httpError);
     }

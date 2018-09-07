@@ -4,6 +4,7 @@
 #include <string>
 
 #include "osp.h"
+#include "osptimer.h"
 #include "dqueue.h"
 #include "bufgen.h"
 
@@ -148,6 +149,12 @@ class Rst {
         const char *_relPathp;
         std::string _playlistHost;
         std::string _op;
+        OspTimer *_timerp;
+
+        /* timerMutex must be static since Rst::Call::callExpired might be called
+         * from timer system after timer was canceled and call was freed.
+         */
+        static CThreadMutex _timerMutex;
         
     public:
         /* headersDoneProcp is called after receiving the headers in the response */
@@ -195,6 +202,8 @@ class Rst {
             else
                 return NULL;
         }
+
+        static void callExpired(OspTimer *timerp, void *contextp);
 
         void finished();
     };
