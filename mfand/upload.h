@@ -114,6 +114,7 @@ class UploadErrorEntry {
     std::string _op;
     int32_t _httpError;
     std::string _shortError;
+    std::string _longError;
     UploadErrorEntry *_dqNextp;
     UploadErrorEntry *_dqPrevp;
 };
@@ -144,7 +145,9 @@ public:
     typedef enum { STOPPED = 1,
                    PAUSED = 2,
                    RUNNING = 3,
-                   STALLED = 4 } Status;
+                   STALLED = 4,
+                   STARTING = 5,
+    } Status;
 
     typedef void StateProc(void *contextp);
 
@@ -232,15 +235,17 @@ public:
     Status getStatus() {
         Status status;
 
-        /* see if we finished the tree walk, since we don't get callbacks when done */
-        if (_status != STOPPED) {
+        /* see if we finished the tree walk, since we don't get callbacks when done;
+         * if in STARTING state, we havne't fired up the cdisp group yet.
+         */
+        if (_status != STOPPED && _status != STARTING) {
             if (_group && _group->isAllDone())
                 _status = STOPPED;
         }
 
         status = _status;
 
-        if (_cfsp->getStalling() && status == RUNNING)
+        if (_cfsp->getStalling() && (status == RUNNING || status == STARTING))
             status = STALLED;
             
         return status;
@@ -261,6 +266,8 @@ public:
             return "Paused";
         else if (status == STALLED)
             return "Server2Busy";
+        else if (status == STARTING)
+            return "Starting";
         else
             return "Running";
     }
@@ -283,6 +290,7 @@ public:
     UploadEntry *_uploadEntryp[_maxUploaders]; /* array of pointers to UploaderEntries */
     SApiLoginCookie *_loginCookiep;
     std::string _pathPrefix;
+    std::string _libPath;
     std::string fsRoot;
     std::string cloudRoot;
     uint32_t _backupInterval;
@@ -290,6 +298,7 @@ public:
     CDisp *_cdisp;
     CThreadMutex _lock; /* protect error entries */
     dqueue<UploadErrorEntry> _errorEntries;
+    CThreadMutex _entryLock;    /* protect upload entries */
 
     class Log : public CfsLog {
         UploadApp *_uploadApp;
@@ -304,17 +313,18 @@ public:
         }
     } _log;
 
-    UploadApp(std::string pathPrefix) : _log(this) {
+    UploadApp(std::string pathPrefix, std::string libPath) : _log(this) {
         uint32_t i;
         for(i=0;i<_maxUploaders;i++) {
             _uploadEntryp[i] = NULL;
         }
         _pathPrefix = pathPrefix;
+        _libPath = libPath;
         _loginCookiep = NULL;
         _cfsp = NULL;
         _cdisp = NULL;
 
-        readConfig(pathPrefix);
+        readConfig(libPath);
 
         /* TBD: get this from some configuration mechanism */
 #ifndef __linux__
@@ -322,7 +332,7 @@ public:
             fsRoot = std::string(getenv("HOME")) + "/Pictures";
             cloudRoot = "/" + std::string(getenv("USER")) + "_pictures";
             addConfigEntry(cloudRoot, fsRoot, 0, 1);
-            writeConfig(pathPrefix);
+            writeConfig(libPath);
         }
 #endif
         _globalApp = this;
@@ -361,6 +371,8 @@ public:
         uint32_t i;
         UploadEntry *ep;
         Uploader *uploaderp;
+
+        _entryLock.take();
         for(i=0; i<_maxUploaders; i++) {
             ep = _uploadEntryp[i];
             if (!ep)
@@ -370,12 +382,15 @@ public:
                 continue;
             uploaderp->stop();
         }
+        _entryLock.release();
     }
 
     void pause() {
         uint32_t i;
         UploadEntry *ep;
         Uploader *uploaderp;
+
+        _entryLock.take();
         for(i=0; i<_maxUploaders; i++) {
             ep = _uploadEntryp[i];
             if (!ep)
@@ -385,6 +400,7 @@ public:
                 continue;
             uploaderp->pause();
         }
+        _entryLock.release();
     }
 
     void startEntry(UploadEntry *ep);
@@ -393,11 +409,13 @@ public:
         UploadEntry *ep;
         uint32_t i;
 
+        _entryLock.take();
         for(i=0; i<_maxUploaders; i++) {
             ep = _uploadEntryp[i];
             if (ep)
                 startEntry(ep);
         }
+        _entryLock.release();
     }
 
     static void stateChanged(void *contextp);

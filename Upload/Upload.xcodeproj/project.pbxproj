@@ -33,6 +33,7 @@
 		7FFB5EC8211F3026001C7730 /* upload-stop.html in Resources */ = {isa = PBXBuildFile; fileRef = 7FFB5EC3211F3026001C7730 /* upload-stop.html */; };
 		7FFB5EC9211F3026001C7730 /* upload-add.html in Resources */ = {isa = PBXBuildFile; fileRef = 7FFB5EC4211F3026001C7730 /* upload-add.html */; };
 		7FFB5ECA211F3026001C7730 /* upload-pause.html in Resources */ = {isa = PBXBuildFile; fileRef = 7FFB5EC5211F3026001C7730 /* upload-pause.html */; };
+		7FFD45D821455D6500075A30 /* upload-info.html in Resources */ = {isa = PBXBuildFile; fileRef = 7FFD45D721455D6400075A30 /* upload-info.html */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 		7F5037C120E4FE160046A2A3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7F5037C220E4FE160046A2A3 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		7F5037C420E4FE160046A2A3 /* Upload.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Upload.entitlements; sourceTree = "<group>"; };
+		7F54B4312144D6E60096FF11 /* osptimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osptimer.h; path = ../../rpc/osptimer.h; sourceTree = "<group>"; };
 		7F5A3AA920E50A78009A2FBC /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../../../../usr/local/ssl/lib/libssl.a; sourceTree = "<group>"; };
 		7F5A3AAA20E50A78009A2FBC /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../../../../usr/local/ssl/lib/libcrypto.a; sourceTree = "<group>"; };
 		7F5A3AAD20E50AF1009A2FBC /* libext.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libext.a; path = ../lib/libext.a; sourceTree = "<group>"; };
@@ -89,6 +91,7 @@
 		7FFB5EC3211F3026001C7730 /* upload-stop.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "upload-stop.html"; path = "../../mfand/upload-stop.html"; sourceTree = "<group>"; };
 		7FFB5EC4211F3026001C7730 /* upload-add.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "upload-add.html"; path = "../../mfand/upload-add.html"; sourceTree = "<group>"; };
 		7FFB5EC5211F3026001C7730 /* upload-pause.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "upload-pause.html"; path = "../../mfand/upload-pause.html"; sourceTree = "<group>"; };
+		7FFD45D721455D6400075A30 /* upload-info.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "upload-info.html"; path = "../../mfand/upload-info.html"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -186,6 +189,7 @@
 				7F2F8CAD211F0716001B9C13 /* upload.h */,
 				7FFB5EC4211F3026001C7730 /* upload-add.html */,
 				7FFB5EC1211F3025001C7730 /* upload-home.html */,
+				7FFD45D721455D6400075A30 /* upload-info.html */,
 				7FFB5EC5211F3026001C7730 /* upload-pause.html */,
 				7FFB5EC2211F3025001C7730 /* upload-start.html */,
 				7FFB5EC3211F3026001C7730 /* upload-stop.html */,
@@ -201,6 +205,7 @@
 				7F5AF93F20E5026B006291A3 /* json.h */,
 				7F5AF94320E5026B006291A3 /* osp.h */,
 				7F5AF94420E5026B006291A3 /* ospmbuf.h */,
+				7F54B4312144D6E60096FF11 /* osptimer.h */,
 				7F5AF94120E5026B006291A3 /* osptypes.h */,
 				7F5AF94220E5026B006291A3 /* rpc.h */,
 				7F5AF94620E5026B006291A3 /* sdr.h */,
@@ -272,6 +277,7 @@
 				7FFB5EC8211F3026001C7730 /* upload-stop.html in Resources */,
 				7F5AF95A20E502F6006291A3 /* login-home.html in Resources */,
 				7F5037BD20E4FE160046A2A3 /* Assets.xcassets in Resources */,
+				7FFD45D821455D6500075A30 /* upload-info.html in Resources */,
 				7F5AF95620E502F6006291A3 /* login-apple.html in Resources */,
 				7FFB5EC9211F3026001C7730 /* upload-add.html in Resources */,
 				7F5AF96120E5032B006291A3 /* test_key.pem in Resources */,

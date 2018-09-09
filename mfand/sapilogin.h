@@ -258,7 +258,7 @@ class SApiLogin {
 
     static SApiLoginCookie *createLoginCookie(SApi::ServerReq *reqp);
 
-    static SApiLoginCookie *createGlobalCookie(std::string pathPrefix);
+    static SApiLoginCookie *createGlobalCookie(std::string pathPrefix, std::string libPath);
 
     virtual ~SApiLogin() {
         return;
@@ -272,6 +272,7 @@ public:
     SApiLoginMS *_loginMSp;
     SApiLoginGeneric *_loginActivep;    /* one currently being logged in for this cookie */
     std::string _pathPrefix;
+    std::string _libPath;
     uint8_t _saveRestoreEnabled;
 #ifdef __linux__
     random_data _randomBuf;
@@ -298,6 +299,27 @@ public:
         }
     }
 
+    std::string getAuthToken() {
+        if (_loginActivep)
+            return _loginActivep->getAuthToken();
+        else
+            return std::string("");
+    }
+
+    int32_t refresh() {
+        if (_loginActivep)
+            return _loginActivep->refresh();
+        else
+            return -2;
+    }
+
+    std::string getRefreshToken() {
+        if (_loginActivep)
+            return _loginActivep->getRefreshToken();
+        else
+            return std::string("");
+    }
+
     int32_t save();
 
     int32_t restore();
@@ -308,6 +330,14 @@ public:
 
     void setPathPrefix(std::string pathPrefix) {
         _pathPrefix = pathPrefix;
+    }
+
+    std::string getLibPath() {
+        return _libPath;
+    }
+
+    void setLibPath(std::string libPath) {
+        _libPath = libPath;
     }
 
     SApiLoginGeneric *getActive() {

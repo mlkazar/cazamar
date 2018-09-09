@@ -100,11 +100,11 @@ public:
 
     void startMethod();
 
-    void runTests(SApiLoginMS *loginMSp);
+    void runTests(SApiLoginCookie *loginCookiep);
 };
 
 void
-HomeScreen::runTests(SApiLoginMS *loginMSp)
+HomeScreen::runTests(SApiLoginCookie *loginCookiep)
 {
     CfsMs *cfsp;
     CnodeMs *rootp;
@@ -114,8 +114,8 @@ HomeScreen::runTests(SApiLoginMS *loginMSp)
     int32_t code;
     std::string uploadUrl;
 
-    printf("cfstest: tests start login=%p\n", loginMSp);
-    cfsp = new CfsMs(loginMSp, "");
+    printf("cfstest: tests start loginCookie=%p\n", loginCookiep);
+    cfsp = new CfsMs(loginCookiep, "");
     cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attrs, NULL);
 
@@ -233,7 +233,7 @@ HomeScreen::startMethod()
     requestDone();
 
     if (loggedIn) {
-        runTests(contextp->_loginMSp);
+        runTests(contextp);
     }
 }
 

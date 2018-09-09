@@ -41,11 +41,11 @@ server(int argc, char **argv, int port, std::string pathPrefix)
     sapip->setPathPrefix(pathPrefix); /* this is where everyone gets the path prefix */
     sapip->initWithPort(port);
 
-    loginCookiep = SApiLogin::createGlobalCookie(pathPrefix);
+    loginCookiep = SApiLogin::createGlobalCookie(pathPrefix, pathPrefix);
     loginCookiep->enableSaveRestore();
 
     /* initLoop doesn't return */
-    uploadApp = new UploadApp(pathPrefix);
+    uploadApp = new UploadApp(pathPrefix, pathPrefix);
     uploadApp->setGlobalLoginCookie(loginCookiep);
     uploadApp->initLoop(sapip);
 }

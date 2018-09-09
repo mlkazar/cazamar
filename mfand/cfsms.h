@@ -172,9 +172,10 @@ public:
 class CfsRetryError {
  public:
     /* max # of retries for errors that by definition should be fatal immediately, but
-     * which Azure nevertheless returns intermittently.
+     * which Azure nevertheless returns intermittently.  Don't make < 2, or we won't
+     * be able to handle authentication handshakes triggered by auth errors.
      */
-    static const uint32_t _maxRetries=4;
+    static const uint32_t _maxRetries=6;
     uint32_t _retries;
 
     CfsRetryError() {
@@ -188,7 +189,7 @@ class CfsMs : public Cfs {
     static const uint32_t _hashSize = 997;
     static const uint32_t _maxCnodeCount = 1000;
     uint32_t _cnodeCount;
-    SApiLoginMS *_loginp;
+    SApiLoginCookie *_loginCookiep;
     CThreadMutex _lock;         /* protect hash table */
     CThreadMutex _refLock;         /* protect ref count and LRU */
     CnodeMs *_hashTablep[_hashSize];
@@ -201,10 +202,10 @@ class CfsMs : public Cfs {
     uint64_t _stalledErrors;
     CfsStats _stats;
 
-    CfsMs(SApiLoginMS *loginp, std::string pathPrefix) {
+    CfsMs(SApiLoginCookie *loginCookiep, std::string pathPrefix) {
         _pathPrefix = pathPrefix;
         _xapiPoolp = new XApiPool(pathPrefix);
-        _loginp = loginp;
+        _loginCookiep = loginCookiep;
         _rootp = NULL;
         _verbose = 0;
         _cnodeCount = 0;
@@ -225,11 +226,13 @@ class CfsMs : public Cfs {
         return _xapiPoolp;
     }
 
+#if 0
     void setLogin(SApiLoginMS *loginp) {
         if (_loginp)
             delete _loginp;
         _loginp = loginp;
     }
+#endif
 
     /* if any of the last 8 operations failed with a stalling code,
      * return that we're stalling.

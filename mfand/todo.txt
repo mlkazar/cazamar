@@ -1,3 +1,0 @@
-SSL doesn't timeout on mac (at least)
-  easiest way would be to detect when a ClientConn has been busy too long and close the fd on it
-  add op to bufgen

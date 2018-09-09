@@ -259,7 +259,7 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
         _cfsp->_stats._totalCalls++;
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
-        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        authHeader = "Bearer " + _cfsp->_loginCookiep->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
         reqp->addHeader("Content-Type", "application/json");
         reqp->startCall( connp,
@@ -382,7 +382,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(sendBytes);
-        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        authHeader = "Bearer " + _cfsp->_loginCookiep->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
         reqp->addHeader("Content-Type", "text/plain");
         reqp->startCall( connp,
@@ -535,7 +535,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(postData.length());
-        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        authHeader = "Bearer " + _cfsp->_loginCookiep->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
         reqp->addHeader("Content-Type", "application/json");
         reqp->startCall( connp,
@@ -665,7 +665,7 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
         _cfsp->_stats._totalCalls++;
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
-        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        authHeader = "Bearer " + _cfsp->_loginCookiep->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
         reqp->addHeader("Content-Type", "application/json");
         reqp->startCall( connp,
@@ -794,7 +794,7 @@ CnodeMs::startSession( std::string name,
         connp = _cfsp->_xapiPoolp->getConn(std::string("graph.microsoft.com"), 443, /* TLS */ 1);
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(postData.length());
-        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        authHeader = "Bearer " + _cfsp->_loginCookiep->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
         reqp->addHeader("Content-Type", "application/json");
         reqp->startCall( connp,
@@ -911,7 +911,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
 
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(actuallyReadCount);
-        authHeader = "Bearer " + _cfsp->_loginp->getAuthToken();
+        authHeader = "Bearer " + _cfsp->_loginCookiep->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
         sprintf(tbuffer, "bytes %ld-%ld/%ld",
                 (long) byteOffset,
@@ -1426,13 +1426,29 @@ CfsMs::retryError( CfsLog::OpType type,
     }
     else if (httpError >= 200 && httpError < 300)
         return 0;
-    else if (type == CfsLog::opMkdir && httpError == 400) {
+    else if (httpError == 404)
+        return 0;
+
+    std::string shortError;
+    std::string longError;
+    Json::Node *nodep;
+
+    if (parsedNodep != NULL) {
+        nodep = parsedNodep->searchForChild("child", 0);
+        if (nodep && nodep->_children.head())
+            shortError = nodep->_children.head()->_name;
+        nodep = parsedNodep->searchForChild("message", 0);
+        if (nodep && nodep->_children.head())
+            longError = nodep->_children.head()->_name;
+    }
+
+    if (type == CfsLog::opMkdir && httpError == 400) {
         /* this error claims we sent bad parameters, but it shows up
          * randomly on mkdirs so we retry a few times before giving
          * up.
          */
         if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
-            _logp->logError(type, httpError, "too many 400's", "");
+            _logp->logError(type, httpError, shortError, longError);
             _stats._mysteryErrors++;
             return 0;
         }
@@ -1443,29 +1459,40 @@ CfsMs::retryError( CfsLog::OpType type,
         }
     }
     else if (httpError == 401) {
-        std::string refreshToken = _loginp->getRefreshToken();
+        std::string refreshToken = _loginCookiep->getRefreshToken();
         _stats._authRequired++;
+        if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
+            _logp->logError(type, httpError, "too many auth errors ", longError);
+            return 0;
+        }
+
         /* authentication expired; use refresh token */
         if (refreshToken.length() == 0) {
             /* some login mechanisms don't have refresh tokens */
             if (_logp)
-                _logp->logError(type, httpError, "authentication error", "");
-            _loginp->logout();
+                _logp->logError(type, httpError, "authentication error " + shortError, longError);
+            _loginCookiep->logout();
             return 0;
         }
-        code = _loginp->refresh();
+        code = _loginCookiep->refresh();
         if (code) {
             if (_logp)
-                _logp->logError(type, code, "authentication refresh error", "");
+                _logp->logError(type, code, "authentication refresh " + shortError, longError);
         }
         return (code == 0);
     }
     else if (httpError == 409) {
         _stats._busy409++;
-        _stalledErrors |= 1;
-        sleep(4);
-        printf("retrying 409 error\n");
-        return 1;
+        if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
+            _logp->logError(type, httpError, "too many 409's " + shortError, longError);
+            return 0;
+        }
+        else {
+            _stalledErrors |= 1;
+            sleep(4);
+            printf("retrying 409 error\n");
+            return 1;
+        }
     }
     else if ( (httpError >= 500 && httpError <= 504) ||
               httpError == 429) {
@@ -1479,21 +1506,10 @@ CfsMs::retryError( CfsLog::OpType type,
         sleep(2);
         return 1;
     }
-    else if (httpError == 404) {
-        return 0;
-    }
     else {
-        Json::Node *tnodep;
         _stats._mysteryErrors++;
-        tnodep = parsedNodep->searchForChild("code");
-        if ( tnodep && tnodep->_children.head()) {
-            if (_logp)
-                _logp->logError(type, httpError, tnodep->_children.head()->_name, "");
-        }
-        else {
-            if (_logp)
-                _logp->logError(type, httpError, "unknown", "");
-        }
+        if (_logp)
+            _logp->logError(type, httpError, shortError, longError);
         return 0;
     }
 }

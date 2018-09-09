@@ -13,6 +13,7 @@ void
 OspTimer::initSys()
 {
     pthread_cond_init(&_cv, NULL);
+    pthread_mutex_init(&_mutex, NULL);
     _timerHandlep = new CThreadHandle();
     _timerHandlep->init((CThread::StartMethod) &OspTimer::helper, &_dummyCThread, NULL);
 }
@@ -45,7 +46,7 @@ OspTimer::helper(void *contextp)
                 evp->_procp(evp, evp->_contextp);
                 pthread_mutex_lock(&_mutex);
                 if (!evp->_canceled) {
-                    evp->_canceled = 0;
+                    evp->_canceled = 1;
                     evp->releaseNL();
                 }
                 evp->releaseNL();

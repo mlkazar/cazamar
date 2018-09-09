@@ -539,12 +539,13 @@ SApiLoginMS::refresh()
 }
 
 /* static */ SApiLoginCookie *
-SApiLogin::createGlobalCookie(std::string pathPrefix)
+SApiLogin::createGlobalCookie(std::string pathPrefix, std::string libPath)
 {
     SApiLoginCookie *cookiep;
 
     cookiep = new SApiLoginCookie();
     cookiep->setPathPrefix(pathPrefix);
+    cookiep->setLibPath(libPath);
     _globalCookiep = cookiep;
     return cookiep;
 }
@@ -568,6 +569,7 @@ SApiLogin::createLoginCookie(SApi::ServerReq *reqp) {
         cookiep = new SApiLoginCookie();
         reqp->setCookieKey("sapiLogin", cookiep);
         cookiep->setPathPrefix(reqp->_sapip->getPathPrefix());
+        cookiep->setLibPath(reqp->_sapip->getPathPrefix());     /* add libPath to SAPI if needed */
     }
 
     return cookiep;
@@ -749,7 +751,7 @@ SApiLoginCookie::save()
     if (!_saveRestoreEnabled || _loginActivep == NULL)
         return 0;
 
-    stateFile = _pathPrefix + "auth.js";
+    stateFile = _libPath + "auth.js";
     filep = fopen(stateFile.c_str(), "w");
     if (!filep)
         return 0;
@@ -824,7 +826,7 @@ SApiLoginCookie::restore()
     if (!_saveRestoreEnabled)
         return 0;
 
-    stateFile = _pathPrefix + "auth.js";
+    stateFile = _libPath + "auth.js";
     filep = fopen(stateFile.c_str(), "r");
     if (!filep)
         return 0;

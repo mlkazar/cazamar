@@ -160,6 +160,10 @@ Uploader::start()
     WalkTask *taskp;
 
     printf("Uploader %p starts with cfsp=%p\n", this, _cfsp);
+
+    /* we're in STARTING state until we start the tree walk */
+    _status = STARTING;
+
     _cfsp->root((Cnode **) &rootp, NULL);
     rootp->getAttr(&attrs, NULL);
 
@@ -167,6 +171,7 @@ Uploader::start()
     if (code != 0) {
         code = _cfsp->mkpath(_cloudRoot, (Cnode **) &testDirp, NULL);
         if (code != 0) {
+            _status = STOPPED;
             printf("mkpath failed code=%d\n", code);
             return;
         }
@@ -524,6 +529,7 @@ UploadApp::writeConfig(std::string pathPrefix)
     nnodep->initNamed("backupEntries", arrayNodep);
     rootNodep->appendChild(nnodep);
 
+    _entryLock.take();
     for(i=0;i<_maxUploaders;i++) {
         if ((ep = _uploadEntryp[i]) != NULL) {
             snodep = new Json::Node();
@@ -556,6 +562,7 @@ UploadApp::writeConfig(std::string pathPrefix)
             arrayNodep->appendChild(snodep);
         } /* entry exists */
     } /* for each uploader */
+    _entryLock.release();
 
     /* at this point, we unmarshal the tree into the file */
     fileName = pathPrefix + "config.js";
@@ -592,13 +599,16 @@ UploadApp::deleteConfigEntry(int32_t ix)
     if (ix < 0 || ix >= _maxUploaders)
         return -1;
 
-    if ((ep = _uploadEntryp[ix]) == NULL)
+    _entryLock.take();
+    if ((ep = _uploadEntryp[ix]) == NULL) {
+        _entryLock.release();
         return -2;
+    }
 
     ep->stop();
     _uploadEntryp[ix] = NULL;
     delete ep;
-
+    _entryLock.release();
     return 0;
 }
 
@@ -611,10 +621,14 @@ UploadApp::setEnabledConfig(int32_t ix)
     if (ix < 0 || ix >= _maxUploaders)
         return -1;
 
-    if ((ep = _uploadEntryp[ix]) == NULL)
+    _entryLock.take();
+    if ((ep = _uploadEntryp[ix]) == NULL) {
+        _entryLock.release();
         return -2;
+    }
 
     ep->_enabled = !ep->_enabled;
+    _entryLock.release();
 
     return 0;
 }
@@ -630,6 +644,8 @@ UploadApp::addConfigEntry( std::string cloudRoot,
     int32_t bestFreeIx;
 
     bestFreeIx = -1;
+
+    _entryLock.take();
     for(i=0;i<_maxUploaders;i++) {
         ep = _uploadEntryp[i];
         if (ep == NULL) {
@@ -641,13 +657,16 @@ UploadApp::addConfigEntry( std::string cloudRoot,
             /* update in place */
             ep->_cloudRoot = cloudRoot;
             ep->_lastFinishedTime = lastFinishedTime;
+            _entryLock.release();
             return 0;
         }
     }
 
     /* here, no such entry */
-    if (bestFreeIx == -1)
+    if (bestFreeIx == -1) {
+        _entryLock.release();
         return -1;      /* no room for another backup entry */
+    }
     ep = new UploadEntry();
     ep->_fsRoot = fsRoot;
     ep->_app = this;
@@ -655,6 +674,8 @@ UploadApp::addConfigEntry( std::string cloudRoot,
     ep->_lastFinishedTime = lastFinishedTime;
     ep->_enabled = enabled;
     _uploadEntryp[bestFreeIx] = ep;
+
+    _entryLock.release();
     return 0;
 }
 
@@ -979,15 +1000,18 @@ UploadInfoData::startMethod()
         /* put out one line for each logged error */
         response = "<p><center>Error log</center><p>";
         response += "<table style=\"width:80%\">";
-        response += "<tr><th>Operation</th><th>HTTP code</th><th>Short Error</th></tr>";
+        response += "<tr><th>Operation</th><th>HTTP code</th><th>Short Error</th><th>Long Error</th></tr>";
 
         /* put in a loop over all bad errors */
         uploadApp->_lock.take();
         for( errorp = uploadApp->_errorEntries.head();
              errorp;
              errorp=errorp->_dqNextp) {
-            sprintf(tbuffer, "<tr><td>%s</td><td>%d</td><td>%s</td></tr>\n",
-                    errorp->_op.c_str(), errorp->_httpError, errorp->_shortError.c_str());
+            sprintf( tbuffer, "<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td></tr>\n",
+                     errorp->_op.c_str(),
+                     errorp->_httpError,
+                     errorp->_shortError.c_str(),
+                     errorp->_longError.c_str());
             response += tbuffer;
         }
 
@@ -1196,7 +1220,7 @@ UploadCreateConfig::startMethod()
 
     if (!noCreate) {
         uploadApp->addConfigEntry(cloudPath, filePath, 0, 1);
-        uploadApp->writeConfig(uploadApp->_pathPrefix);
+        uploadApp->writeConfig(uploadApp->_libPath);
     }
 
     setSendContentLength(strlen(obufferp));
@@ -1245,7 +1269,7 @@ UploadDeleteConfig::startMethod()
 
     if (ix >= 0) {
         uploadApp->deleteConfigEntry(ix);
-        uploadApp->writeConfig(uploadApp->_pathPrefix);
+        uploadApp->writeConfig(uploadApp->_libPath);
     }
 
     setSendContentLength(strlen(obufferp));
@@ -1317,7 +1341,7 @@ UploadBackupInterval::startMethod()
     
     requestDone();
 
-    uploadApp->writeConfig(uploadApp->_pathPrefix);
+    uploadApp->writeConfig(uploadApp->_libPath);
 }
 
 void
@@ -1355,7 +1379,7 @@ UploadSetEnabledConfig::startMethod()
 
     if (ix >= 0) {
         uploadApp->setEnabledConfig(ix);
-        uploadApp->writeConfig(uploadApp->_pathPrefix);
+        uploadApp->writeConfig(uploadApp->_libPath);
     }
 
     setSendContentLength(strlen(obufferp));
@@ -1505,6 +1529,7 @@ UploadApp::schedule(void *cxp)
     while(1) {
         sleep(60);
         printf("SCANNING\n");
+        _entryLock.take();
         for(i=0;i<_maxUploaders;i++) {
             ep = _uploadEntryp[i];
 
@@ -1518,6 +1543,7 @@ UploadApp::schedule(void *cxp)
                 startEntry(ep);
             }
         }
+        _entryLock.release();
         printf("SLEEPING\n");
     }
 }
@@ -1539,9 +1565,10 @@ UploadApp::stateChanged(void *contextp)
     UploadApp *app = ep->_app;
 
     ep->_lastFinishedTime = osp_time_sec();
-    app->writeConfig(app->_pathPrefix);
+    app->writeConfig(app->_libPath);
 }
 
+/* called with _entryLock held */
 void
 UploadApp::startEntry(UploadEntry *ep) {
     Uploader *uploaderp;
@@ -1569,7 +1596,7 @@ UploadApp::startEntry(UploadEntry *ep) {
             
     if (!uploaderp) {
         if (!_cfsp) {
-            _cfsp = new CfsMs(_loginCookiep->_loginMSp, _pathPrefix);
+            _cfsp = new CfsMs(_loginCookiep, _pathPrefix);
             _cfsp->setLog(&_log);
         }
 
@@ -1590,6 +1617,7 @@ UploadEntry::~UploadEntry() {
     delete _uploaderp;
 }
 
+/* called with entryLock held */
 void
 UploadEntry::stop() {
     if (!_uploaderp)
@@ -1614,6 +1642,7 @@ UploadApp::Log::logError( CfsLog::OpType type,
     ep->_op = CfsLog::opToString(type);
     ep->_httpError = httpError;
     ep->_shortError = errorString;
+    ep->_longError = longErrorString;
 
     up->_lock.take();
     up->_errorEntries.append(ep);
