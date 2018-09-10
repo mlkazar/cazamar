@@ -1343,6 +1343,13 @@ CfsMs::getCnodeLinked( CnodeMs *parentp,
     /* otherwise, thread us in */
     _refLock.take();
     for( entryp = parentp->_children.head(); entryp; entryp=entryp->_dqNextp) {
+        if (entryp->_name.length() == 0 && entryp->_childp == childp) {
+            /* we found an invalid entry with the same child, probably the
+             * result of an earlier invalidateTree call.  Just revalidate.
+             */
+            entryp->_name = name;
+            break;
+        }
         if (entryp->_name == name) {
             if (childp != entryp->_childp) {
                 /* we have the object with this name, so replace the object and

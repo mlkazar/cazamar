@@ -199,12 +199,16 @@ int32_t
 CDisp::stop()
 {
     CDispTask *taskp;
+    CDispGroup *group;
     _lock.take();
     _runMode = _STOPPED;
 
     while(1) {
         while((taskp = _pendingTasks.pop()) != NULL) {
             taskp->_inQueue = CDispTask::_queueNone;
+            group = taskp->_group;
+            osp_assert(group->_activeCount > 0);
+            group->_activeCount--;
             _lock.release();
             delete taskp;
             _lock.take();
