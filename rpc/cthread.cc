@@ -36,15 +36,15 @@ CThreadPipe::write(const char *bufferp, int32_t count)
     bytesCopied = 0;
     _lock.take();
 
-    /* if other side indicated EOF, treat writes as if they're unable to do anything */
-    if (_eof) {
-        _lock.release();
-        printf("cthreadpipe::write at EOF\n");
-        return -1;
-    }
-
     endPos = _pos + _count;
     while(count > 0) {
+        /* if other side indicated EOF, treat writes as if they're unable to do anything */
+        if (_eof) {
+            _lock.release();
+            printf("cthreadpipe::write at EOF\n");
+            return -1;
+        }
+
         if (endPos >= (signed) _maxBytes)
             endPos -= _maxBytes;
 
