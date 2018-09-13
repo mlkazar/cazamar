@@ -292,7 +292,7 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
             break;
         }
 
-        if (_cfsp->retryError(CfsLog::opLookup, reqp, jnodep, &retryState)) {
+        if (_cfsp->retryError(CfsLog::opLookup, reqp, &jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -428,7 +428,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
             break;
         }
         
-        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep, &retryState)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, &jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -583,7 +583,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             }
         }
         
-        if (!errorOk && _cfsp->retryError(CfsLog::opMkdir, reqp, jnodep, &retryState)) {
+        if (!errorOk && _cfsp->retryError(CfsLog::opMkdir, reqp, &jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -695,7 +695,7 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
             printf("json parse failed code=%d\n", code);
         }
         
-        if (_cfsp->retryError(CfsLog::opGetAttr, reqp, jnodep, &retryState)) {
+        if (_cfsp->retryError(CfsLog::opGetAttr, reqp, &jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -827,7 +827,7 @@ CnodeMs::startSession( std::string name,
             break;
         }
         
-        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep, &retryState)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, &jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -948,7 +948,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
             break;
         }
 
-        if (_cfsp->retryError(CfsLog::opSendFile, reqp, jnodep, &retryState)) {
+        if (_cfsp->retryError(CfsLog::opSendFile, reqp, &jnodep, &retryState)) {
             delete reqp;
             reqp = NULL;
             continue;
@@ -1255,6 +1255,7 @@ CfsMs::allocCnode(CThreadMutex *hashLockp)
             parentp = backp->_parentp;
             parentp->_children.remove(backp);
             cnodep->unthreadEntry(backp);
+            delete backp;
             /* and see if parent should be in LRU */
             if (parentp->recyclable() && !parentp->_inLru) {
                 parentp->_inLru = 1;
@@ -1412,15 +1413,19 @@ CnodeMs::unthreadEntry(CnodeBackEntry *entryp)
     osp_assert(tentryp != NULL);
 }
 
+/* nore that retryError deletes the json structure and nulls out the pointer if
+ * it returns true (continue).
+ */
 int
 CfsMs::retryError( CfsLog::OpType type,
                    XApi::ClientReq *reqp,
-                   Json::Node *parsedNodep,
+                   Json::Node **parsedNodepp,
                    CfsRetryError *retryStatep)
 {
     uint32_t httpError;
     httpError = reqp->getHttpError();
     int32_t code;
+    Json::Node *parsedNodep = *parsedNodepp;
 
     /* add in a 1 in the stalling cases below */
     _stalledErrors <<= 1;
@@ -1462,6 +1467,8 @@ CfsMs::retryError( CfsLog::OpType type,
         else {
             _stats._bad400++;
             sleep(2);
+            delete parsedNodep;
+            *parsedNodepp = NULL;
             return 1;
         }
     }
@@ -1498,6 +1505,8 @@ CfsMs::retryError( CfsLog::OpType type,
             _stalledErrors |= 1;
             sleep(4);
             printf("retrying 409 error\n");
+            delete parsedNodep;
+            *parsedNodepp = NULL;
             return 1;
         }
     }
@@ -1510,7 +1519,9 @@ CfsMs::retryError( CfsLog::OpType type,
             _stats._overloaded5xx++;
         _stalledErrors |= 1;
         reqp->resetConn();
-        sleep(2);
+        sleep(8);
+        delete parsedNodep;
+        *parsedNodepp = NULL;
         return 1;
     }
     else {

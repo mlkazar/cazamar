@@ -258,7 +258,7 @@ class CfsMs : public Cfs {
 
     int32_t retryError( CfsLog::OpType type,
                         XApi::ClientReq *reqp,
-                        Json::Node *parsedNodep,
+                        Json::Node **parsedNodepp,
                         CfsRetryError *statep);
 
     int32_t getCnodeLinked( CnodeMs *parentp,
