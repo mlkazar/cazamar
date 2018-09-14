@@ -330,7 +330,7 @@ public:
 #ifndef __linux__
         if (_uploadEntryp[0] == NULL) {
             fsRoot = std::string(getenv("HOME")) + "/Pictures";
-            cloudRoot = "/" + std::string(getenv("USER")) + "_pictures";
+            cloudRoot = "/" + std::string(getenv("USER")) + "_backup/Pictures";
             addConfigEntry(cloudRoot, fsRoot, 0, 1);
             writeConfig(libPath);
         }
