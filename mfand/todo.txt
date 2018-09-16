@@ -1,0 +1,4 @@
+Fix icon to look like a kite, not balloons.
+
+Stopping or pausing should put entry in manual mode, so that schedule
+doesn't restart it.

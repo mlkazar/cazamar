@@ -88,6 +88,16 @@ NSTimer *_timer;
     [_menu addItem: item];
     
     item = [[NSMenuItem alloc]
+	       initWithTitle: @"Version 1.1 (9/15/2018)"
+	       action: @selector(versionPressed)
+	       keyEquivalent: @""];
+    item.target = self;
+    [_menu addItem: item];
+    
+    item = [NSMenuItem separatorItem];
+    [_menu addItem: item];
+    
+    item = [[NSMenuItem alloc]
 	       initWithTitle: @"Quit"
 	       action: @selector(quitPressed)
 	       keyEquivalent: (NSString *) @"q"];
@@ -108,6 +118,10 @@ NSTimer *_timer;
     NSLog(@"backup pressed");
     [self ensureSetup];
     _uploadp->backup();
+}
+
+- (void) versionPressed {
+    return;
 }
 
 - (void) detailsPressed {

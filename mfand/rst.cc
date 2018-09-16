@@ -623,7 +623,9 @@ Rst::Call::callExpired(OspTimer *timerp, void *contextp)
      */
     _timerMutex.take();
     if (timerp->canceled()) {
-        /* don't reference callp in this branch since it may be free */
+        /* don't reference callp in this branch since it may be free; note that
+         * _timerMutex is static for this reason.
+         */
         _timerMutex.release();
         return;
     }
@@ -637,6 +639,13 @@ Rst::Call::callExpired(OspTimer *timerp, void *contextp)
      * which should abort all pending reads and writes to the socket.
      */
     callp->_rstp->_bufGenp->abort();
+
+    /* and set a new timer, in case the next try through gets messed up; note that this
+     * must happen while still holding timerMutex, so that we don't race with
+     * the call 'finished' code.
+     */
+    callp->_timerp = new OspTimer();
+    callp->_timerp->init(60000, &Rst::Call::callExpired, callp);
 
     _timerMutex.release();
 }
