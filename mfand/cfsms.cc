@@ -1531,3 +1531,60 @@ CfsMs::retryError( CfsLog::OpType type,
         return 0;
     }
 }
+
+int
+CfsMs::legalFirst(int tc)
+{
+    if (tc == ' ' || tc == '~')
+        return 0;
+    else
+        return 1;
+}
+
+std::string
+CfsMs::legalizeIt(std::string ins)
+{
+    const char *tp = ins.c_str();
+    std::string outs;
+    char tc;
+    int firstComp;
+    int failed;
+
+    /* see if we're done without any reallocation */
+    failed = 0;
+    firstComp = 1;
+    while( (tc = *tp++) != 0) {
+        if (firstComp && !legalFirst(tc)) {
+            failed = 1;
+            break;
+        }
+        if (tc == '/')
+            firstComp = 1;
+        else
+            firstComp = 0;
+    }
+
+    if (!failed) {
+        return ins;
+    }
+
+    /* otherwise turn all illegal first chars into '_' characters if
+     * they start an entry name.
+     */
+    firstComp = 1;
+    while( (tc = *tp++) != 0) {
+        if (firstComp && !legalFirst(tc)) {
+            outs.push_back('_');
+            continue;
+        }
+        if (tc == '/')
+            firstComp = 1;
+        else
+            firstComp = 0;
+        outs.push_back(tc);
+    }
+    
+
+    printf("Converting '%s' to '%s'\n", ins.c_str(), outs.c_str());
+    return outs;
+}

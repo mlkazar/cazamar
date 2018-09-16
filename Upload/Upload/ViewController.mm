@@ -71,7 +71,7 @@ NSTimer *_timer;
     _statusItem.menu = _menu;
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Setup/Settings"
+	       initWithTitle: @"Setup/Run"
 	       action: @selector(detailsPressed)
 	       keyEquivalent: (NSString *) @"s"];
     item.target = self;
@@ -88,7 +88,7 @@ NSTimer *_timer;
     [_menu addItem: item];
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Version 1.1 (9/15/2018)"
+	       initWithTitle: @"Version 1.1 (9/16/2018)"
 	       action: @selector(versionPressed)
 	       keyEquivalent: @""];
     item.target = self;

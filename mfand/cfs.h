@@ -170,6 +170,8 @@ class Cfs {
 
     virtual int getStalling() = 0;
 
+    virtual std::string legalizeIt(std::string ins) = 0;
+
     virtual void setLog(CfsLog *logp) {
         _logp = logp;
     }

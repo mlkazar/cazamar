@@ -127,12 +127,14 @@ public:
     std::string _cloudRoot;
     uint32_t _lastFinishedTime;
     uint8_t _enabled;
+    uint8_t _manual;
 
     UploadEntry() {
         _uploaderp = NULL;
         _app = NULL;
         _lastFinishedTime = 0;
         _enabled = 1;
+        _manual = 0;
     }
 
     ~UploadEntry();
@@ -380,6 +382,7 @@ public:
             uploaderp = ep->_uploaderp;
             if (!uploaderp)
                 continue;
+            ep->_manual = 1;
             uploaderp->stop();
         }
         _entryLock.release();
@@ -398,6 +401,7 @@ public:
             uploaderp = ep->_uploaderp;
             if (!uploaderp)
                 continue;
+            ep->_manual = 1;
             uploaderp->pause();
         }
         _entryLock.release();
@@ -412,8 +416,10 @@ public:
         _entryLock.take();
         for(i=0; i<_maxUploaders; i++) {
             ep = _uploadEntryp[i];
-            if (ep)
+            if (ep) {
+                ep->_manual = 0;
                 startEntry(ep);
+            }
         }
         _entryLock.release();
     }

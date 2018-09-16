@@ -260,7 +260,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
 
     if (up->_verbose)
         printf("In walkcallback %s\n", pathp->c_str());
-    cloudName = up->_cloudRoot + relativeName;
+    cloudName = cfsp->legalizeIt(up->_cloudRoot + relativeName);
 
     /* before doing upload, stat the object to see if we've already done the copy; don't
      * do this for dirs.
@@ -1533,7 +1533,7 @@ UploadApp::schedule(void *cxp)
         for(i=0;i<_maxUploaders;i++) {
             ep = _uploadEntryp[i];
 
-            if (!ep || !ep->_enabled)
+            if (!ep || !ep->_enabled || ep->_manual)
                 continue;
 
             /* here we have a valid entry in STOPPED state; if it has been

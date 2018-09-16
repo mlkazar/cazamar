@@ -1,4 +1,14 @@
-Fix icon to look like a kite, not balloons.
+fixup names starting with invalid characters
 
-Stopping or pausing should put entry in manual mode, so that schedule
-doesn't restart it.
+verify that getPath is required for getattr
+
+move account for app registration to michael.kazar@verizon.net
+
+================
+
+cfssnap
+
+================
+
+Modify SApi so that a new page only has to define a method, not a whole class.
+

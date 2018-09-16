@@ -244,7 +244,11 @@ class CfsMs : public Cfs {
             return 1;
     }
 
-    int32_t root(Cnode **rootpp, CEnv *envp);
+    static int legalFirst(int tc);
+
+    std::string legalizeIt(std::string ins);
+    
+int32_t root(Cnode **rootpp, CEnv *envp);
     
     CnodeMs *allocCnode(CThreadMutex *hashLockp);
 
