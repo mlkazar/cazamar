@@ -651,8 +651,8 @@ MSLoginScreen::startMethod()
             authToken = cookiep->getActive()->getAuthToken();
         if (authToken.length() == 0) {
             cookiep->_loginMSp = new SApiLoginMS();
-            cookiep->_loginMSp->setAppParams( "60a94129-6c64-493e-b91f-1bd6d0c09cd1",
-                                               "awqdimBY081)~-nXYMPD19:");
+            cookiep->_loginMSp->setAppParams( "cd97cce7-f4a3-40c2-acc7-66a7924c6341",
+                                              "lznisJHEK|msZGD85941{@)");
 
             cookiep->_loginMSp->init(_sapip, cookiep, "/");
             code = cookiep->_loginMSp->getLoginPage(&response, cookiep);
@@ -876,8 +876,8 @@ SApiLoginCookie::restore()
             if (!_loginMSp) {
                 _loginMSp = new SApiLoginMS();
             }
-            _loginMSp->setAppParams( "60a94129-6c64-493e-b91f-1bd6d0c09cd1",
-                                     "awqdimBY081)~-nXYMPD19:");
+            _loginMSp->setAppParams( "cd97cce7-f4a3-40c2-acc7-66a7924c6341",
+                                     "lznisJHEK|msZGD85941{@)");
             _loginMSp->initFromFile(this, authToken, refreshToken);
         }
         else if (authType == "apple") {

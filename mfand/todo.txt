@@ -1,8 +1,9 @@
-fixup names starting with invalid characters
+* fixup names starting with invalid characters
 
-verify that getPath is required for getattr
+* verify that getPath is required for getattr.  It is required
+for lookup, not getattr.
 
-move account for app registration to michael.kazar@verizon.net
+* move account for app registration to michael.kazar@verizon.net
 
 ================
 
