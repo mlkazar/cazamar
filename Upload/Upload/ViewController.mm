@@ -54,7 +54,7 @@ NSTimer *_timer;
 	_statusItem.button.image = image;
 	_statusItem.button.alternateImage = image;
 	_statusItem.highlightMode = YES;
-	_statusItem.visible = YES;
+	//	_statusItem.visible = YES;
     
 	[self updateMenu];
     }
@@ -88,7 +88,7 @@ NSTimer *_timer;
     [_menu addItem: item];
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Version 1.1 (9/16/2018)"
+	       initWithTitle: @"Version 1.2 (9/23/2018)"
 	       action: @selector(versionPressed)
 	       keyEquivalent: @""];
     item.target = self;

@@ -8,12 +8,16 @@ clean:
 	rm -f *.o *.a mfand mfanc stream strload ssls sslc jsdbtest \
           upnptest rcv.mp3 xapitest idtest sapitest apptest cfstest keyserv walktest uptest
 
-#OSXVERSION=-mmacosx-version-min=10.7 
-OSXVERSION=
-
 OS=$(shell uname -s)
 
+ifneq ($(OS),Linux)
+OSXVERSION=-mmacosx-version-min=10.11
+else
+OSXVERSION=
+endif
+
 CXXFLAGS=-g -Wall -I../include -I/usr/local/ssl/include $(OSXVERSION)
+CFLAGS=-g -Wall -I../include -I/usr/local/ssl/include $(OSXVERSION)
 ifeq ($(OS),Linux)
 CXXFLAGS += -Wno-sign-compare -Wno-unused-but-set-variable 
 endif

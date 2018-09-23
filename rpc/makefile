@@ -7,10 +7,14 @@ install: all
 clean:
 	rm -f *.o *.a rpctest jsontest xgmltest cdisptest timertest
 
-#OSXVERSION=-mmacosx-version-min=10.7
-OSXVERSION=
-
 OS=$(shell uname -s)
+
+ifneq ($(OS),Linux)
+OSXVERSION=-mmacosx-version-min=10.11
+else
+OSXVERSION=
+endif
+
 CXXFLAGS=-g -Wall $(WARNFLAGS) $(OSXVERSION)
 ifeq ($(OS),Linux)
 CXXFLAGS += -Wno-unused-but-set-variable
