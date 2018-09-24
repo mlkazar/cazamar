@@ -274,7 +274,10 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
         if (code) {
             delete reqp;
             reqp = NULL;
-            break;
+            if (_cfsp->retryRpcError(CfsLog::opLookup, code, &retryState))
+                continue;
+            else
+                break;
         }
 
         inPipep = reqp->getIncomingPipe();
@@ -406,7 +409,10 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
             printf("sendsmallfile header done %d\n", code);
             delete reqp;
             reqp = NULL;
-            break;
+            if (_cfsp->retryRpcError(CfsLog::opSendFile, code, &retryState))
+                continue;
+            else
+                break;
         }
 
         /* wait for a response, and then parse it */
@@ -550,7 +556,10 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
         if (code != 0) {
             delete reqp;
             reqp = NULL;
-            break;
+            if (_cfsp->retryRpcError(CfsLog::opMkdir, code, &retryState))
+                continue;
+            else
+                break;
         }
         httpError = reqp->getHttpError();
 
@@ -680,7 +689,10 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
         if (code) {
             delete reqp;
             reqp = NULL;
-            break;
+            if (_cfsp->retryRpcError(CfsLog::opGetAttr, code, &retryState))
+                continue;
+            else
+                break;
         }
 
         inPipep = reqp->getIncomingPipe();
@@ -809,7 +821,10 @@ CnodeMs::startSession( std::string name,
         if (code != 0) {
             delete reqp;
             reqp = NULL;
-            break;
+            if (_cfsp->retryRpcError(CfsLog::opSendFile, code, &retryState))
+                continue;
+            else
+                break;
         }
 
         inPipep = reqp->getIncomingPipe();
@@ -930,7 +945,10 @@ CnodeMs::sendData( std::string *sessionUrlp,
         if (code != 0) {
             delete reqp;
             reqp = NULL;
-            break;
+            if (_cfsp->retryRpcError(CfsLog::opSendFile, code, &retryState))
+                continue;
+            else
+                break;
         }
 
         inPipep = reqp->getIncomingPipe();
@@ -1411,6 +1429,21 @@ CnodeMs::unthreadEntry(CnodeBackEntry *entryp)
     }
 
     osp_assert(tentryp != NULL);
+}
+
+int
+CfsMs::retryRpcError( CfsLog::OpType type,
+                      int32_t error,
+                      CfsRetryError *retryStatep)
+{       
+    if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
+        _logp->logError(type, error, "RPC Error", "");
+        _stats._xapiErrors++;
+        sleep(1);
+        return 0;
+    }
+    else
+        return 1;
 }
 
 /* nore that retryError deletes the json structure and nulls out the pointer if

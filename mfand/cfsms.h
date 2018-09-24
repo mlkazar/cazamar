@@ -265,6 +265,10 @@ int32_t root(Cnode **rootpp, CEnv *envp);
                         Json::Node **parsedNodepp,
                         CfsRetryError *statep);
 
+    int retryRpcError( CfsLog::OpType type,
+                       int32_t error,
+                       CfsRetryError *retryStatep);
+
     int32_t getCnodeLinked( CnodeMs *parentp,
                             std::string name,
                             std::string *idp,

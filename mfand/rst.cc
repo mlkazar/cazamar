@@ -539,6 +539,7 @@ Rst::Call::sendOperation()
 
     code = socketp->flush();
     if (code < 0) {
+        _error = 100;
         finished();
         return code;
     }
@@ -546,6 +547,7 @@ Rst::Call::sendOperation()
     if ((_op == "PUT" || _op == "POST") && _sendContentLength != 0) {
         code = sendData();
         if (code < 0) {
+            _error = 100;
             finished();
             return code;
         }
@@ -553,6 +555,7 @@ Rst::Call::sendOperation()
 
     code = socketp->readLine(tbuffer, sizeof(tbuffer));
     if (code < 0) {
+        _error = 100;
         finished();
         return code;
     }
@@ -563,6 +566,7 @@ Rst::Call::sendOperation()
         /* serious protocol error, reset the connection and fail.  It will get reopened
          * on the next call.
          */
+        _error = 200;
         socketp->disconnect();
         finished();
         return -2;
@@ -599,6 +603,7 @@ Rst::Call::sendOperation()
     if (_rcvContentLength != 0) {
         code = rcvData();
         if (code < 0) {
+            code = 300;
             finished();
             return code;
         }
@@ -662,7 +667,7 @@ Rst::Call::finished()
     _timerMutex.release();
 
     if (_allDoneProcp) {
-        _allDoneProcp(_contextp, this, 0, _httpError);
+        _allDoneProcp(_contextp, this, _error, _httpError);
     }
     
 }
