@@ -62,6 +62,23 @@ KeyServ::prune( void *cxp)
     }
 }
 
+class AppleLoginReq : public SApi::ServerReq {
+public:
+    static AppleLoginReq *factory(SApi *sapip) {
+        return new AppleLoginReq(sapip);
+    }
+
+    AppleLoginReq(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void AppleLoginKeyDataMethod();
+
+    void AppleLoginMethod();
+
+    void sendResponse(uint32_t error, const char *errorp, const char *responsep);
+};
+
 int
 main(int argc, char **argv)
 {
@@ -80,24 +97,8 @@ main(int argc, char **argv)
     return 0;
 }
 
-/* request to retrieve a key, given the corresponding ID; request has id=<url encoded id>
- * after the name.
- */
-class AppleLoginKeyData : public SApi::ServerReq {
-public:
-    static SApi::ServerReq *factory(std::string *opcodep, SApi *sapip);
-
-    AppleLoginKeyData(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
-
-    void startMethod();
-
-    void sendResponse(uint32_t error, const char *errorp, const char *responsep);
-};
-
 void
-AppleLoginKeyData::startMethod()
+AppleLoginReq::AppleLoginKeyDataMethod()
 {
     // Rst::Hdr *hdrp;
     std::string response;
@@ -145,7 +146,7 @@ AppleLoginKeyData::startMethod()
 }
 
 void
-AppleLoginKeyData::sendResponse(uint32_t error, const char *errorp, const char *responsep)
+AppleLoginReq::sendResponse(uint32_t error, const char *errorp, const char *responsep)
 {
     Json json;
     std::string jsonData;
@@ -194,15 +195,6 @@ AppleLoginKeyData::sendResponse(uint32_t error, const char *errorp, const char *
     requestDone();
 }
 
-SApi::ServerReq *
-AppleLoginKeyData::factory(std::string *opcodep, SApi *sapip)
-{
-    AppleLoginKeyData *reqp;
-
-    reqp = new AppleLoginKeyData(sapip);
-    return reqp;
-}
-
 /* The AppleLogin class is invoked when the Apple authentication
  * servers want to deliver a web auth token to the application, which
  * they do by sending an HTTP request to our URL /login.  The key for
@@ -216,31 +208,12 @@ AppleLoginKeyData::factory(std::string *opcodep, SApi *sapip)
  * authentication token that the key server will store until the
  * application requests it.
  */
-class AppleLogin : public SApi::ServerReq {
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
-
-    AppleLogin(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
-
-    void startMethod();
-};
-
-SApi::ServerReq *
-AppleLogin::factory(std::string *opcodep, SApi *sapip)
-{
-    AppleLogin *serverReqp;
-
-    serverReqp = new AppleLogin(sapip);
-    return serverReqp;
-}
 
 /* parse the incoming request's headers to determine the key and the
  * value for our token lookup table.
  */
 void
-AppleLogin::startMethod()
+AppleLoginReq::AppleLoginMethod()
 {
     char tbuffer[BIGSTR];
     char *obufferp;
@@ -396,11 +369,17 @@ server(int argc, char **argv, int port)
     sapip->useTls();
     
     /* called from Apple authentication servers with our key */
-    sapip->registerUrl("/login", &AppleLogin::factory);
-    sapip->registerUrl("/login4ms", &AppleLogin::factory);
+    sapip->registerUrl("/login",
+                       (SApi::RequestFactory *) &AppleLoginReq::factory,
+                       (SApi::StartMethod) &AppleLoginReq::AppleLoginMethod);
+    sapip->registerUrl("/login4ms",
+                       (SApi::RequestFactory *) &AppleLoginReq::factory,
+                       (SApi::StartMethod) &AppleLoginReq::AppleLoginMethod);
     
     /* called by our application to retrieve a stored key */
-    sapip->registerUrl("/keyData", &AppleLoginKeyData::factory);
+    sapip->registerUrl("/keyData", 
+                       (SApi::RequestFactory *) &AppleLoginReq::factory,
+                       (SApi::StartMethod) &AppleLoginReq::AppleLoginKeyDataMethod);
     sapip->initWithPort(port);
 
     cp = new CThreadHandle();

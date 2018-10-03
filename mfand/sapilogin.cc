@@ -76,7 +76,7 @@ SApiLoginCookie *SApiLogin::_globalCookiep = NULL;
  * Once done, the SApiAppleLogin class has the auth token stored internally.
  */
 void
-AppleLoginKeyData::startMethod()
+SApiLoginReq::AppleLoginKeyDataMethod()
 {
     char tbuffer[4096];
     int32_t code;
@@ -185,15 +185,6 @@ AppleLoginKeyData::startMethod()
     genLoginp->printAuthState();
 }
 
-SApi::ServerReq *
-AppleLoginKeyData::factory(std::string *opcodep, SApi *sapip)
-{
-    AppleLoginKeyData *reqp;
-
-    reqp = new AppleLoginKeyData(sapip);
-    return reqp;
-}
-
 /* function to initialize an SApiLoginApple class; pass in the SApi object
  * associated with the web server responding for the web site.
  */
@@ -203,7 +194,9 @@ SApiLoginApple::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl
     _sapip = sapip;
     cookiep->setActive(this);
     _finalUrl = finalUrl;
-    sapip->registerUrl("/sapiKeyData", &AppleLoginKeyData::factory);
+    sapip->registerUrl( "/sapiKeyData", 
+                        &SApiLoginReq::factory,
+                        (SApi::StartMethod) &SApiLoginReq::AppleLoginKeyDataMethod);
 }
 
 void
@@ -326,7 +319,9 @@ SApiLoginMS::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl)
 
     _finalUrl = finalUrl;
     cookiep->setActive(this);
-    sapip->registerUrl("/sapiKeyData", &AppleLoginKeyData::factory);
+    sapip->registerUrl("/sapiKeyData", 
+                       &SApiLoginReq::factory,
+                       (SApi::StartMethod) &SApiLoginReq::AppleLoginKeyDataMethod);
 }
 
 void
@@ -576,7 +571,7 @@ SApiLogin::createLoginCookie(SApi::ServerReq *reqp) {
 }
 
 void
-AppleLoginScreen::startMethod()
+SApiLoginReq::AppleLoginScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -620,17 +615,9 @@ AppleLoginScreen::startMethod()
     requestDone();
 }
 
-SApi::ServerReq *
-AppleLoginScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    AppleLoginScreen *reqp;
-    reqp = new AppleLoginScreen(sapip);
-    return reqp;
-}
-
 /* MS */
 void
-MSLoginScreen::startMethod()
+SApiLoginReq::MSLoginScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -675,16 +662,8 @@ MSLoginScreen::startMethod()
     requestDone();
 }
 
-SApi::ServerReq *
-MSLoginScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    MSLoginScreen *reqp;
-    reqp = new MSLoginScreen(sapip);
-    return reqp;
-}
-
 void
-LogoutScreen::startMethod()
+SApiLoginReq::LogoutScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -727,14 +706,6 @@ LogoutScreen::startMethod()
     outPipep->eof();
     
     requestDone();
-}
-
-SApi::ServerReq *
-LogoutScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    LogoutScreen *reqp;
-    reqp = new LogoutScreen(sapip);
-    return reqp;
 }
 
 int32_t

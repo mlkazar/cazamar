@@ -22,17 +22,18 @@ class SApi : public CThread {
     class CookieEntry;
     class CookieKey;
 
-    typedef SApi::ServerReq *UrlCallback(std::string *urlp, SApi *sapip);
-
     static const uint32_t _numUserThreads = 4;
 
  public:
-    typedef ServerReq *(ServerFactory)(std::string *opcodep, SApi *sapip);
+    typedef void (ServerReq::*StartMethod)();
+    typedef ServerReq *(RequestFactory)( SApi *sapip);
 
     class UrlEntry {
     public:
         std::string _urlPath;
-        UrlCallback *_callback;
+        
+        RequestFactory *_requestFactoryp;
+        StartMethod _startMethodp;
         UrlEntry *_dqNextp;
         UrlEntry *_dqPrevp;
     };
@@ -91,8 +92,6 @@ class SApi : public CThread {
         SApi *_sapip;
         CThreadPipe *_incomingDatap;
         CThreadPipe *_outgoingDatap;
-
-        virtual void startMethod() = 0; /* start running here */
 
         CThreadPipe *getIncomingPipe() {
             return _incomingDatap;
@@ -321,6 +320,8 @@ class SApi : public CThread {
             return;
         }
 
+        StartMethod _startMethodp; /* start running here */
+
         virtual ~ServerReq() {
             _sapip->_allServerReqs.remove(this);
             _sapip = NULL;
@@ -396,13 +397,14 @@ class SApi : public CThread {
         CThreadCV *_cvp;        /* uses connp's mutex */
 
         /* filled in on a per-request basis */
-        CommonReq *_reqp;
+        ServerReq *_reqp;
 
         UserThread *_dqNextp;
         UserThread *_dqPrevp;
         SApi *_sapip;
 
         UserThread() {
+            _reqp = NULL;
             return;
         }
 
@@ -415,7 +417,7 @@ class SApi : public CThread {
             }
         }
 
-        void deliverReq(CommonReq *reqp);
+        void deliverReq(ServerReq *reqp);
 
         void threadInit(void *contextp);
 
@@ -432,8 +434,6 @@ class SApi : public CThread {
 
     std::string _pathPrefix;
 
-    ServerFactory *_requestFactoryProcp;
-
     void listener(void *cxp);
 
     UserThread *getUserThread();
@@ -444,7 +444,9 @@ class SApi : public CThread {
 
  public:
     /* Externally callable functions */
-    void registerUrl(const char *relativePathp, SApi::UrlCallback procp);
+    void registerUrl( const char *relativePathp,
+                      SApi::RequestFactory *reqFactoryp,
+                      StartMethod procp);
 
     ServerReq *dispatchUrl(std::string *urlp, SApi::ServerConn *connp, SApi *sapip);
 

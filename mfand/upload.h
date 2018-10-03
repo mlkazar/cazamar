@@ -109,6 +109,41 @@ class DataSourceFile : public CDataSource {
     }
 };
 
+class UploadReq : public SApi::ServerReq {
+public:
+    static UploadReq *factory(SApi *sapip) {
+        return new UploadReq(sapip);
+    }
+
+    UploadReq(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void UploadHomeScreenMethod();
+
+    void UploadStartScreenMethod();
+
+    void UploadStopScreenMethod();
+
+    void UploadPauseScreenMethod();
+
+    void UploadStatusDataMethod();
+
+    void UploadInfoDataMethod();
+
+    void UploadLoadConfigMethod();
+
+    void UploadDeleteConfigMethod();
+
+    void UploadSetEnabledConfigMethod();
+
+    void UploadCreateConfigMethod();
+
+    void UploadBackupIntervalMethod();
+
+    void UploadInfoScreenMethod();
+};
+
 class UploadErrorEntry {
  public:
     std::string _op;

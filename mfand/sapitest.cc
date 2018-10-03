@@ -30,20 +30,31 @@ main(int argc, char **argv)
     return 0;
 }
 
-class AppleLoginKeyData : public SApi::ServerReq {
-    //    SApi *_sapip;
+class SApiTestReq : public SApi::ServerReq {
 public:
-    static SApi::ServerReq *factory(std::string *opcodep, SApi *sapip);
+    static SApiTestReq *factory( SApi *sapip) {
+        return new SApiTestReq(sapip);
+    }
 
-    void startMethod();
-
-    AppleLoginKeyData(SApi *sapip) : SApi::ServerReq(sapip) {
+    SApiTestReq(SApi *sapip) : ServerReq(sapip) {
         return;
     }
+
+    void AppleLoginKeyDataMethod();
+
+    void AppleLoginMethod();
+
+    void HomeScreenMethod();
+
+    void WriteTestMethod();
+
+    void ReadTestMethod();
+
+    void DeleteTestMethod();
 };
 
 void
-AppleLoginKeyData::startMethod()
+SApiTestReq::AppleLoginKeyDataMethod()
 {
     char tbuffer[4096];
     int32_t code;
@@ -82,39 +93,8 @@ AppleLoginKeyData::startMethod()
     requestDone();
 }
 
-SApi::ServerReq *
-AppleLoginKeyData::factory(std::string *opcodep, SApi *sapip)
-{
-    AppleLoginKeyData *reqp;
-
-    reqp = new AppleLoginKeyData(sapip);
-    return reqp;
-}
-
-class AppleLogin : public SApi::ServerReq {
-    //    SApi *_sapip;
-
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
-
-    AppleLogin(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
-
-    void startMethod();
-};
-
-SApi::ServerReq *
-AppleLogin::factory(std::string *opcodep, SApi *sapip)
-{
-    AppleLogin *serverReqp;
-
-    serverReqp = new AppleLogin(sapip);
-    return serverReqp;
-}
-
 void
-AppleLogin::startMethod()
+SApiTestReq::AppleLoginMethod()
 {
     char tbuffer[4096];
     char *obufferp;
@@ -213,19 +193,8 @@ AppleLogin::startMethod()
     printf("server (applelogin): all done\n");
 }
 
-class HomeScreen : public SApi::ServerReq {
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
-
-    HomeScreen(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
-
-    void startMethod();
-};
-
 void
-HomeScreen::startMethod()
+SApiTestReq::HomeScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -257,37 +226,8 @@ HomeScreen::startMethod()
     printf("server(homescreen): all done\n");
 }
 
-SApi::ServerReq *
-HomeScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    HomeScreen *reqp;
-    reqp = new HomeScreen(sapip);
-    return reqp;
-}
-
-class WriteTest : public SApi::ServerReq {
-
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
-
-    WriteTest(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
-
-    void startMethod();
-};
-
-SApi::ServerReq *
-WriteTest::factory(std::string *opcodep, SApi *sapip)
-{
-    WriteTest *serverReqp;
-
-    serverReqp = new WriteTest(sapip);
-    return serverReqp;
-}
-
 void
-WriteTest::startMethod()
+SApiTestReq::WriteTestMethod()
 {
     char tbuffer[4096];
     char *obufferp;
@@ -623,30 +563,8 @@ WriteTest::startMethod()
     printf("server (objtest): all done\n");
 }
 
-class ReadTest : public SApi::ServerReq {
-    // SApi *_sapip;
-
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
-
-    ReadTest(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
-
-    void startMethod();
-};
-
-SApi::ServerReq *
-ReadTest::factory(std::string *opcodep, SApi *sapip)
-{
-    ReadTest *serverReqp;
-
-    serverReqp = new ReadTest(sapip);
-    return serverReqp;
-}
-
 void
-ReadTest::startMethod()
+SApiTestReq::ReadTestMethod()
 {
     char tbuffer[4096];
     char *obufferp;
@@ -851,30 +769,8 @@ ReadTest::startMethod()
     printf("server (objtest): all done\n");
 }
 
-class DeleteTest : public SApi::ServerReq {
-    // SApi *_sapip;
-
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
-
-    DeleteTest(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
-    
-    void startMethod();
-};
-
-SApi::ServerReq *
-DeleteTest::factory(std::string *opcodep, SApi *sapip)
-{
-    DeleteTest *serverReqp;
-
-    serverReqp = new DeleteTest(sapip);
-    return serverReqp;
-}
-
 void
-DeleteTest::startMethod()
+SApiTestReq::DeleteTestMethod()
 {
     char tbuffer[4096];
     char *obufferp;
@@ -1069,12 +965,27 @@ server(int argc, char **argv, int port)
     SApi *sapip;
 
     sapip = new SApi();
-    sapip->registerUrl("/", &HomeScreen::factory);
-    sapip->registerUrl("/appleLogin", &AppleLogin::factory);
-    sapip->registerUrl("/keyData", &AppleLoginKeyData::factory);
-    sapip->registerUrl("/writeTest", &WriteTest::factory);
-    sapip->registerUrl("/deleteTest", &DeleteTest::factory);
-    sapip->registerUrl("/readTest", &ReadTest::factory);
+    /* need to cast since factory returns a subclass, and C++ doesn't accept that as
+     * matching in type.
+     */
+    sapip->registerUrl( "/", 
+                        (SApi::RequestFactory *) &SApiTestReq::factory,
+                        (SApi::StartMethod) &SApiTestReq::HomeScreenMethod);
+    sapip->registerUrl("/appleLogin", 
+                       (SApi::RequestFactory *) &SApiTestReq::factory,
+                       (SApi::StartMethod) &SApiTestReq::AppleLoginMethod);
+    sapip->registerUrl("/keyData", 
+                       (SApi::RequestFactory *) &SApiTestReq::factory,
+                       (SApi::StartMethod) &SApiTestReq::AppleLoginKeyDataMethod);
+    sapip->registerUrl("/writeTest", 
+                       (SApi::RequestFactory *) &SApiTestReq::factory,
+                       (SApi::StartMethod) &SApiTestReq::WriteTestMethod);
+    sapip->registerUrl("/deleteTest",
+                       (SApi::RequestFactory *) &SApiTestReq::factory,
+                       (SApi::StartMethod) &SApiTestReq::DeleteTestMethod);
+    sapip->registerUrl("/readTest",
+                       (SApi::RequestFactory *) &SApiTestReq::factory,
+                       (SApi::StartMethod) &SApiTestReq::ReadTestMethod);
     sapip->initWithPort(port);
 
     while(1) {

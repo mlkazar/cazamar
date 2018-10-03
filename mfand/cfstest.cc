@@ -92,7 +92,11 @@ main(int argc, char **argv)
  */
 class HomeScreen : public SApi::ServerReq {
 public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+    static SApi::ServerReq *factory( SApi *sapip) {
+        HomeScreen *reqp;
+        reqp = new HomeScreen(sapip);
+        return reqp;
+    }
 
     HomeScreen(SApi *sapip) : SApi::ServerReq(sapip) {
         return;
@@ -237,14 +241,6 @@ HomeScreen::startMethod()
     }
 }
 
-SApi::ServerReq *
-HomeScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    HomeScreen *reqp;
-    reqp = new HomeScreen(sapip);
-    return reqp;
-}
-
 void
 server(int argc, char **argv, int port)
 {
@@ -257,7 +253,9 @@ server(int argc, char **argv, int port)
     SApiLogin::initSApi(sapip);
 
     /* register the home screen as well */
-    sapip->registerUrl("/", &HomeScreen::factory);
+    sapip->registerUrl( "/",
+                        &HomeScreen::factory,
+                        (SApi::StartMethod) &HomeScreen::startMethod);
 
     while(1) {
         sleep(1);

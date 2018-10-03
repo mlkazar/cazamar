@@ -58,6 +58,7 @@
 class SApiLoginApple;
 class SApiLoginMS;
 class SApiLoginCookie;
+class SApiLoginReq;
 
 /* this class defines the generic interface to SApiLogin* */
 class SApiLoginGeneric {
@@ -198,49 +199,23 @@ public:
     int32_t refresh();
 };
 
-class AppleLoginKeyData : public SApi::ServerReq {
-public:
-    static SApi::ServerReq *factory(std::string *opcodep, SApi *sapip);
-
-    AppleLoginKeyData(SApi *sapip) : SApi::ServerReq(sapip) {
+class SApiLoginReq : public SApi::ServerReq {
+ public:
+    SApiLoginReq(SApi *sapip) : SApi::ServerReq(sapip) {
         return;
     }
 
-    void startMethod();
-};
-
-class AppleLoginScreen : public SApi::ServerReq {
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
-
-    AppleLoginScreen(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
+    static SApi::ServerReq *factory(SApi *sapip) {
+        return new SApiLoginReq(sapip);
     }
 
-    void startMethod();
-};
+    void AppleLoginKeyDataMethod();
 
-/* MS */
-class MSLoginScreen : public SApi::ServerReq {
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
+    void AppleLoginScreenMethod();
 
-    MSLoginScreen(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
+    void MSLoginScreenMethod();
 
-    void startMethod();
-};
-
-class LogoutScreen : public SApi::ServerReq {
-public:
-    static SApi::ServerReq *factory(std::string *opcode, SApi *sapip);
-
-    LogoutScreen(SApi *sapip) : SApi::ServerReq(sapip) {
-        return;
-    }
-
-    void startMethod();
+    void LogoutScreenMethod();
 };
 
 class SApiLogin {
@@ -249,9 +224,15 @@ class SApiLogin {
     static SApiLoginCookie *_globalCookiep;
 
     static void initSApi (SApi *sapip) {
-        sapip->registerUrl("/appleLoginScreen", &AppleLoginScreen::factory);
-        sapip->registerUrl("/msLoginScreen", &MSLoginScreen::factory);
-        sapip->registerUrl("/logoutScreen", &LogoutScreen::factory);
+        sapip->registerUrl( "/appleLoginScreen", 
+                            &SApiLoginReq::factory,
+                            (SApi::StartMethod) &SApiLoginReq::AppleLoginScreenMethod);
+        sapip->registerUrl( "/msLoginScreen", 
+                            &SApiLoginReq::factory,
+                            (SApi::StartMethod) &SApiLoginReq::MSLoginScreenMethod);
+        sapip->registerUrl( "/logoutScreen", 
+                            &SApiLoginReq::factory,
+                            (SApi::StartMethod) &SApiLoginReq::LogoutScreenMethod);
     }
 
     static SApiLoginCookie *getLoginCookie(SApi::ServerReq *reqp);

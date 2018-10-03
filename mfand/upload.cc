@@ -358,7 +358,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
 }
 
 void
-UploadHomeScreen::startMethod()
+UploadReq::UploadHomeScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -680,7 +680,7 @@ UploadApp::addConfigEntry( std::string cloudRoot,
 }
 
 void
-UploadStartScreen::startMethod()
+UploadReq::UploadStartScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -745,7 +745,7 @@ UploadStartScreen::startMethod()
 }
 
 void
-UploadInfoScreen::startMethod()
+UploadReq::UploadInfoScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -789,7 +789,7 @@ UploadInfoScreen::startMethod()
 }
 
 void
-UploadStopScreen::startMethod()
+UploadReq::UploadStopScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -836,7 +836,7 @@ UploadStopScreen::startMethod()
 }
 
 void
-UploadPauseScreen::startMethod()
+UploadReq::UploadPauseScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -883,7 +883,7 @@ UploadPauseScreen::startMethod()
 }
 
 void
-UploadStatusData::startMethod()
+UploadReq::UploadStatusDataMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -965,7 +965,7 @@ UploadStatusData::startMethod()
 }
 
 void
-UploadInfoData::startMethod()
+UploadReq::UploadInfoDataMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -1131,7 +1131,7 @@ UploadInfoData::startMethod()
 }
 
 void
-UploadLoadConfig::startMethod()
+UploadReq::UploadLoadConfigMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -1166,7 +1166,7 @@ UploadLoadConfig::startMethod()
 }
 
 void
-UploadCreateConfig::startMethod()
+UploadReq::UploadCreateConfigMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -1235,7 +1235,7 @@ UploadCreateConfig::startMethod()
 }
 
 void
-UploadDeleteConfig::startMethod()
+UploadReq::UploadDeleteConfigMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -1284,7 +1284,7 @@ UploadDeleteConfig::startMethod()
 }
 
 void
-UploadBackupInterval::startMethod()
+UploadReq::UploadBackupIntervalMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -1345,7 +1345,7 @@ UploadBackupInterval::startMethod()
 }
 
 void
-UploadSetEnabledConfig::startMethod()
+UploadReq::UploadSetEnabledConfigMethod()
 {
     char tbuffer[16384];
     char *obufferp;
@@ -1393,102 +1393,6 @@ UploadSetEnabledConfig::startMethod()
     requestDone();
 }
 
-SApi::ServerReq *
-UploadHomeScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadHomeScreen *reqp;
-    reqp = new UploadHomeScreen(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadStartScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadStartScreen *reqp;
-    reqp = new UploadStartScreen(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadStopScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadStopScreen *reqp;
-    reqp = new UploadStopScreen(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadInfoScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadInfoScreen *reqp;
-    reqp = new UploadInfoScreen(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadPauseScreen::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadPauseScreen *reqp;
-    reqp = new UploadPauseScreen(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadStatusData::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadStatusData *reqp;
-    reqp = new UploadStatusData(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadInfoData::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadInfoData *reqp;
-    reqp = new UploadInfoData(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadLoadConfig::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadLoadConfig *reqp;
-    reqp = new UploadLoadConfig(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadDeleteConfig::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadDeleteConfig *reqp;
-    reqp = new UploadDeleteConfig(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadSetEnabledConfig::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadSetEnabledConfig *reqp;
-    reqp = new UploadSetEnabledConfig(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadBackupInterval::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadBackupInterval *reqp;
-    reqp = new UploadBackupInterval(sapip);
-    return reqp;
-}
-
-SApi::ServerReq *
-UploadCreateConfig::factory(std::string *opcodep, SApi *sapip)
-{
-    UploadCreateConfig *reqp;
-    reqp = new UploadCreateConfig(sapip);
-    return reqp;
-}
-
 int32_t
 UploadApp::init(SApi *sapip)
 {
@@ -1498,18 +1402,42 @@ UploadApp::init(SApi *sapip)
     SApiLogin::initSApi(sapip);
 
     /* register the home screen as well */
-    sapip->registerUrl("/", &UploadHomeScreen::factory);
-    sapip->registerUrl("/startBackups", &UploadStartScreen::factory);
-    sapip->registerUrl("/stopBackups", &UploadStopScreen::factory);
-    sapip->registerUrl("/pauseBackups", &UploadPauseScreen::factory);
-    sapip->registerUrl("/statusData", &UploadStatusData::factory);
-    sapip->registerUrl("/infoData", &UploadInfoData::factory);
-    sapip->registerUrl("/loadConfig", &UploadLoadConfig::factory);// do we need this?
-    sapip->registerUrl("/deleteItem", &UploadDeleteConfig::factory);
-    sapip->registerUrl("/setEnabled", &UploadSetEnabledConfig::factory);
-    sapip->registerUrl("/createEntry", &UploadCreateConfig::factory);
-    sapip->registerUrl("/backupInterval", &UploadBackupInterval::factory);
-    sapip->registerUrl("/info", &UploadInfoScreen::factory);
+    sapip->registerUrl("/", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadHomeScreenMethod);
+    sapip->registerUrl("/startBackups", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadStartScreenMethod);
+    sapip->registerUrl("/stopBackups", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadStopScreenMethod);
+    sapip->registerUrl("/pauseBackups", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadPauseScreenMethod);
+    sapip->registerUrl("/statusData", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadStatusDataMethod);
+    sapip->registerUrl("/infoData", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadInfoDataMethod);
+    sapip->registerUrl("/loadConfig", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadLoadConfigMethod);
+    sapip->registerUrl("/deleteItem", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadDeleteConfigMethod);
+    sapip->registerUrl("/setEnabled", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadSetEnabledConfigMethod);
+    sapip->registerUrl("/createEntry", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadCreateConfigMethod);
+    sapip->registerUrl("/backupInterval", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadBackupIntervalMethod);
+    sapip->registerUrl("/info", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadInfoScreenMethod);
 
     _cdisp = new CDisp();
     _cdisp->init(24);   /*24*/

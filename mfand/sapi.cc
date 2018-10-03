@@ -575,7 +575,7 @@ SApi::freeUserThread(SApi::UserThread *up)
 }
 
 void
-SApi::UserThread::deliverReq(CommonReq *reqp)
+SApi::UserThread::deliverReq(ServerReq *reqp)
 {
     SApi *sapip = _sapip;
 
@@ -604,7 +604,7 @@ void
 SApi::UserThread::threadInit(void *contextp)
 {
     SApi *sapip = _sapip;
-    CommonReq *reqp;
+    ServerReq *reqp;
 
     /* we start off putting ourselves in the free list */
     sapip->freeUserThread(this);
@@ -621,7 +621,7 @@ SApi::UserThread::threadInit(void *contextp)
         sapip->_lock.release();
 
         /* run the method set for us */
-        reqp->startMethod();
+        (reqp->*(reqp->_startMethodp))();
 
         /* put us back in the available thread pool; any time after this, we may get
          * a new request put into our _reqp field, and then get _cvp signalled.
@@ -631,14 +631,17 @@ SApi::UserThread::threadInit(void *contextp)
 }
 
 void
-SApi::registerUrl(const char *urlp, SApi::UrlCallback callback)
+SApi::registerUrl( const char *urlp,
+                   SApi::RequestFactory *requestFactoryp,
+                   SApi::StartMethod startMethodp)
 {
     UrlEntry *urlEntryp;
 
     _lock.take();
     for(urlEntryp = _allUrls.head(); urlEntryp; urlEntryp=urlEntryp->_dqNextp) {
         if (strcmp(urlEntryp->_urlPath.c_str(), urlp) == 0) {
-            urlEntryp->_callback = callback;
+            urlEntryp->_startMethodp = startMethodp;
+            urlEntryp->_requestFactoryp = requestFactoryp;
             _lock.release();
             return;
         }
@@ -646,7 +649,8 @@ SApi::registerUrl(const char *urlp, SApi::UrlCallback callback)
 
     urlEntryp = new UrlEntry();
     urlEntryp->_urlPath = std::string(urlp);
-    urlEntryp->_callback = callback;
+    urlEntryp->_requestFactoryp = requestFactoryp;
+    urlEntryp->_startMethodp = startMethodp;
     _allUrls.append(urlEntryp);
     _lock.release();
 }
@@ -656,14 +660,13 @@ SApi::dispatchUrl(std::string *urlp, SApi::ServerConn *connp, SApi *sapip)
 {
     UrlEntry *entryp;
     SApi::ServerReq *reqp;
-    UrlCallback *callbackp;
 
     _lock.take();
     for(entryp = sapip->_allUrls.head(); entryp; entryp = entryp->_dqNextp) {
         if (*urlp == entryp->_urlPath) {
-            callbackp = entryp->_callback;
             _lock.release();
-            reqp = callbackp(urlp, sapip);
+            reqp = entryp->_requestFactoryp( sapip);
+            reqp->_startMethodp = entryp->_startMethodp;
             return reqp;
         }
     }
