@@ -12,6 +12,8 @@ SSL_CTX *BufTls::_sslServerContextp;
 const SSL_METHOD *BufTls::_sslClientMethodp;
 const SSL_METHOD *BufTls::_sslServerMethodp;
 CThreadMutex BufTls::_mutex;
+std::string BufTls::_pathPrefix;
+pthread_once_t BufTls::_once = PTHREAD_ONCE_INIT;
 
 /* server side */
 void
@@ -543,73 +545,76 @@ BufTls::flush()
     }
 }
 
+void
+BufTls::mainInit()
+{
+    std::string certPath;
+    std::string keyPath;
+
+    certPath = _pathPrefix + "test_cert.pem";
+    keyPath = _pathPrefix + "test_key.pem";
+
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+
+    /* setup client side */
+#ifdef __linux__
+    _sslClientMethodp = TLS_client_method();  /* use for client conns */
+#else
+    _sslClientMethodp = TLSv1_2_client_method();  /* use for client conns */
+#endif
+
+    /* setup server side */
+#ifdef __linux__
+    _sslServerMethodp = TLS_server_method();
+#else
+    _sslServerMethodp = TLSv1_2_server_method();
+#endif
+    _sslServerContextp = SSL_CTX_new(_sslServerMethodp);
+
+    if (SSL_CTX_load_verify_locations( _sslServerContextp,
+                                       certPath.c_str(),
+                                       keyPath.c_str()) != 1) {
+        printf("failing location test\n");
+        ERR_print_errors_fp(stdout);
+        osp_assert(0);
+    }
+    if (SSL_CTX_set_default_verify_paths(_sslServerContextp) != 1) {
+        printf("failing path verification\n");
+        ERR_print_errors_fp(stdout);
+        osp_assert(0);
+    }
+    if (SSL_CTX_use_certificate_file(_sslServerContextp,
+                                     certPath.c_str(),
+                                     SSL_FILETYPE_PEM) <= 0) {
+        printf("failing use cert\n");
+        ERR_print_errors_fp(stdout);
+        osp_assert(0);
+    }
+    if (SSL_CTX_use_PrivateKey_file(_sslServerContextp,
+                                    keyPath.c_str(),
+                                    SSL_FILETYPE_PEM) <= 0) {
+        printf("failing use key\n");
+        ERR_print_errors_fp(stdout);
+        osp_assert(0);
+    }
+    if (!SSL_CTX_check_private_key(_sslServerContextp)) {
+        printf("failing final check\n");
+        ERR_print_errors_fp(stdout);
+        osp_assert(0);
+    }
+}
+
+
 /* client side */
 void
 BufTls::init(char *namep, uint32_t defaultPort)
 {
-    static int didMainInit = 0;
-    std::string certPath;
-    std::string keyPath;
 
     BufGen::init(namep, defaultPort);
 
-    if (!didMainInit) {
-        didMainInit = 1;
-
-        certPath = _pathPrefix + "test_cert.pem";
-        keyPath = _pathPrefix + "test_key.pem";
-
-        SSL_library_init();
-        OpenSSL_add_all_algorithms();
-        SSL_load_error_strings();
-
-        /* setup client side */
-#ifdef __linux__
-        _sslClientMethodp = TLS_client_method();  /* use for client conns */
-#else
-        _sslClientMethodp = TLSv1_2_client_method();  /* use for client conns */
-#endif
-
-        /* setup server side */
-#ifdef __linux__
-        _sslServerMethodp = TLS_server_method();
-#else
-        _sslServerMethodp = TLSv1_2_server_method();
-#endif
-        _sslServerContextp = SSL_CTX_new(_sslServerMethodp);
-
-        if (SSL_CTX_load_verify_locations( _sslServerContextp,
-                                           certPath.c_str(),
-                                           keyPath.c_str()) != 1) {
-            printf("failing location test\n");
-            ERR_print_errors_fp(stdout);
-            osp_assert(0);
-        }
-        if (SSL_CTX_set_default_verify_paths(_sslServerContextp) != 1) {
-            printf("failing path verification\n");
-            ERR_print_errors_fp(stdout);
-            osp_assert(0);
-        }
-        if (SSL_CTX_use_certificate_file(_sslServerContextp,
-                                         certPath.c_str(),
-                                         SSL_FILETYPE_PEM) <= 0) {
-            printf("failing use cert\n");
-            ERR_print_errors_fp(stdout);
-            osp_assert(0);
-        }
-        if (SSL_CTX_use_PrivateKey_file(_sslServerContextp,
-                                        keyPath.c_str(),
-                                        SSL_FILETYPE_PEM) <= 0) {
-            printf("failing use key\n");
-            ERR_print_errors_fp(stdout);
-            osp_assert(0);
-        }
-        if (!SSL_CTX_check_private_key(_sslServerContextp)) {
-            printf("failing final check\n");
-            ERR_print_errors_fp(stdout);
-            osp_assert(0);
-        }
-    }
+    pthread_once(&_once, &BufTls::mainInit);
 
     _sslClientContextp = SSL_CTX_new(_sslClientMethodp);   /* Create new context */
     if ( !_sslClientContextp) {

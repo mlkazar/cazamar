@@ -26,6 +26,7 @@
 
 class BufTls : public BufGen {
     static const uint32_t _defaultBaseTimeoutMs = 60000;
+    static pthread_once_t _once;
     int _s;
 
     OspMBuf *_outp;
@@ -34,12 +35,12 @@ class BufTls : public BufGen {
     uint8_t _connected;
     uint8_t _verbose;
     uint8_t _server;
-    std::string _pathPrefix;
     SSL_CTX *_sslClientContextp;
 
     static SSL_CTX *_sslServerContextp;
     static const SSL_METHOD *_sslClientMethodp;
     static const SSL_METHOD *_sslServerMethodp;
+    static std::string _pathPrefix;
     static CThreadMutex _mutex;
     SSL *_sslp;
     uint32_t _baseTimeoutMs;
@@ -48,6 +49,8 @@ class BufTls : public BufGen {
     int32_t fillFromSocket(OspMBuf *mbp);
 
  public:
+    static void mainInit();
+
     void init(struct sockaddr *sockAddrp, int socklen);
 
     int32_t listen();
@@ -97,7 +100,14 @@ class BufTls : public BufGen {
     }
 
     BufTls(std::string pathPrefix) {
+        /* since _pathPrefix is static, we don't want to have multiple assigners
+         * running at once.  All the strings are identical, so ordering doesn't
+         * matter, but serialization might (depends upon std::string atomicity)
+         */
+        _mutex.take();
         _pathPrefix = pathPrefix;
+        _mutex.release();
+
         _s = -1;
         _error = 0;
         _connected = 0;
