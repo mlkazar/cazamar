@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7F01663C2182914000A6133E /* osptimer.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F01663B2182914000A6133E /* osptimer.cc */; };
+		7F01663D2182914000A6133E /* osptimer.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F01663B2182914000A6133E /* osptimer.cc */; };
 		7F075644194C915E0090570E /* cloud-playing-48.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F075643194C915E0090570E /* cloud-playing-48.png */; };
 		7F075646194C91680090570E /* settings.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F075645194C91680090570E /* settings.png */; };
 		7F076BA01AA88FA3002A4910 /* help-edit.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F076B9F1AA88FA3002A4910 /* help-edit.html */; };
@@ -216,6 +218,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		7F01663B2182914000A6133E /* osptimer.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = osptimer.cc; path = ../../rpc/osptimer.cc; sourceTree = "<group>"; };
 		7F075643194C915E0090570E /* cloud-playing-48.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "cloud-playing-48.png"; sourceTree = "<group>"; };
 		7F075645194C91680090570E /* settings.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = settings.png; sourceTree = "<group>"; };
 		7F076B9F1AA88FA3002A4910 /* help-edit.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "help-edit.html"; sourceTree = "<group>"; };
@@ -233,6 +236,7 @@
 		7F12DF691DE5CCD8009C3AF7 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		7F12DF6B1DE5CCE8009C3AF7 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		7F12DF6D1DE5CDAD009C3AF7 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		7F199A9D21828AEB0067ED34 /* osptimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osptimer.h; path = ../../rpc/osptimer.h; sourceTree = "<group>"; };
 		7F1DA2131E043FEF0029749F /* help-hist.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "help-hist.html"; sourceTree = "<group>"; };
 		7F23D6631C98B0FF00DF978E /* MFANPopStatus.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFANPopStatus.h; sourceTree = "<group>"; };
 		7F23D6641C98B0FF00DF978E /* MFANPopStatus.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MFANPopStatus.m; sourceTree = "<group>"; };
@@ -457,6 +461,8 @@
 				7FA9DDED1A30BA93003319C9 /* sdr.cc */,
 				7FA9DDEE1A30BA93003319C9 /* sdr.h */,
 				7FA9DDE71A30BA74003319C9 /* ospmbuf.h */,
+				7F199A9D21828AEB0067ED34 /* osptimer.h */,
+				7F01663B2182914000A6133E /* osptimer.cc */,
 				7FA9DDE81A30BA74003319C9 /* osptypes.h */,
 				7F53C7711C790986006232FE /* radixtree.cc */,
 				7F53C7721C790986006232FE /* radixtree.h */,
@@ -900,6 +906,7 @@
 				7F455C0219532D67006DAFE5 /* MFANViewController.m in Sources */,
 				7FF2D3331A392BC800D73CAB /* xgml.cc in Sources */,
 				7F8D357E1C76A0EF00281498 /* bufsocket.cc in Sources */,
+				7F01663D2182914000A6133E /* osptimer.cc in Sources */,
 				7FF67E881C76C47500CAD4B2 /* rst.cc in Sources */,
 				7F10F24C1C1F7C1100990BD2 /* json.cc in Sources */,
 				7FA0B6F01E043979000597E5 /* MFANTopHistory.mm in Sources */,
@@ -961,6 +968,7 @@
 				7FC88BD319074BD900A80B25 /* MFANViewController.m in Sources */,
 				7FF2D3321A392BC800D73CAB /* xgml.cc in Sources */,
 				7F8D35751C76A00B00281498 /* bufsocket.cc in Sources */,
+				7F01663C2182914000A6133E /* osptimer.cc in Sources */,
 				7FF67E871C76C46F00CAD4B2 /* rst.cc in Sources */,
 				7FEEEAC41940844B00EE5C05 /* MFANPopEdit.m in Sources */,
 				7FA0B6EF1E04396D000597E5 /* MFANTopHistory.mm in Sources */,
@@ -1051,7 +1059,7 @@
 					"MFAN_DEMO=1",
 				);
 				INFOPLIST_FILE = "DJ To Go Lite-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				PRODUCT_NAME = AudioGalaxyL;
 				PROVISIONING_PROFILE = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1070,7 +1078,7 @@
 				GCC_PREFIX_HEADER = "MusicFan/DJ To Go-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "MFAN_DEMO=1";
 				INFOPLIST_FILE = "DJ To Go Lite-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				PRODUCT_NAME = AudioGalaxyL;
 				PROVISIONING_PROFILE = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1160,7 +1168,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MusicFan/DJ To Go-Prefix.pch";
 				INFOPLIST_FILE = "MusicFan/DJ To Go-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/Users/kazar/mac/rpc,
@@ -1182,7 +1190,7 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MusicFan/DJ To Go-Prefix.pch";
 				INFOPLIST_FILE = "MusicFan/DJ To Go-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/Users/kazar/mac/rpc,

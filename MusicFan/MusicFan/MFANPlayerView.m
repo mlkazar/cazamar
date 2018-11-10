@@ -948,6 +948,8 @@ static const float _hijackDelay = 4.0;
 
     if ( _usePlayer == MFANUseMainPlayer) {
 	NSLog(@"- setIndex: using mpmediaplayer");
+	[_playerStatus enable];
+
 	[self setupAudioSession: YES];
 
 	/* ugh, have to play it with MPMediaPlayer, and MPMediaPlayer
@@ -1050,9 +1052,10 @@ static const float _hijackDelay = 4.0;
 	[[UIApplication sharedApplication] endReceivingRemoteControlEvents];
     }
     else if (_usePlayer == MFANUseAudioPlayer) {
+	NSLog(@"- setIndex: using audio stream player");
+	[_playerStatus disable];
 	[self setupAudioSession: NO];
 
-	NSLog(@"- setIndex: using audio stream player");
 	_audioPlayer = [[MFANAqPlayer alloc] init];
 	[_audioPlayer setStateCallback: self sel: @selector(audioIsPlayingChanged:)];
 	[_audioPlayer setSongCallback: self sel: @selector(audioNowPlayingChanged:)];
@@ -1068,6 +1071,7 @@ static const float _hijackDelay = 4.0;
     }
     else {
 	NSLog(@"- setIndex: using avplayer");
+	[_playerStatus disable];
 	if ([_avMediaItem.effectiveUrl length] == 0) {
 	    MFANWarn *warn = [[MFANWarn alloc] initWithTitle:@"Not downloaded yet!"
 					       message:@"File not (fully) downloaded"
@@ -1907,7 +1911,7 @@ static const float _hijackDelay = 4.0;
 	[_mpPlayer pause];
     }
     else if (_avPlayer) {
-	[_mpPlayer pause];
+	// [_mpPlayer pause];
 
 	if (_isPlaying && currentTime == _lastTime) {
 	    _lastTimeUnchanged++;

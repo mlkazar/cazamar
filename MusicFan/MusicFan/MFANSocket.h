@@ -66,6 +66,8 @@ class MFANSocket : public BufGen {
 
     int32_t write(const char *tbuffer, int32_t acount);
 
+    void abort();
+
     void setTimeoutMs(uint32_t ms);
 
     int32_t flush();
@@ -96,6 +98,6 @@ class MFANSocket : public BufGen {
 };
 
 class MFANSocketFactory : public BufGenFactory {
-    MFANSocket * allocate();
+    BufGen *allocate();
 };
 #endif /* __MFANSOCKET_H_ENV__ */

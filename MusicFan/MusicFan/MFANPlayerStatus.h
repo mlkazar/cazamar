@@ -29,4 +29,8 @@
 
 - (void) isPlayingChanged: (id) notification;
 
+- (void) disable;
+
+- (void) enable;
+
 @end

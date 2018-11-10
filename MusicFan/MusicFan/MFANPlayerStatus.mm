@@ -51,6 +51,9 @@
 
     int _forceRecheck;
 
+    /* flag saying enabled or not */
+    int _enabled;
+
     /* valid in state 2, this is the # of seconds into
      * the song that we've gone at the time the first timer expires.
      */
@@ -86,6 +89,7 @@ static const float _checkInterval = 0.2;
 	_mpPlayer = [MPMusicPlayerController systemMusicPlayer];
 	_timer = nil;
 	_state = 0;
+	_enabled = 0;
 	_forceRecheck = 0;
 	_lastIndicated = (MPMusicPlaybackState) 100; /* invalid last value indicated to caller */
 	_currentState = [_mpPlayer playbackState];
@@ -324,6 +328,9 @@ static const float _checkInterval = 0.2;
 
     _timer = nil;
 
+    if (!_enabled)
+	return;
+
     if (_state == 1) {
 	/* first timer event -- see how long the music has been
 	 * playing, and then start the timer a 2nd time to see if it
@@ -442,6 +449,30 @@ static const float _checkInterval = 0.2;
 - (MPMusicPlaybackState) state
 {
     return [self stateWithForce: NO];
+}
+
+- (void) disable
+{
+    [_pbtCond lock];
+    _enabled = 0;
+    [_pbtCond unlock];
+}
+
+- (void) enable
+{
+    [_pbtCond lock];
+
+    _state = 0;
+    _enabled = 1;
+    if (!_timer) {
+	_timer = [NSTimer scheduledTimerWithTimeInterval: _checkInterval
+			  target:self
+			  selector:@selector(timerFired:)
+			  userInfo:nil
+			  repeats: NO];
+    }
+
+    [_pbtCond unlock];
 }
 
 @end

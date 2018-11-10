@@ -566,8 +566,14 @@ MFANSocket::setTimeoutMs(uint32_t ms)
     _baseTimeoutMs = ms;
 }
 
-MFANSocket *
+BufGen *
 MFANSocketFactory::allocate()
 {
     return new MFANSocket();
+}
+
+void
+MFANSocket::abort()
+{
+    disconnect();
 }
