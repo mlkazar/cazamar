@@ -1565,10 +1565,32 @@ CfsMs::retryError( CfsLog::OpType type,
     }
 }
 
+/* return false if this character isn't legal at the start of a file name, even if it
+ * is legal in other places in a file name.
+ */
 int
 CfsMs::legalFirst(int tc)
 {
     if (tc == ' ' || tc == '~')
+        return 0;
+    else
+        return 1;
+}
+
+/* return false if tc is a character that's not legal anywhere in an entry name;
+ * otherwise return true.
+ */
+int
+CfsMs::legalAnywhere(int tc)
+{
+    if ( tc == '*' ||
+         tc == '"' ||
+         tc == ':' ||
+         tc == '<' ||
+         tc == '>' ||
+         tc == '?' ||
+         tc == '\\' ||
+         tc == '|')
         return 0;
     else
         return 1;
@@ -1587,14 +1609,18 @@ CfsMs::legalizeIt(std::string ins)
     failed = 0;
     firstComp = 1;
     while( (tc = *tp++) != 0) {
-        if (firstComp && !legalFirst(tc)) {
+        if (tc == '/') {
+            firstComp = 1;
+            continue;
+        }
+
+        if ( (firstComp && !legalFirst(tc)) ||
+             !legalAnywhere(tc)) {
             failed = 1;
             break;
         }
-        if (tc == '/')
-            firstComp = 1;
-        else
-            firstComp = 0;
+
+        firstComp = 0;
     }
 
     if (!failed) {
@@ -1606,14 +1632,20 @@ CfsMs::legalizeIt(std::string ins)
      */
     firstComp = 1;
     while( (tc = *tp++) != 0) {
-        if (firstComp && !legalFirst(tc)) {
-            outs.push_back('_');
+        if (tc == '/') {
+            firstComp = 1;
+            outs.push_back(tc);
             continue;
         }
-        if (tc == '/')
-            firstComp = 1;
-        else
+
+        if ( (firstComp && !legalFirst(tc)) ||
+             !legalAnywhere(tc)) {
+            outs.push_back('_');
             firstComp = 0;
+            continue;
+        }
+
+        firstComp = 0;
         outs.push_back(tc);
     }
     

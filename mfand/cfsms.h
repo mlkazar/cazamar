@@ -246,6 +246,8 @@ class CfsMs : public Cfs {
 
     static int legalFirst(int tc);
 
+    static int legalAnywhere(int tc);
+
     std::string legalizeIt(std::string ins);
     
 int32_t root(Cnode **rootpp, CEnv *envp);
