@@ -1054,6 +1054,7 @@ Rst::urlPathEncode(std::string inStr)
         if ( (tc >= '0' && tc <= '9') ||
              (tc >= 'a' && tc <= 'z') ||
              (tc >= 'A' && tc <= 'Z') ||
+             tc == '/' ||
              tc == '-' ||
              tc == '.' ||
              tc == '_' ||
