@@ -389,9 +389,9 @@ public:
 
     void schedule(void *cxp);
 
-    int32_t initLoop(SApi *sapip);
+    int32_t initLoop(SApi *sapip, int single);
 
-    int32_t init(SApi *sapip);
+    int32_t init(SApi *sapip, int single);
 
     static std::string getDate(time_t secs);
 

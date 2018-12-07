@@ -1630,6 +1630,7 @@ CfsMs::legalizeIt(std::string ins)
     /* otherwise turn all illegal first chars into '_' characters if
      * they start an entry name.
      */
+    tp = ins.c_str();
     firstComp = 1;
     while( (tc = *tp++) != 0) {
         if (tc == '/') {

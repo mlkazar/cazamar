@@ -49,7 +49,7 @@ Upload::server(void *contextp)
 
     uploadApp = new UploadApp(uploadp->_pathPrefix, libPath);
     uploadApp->setGlobalLoginCookie(loginCookiep);
-    uploadApp->init(sapip);
+    uploadApp->init(sapip, /* !single */ 0);
 
     uploadp->_uploadApp = uploadApp;
     uploadp->_sapip = sapip;

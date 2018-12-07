@@ -6,7 +6,7 @@
 
 #include "upload.h"
 
-void server(int argc, char **argv, int port, std::string pathPrefix);
+void server(int port, std::string pathPrefix, int single);
 
 /* This is the main program for the test application; it just runs the
  * server application function after peeling off the port and app name
@@ -16,22 +16,32 @@ int
 main(int argc, char **argv)
 {
     int port;
+    int i;
+    int single = 0;
 
     if (argc <= 1) {
-        printf("usage: apptest <port>\n");
+        printf("usage: apptest <port> [-single]\n");
         return 1;
     }
 
     port = atoi(argv[1]);
 
+    argc -= 2;
+    argv += 2;
+
+    for(i=0; i<argc;i++) {
+        if (!strcmp(argv[i], "-single"))
+            single = 1;
+    }
+
     /* peel off command name and port */
-    server(argc-2, argv+2, port, std::string(""));
+    server(port, std::string(""), single);
 
     return 0;
 }
 
 void
-server(int argc, char **argv, int port, std::string pathPrefix)
+server(int port, std::string pathPrefix, int single)
 {
     SApi *sapip;
     UploadApp *uploadApp;
@@ -47,5 +57,5 @@ server(int argc, char **argv, int port, std::string pathPrefix)
     /* initLoop doesn't return */
     uploadApp = new UploadApp(pathPrefix, pathPrefix);
     uploadApp->setGlobalLoginCookie(loginCookiep);
-    uploadApp->initLoop(sapip);
+    uploadApp->initLoop(sapip, single);
 }

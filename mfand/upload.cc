@@ -1394,7 +1394,7 @@ UploadReq::UploadSetEnabledConfigMethod()
 }
 
 int32_t
-UploadApp::init(SApi *sapip)
+UploadApp::init(SApi *sapip, int single)
 {
     CThreadHandle *hp;
 
@@ -1440,7 +1440,7 @@ UploadApp::init(SApi *sapip)
                        (SApi::StartMethod) &UploadReq::UploadInfoScreenMethod);
 
     _cdisp = new CDisp();
-    _cdisp->init(24);   /*24*/
+    _cdisp->init(single? 1 : 24);   /*24*/
 
     hp = new CThreadHandle();
     hp->init((CThread::StartMethod) &UploadApp::schedule, this, NULL);
@@ -1477,9 +1477,9 @@ UploadApp::schedule(void *cxp)
 }
 
 int32_t
-UploadApp::initLoop(SApi *sapip)
+UploadApp::initLoop(SApi *sapip, int single)
 {
-    init(sapip);
+    init(sapip, single);
 
     while(1) {
         sleep(1);
