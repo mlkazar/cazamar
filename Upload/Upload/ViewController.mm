@@ -88,7 +88,7 @@ NSTimer *_timer;
     [_menu addItem: item];
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Version 1.4 (11/10/2018)"
+	       initWithTitle: @"Version 1.5 (12/07/2018)"
 	       action: @selector(versionPressed)
 	       keyEquivalent: @""];
     item.target = self;
