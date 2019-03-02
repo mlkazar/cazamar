@@ -256,8 +256,6 @@ int32_t root(Cnode **rootpp, CEnv *envp);
 
     void recycle();
 
-    void logError(int32_t code, std::string errorString);
-
     void checkRecycle();
 
     int32_t getCnode(std::string *idp, CnodeMs **cnodepp);

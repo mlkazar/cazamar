@@ -27,7 +27,7 @@
 
 - (void) refreshLibrary;
 
-- (void) refreshRss;
+- (void) refreshRss: (NSInteger) ix;
 
 - (void) refreshPressed: (id) sender;
 

@@ -231,6 +231,10 @@ class XApi : public CThread {
 
         int32_t startCall(ClientConn *connp, const char *relativePathp, reqType isPost);
 
+        std::string getRelativePath() {
+            return _relativePath;
+        }
+
         int32_t waitForHeadersDone() {
             _connp->waitForHeadersDone();
             return _error;

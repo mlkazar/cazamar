@@ -1664,6 +1664,8 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     Json::Node *feedNodep;
     Json::Node *feedUrlNodep;
     NSString *feedUrlStr;
+    NSString *artistName;
+    Json::Node *artistNameNodep;
     Json::Node *collectionNameNodep;
     NSString *collectionNameStr;
     Json::Node *artworkUrl100Nodep;
@@ -1723,11 +1725,17 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     for( feedNodep = resultsChildrenNodep->_children.head();
 	 feedNodep;
 	 feedNodep = feedNodep->_dqNextp) {
+	feedNodep->print();
 	collectionNameNodep = feedNodep->searchForChild("collectionName", 0);
 	if (collectionNameNodep != NULL) {
 	    collectionNameStr =
 		[NSString stringWithUTF8String:
 			      collectionNameNodep->_children.head()->_name.c_str()];
+	    artistNameNodep = feedNodep->searchForChild("artistName");
+	    if (artistNameNodep != NULL) {
+		artistName = [NSString stringWithUTF8String:
+					   artistNameNodep->_children.head()->_name.c_str()];
+	    }
 	    feedUrlNodep = feedNodep->searchForChild("feedUrl", 0);
 	    if (feedUrlNodep != NULL) {
 		feedUrlStr = [NSString stringWithUTF8String:
@@ -1736,7 +1744,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 		mfanItem = [[MFANMediaItem alloc]
 			       initWithUrl: feedUrlStr
 			       title: collectionNameStr
-			       albumTitle:@"[Podcast]"];
+			       albumTitle: artistName];
 		[_podcastsArray addObject: mfanItem];
 	    }
 	}
@@ -1777,7 +1785,10 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 
 - (NSString *) subtitleByIx: (int) ix
 {
-    return nil;
+    MFANMediaItem *item;
+
+    item = _podcastsArray[ix];
+    return [item albumTitle];
 }
 
 - (BOOL) hasChildByIx: (int) ix

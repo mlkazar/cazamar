@@ -4,9 +4,30 @@ WESA http://16853.live.streamtheworld.com:80/WESAFMAAC_SC
 Interwebs http://go.interwebsradio.com/radio/8010/stream
 WRCT http://stream.wrct.org:8000/wrct-hi.mp3
 
+----
+
+tunein
+
 get set of addresses:
 curl http://provisioning.streamtheworld.com/pls/WYEPFMaac.pls
 curl http://provisioning.streamtheworld.com/pls/WYEPaac.pls
+
+----
+
+iheartradio
+
+play station, go to "view source" in Mozilla, search for
+"shoutcast_stream" and next is the http address of the stream
+
+http://c11icyelb.prod.playlists.ihrhls.com/1097_icy
+
+is an example.  Note the 4 digit code.
+
+You can get a little more info about the station by going to
+http://iheart.com/live/<number> and when you get a 301, the location
+header gives the real URL, which will be something like
+/live/kiss-108-1097, i.e. tells you it is Kiss 108.  The <title> line
+under <head> will give a better description (Boston's Hit Radio Station).
 
 ----
 

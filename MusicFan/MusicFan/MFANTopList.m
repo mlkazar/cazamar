@@ -68,6 +68,7 @@
     int _lastDownloadCount;
     MFANMediaItem *_originalMFANItem;
     MFANRenamePrompt *_renamePrompt;
+    BOOL _refreshRss;
 }
 
 - (void) activateTop
@@ -606,6 +607,8 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
 		       withAction: @selector(cancelPressed:)];
 	nextButtonX += buttonGap;
 
+	_refreshRss = NO;
+
 	tframe.origin.x = nextButtonX;
 	tframe.origin.y = nextButtonY;
 	tframe.size.width = _buttonWidth;
@@ -716,6 +719,14 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
 - (void) alertView: (UIAlertView *) av
 didDismissWithButtonIndex: (NSInteger) buttonIndex
 {
+    if (_refreshRss) {
+	_refreshRss = NO;
+	if (buttonIndex == 0)
+	    return;
+	[self refreshRss: buttonIndex];
+	return;
+    }
+
     _detailIndex = -1;
     [_tableView reloadData];
 }
@@ -963,15 +974,29 @@ didDismissWithButtonIndex: (NSInteger) buttonIndex
     [_tableView reloadData];
 }
 
-- (void) refreshRss
+/* check if full or update refresh */
+- (void) checkRefreshRss
+{
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"Reload  / Update"
+					      message: @"Reload all items / Update with newest items"
+					      delegate: nil
+					      cancelButtonTitle: @"Cancel"
+					      otherButtonTitles: @"Reload all", @"Update new", nil];
+    _refreshRss = YES;
+    [alert setDelegate: self];
+    [alert show];
+}
+
+- (void) refreshRss: (NSInteger) ix
 {
     MFANWarn *warn;
 
     warn = [[MFANWarn alloc] initWithTitle: @"Refreshing station"
-			     message: @"Loading new items from RSS feeds"
+			     message: (ix == 1? @"Reload all items from RSS feed" :
+				       @"Loading new items from RSS feeds")
 			     secs: 2.0];
 
-    [self updatePodcastsWithForce: NO];
+    [self updatePodcastsWithForce: (ix == 1? YES : NO)];
     [[_playContext download] checkDownloadedArray: _itemArray];
 
     _changedArray = YES;
@@ -984,7 +1009,7 @@ didDismissWithButtonIndex: (NSInteger) buttonIndex
 
     setList = [_playContext setList];
     if ([setList hasRssItems]) {
-	[self refreshRss];
+	[self checkRefreshRss];
     }
     else {
 	[self refreshLibrary];

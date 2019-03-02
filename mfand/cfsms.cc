@@ -1487,10 +1487,11 @@ CfsMs::retryError( CfsLog::OpType type,
             longError = nodep->_children.head()->_name;
     }
 
-    if (type == CfsLog::opMkdir && httpError == 400) {
+    if (httpError == 400) {
         /* this error claims we sent bad parameters, but it shows up
          * randomly on mkdirs so we retry a few times before giving
-         * up.
+         * up.  Actually, it appears to show up even less frequently
+         * on other calls, so I've removed the mkdir check.
          */
         if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
             _logp->logError(type, httpError, shortError, longError);
