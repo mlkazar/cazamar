@@ -235,6 +235,8 @@ class Json {
         static void appendStr(std::string *resultp, std::string data);
 
         Node *searchForChild(std::string name, int checkData = 0);
+
+        Node *searchForLeaf();
     };
 
     int _defaultNeedsEnd;

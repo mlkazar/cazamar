@@ -1663,8 +1663,11 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     Json::Node *resultsArrayNodep;
     Json::Node *feedNodep;
     Json::Node *feedUrlNodep;
+    Json::Node *genreNodep;
     NSString *feedUrlStr;
     NSString *artistName;
+    NSString *genreName;
+    NSString *subName;
     Json::Node *artistNameNodep;
     Json::Node *collectionNameNodep;
     NSString *collectionNameStr;
@@ -1672,6 +1675,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     char *jsonDatap;
     int32_t code;
     MFANMediaItem *mfanItem;
+    int foundGenre;
 
     /* build URL string from search key */
     first = 1;
@@ -1710,8 +1714,6 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 	return NO;
     }
 
-    rootNodep->print();
-
     /* iterate over all items, looking for titles and RSS URLs */
     resultsArrayNodep = rootNodep->searchForChild("results", 0);
     if (!resultsArrayNodep) {
@@ -1725,7 +1727,6 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     for( feedNodep = resultsChildrenNodep->_children.head();
 	 feedNodep;
 	 feedNodep = feedNodep->_dqNextp) {
-	feedNodep->print();
 	collectionNameNodep = feedNodep->searchForChild("collectionName", 0);
 	if (collectionNameNodep != NULL) {
 	    collectionNameStr =
@@ -1736,15 +1737,32 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 		artistName = [NSString stringWithUTF8String:
 					   artistNameNodep->_children.head()->_name.c_str()];
 	    }
+
+	    foundGenre = 0;
+	    genreNodep = feedNodep->searchForChild("genres");
+	    if (genreNodep) {
+		NSLog(@"found genre parent %s", genreNodep->_name.c_str());
+		genreNodep = genreNodep->searchForLeaf();
+		if (genreNodep) {
+		    genreName = [NSString stringWithUTF8String: genreNodep->_name.c_str()];
+		    NSLog(@"genre name is %@", genreName);
+		    foundGenre = 1;
+		}
+	    }
 	    feedUrlNodep = feedNodep->searchForChild("feedUrl", 0);
 	    if (feedUrlNodep != NULL) {
 		feedUrlStr = [NSString stringWithUTF8String:
 					   feedUrlNodep->_children.head()->_name.c_str()];
 		artworkUrl100Nodep = feedNodep->searchForChild("artworkUrl100", 0);
+		if (foundGenre) {
+		    subName = [NSString stringWithFormat: @"%@ [%@]", artistName, genreName];
+		}
+		else
+		    subName = artistName;
 		mfanItem = [[MFANMediaItem alloc]
 			       initWithUrl: feedUrlStr
 			       title: collectionNameStr
-			       albumTitle: artistName];
+			       albumTitle: subName];
 		[_podcastsArray addObject: mfanItem];
 	    }
 	}

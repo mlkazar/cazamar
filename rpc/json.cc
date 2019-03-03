@@ -380,6 +380,29 @@ Json::Node::searchForChild(std::string cname, int checkData)
     return NULL;
 }
 
+/* starting at this node, find the first leaf node encountered */
+Json::Node *
+Json::Node::searchForLeaf()
+{
+    Node *childp;
+    Node *resultp;
+
+    /* do a depth first search for child with name 'cname', but
+     * ignore leaves, whose names are just data, if checkData is false
+     * (the default)
+     */
+    if (_isLeaf)
+        return this;
+
+    for(childp = _children.head(); childp; childp=childp->_dqNextp) {
+        resultp = childp->searchForLeaf();
+        if (resultp)
+            return resultp;
+    }
+
+    return NULL;
+}
+
 void
 Json::printIndent(std::string *resultp, uint32_t level)
 {
