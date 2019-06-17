@@ -568,6 +568,9 @@ static const float _hijackDelay = 4.0;
 	labelHeight = (heightBelowArt /
 		       ((nlines-2) + playWeight + sliderWeight
 			+ (nlines+1.0)*buttonGapRatio));
+	/* don't let the font get too big, or too few characters fit */
+	if (labelHeight > appFrame.size.height/20)
+	    labelHeight = appFrame.size.height/20;
 	buttonGap = labelHeight * buttonGapRatio;
 
 	frame.origin.x = appFrame.origin.x;
@@ -2475,7 +2478,7 @@ static const float _hijackDelay = 4.0;
 	    else
 		shouldBeItem = nil;
 
-	    if (shouldBeItem != nil && shouldBeItem != nowPlayingItem) {
+	    if (shouldBeItem != nil && nowPlayingItem != nil && shouldBeItem != nowPlayingItem) {
 		NSLog(@"- hijack avIx=%d nowPlayingIx=%d", (int) _avMediaIndex, (int) shouldBeIx);
 		NSLog(@"- hijacked mpItem=%p nowPlayingItem=%p", shouldBeItem, nowPlayingItem);
 		return YES;

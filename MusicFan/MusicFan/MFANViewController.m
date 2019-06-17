@@ -143,6 +143,7 @@
     int forceIPhone4 = 0;	/* 3.5 inch */
     int forceIPhone5S = 0;	/* 4 inch */
     int forceIPad = 0;		/* iPad */
+    int forceIPhone65 = 0;	/* iPhone 6.5 " */
     /* none of the above is 4.7 inch / iPhone 6 */
 
     CGFloat physRatio = frame.size.height / frame.size.width;
@@ -163,10 +164,14 @@
 	/* or 2732/2048 for IPad pro */
 	targetRatio = 2048.0/1536.0;	/* about 1.333 */
     }
+    else if (forceIPhone65) {
+	targetRatio = 2688.0/1242.0;	/* about 2.164 */
+    }
     else {
 	/* native ratio is 1334.0/750.0 = 1.775 */
 	targetRatio = 0.0;		/* use basic screen */
     }
+    /* note that iPadPro 3 is 2732 x 2048, which is the same ratio as iPad */
 
     if (targetRatio != 0.0) {
 	if (targetRatio > physRatio) {

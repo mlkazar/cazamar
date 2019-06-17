@@ -45,7 +45,7 @@
      * indicated to our user, we dispatch a new status indication,
      * after changing our playing status to what we've discovered.  If
      * the new status equals the already reported status, we don't
-     * indicate anything.un
+     * indicate anything.
      */
     int _state;
 
