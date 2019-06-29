@@ -33,19 +33,28 @@
     SEL _selector;
 
     /* state is 0 right after a status check, 1 after the first timer
-     * expires, and 2 after the 2nd timer expires.  At that point, we
-     * believe our status is accurate.  We basically start a timer
-     * after we get notified that there's a state change in
-     * playbackState.  We report it immediately, but set a timer to go
-     * off in a bit, and record the time into the song at that point.
-     * We then set a second timer, and when that expires, if the time
-     * into the song hasn't changed, we check the time again.  If the
-     * times differ, we decide that the player is really playing,
-     * otherwise we decide it isn't.  If that isn't the status we
-     * indicated to our user, we dispatch a new status indication,
-     * after changing our playing status to what we've discovered.  If
-     * the new status equals the already reported status, we don't
-     * indicate anything.
+     * expires, and 2 through N after the 2nd timer expires
+     * (potentially multiple times).  After each expiration, we
+     * compare the music position with its value at the previous time.
+     * When the state has reached N, we believe our status is
+     * accurate.
+     *
+     * The rationale here is that the player itself doesn't indicate
+     * the right status, and usually the playing time value is better
+     * to use.  But we don't know how long it will take before
+     * playingTime is correctly tracking the player's state, and yet
+     * we don't want to wait until the worst case before trying to
+     * give an indication.  So, we indicate an early guess (after the
+     * second timer fires), and then keep watching for a few more
+     * timer expirations, incrementing _state each expiration, until
+     * _maxState is reached), and indicating status updates if the
+     * music player state changes during this time.
+     *
+     * At each expiration in state >= 2, if the new status isn't the
+     * status we indicated to our user, we dispatch a new status
+     * indication, after changing our playing status to what we've
+     * discovered.  If the new status equals the already reported
+     * status, we don't indicate anything.
      */
     int _state;
 
@@ -54,8 +63,8 @@
     /* flag saying enabled or not */
     int _enabled;
 
-    /* valid in state 2, this is the # of seconds into
-     * the song that we've gone at the time the first timer expires.
+    /* valid in state >=2, this is the # of seconds into the song that
+     * we've gone at the time the previous timer expired.
      */
     CGFloat _secondsIntoSong;
 
@@ -76,6 +85,13 @@
 
 /* time in seconds between checking if musicplayer is playing */
 static const float _checkInterval = 0.2;
+
+/* the largest value of the _state variable.  If maxState is 3, for
+ * example, we'll record the first time when the state reaches 1,
+ * check after a timer period, when the state reaches 2, and then and
+ * check a 2nd time after the state reaches 3.
+ */
+static const int _maxState = 4;
 
 - (MFANPlayerStatus *) initObject: (id) obj sel: (SEL) selector
 {
@@ -320,7 +336,11 @@ static const float _checkInterval = 0.2;
     }
 }
 
-/* one of our two timers has fired */
+/* one of our timers has fired; the first time a timer fires, we're in
+ * state 1, and we just remember how far into the music we are.  Later
+ * firings have us compare the current playing time with the previous
+ * one.
+ */
 - (void) timerFired: (id) junk
 {
     float errorBound;
@@ -350,10 +370,10 @@ static const float _checkInterval = 0.2;
 		      selector:@selector(timerFired:)
 		      userInfo:nil
 		      repeats: NO];
-	NSLog(@"- mp timer1 seconds=%f", _secondsIntoSong);
+	NSLog(@"- mp timer1 seconds=%f state=%d", _secondsIntoSong, _state);
     }
-    else if (_state == 2) {
-	/* second timer has gone off -- see how long the music was playing */
+    else if (_state > 1) {
+	/* later timer has gone off -- see how long the music was playing */
 	float songTime;
 	float difference;
 	MPMusicPlaybackState newState;
@@ -370,9 +390,6 @@ static const float _checkInterval = 0.2;
 			      repeats: NO];
 	    return;
 	}
-	else {
-	    _state = 0;
-	}
 
 	difference = songTime - _secondsIntoSong;
 	if (difference < 0)
@@ -383,7 +400,8 @@ static const float _checkInterval = 0.2;
 	else {
 	    newState = MPMusicPlaybackStatePaused;
 	}
-	NSLog(@"- mp timer2 seconds=%f diff=%f newState=%d", songTime, difference, (int) newState);
+	NSLog(@"- mp timer2 seconds=%f diff=%f newPlayerState=%d",
+	      songTime, difference, (int) newState);
 
 	/* OK, this is our real state */
 	_currentState = newState;
@@ -401,22 +419,39 @@ static const float _checkInterval = 0.2;
 #pragma clang diagnostic pop
 	}
 
-	/* we got an indication of a change while we were doing our timing of the
-	 * current song, so start a new timer.
-	 */
-	if (_forceRecheck) {
-	    _forceRecheck = 0;
+	if (_state >= _maxState) {
+	    /* we've finished the desired number of checks */
+	    NSLog(@"- mp timer reached maxState=%d", _state);
+	    _state = 0;
 
-	    /* this will kick off the new state machine again, but we don't
-	     * want to indicate the currently reported state from the player,
-	     * since we *just* computed the correct state.
+	    /* if we got an indication of a change while we were doing our timing of the
+	     * current song, so start a new timer.
 	     */
-	    _state = 1;
-	    _timer = [NSTimer scheduledTimerWithTimeInterval: checkInterval/2
+	    if (_forceRecheck) {
+		_forceRecheck = 0;
+
+		/* this will kick off the new state machine again, but we don't
+		 * want to indicate the currently reported state from the player,
+		 * since we *just* computed the correct state.
+		 */
+		_state = 1;
+		_timer = [NSTimer scheduledTimerWithTimeInterval: checkInterval/2
+				  target:self
+				  selector:@selector(timerFired:)
+				  userInfo:nil
+				  repeats: NO];
+		NSLog(@"- mp timer saw force recheck, new state 1");
+	    }
+	}
+	else {
+	    _state++;
+	    _secondsIntoSong = songTime;	/* NB error bound on songTime checked above */
+	    _timer = [NSTimer scheduledTimerWithTimeInterval: checkInterval
 			      target:self
 			      selector:@selector(timerFired:)
 			      userInfo:nil
 			      repeats: NO];
+	    NSLog(@"- mp timer1 seconds=%f state=%d", _secondsIntoSong, _state);
 	}
     }
 }
