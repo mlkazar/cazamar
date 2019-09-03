@@ -733,7 +733,7 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
     }
 
     if (_cfsp->_verbose)
-        printf("fillAtts: id='%s' done code=%d\n", _id.c_str(), code);
+        printf("fillAttrs: id='%s' done code=%d\n", _id.c_str(), code);
     return code;
 }
 

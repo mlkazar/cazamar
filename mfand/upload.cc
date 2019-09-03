@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 #include "sapi.h"
 #include "sapilogin.h"
@@ -374,6 +375,9 @@ UploadReq::UploadHomeScreenMethod()
     int loggedIn = 0;
     std::string pathPrefix;
     std::string fileName;
+    DIR *picDirp;
+    const char *picPathp;
+    int noPic;
         
     uploadApp = UploadApp::getGlobalApp();
 
@@ -381,14 +385,31 @@ UploadReq::UploadHomeScreenMethod()
     contextp = SApiLogin::createLoginCookie(this);
     contextp->enableSaveRestore();
 
+    /* see if we can read the pictures directory; if not, the user should add
+     * us to the privacy application list.
+     */
+    noPic = 0;
+    picPathp = uploadApp->_picPath.c_str();
+    if (strlen(picPathp) > 0) {
+        picDirp = opendir(picPathp);
+        if (picDirp == NULL)
+            noPic = 1;
+        else
+            closedir(picDirp);
+    }
+    
+
     if (contextp && contextp->getActive())
         authToken = contextp->getActive()->getAuthToken();
 
+    if (noPic) {
+        loginHtml += "<a href=\"/helpPics\"><font color=\"red\">WARNING: Kite needs permission to read Pictures; click to fix</font></a><p>";
+    }
     if (!contextp || authToken.length() == 0) {
-        loginHtml = "<a href=\"/msLoginScreen\">MS Login</a>";
+        loginHtml += "<a href=\"/msLoginScreen\">MS Login</a>";
     }
     else {
-        loginHtml = "Logged in<p><a href=\"/logoutScreen\">Logout</a>";
+        loginHtml += "Logged in<p><a href=\"/logoutScreen\">Logout</a>";
         loggedIn = 1;
     }
     loginHtml += "<p><a href=\"/startBackups\">Start/resume backup</a>";
@@ -810,6 +831,53 @@ UploadReq::UploadStopScreenMethod()
     }
     else {
         fileName = uploadApp->_pathPrefix + "upload-stop.html";
+        code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
+
+        if (code != 0) {
+            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            obufferp = tbuffer;
+        }
+        else {
+            obufferp = const_cast<char *>(response.c_str());
+        }
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+
+    if (uploadApp)
+        uploadApp->stop();
+}
+
+void
+UploadReq::UploadHelpPicsMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    std::string authToken;
+    std::string fileName;
+
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app running to stop; visit home page first<p>"
+               "<a href=\"/\">Home screen</a></html>");
+        obufferp = tbuffer;
+    }
+    else {
+        fileName = uploadApp->_pathPrefix + "upload-pics.html";
         code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
 
         if (code != 0) {
@@ -1438,6 +1506,9 @@ UploadApp::init(SApi *sapip, int single)
     sapip->registerUrl("/info", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadInfoScreenMethod);
+    sapip->registerUrl("/helpPics", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadHelpPicsMethod);
 
     _cdisp = new CDisp();
     _cdisp->init(single? 1 : 24);   /*24*/

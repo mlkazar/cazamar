@@ -71,18 +71,20 @@ NSTimer *_timer;
     _statusItem.menu = _menu;
     
     item = [[NSMenuItem alloc]
-	       initWithTitle: @"Setup/Run"
+	       initWithTitle: @"Control Screen"
 	       action: @selector(detailsPressed)
 	       keyEquivalent: (NSString *) @"s"];
     item.target = self;
     [_menu addItem: item];
     
+#if 0
     item = [[NSMenuItem alloc]
 	       initWithTitle: @"Backup now"
 	       action: @selector(backupPressed)
 	       keyEquivalent: @"b"];
     item.target = self;
     [_menu addItem: item];
+#endif
 
     item = [NSMenuItem separatorItem];
     [_menu addItem: item];

@@ -26,6 +26,9 @@ Upload::server(void *contextp)
     NSArray *libArray;
     NSString *libPathStr;
     std::string libPath;
+    NSArray *picArray;
+    NSString *picPathStr;
+    std::string picPath;
 
     NSBundle *myBundle = [NSBundle mainBundle];
     NSString *path= [myBundle pathForResource:@"status" ofType:@"png"]; /* file must exist */
@@ -35,6 +38,10 @@ Upload::server(void *contextp)
     libPath = std::string([libPathStr cStringUsingEncoding: NSUTF8StringEncoding]);
     ::mkdir(libPath.c_str(), 0777);
     libPath += "/";	/* after mkdir, add trailing '/' */
+
+    picArray = NSSearchPathForDirectoriesInDomains( NSPicturesDirectory, NSUserDomainMask, YES );
+    picPathStr = [picArray[0] stringByAppendingString: @"/Photos Library.photoslibrary"];
+    picPath = std::string([picPathStr cStringUsingEncoding: NSUTF8StringEncoding]);
 
     /* path will end /status.png, but we only want through the trailing / */
     path = [path substringToIndex: ([path length] - 10)];
@@ -47,7 +54,7 @@ Upload::server(void *contextp)
     loginCookiep = SApiLogin::createGlobalCookie(uploadp->_pathPrefix, libPath);
     loginCookiep->enableSaveRestore();
 
-    uploadApp = new UploadApp(uploadp->_pathPrefix, libPath);
+    uploadApp = new UploadApp(uploadp->_pathPrefix, libPath, picPath);
     uploadApp->setGlobalLoginCookie(loginCookiep);
     uploadApp->init(sapip, /* !single */ 0);
 

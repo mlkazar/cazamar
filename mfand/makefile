@@ -11,7 +11,7 @@ clean:
 OS=$(shell uname -s)
 
 ifneq ($(OS),Linux)
-OSXVERSION=-mmacosx-version-min=10.11
+OSXVERSION=-mmacosx-version-min=10.10
 else
 OSXVERSION=
 endif

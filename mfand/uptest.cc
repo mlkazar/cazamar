@@ -55,7 +55,7 @@ server(int port, std::string pathPrefix, int single)
     loginCookiep->enableSaveRestore();
 
     /* initLoop doesn't return */
-    uploadApp = new UploadApp(pathPrefix, pathPrefix);
+    uploadApp = new UploadApp(pathPrefix, pathPrefix, std::string(""));
     uploadApp->setGlobalLoginCookie(loginCookiep);
     uploadApp->initLoop(sapip, single);
 }

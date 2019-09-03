@@ -358,6 +358,7 @@ SApiLoginMS::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
         redirectUrl += "&redirect_uri=https%3a%2f%2fdjtogoapp.duckdns.org:7700%2flogin4ms";
         redirectUrl += "&response_mode=query";
         redirectUrl += "&scope=offline_access%20files.readwrite";
+        redirectUrl += "&prompt=login";
         redirectUrl += "&state=" + _authId;
         dict.add("redir", redirectUrl);
         dict.add("final", _finalUrl);

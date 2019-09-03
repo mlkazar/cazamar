@@ -135,6 +135,8 @@ public:
 
     void UploadDeleteConfigMethod();
 
+    void UploadHelpPicsMethod();
+
     void UploadSetEnabledConfigMethod();
 
     void UploadCreateConfigMethod();
@@ -328,6 +330,7 @@ public:
     SApiLoginCookie *_loginCookiep;
     std::string _pathPrefix;
     std::string _libPath;
+    std::string _picPath;
     std::string fsRoot;
     std::string cloudRoot;
     uint32_t _backupInterval;
@@ -350,13 +353,14 @@ public:
         }
     } _log;
 
-    UploadApp(std::string pathPrefix, std::string libPath) : _log(this) {
+    UploadApp(std::string pathPrefix, std::string libPath, std::string picPath) : _log(this) {
         uint32_t i;
         for(i=0;i<_maxUploaders;i++) {
             _uploadEntryp[i] = NULL;
         }
         _pathPrefix = pathPrefix;
         _libPath = libPath;
+        _picPath = picPath;
         _loginCookiep = NULL;
         _cfsp = NULL;
         _cdisp = NULL;
