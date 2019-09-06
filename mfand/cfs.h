@@ -10,6 +10,17 @@ class CnOps;
 class Cnode;
 class XApiPool;
 
+static const int32_t CFS_ERR_OK = 0;
+static const int32_t CFS_ERR_NOENT = 2;
+static const int32_t CFS_ERR_IO = 5;
+static const int32_t CFS_ERR_ACCESS = 13;
+static const int32_t CFS_ERR_EXIST = 17;
+static const int32_t CFS_ERR_EXDEV = 18;
+static const int32_t CFS_ERR_NOTDIR = 20;
+static const int32_t CFS_ERR_INVAL = 22;
+static const int32_t CFS_ERR_TIMEDOUT = 60;
+static const int32_t CFS_ERR_SERVER = 61;
+
 class CfsStats {
  public:
     /* error stats */

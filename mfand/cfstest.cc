@@ -145,6 +145,7 @@ HomeScreen::runTests(SApiLoginCookie *loginCookiep)
 	printf("test sending data\n");
 	TestDataSource testSource("This is some test data\n");
         CAttr attrs;
+        uint32_t sentBytes;
 
         testSource.getAttr(&attrs);
 
@@ -152,7 +153,8 @@ HomeScreen::runTests(SApiLoginCookie *loginCookiep)
 				&testSource,
 				attrs._length,
 				0,
-				attrs._length);
+				attrs._length,
+                                &sentBytes);
 	printf("test send code=%d\n", code);
 
 #if 0

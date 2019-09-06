@@ -164,15 +164,28 @@ Uploader::start()
 
     /* we're in STARTING state until we start the tree walk */
     _status = STARTING;
+    _stopReason = REASON_DONE;
 
-    _cfsp->root((Cnode **) &rootp, NULL);
-    rootp->getAttr(&attrs, NULL);
+    code = _cfsp->root((Cnode **) &rootp, NULL);
+    if (checkAbort(code)) {
+        printf("root creation failed, probabliy auth issue\n");
+        return;
+    }
+
+    code = rootp->getAttr(&attrs, NULL);
+    if (code != 0) {
+        _status = STOPPED;
+        checkAbort(code);
+        printf("root getattr failed code=%d\n", code);
+        return;
+    }
 
     code = _cfsp->namei(_cloudRoot, /* force*/ 1, (Cnode **) &testDirp, NULL);
     if (code != 0) {
         code = _cfsp->mkpath(_cloudRoot, (Cnode **) &testDirp, NULL);
         if (code != 0) {
             _status = STOPPED;
+            checkAbort(code);
             printf("mkpath failed code=%d\n", code);
             return;
         }
@@ -186,7 +199,10 @@ Uploader::start()
     /* lookup succeeded */
     code = testDirp->getAttr(&dirAttrs, NULL);
     if (code != 0) {
+        _status = STOPPED;
         printf("dir getattr failed code=%d\n", code);
+        checkAbort(code);
+        return;
     }
     testDirp->release();
     testDirp = NULL;
@@ -240,6 +256,7 @@ Uploader::resume()
     if (_group)
         _group->resume();
     _status = RUNNING;
+    _stopReason = REASON_DONE;
     return;
 }
 
@@ -284,6 +301,9 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                 return 0;
             }
         }
+        else if (up->checkAbort(code)) {
+            return 0;
+        }
     }
     else if ((statp->st_mode & S_IFMT) == S_IFLNK) {
         code = cfsp->stat(cloudName, &cloudAttr, NULL);
@@ -296,6 +316,9 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                 up->_bytesCopied += fsAttr._length;
                 return 0;
             }
+        }
+        else if (up->checkAbort(code)) {
+            return 0;
         }
     }
 
@@ -311,6 +334,8 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
                 printf("Upload: mkdir failed with code=%d path=%s\n",
                        (int) code, pathp->c_str());
             up->_filesSkipped++;        /* dir exists */
+            if (up->checkAbort(code))
+                return 0;
         }
         if (up->_verbose)
             printf("mkdir of %p done, code=%d\n", cloudName.c_str(), code);
@@ -320,6 +345,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
         if (code != 0) {
             up->_fileCopiesFailed++;
             printf("Upload: failed to open file %s\n", pathp->c_str());
+            up->checkAbort(code);
             return code;
         }
 
@@ -331,6 +357,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
         if (code) {
             printf("Upload: sendfile path=%s failed code=%d\n", pathp->c_str(), code);
             up->_fileCopiesFailed++;
+            up->checkAbort(code);
         }
         else {
             up->_filesCopied++;
@@ -346,6 +373,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
         if (code) {
             printf("Upload: sendfile symlink path=%s link failed code=%d\n", pathp->c_str(), code);
             up->_fileCopiesFailed++;
+            up->checkAbort(code);
         }
         else {
             up->_filesCopied++;
@@ -356,6 +384,22 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
         code = -1;
     }
     return code;
+}
+
+/* return true if we've encountered a fatal error */
+int
+Uploader::checkAbort(int32_t code)
+{
+    if (code == CFS_ERR_ACCESS) {
+        if (_group != NULL) {
+            _group->stop(/* nowait */ 1);
+        }
+        _status = STOPPED;
+        _stopReason = REASON_AUTH;
+        return 1;
+    }
+
+    return 0;
 }
 
 void
@@ -1171,9 +1215,6 @@ UploadReq::UploadInfoDataMethod()
         response += tbuffer;
         sprintf(tbuffer, "<tr><td>Pending Tasks</td><td>%llu</td></tr>\n",
                 (long long) ds._pendingTasks);
-        response += tbuffer;
-        sprintf(tbuffer, "<tr><td>CDisp run mode</td><td>%llu</td></tr>\n",
-                (long long) ds._runMode);
         response += tbuffer;
         sprintf(tbuffer, "<tr><td>Avg/Max Busy time / # Healthy</td><td>%llu ms / %llu ms / %llu healthy / %llu total active</td></tr>\n",
                 (long long) poolStats._averageMs,

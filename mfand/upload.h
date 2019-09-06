@@ -188,6 +188,12 @@ public:
                    STARTING = 5,
     } Status;
 
+    typedef enum { REASON_MANUAL = 1,   /* manually stopped by admin */
+                   REASON_AUTH = 2,     /* authentication expired */
+                   REASON_DONE = 3,     /* normal termination */
+                   REASON_HARD = 4,     /* hard failure */
+    } StopReason;
+
     typedef void StateProc(void *contextp);
 
     CDisp *_cdisp;
@@ -198,6 +204,7 @@ public:
     CThreadMutex _lock;
     WalkTask *_walkTaskp;
     Status _status;
+    StopReason _stopReason;
     std::string _cloudRoot;
     uint8_t _verbose;
     StateProc *_stateProcp;
@@ -215,6 +222,7 @@ public:
         _cfsp = NULL;
         _fsRootLen = 0;
         _status = STOPPED;
+        _stopReason = REASON_DONE;
         _verbose = 0;
         _stateProcp = NULL;
         _stateContextp = NULL;
@@ -252,6 +260,8 @@ public:
         _stateContextp = contextp;
     }
 
+    int checkAbort(int32_t code);
+    
     void setStateProc(StateProc *procp, void *contextp) {
         _stateProcp = procp;
         _stateContextp = contextp;
@@ -270,6 +280,10 @@ public:
     void resume();
 
     static void done(CDisp *disp, void *contextp);
+
+    StopReason getStopReason() {
+        return _stopReason;
+    }
 
     Status getStatus() {
         Status status;
@@ -299,8 +313,12 @@ public:
 
     std::string getStatusString() {
         Status status = getStatus();
-        if (status == STOPPED)
-            return "Stopped";
+        if (status == STOPPED) {
+            if (_stopReason == REASON_AUTH)
+                return "ReLogin";
+            else
+                return "Stopped";
+        }
         else if (status == PAUSED)
             return "Paused";
         else if (status == STALLED)

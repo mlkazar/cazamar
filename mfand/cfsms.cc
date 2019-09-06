@@ -166,13 +166,13 @@ CnodeMs::parseResults( Json::Node *jnodep,
     if (allFoundp) {
         /* if can provide details, return success if we at least have the ID */
         *allFoundp = allFound;
-        return (idFound? 0 : -1);
+        return (idFound? 0 : CFS_ERR_INVAL);
     }
     else {
         /* caller doesn't care about details, so return success only iff we have
          * all the info required.
          */
-        return (allFound? 0 : -1);
+        return (allFound? 0 : CFS_ERR_INVAL);
     }
 }
 
@@ -202,7 +202,7 @@ CnodeMs::nameSearch(std::string name, CnodeMs **childpp)
     }
     cfsp->_refLock.release();
     *childpp = NULL;
-    return -1;
+    return CFS_ERR_NOENT;
 }
 
 int32_t
@@ -276,8 +276,10 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
             reqp = NULL;
             if (_cfsp->retryRpcError(CfsLog::opLookup, code, &retryState))
                 continue;
-            else
+            else {
+                code = CFS_ERR_TIMEDOUT;
                 break;
+            }
         }
 
         inPipep = reqp->getIncomingPipe();
@@ -292,6 +294,7 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
             printf("json parse failed code=%d\n", code);
             delete reqp;
             reqp = NULL;
+            code = CFS_ERR_INVAL;
             break;
         }
 
@@ -300,6 +303,10 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
             reqp = NULL;
             continue;
         }
+
+        /* see if we have a fatal error */
+        if ((code = retryState.getCode()) != 0)
+            break;
 
         delete reqp;
         reqp = NULL;
@@ -401,6 +408,7 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
             reqp->waitForHeadersDone();
             delete reqp;
             reqp = NULL;
+            code = CFS_ERR_SERVER;
             break;
         }
         
@@ -411,8 +419,10 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
             reqp = NULL;
             if (_cfsp->retryRpcError(CfsLog::opSendFile, code, &retryState))
                 continue;
-            else
+            else {
+                code = CFS_ERR_TIMEDOUT;
                 break;
+            }
         }
 
         /* wait for a response, and then parse it */
@@ -438,6 +448,12 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
             delete reqp;
             reqp = NULL;
             continue;
+        }
+        code = retryState.getCode();
+        if (code != 0) {
+            delete reqp;
+            reqp = NULL;
+            break;
         }
 
         if (reqp) {
@@ -558,8 +574,10 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             reqp = NULL;
             if (_cfsp->retryRpcError(CfsLog::opMkdir, code, &retryState))
                 continue;
-            else
+            else {
+                code = CFS_ERR_TIMEDOUT;
                 break;
+            }
         }
         httpError = reqp->getHttpError();
 
@@ -584,7 +602,7 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             if (tnodep &&
                 tnodep->_children.head() &&
                 tnodep->_children.head()->_name == "nameAlreadyExists") {
-                code = 17;
+                code = CFS_ERR_EXIST;
                 errorOk = 1;    /* even though we had an error, this is OK */
                 delete reqp;
                 reqp = NULL;
@@ -592,10 +610,19 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
             }
         }
         
-        if (!errorOk && _cfsp->retryError(CfsLog::opMkdir, reqp, &jnodep, &retryState)) {
-            delete reqp;
-            reqp = NULL;
-            continue;
+        if (!errorOk) {
+            if (_cfsp->retryError(CfsLog::opMkdir, reqp, &jnodep, &retryState)) {
+                delete reqp;
+                reqp = NULL;
+                continue;
+            }
+            /* otherwise we have success or a fatal error */
+            code = retryState.getCode();
+            if (code != 0) {
+                delete reqp;
+                reqp = NULL;
+                break;
+            }
         }
 
         if (reqp) {
@@ -691,8 +718,10 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
             reqp = NULL;
             if (_cfsp->retryRpcError(CfsLog::opGetAttr, code, &retryState))
                 continue;
-            else
+            else {
+                code = CFS_ERR_TIMEDOUT;
                 break;
+            }
         }
 
         inPipep = reqp->getIncomingPipe();
@@ -712,6 +741,7 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
             reqp = NULL;
             continue;
         }
+        code = retryState.getCode();
 
         delete reqp;
         reqp = NULL;
@@ -823,8 +853,10 @@ CnodeMs::startSession( std::string name,
             reqp = NULL;
             if (_cfsp->retryRpcError(CfsLog::opSendFile, code, &retryState))
                 continue;
-            else
+            else {
+                code = CFS_ERR_TIMEDOUT;
                 break;
+            }
         }
 
         inPipep = reqp->getIncomingPipe();
@@ -846,6 +878,12 @@ CnodeMs::startSession( std::string name,
             delete reqp;
             reqp = NULL;
             continue;
+        }
+        code = retryState.getCode();
+        if (code) {
+            delete reqp;
+            reqp = NULL;
+            break;
         }
 
         /* search for uploadUrl */
@@ -876,12 +914,14 @@ CnodeMs::startSession( std::string name,
     
 }
 
+/* bytesReadp is set only on 0 returns */
 int32_t
 CnodeMs::sendData( std::string *sessionUrlp,
                    CDataSource *sourcep,
                    uint64_t fileLength,
                    uint64_t byteOffset,
-                   uint32_t byteCount)
+                   uint32_t byteCount,
+                   uint32_t *bytesReadp)
 {
     /* perform mkdir operation */
     char tbuffer[0x4000];
@@ -920,7 +960,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
         if (actuallyReadCount == 0)
             break;
         if (actuallyReadCount < 0) {
-            code = -1;
+            code = CFS_ERR_IO;
             break;
         }
 
@@ -947,8 +987,10 @@ CnodeMs::sendData( std::string *sessionUrlp,
             reqp = NULL;
             if (_cfsp->retryRpcError(CfsLog::opSendFile, code, &retryState))
                 continue;
-            else
+            else {
+                code = CFS_ERR_TIMEDOUT;
                 break;
+            }
         }
 
         inPipep = reqp->getIncomingPipe();
@@ -971,6 +1013,7 @@ CnodeMs::sendData( std::string *sessionUrlp,
             reqp = NULL;
             continue;
         }
+        code = retryState.getCode();
 
         delete reqp;
         reqp = NULL;
@@ -987,11 +1030,14 @@ CnodeMs::sendData( std::string *sessionUrlp,
     }
     osp_assert(reqp == NULL);
 
-    if (code == 0)
-        return actuallyReadCount;
-    else
-        return code;
+    if (code == 0) {
+        *bytesReadp = actuallyReadCount;
+    }
+    else {
+        *bytesReadp = 0;
+    }
     
+    return code;
 }
 
 /* static */ int32_t
@@ -1014,6 +1060,7 @@ CnodeMs::sendFile( std::string name,
     uint64_t size;
     CnodeLockSet lockSet;
     CAttr dataAttrs;
+    uint32_t bytesSent;
 
     code = sourcep->getAttr(&dataAttrs);
     if (code) {
@@ -1051,31 +1098,33 @@ CnodeMs::sendFile( std::string name,
                          sourcep,
                          size,
                          currentOffset,
-                         bytesPerPut);
-        if (code < 0) {
+                         bytesPerPut,
+                         &bytesSent);
+        if (code) {
             printf("sendFile: sendData failed code=%d\n", code);
             abortSession( &sessionUrl);
             return code;
         }
-        else if (code < bytesPerPut) {
+        else if (bytesSent < bytesPerPut) {
             /* we've hit EOF, so we're done */
             if (bytesCopiedp)
-                *bytesCopiedp += code;
+                *bytesCopiedp += bytesSent;
             code = 0;
             break;
         }
         else {
             /* update counters */
             if (bytesCopiedp)
-                *bytesCopiedp += code;
+                *bytesCopiedp += bytesSent;
             currentOffset += bytesPerPut;
         }
     }
 
     if (_cfsp->_verbose)
-        printf("sendFile: done code=%d\n", code);
+        printf("sendFile: done code=0\n");
 
-    return code;
+    /* note that non-zero codes have already been handled */
+    return 0;
 }
 
 void
@@ -1446,8 +1495,9 @@ CfsMs::retryRpcError( CfsLog::OpType type,
         return 1;
 }
 
-/* nore that retryError deletes the json structure and nulls out the pointer if
- * it returns true (continue).
+/* note that retryError deletes the json structure and nulls out the pointer if
+ * it returns 0 (continue).  Otherwise, we're done, and the final return code is
+ * returned.
  */
 int
 CfsMs::retryError( CfsLog::OpType type,
@@ -1464,15 +1514,21 @@ CfsMs::retryError( CfsLog::OpType type,
     _stalledErrors <<= 1;
 
     if (reqp->getError() != 0) {
+        code = 1000000 + reqp->getError();
         if (_logp)
-            _logp->logError(type, 1000000+reqp->getError(), "RPC error", "");
+            _logp->logError(type, code, "RPC error", "");
         _stats._xapiErrors++;
+        retryStatep->_finalCode = code;
         return 0;
     }
-    else if (httpError >= 200 && httpError < 300)
+    else if (httpError >= 200 && httpError < 300) {
+        retryStatep->_finalCode = CFS_ERR_OK;
         return 0;
-    else if (httpError == 404)
+    }
+    else if (httpError == 404) {
+        retryStatep->_finalCode = CFS_ERR_NOENT;
         return 0;
+    }
 
     std::string shortError;
     std::string longError;
@@ -1496,6 +1552,7 @@ CfsMs::retryError( CfsLog::OpType type,
         if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
             _logp->logError(type, httpError, shortError, longError);
             _stats._mysteryErrors++;
+            retryStatep->_finalCode = CFS_ERR_SERVER;
             return 0;
         }
         else {
@@ -1511,6 +1568,7 @@ CfsMs::retryError( CfsLog::OpType type,
         _stats._authRequired++;
         if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
             _logp->logError(type, httpError, "too many auth errors ", longError);
+            retryStatep->_finalCode = CFS_ERR_ACCESS;
             return 0;
         }
 
@@ -1520,12 +1578,14 @@ CfsMs::retryError( CfsLog::OpType type,
             if (_logp)
                 _logp->logError(type, httpError, "authentication error " + shortError, longError);
             _loginCookiep->logout();
+            retryStatep->_finalCode = CFS_ERR_ACCESS;
             return 0;
         }
         code = _loginCookiep->refresh();
         if (code) {
             if (_logp)
                 _logp->logError(type, code, "authentication refresh " + shortError, longError);
+            retryStatep->_finalCode = CFS_ERR_ACCESS;
         }
         return (code == 0);
     }
@@ -1533,6 +1593,7 @@ CfsMs::retryError( CfsLog::OpType type,
         _stats._busy409++;
         if (retryStatep->_retries++ >= CfsRetryError::_maxRetries) {
             _logp->logError(type, httpError, "too many 409's " + shortError, longError);
+            retryStatep->_finalCode = CFS_ERR_TIMEDOUT;
             return 0;
         }
         else {
@@ -1562,6 +1623,7 @@ CfsMs::retryError( CfsLog::OpType type,
         _stats._mysteryErrors++;
         if (_logp)
             _logp->logError(type, httpError, shortError, longError);
+        retryStatep->_finalCode = CFS_ERR_SERVER;
         return 0;
     }
 }

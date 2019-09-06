@@ -143,7 +143,8 @@ public:
                       CDataSource *sourcep,
                       uint64_t fileLength,
                       uint64_t byteOffset,
-                      uint32_t byteCount);
+                      uint32_t byteCount,
+                      uint32_t *bytesReadp);
 
     static int32_t abortSession( std::string *sessionUrlp);
 
@@ -177,9 +178,15 @@ class CfsRetryError {
      */
     static const uint32_t _maxRetries=6;
     uint32_t _retries;
+    int32_t _finalCode;
 
     CfsRetryError() {
         _retries = 0;
+        _finalCode = 0;
+    }
+
+    int32_t getCode() {
+        return _finalCode;
     }
 };
 
