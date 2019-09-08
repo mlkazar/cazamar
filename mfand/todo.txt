@@ -5,6 +5,16 @@ for lookup, not getattr.
 
 * move account for app registration to michael.kazar@verizon.net
 
+per backup item pause/stop, with icons and hovering
+
+have pause all, stop all as big buttons on bottom, next to add
+
+have auth failure show up as red warning, with time stamp on auth info so we can
+auto reset warning after a new login
+
+remove duplicate items from error log, perhaps add time stamp?  have error log reset
+on main/any restart
+
 ================
 
 cfssnap
