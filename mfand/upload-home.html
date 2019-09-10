@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 <style>
 h1 {text-align: center; color: blue}
 th {text-align: left;}
@@ -36,7 +37,7 @@ button {
 
 .container {
   padding: 16px;
-  background-color: rgba(255,192,0,1.0);
+  background-color: rgba(200,200,255,1.0);
   border: 2px solid black;
 }
 
@@ -86,6 +87,100 @@ function setEnabled(x) {
     xhttp.send();
 };
 
+function setSelected(x) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+        }
+    };
+    xhttp.open("GET", "setSelected?ix=" + x, true);
+    xhttp.send();
+};
+
+function popupAlert(str) {
+    var elt=document.createElement("div");
+    elt.setAttribute("style",
+        "position:fixed;top:50%;left:50%;width:60%;height:100px;margin-left:-30%;margin-top:-50px;background-color:rgba(200,200,255,1.0);border:3px solid blue;font-size:40px;");
+    elt.innerHTML = "<html><center>" + str + "</center></html>";
+    setTimeout( function() {
+                    elt.parentNode.removeChild(elt);
+                }, 2000);
+    document.body.appendChild(elt);
+};
+
+function startAll() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+	    popupAlert(xhttp.responseText);
+        }
+    };
+    xhttp.open("GET", "startAll", true);
+    xhttp.send();
+};
+
+function startSel() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+	    popupAlert(xhttp.responseText);
+        }
+    };
+    xhttp.open("GET", "startSel", true);
+    xhttp.send();
+};
+
+function pauseAll() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+	    popupAlert(xhttp.responseText);
+        }
+    };
+    xhttp.open("GET", "pauseAll", true);
+    xhttp.send();
+};
+
+function pauseSel() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+	    popupAlert(xhttp.responseText);
+        }
+    };
+    xhttp.open("GET", "pauseSel", true);
+    xhttp.send();
+};
+
+function stopAll() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+	    popupAlert(xhttp.responseText);
+        }
+    };
+    xhttp.open("GET", "stopAll", true);
+    xhttp.send();
+};
+
+function stopSel() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+	    popupAlert(xhttp.responseText);
+        }
+    };
+    xhttp.open("GET", "stopSel", true);
+    xhttp.send();
+};
+
 function updateStatusInternal() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
@@ -96,7 +191,7 @@ function updateStatusInternal() {
   };
   xhttp.open("GET", "statusData", true);
   xhttp.send();
-}
+};
 
 function updateStatus() {
   var xhttp = new XMLHttpRequest();
@@ -109,19 +204,37 @@ function updateStatus() {
   };
   xhttp.open("GET", "statusData", true);
   xhttp.send();
-}
+};
 
-window.onload=updateStatus
+window.onload=updateStatus;
 
 </script>
 
 <center>
 <div id="statusData">[No update yet]</div>
 <p>
+<div class="homeButton" style="width:30%">
 <button type="button" onclick="updateStatusInternal()">Update status now</button>
+</div>
 <p>
+<div class="homeButton" style="width:30%">
 <button onclick="document.getElementById('id01').style.display='block'" style="width:auto;">Add Backup Entry</button>
-
+</div>
+<p>
+<div class="homeButton" style="width:50%">
+<button type="button" style="width:25%" onclick="startSel()">Start/Resume Selected</button>
+<button type="button" style="width:25%" onclick="startAll()">Start/Resume All</button>
+</div>
+<p>
+<div class="homeButton" style="width:50%">
+<button type="button" style="width:25%" onclick="pauseSel()">Pause Selected</button>
+<button type="button" style="width:25%" onclick="pauseAll()">Pause All</button>
+</div>
+<p>
+<div class="homeButton" style="width:50%">
+<button type="button" style="width:25%" onclick="stopSel()">Stop Selected</button>
+<button type="button" style="width:25%" onclick="stopAll()">Stop All</button>
+</div>
 </center>
 
 <div id="id01" class="modal">

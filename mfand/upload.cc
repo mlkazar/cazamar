@@ -416,7 +416,6 @@ UploadReq::UploadHomeScreenMethod()
     UploadApp *uploadApp;
     SApiLoginCookie *contextp;
     std::string authToken;
-    int loggedIn = 0;
     std::string pathPrefix;
     std::string fileName;
     DIR *picDirp;
@@ -454,11 +453,7 @@ UploadReq::UploadHomeScreenMethod()
     }
     else {
         loginHtml += "Logged in<p><a href=\"/logoutScreen\">Logout</a>";
-        loggedIn = 1;
     }
-    loginHtml += "<p><a href=\"/startBackups\">Start/resume backup</a>";
-    loginHtml += "<p><a href=\"/pauseBackups\">Pause backup</a>";
-    loginHtml += "<p><a href=\"/stopBackups\">Stop backup</a>";
     sprintf(tbuffer, "<p><a href=\"/\" onclick=\"getBackupInt(); return false\">Set backup interval (%s)</a>", UploadApp::showInterval(uploadApp->_backupInterval).c_str());
     loginHtml += tbuffer;
     loginHtml += "<p><a href=\"/info\">Look inside</a>";
@@ -745,11 +740,10 @@ UploadApp::addConfigEntry( std::string cloudRoot,
 }
 
 void
-UploadReq::UploadStartScreenMethod()
+UploadReq::UploadStartAllScreenMethod()
 {
     char tbuffer[16384];
-    char *obufferp;
-    int32_t code;
+    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -758,12 +752,12 @@ UploadReq::UploadStartScreenMethod()
     UploadApp *uploadApp;
     SApiLoginCookie *loginCookiep;
     std::string authToken;
-    int loggedIn = 0;
     std::string fileName;
+    int startCode;
         
     if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
-        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">Home screen</a></html>");
-        obufferp = tbuffer;
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
     }
     else {
        /* this does a get if it already exists */
@@ -776,37 +770,297 @@ UploadReq::UploadStartScreenMethod()
             authToken = loginCookiep->getActive()->getAuthToken();
 
         if (authToken.length() == 0) {
-            strcpy(tbuffer, "<html>Must login before doing backups<p><a href=\"/\">Home screen</a></html>");
-            obufferp = tbuffer;
-            code = -1;
+            strcpy(tbuffer, "Must login before doing backups");
         }
         else {
-            fileName = uploadApp->_pathPrefix + "upload-start.html";
-            code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
-            if (code != 0) {
-                sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
-                obufferp = tbuffer;
-            }
-            else {
-                obufferp = const_cast<char *>(response.c_str());
-                loggedIn = 1;
-            }
+            startCode = uploadApp->startAll();
+            if (startCode)
+                strcpy(tbuffer, "Started backups");
+            else
+                strcpy(tbuffer, "Create some backup entries to start");
         }
     }
 
-    setSendContentLength(strlen(obufferp));
+    setSendContentLength(strlen(tbuffer));
 
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+    code = outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
 
-    if (loggedIn) {
-        uploadApp->start();
+}
+
+void
+UploadReq::UploadStartSelScreenMethod()
+{
+    char tbuffer[16384];
+    int32_t code=0;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    SApiLoginCookie *loginCookiep;
+    std::string authToken;
+    std::string fileName;
+    int startCode;
+        
+    tbuffer[0] = 0;
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
     }
+    else {
+       /* this does a get if it already exists */
+        loginCookiep = SApiLogin::createLoginCookie(this);
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
+
+        if (loginCookiep->getActive())
+            authToken = loginCookiep->getActive()->getAuthToken();
+
+        if (authToken.length() == 0) {
+            strcpy(tbuffer, "Must login before doing backups");
+        }
+        else {
+            startCode = uploadApp->startSel();
+            if (startCode)
+                strcpy(tbuffer, "Started backups");
+            else
+                strcpy(tbuffer, "Select backup entries to start");
+        }
+    }
+
+    setSendContentLength(strlen(tbuffer));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(tbuffer, strlen(tbuffer));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadReq::UploadPauseAllScreenMethod()
+{
+    char tbuffer[16384];
+    int32_t code=0;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    SApiLoginCookie *loginCookiep;
+    std::string authToken;
+    std::string fileName;
+    int startCode;
+        
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
+    }
+    else {
+       /* this does a get if it already exists */
+        loginCookiep = SApiLogin::createLoginCookie(this);
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
+
+        if (loginCookiep->getActive())
+            authToken = loginCookiep->getActive()->getAuthToken();
+
+        if (authToken.length() == 0) {
+            strcpy(tbuffer, "Must login before doing backups");
+        }
+        else {
+            startCode = uploadApp->pauseAll();
+            if (startCode)
+                strcpy(tbuffer, "Paused backups");
+            else
+                strcpy(tbuffer, "No entries selected to pause");
+        }
+    }
+
+    setSendContentLength(strlen(tbuffer));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(tbuffer, strlen(tbuffer));
+    outPipep->eof();
+    
+    requestDone();
+
+}
+
+void
+UploadReq::UploadPauseSelScreenMethod()
+{
+    char tbuffer[16384];
+    int32_t code=0;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    SApiLoginCookie *loginCookiep;
+    std::string authToken;
+    std::string fileName;
+    int startCode;
+        
+    tbuffer[0] = 0;
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
+    }
+    else {
+       /* this does a get if it already exists */
+        loginCookiep = SApiLogin::createLoginCookie(this);
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
+
+        if (loginCookiep->getActive())
+            authToken = loginCookiep->getActive()->getAuthToken();
+
+        if (authToken.length() == 0) {
+            strcpy(tbuffer, "Must login before doing backups");
+        }
+        else {
+            startCode = uploadApp->pauseSel();
+            if (startCode)
+                strcpy(tbuffer, "Paused selected backups");
+            else
+                strcpy(tbuffer, "Select backup entries to pause");
+        }
+    }
+
+    setSendContentLength(strlen(tbuffer));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(tbuffer, strlen(tbuffer));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadReq::UploadStopAllScreenMethod()
+{
+    char tbuffer[16384];
+    int32_t code=0;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    SApiLoginCookie *loginCookiep;
+    std::string authToken;
+    std::string fileName;
+    int startCode;
+        
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
+    }
+    else {
+       /* this does a get if it already exists */
+        loginCookiep = SApiLogin::createLoginCookie(this);
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
+
+        if (loginCookiep->getActive())
+            authToken = loginCookiep->getActive()->getAuthToken();
+
+        if (authToken.length() == 0) {
+            strcpy(tbuffer, "Must login before doing backups");
+        }
+        else {
+            startCode = uploadApp->stopAll();
+            if (startCode)
+                strcpy(tbuffer, "Stopped backups");
+            else
+                strcpy(tbuffer, "Create some backup entries to stop");
+        }
+    }
+
+    setSendContentLength(strlen(tbuffer));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(tbuffer, strlen(tbuffer));
+    outPipep->eof();
+    
+    requestDone();
+
+}
+
+void
+UploadReq::UploadStopSelScreenMethod()
+{
+    char tbuffer[16384];
+    int32_t code=0;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    SApiLoginCookie *loginCookiep;
+    std::string authToken;
+    std::string fileName;
+    int startCode;
+        
+    tbuffer[0] = 0;
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
+    }
+    else {
+       /* this does a get if it already exists */
+        loginCookiep = SApiLogin::createLoginCookie(this);
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
+
+        if (loginCookiep->getActive())
+            authToken = loginCookiep->getActive()->getAuthToken();
+
+        if (authToken.length() == 0) {
+            strcpy(tbuffer, "Must login before doing backups");
+        }
+        else {
+            startCode = uploadApp->stopSel();
+            if (startCode)
+                strcpy(tbuffer, "Stopped backups");
+            else
+                strcpy(tbuffer, "Select backup entries to stop");
+        }
+    }
+
+    setSendContentLength(strlen(tbuffer));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(tbuffer, strlen(tbuffer));
+    outPipep->eof();
+    
+    requestDone();
 }
 
 void
@@ -854,53 +1108,6 @@ UploadReq::UploadInfoScreenMethod()
 }
 
 void
-UploadReq::UploadStopScreenMethod()
-{
-    char tbuffer[16384];
-    char *obufferp;
-    int32_t code;
-    std::string response;
-    SApi::Dict dict;
-    Json json;
-    CThreadPipe *outPipep = getOutgoingPipe();
-    std::string loginHtml;
-    UploadApp *uploadApp;
-    std::string authToken;
-    std::string fileName;
-
-    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
-        strcpy(tbuffer, "<html>No app running to stop; visit home page first<p>"
-               "<a href=\"/\">Home screen</a></html>");
-        obufferp = tbuffer;
-    }
-    else {
-        fileName = uploadApp->_pathPrefix + "upload-stop.html";
-        code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
-
-        if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
-            obufferp = tbuffer;
-        }
-        else {
-            obufferp = const_cast<char *>(response.c_str());
-        }
-    }
-
-    setSendContentLength(strlen(obufferp));
-
-    /* reverse the pipe -- must know length, or have set content length to -1 by now */
-    inputReceived();
-    
-    code = outPipep->write(obufferp, strlen(obufferp));
-    outPipep->eof();
-    
-    requestDone();
-
-    if (uploadApp)
-        uploadApp->stop();
-}
-
-void
 UploadReq::UploadHelpPicsMethod()
 {
     char tbuffer[16384];
@@ -944,54 +1151,7 @@ UploadReq::UploadHelpPicsMethod()
     requestDone();
 
     if (uploadApp)
-        uploadApp->stop();
-}
-
-void
-UploadReq::UploadPauseScreenMethod()
-{
-    char tbuffer[16384];
-    char *obufferp;
-    int32_t code;
-    std::string response;
-    SApi::Dict dict;
-    Json json;
-    CThreadPipe *outPipep = getOutgoingPipe();
-    std::string loginHtml;
-    UploadApp *uploadApp;
-    std::string authToken;
-    std::string fileName;
-        
-    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
-        strcpy(tbuffer, "No app running to pause; visit home page first (1)<p>"
-               "<a href=\"/\">Home screen</a>");
-        obufferp = tbuffer;
-    }
-    else {
-        fileName = uploadApp->_pathPrefix + "upload-pause.html";
-        code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
-
-        if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
-            obufferp = tbuffer;
-        }
-        else {
-            obufferp = const_cast<char *>(response.c_str());
-        }
-    }
-
-    setSendContentLength(strlen(obufferp));
-
-    /* reverse the pipe -- must know length, or have set content length to -1 by now */
-    inputReceived();
-    
-    code = outPipep->write(obufferp, strlen(obufferp));
-    outPipep->eof();
-    
-    requestDone();
-
-    if (uploadApp)
-        uploadApp->pause();
+        uploadApp->stopAll();
 }
 
 void
@@ -1010,7 +1170,7 @@ UploadReq::UploadStatusDataMethod()
     std::string bytesString;
     std::string errorsString;
     std::string skippedString;
-    std::string editString;
+    std::string selectString;
     std::string enabledString;
     std::string finishedString;
     Uploader *uploaderp;
@@ -1023,14 +1183,14 @@ UploadReq::UploadStatusDataMethod()
     }
     else {
         response = "<table style=\"width:80%\">";
-        response += "<tr><th>Local dir</th><th>Cloud dir</th><th>Files copied</th><th>"
+        response += "<tr><th>Select</th><th>Local dir</th><th>Cloud dir</th><th>"
+            "Files copied</th><th>"
             "Files skipped</th><th>"
             "Bytes @ dest</th><th>"
             "Failures</th><th>"
             "State</th><th>"
             "Finished at</th><th>"
-            "Enabled</th><th>"
-            "Edit</th></tr>\n";
+            "Enabled</th></tr>";
         for(i=0;i<UploadApp::_maxUploaders;i++) {
             ep = uploadApp->_uploadEntryp[i];
             if (!ep)
@@ -1048,9 +1208,11 @@ UploadReq::UploadStatusDataMethod()
                     i, (ep->_enabled? "Enabled" : "Disabled"));
             enabledString = std::string(tbuffer);
             finishedString = UploadApp::getDate(ep->_lastFinishedTime);
-            sprintf(tbuffer, "<a href=\"/\" onclick=\"delConfirm(%d); return false\">Delete</a>", i);
-            editString = std::string(tbuffer);
-            response += ("<tr><td>"+ep->_fsRoot+"</td><td>" +
+            sprintf(tbuffer, "<a href=\"/\" onclick=\"setSelected(%d); return false\">%s</a>",
+                    i, (ep->_selected? "<i class=\"material-icons\">check_box</i>" : "<i class=\"material-icons\">check_box_outline_blank</i>"));
+            selectString = std::string(tbuffer);
+            response += ("<tr><td>"+selectString+"</td><td>"+
+                         ep->_fsRoot+"</td><td>" +
                          ep->_cloudRoot+ "</td><td>" +
                          filesString + "</td><td>" +
                          skippedString + "</td><td>" +
@@ -1058,8 +1220,7 @@ UploadReq::UploadStatusDataMethod()
                          errorsString + "</td><td>" +
                          (uploaderp? uploaderp->getStatusString() : "Idle") + "</td><td>" +
                          finishedString + "</td><td>" +
-                         enabledString + "</td><td>" +
-                         editString + "</td></tr>\n");
+                         enabledString + "</td></tr>");
         }
         response += "</table>\n";
         obufferp = const_cast<char *>(response.c_str());
@@ -1502,6 +1663,57 @@ UploadReq::UploadSetEnabledConfigMethod()
     requestDone();
 }
 
+void
+UploadReq::UploadSetSelectedConfigMethod()
+{
+    char tbuffer[16384];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    dqueue<Rst::Hdr> *urlPairsp;
+    Rst::Hdr *hdrp;
+    int ix;
+    UploadEntry *ep;
+        
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app running to load config; visit home page first<p>"
+               "<a href=\"/\">Home screen</a></html>");
+    }
+    else {
+        strcpy(tbuffer, "DONE");
+    }
+    obufferp = tbuffer;
+
+    urlPairsp = getRstReq()->getUrlPairs();
+    ix = -1;
+    for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
+        if (hdrp->_key == "ix") {
+            ix = atoi(hdrp->_value.c_str());
+        }
+    }
+
+    if (ix >= 0 && ix < UploadApp::_maxUploaders) {
+        ep = uploadApp->_uploadEntryp[ix];
+        if (ep)
+            ep->_selected = !ep->_selected;
+    }
+
+    setSendContentLength(strlen(obufferp));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
 int32_t
 UploadApp::init(SApi *sapip, int single)
 {
@@ -1514,15 +1726,36 @@ UploadApp::init(SApi *sapip, int single)
     sapip->registerUrl("/", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadHomeScreenMethod);
-    sapip->registerUrl("/startBackups", 
+
+    sapip->registerUrl("/startAll", 
                        (SApi::RequestFactory *) &UploadReq::factory,
-                       (SApi::StartMethod) &UploadReq::UploadStartScreenMethod);
+                       (SApi::StartMethod) &UploadReq::UploadStartAllScreenMethod);
+    sapip->registerUrl("/startSel", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadStartSelScreenMethod);
+
+    sapip->registerUrl("/pauseAll", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadPauseAllScreenMethod);
+    sapip->registerUrl("/pauseSel", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadPauseSelScreenMethod);
+
+    sapip->registerUrl("/stopAll", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadStopAllScreenMethod);
+    sapip->registerUrl("/stopSel", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadStopSelScreenMethod);
+
+#if 0
     sapip->registerUrl("/stopBackups", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadStopScreenMethod);
     sapip->registerUrl("/pauseBackups", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadPauseScreenMethod);
+#endif
     sapip->registerUrl("/statusData", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadStatusDataMethod);
@@ -1538,6 +1771,9 @@ UploadApp::init(SApi *sapip, int single)
     sapip->registerUrl("/setEnabled", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadSetEnabledConfigMethod);
+    sapip->registerUrl("/setSelected", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadSetSelectedConfigMethod);
     sapip->registerUrl("/createEntry", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadCreateConfigMethod);

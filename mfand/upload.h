@@ -121,11 +121,17 @@ public:
 
     void UploadHomeScreenMethod();
 
-    void UploadStartScreenMethod();
+    void UploadStartAllScreenMethod();
 
-    void UploadStopScreenMethod();
+    void UploadStartSelScreenMethod();
 
-    void UploadPauseScreenMethod();
+    void UploadStopAllScreenMethod();
+
+    void UploadStopSelScreenMethod();
+
+    void UploadPauseAllScreenMethod();
+
+    void UploadPauseSelScreenMethod();
 
     void UploadStatusDataMethod();
 
@@ -136,6 +142,8 @@ public:
     void UploadDeleteConfigMethod();
 
     void UploadHelpPicsMethod();
+
+    void UploadSetSelectedConfigMethod();
 
     void UploadSetEnabledConfigMethod();
 
@@ -165,6 +173,7 @@ public:
     uint32_t _lastFinishedTime;
     uint8_t _enabled;
     uint8_t _manual;
+    uint8_t _selected;
 
     UploadEntry() {
         _uploaderp = NULL;
@@ -172,6 +181,7 @@ public:
         _lastFinishedTime = 0;
         _enabled = 1;
         _manual = 0;
+        _selected = 0;
     }
 
     ~UploadEntry();
@@ -426,7 +436,51 @@ public:
 
     int32_t setEnabledConfig(int32_t ix);
 
-    void stop() {
+    int stopSel() {
+        uint32_t i;
+        UploadEntry *ep;
+        Uploader *uploaderp;
+        int rcode = 0;
+
+        _entryLock.take();
+        for(i=0; i<_maxUploaders; i++) {
+            ep = _uploadEntryp[i];
+            if (!ep || !ep->_selected)
+                continue;
+            uploaderp = ep->_uploaderp;
+            if (!uploaderp)
+                continue;
+            ep->_manual = 1;
+            rcode = 1;
+            uploaderp->stop();
+        }
+        _entryLock.release();
+        return rcode;
+    }
+
+    int pauseSel() {
+        uint32_t i;
+        UploadEntry *ep;
+        Uploader *uploaderp;
+        int rcode = 0;
+
+        _entryLock.take();
+        for(i=0; i<_maxUploaders; i++) {
+            ep = _uploadEntryp[i];
+            if (!ep || !ep->_selected)
+                continue;
+            uploaderp = ep->_uploaderp;
+            if (!uploaderp)
+                continue;
+            ep->_manual = 1;
+            uploaderp->pause();
+            rcode = 1;
+        }
+        _entryLock.release();
+        return rcode;
+    }
+
+    int stopAll() {
         uint32_t i;
         UploadEntry *ep;
         Uploader *uploaderp;
@@ -443,12 +497,14 @@ public:
             uploaderp->stop();
         }
         _entryLock.release();
+        return 1;
     }
 
-    void pause() {
+    int pauseAll() {
         uint32_t i;
         UploadEntry *ep;
         Uploader *uploaderp;
+        int rcode;
 
         _entryLock.take();
         for(i=0; i<_maxUploaders; i++) {
@@ -460,15 +516,30 @@ public:
                 continue;
             ep->_manual = 1;
             uploaderp->pause();
+            rcode = 1;
         }
         _entryLock.release();
+        return rcode;
     }
 
     void startEntry(UploadEntry *ep);
 
-    void start() {
+    void start(uint32_t ix) {
+        UploadEntry *ep;
+
+        _entryLock.take();
+        if (ix < _maxUploaders) {
+            ep = _uploadEntryp[ix];
+            ep->_manual = 0;
+            startEntry(ep);
+        }
+        _entryLock.release();
+    }
+
+    int startAll() {
         UploadEntry *ep;
         uint32_t i;
+        int rcode = 0;
 
         _entryLock.take();
         for(i=0; i<_maxUploaders; i++) {
@@ -476,9 +547,29 @@ public:
             if (ep) {
                 ep->_manual = 0;
                 startEntry(ep);
+                rcode = 1;
             }
         }
         _entryLock.release();
+        return rcode;
+    }
+
+    int startSel() {
+        UploadEntry *ep;
+        uint32_t i;
+        int rcode = 0;
+
+        _entryLock.take();
+        for(i=0; i<_maxUploaders; i++) {
+            ep = _uploadEntryp[i];
+            if (ep && ep->_selected) {
+                ep->_manual = 0;
+                startEntry(ep);
+                rcode = 1;
+            }
+        }
+        _entryLock.release();
+        return rcode;
     }
 
     static void stateChanged(void *contextp);
