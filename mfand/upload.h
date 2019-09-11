@@ -152,6 +152,10 @@ public:
     void UploadBackupIntervalMethod();
 
     void UploadInfoScreenMethod();
+
+    void UploadZapBothTokensMethod();
+
+    void UploadZapAuthTokenMethod();
 };
 
 class UploadErrorEntry {
@@ -325,7 +329,7 @@ public:
         Status status = getStatus();
         if (status == STOPPED) {
             if (_stopReason == REASON_AUTH)
-                return "ReLogin";
+                return "<font color=\"red\">ReLogin</font>";
             else
                 return "Stopped";
         }

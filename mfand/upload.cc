@@ -956,6 +956,102 @@ UploadReq::UploadPauseSelScreenMethod()
 }
 
 void
+UploadReq::UploadZapAuthTokenMethod()
+{
+    char tbuffer[16384];
+    int32_t code=0;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    SApiLoginCookie *loginCookiep;
+    SApiLoginGeneric *tokenInfop;
+    std::string authToken;
+    std::string fileName;
+        
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
+    }
+    else {
+       /* this does a get if it already exists */
+        loginCookiep = SApiLogin::createLoginCookie(this);
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
+
+        tokenInfop = loginCookiep->getActive();
+        if (tokenInfop) {
+            tokenInfop->testDamaged(/* damage both */ 1);
+            strcpy(tbuffer, "Tokens zapped");
+        }
+        else {
+            strcpy(tbuffer, "No token holder found");
+        }
+    }
+
+    setSendContentLength(strlen(tbuffer));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(tbuffer, strlen(tbuffer));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadReq::UploadZapBothTokensMethod()
+{
+    char tbuffer[16384];
+    int32_t code=0;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    SApiLoginCookie *loginCookiep;
+    SApiLoginGeneric *tokenInfop;
+    std::string authToken;
+    std::string fileName;
+        
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
+    }
+    else {
+       /* this does a get if it already exists */
+        loginCookiep = SApiLogin::createLoginCookie(this);
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
+
+        tokenInfop = loginCookiep->getActive();
+        if (tokenInfop) {
+            tokenInfop->testDamaged(/* damage both */ 1);
+            strcpy(tbuffer, "Tokens zapped");
+        }
+        else {
+            strcpy(tbuffer, "No token holder found");
+        }
+    }
+
+    setSendContentLength(strlen(tbuffer));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(tbuffer, strlen(tbuffer));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
 UploadReq::UploadStopAllScreenMethod()
 {
     char tbuffer[16384];
@@ -1786,6 +1882,12 @@ UploadApp::init(SApi *sapip, int single)
     sapip->registerUrl("/helpPics", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadHelpPicsMethod);
+    sapip->registerUrl("/zapAuthToken", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadZapAuthTokenMethod);
+    sapip->registerUrl("/zapBothTokens", 
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadZapBothTokensMethod);
 
     _cdisp = new CDisp();
     _cdisp->init(single? 1 : 24);   /*24*/
@@ -1911,16 +2013,28 @@ UploadApp::Log::logError( CfsLog::OpType type,
                           std::string longErrorString) {
     UploadApp *up = _uploadApp;
     UploadErrorEntry *ep;
+    UploadErrorEntry *lastEp;
 
     printf("Operation %d httpCode=%d '%s'\n",
            type, httpError, errorString.c_str());
+ 
+    up->_lock.take();
+
+    lastEp = up->_errorEntries.tail();
+    if (lastEp && (lastEp->_httpError == httpError &&
+                   lastEp->_shortError == errorString &&
+                   lastEp->_longError == longErrorString)) {
+        /* just a duplicate */
+        up->_lock.release();
+        return;
+    }
+
     ep = new UploadErrorEntry();
     ep->_op = CfsLog::opToString(type);
     ep->_httpError = httpError;
     ep->_shortError = errorString;
     ep->_longError = longErrorString;
 
-    up->_lock.take();
     up->_errorEntries.append(ep);
 
     /* and don't let us queue too many; just keep the most recent maxErrorEntries */
