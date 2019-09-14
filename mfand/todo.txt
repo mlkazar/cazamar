@@ -9,7 +9,7 @@ for lookup, not getattr.
 
 * have pause all, stop all as big buttons on bottom, next to add
 
-have auth failure show up as red warning, with time stamp on auth info so we can
+* have auth failure show up as red warning, with time stamp on auth info so we can
 auto reset warning after a new login
 
 * remove duplicate items from error log, perhaps add time stamp?  have error log reset

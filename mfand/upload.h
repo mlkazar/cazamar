@@ -508,7 +508,7 @@ public:
         uint32_t i;
         UploadEntry *ep;
         Uploader *uploaderp;
-        int rcode;
+        int rcode=0;
 
         _entryLock.take();
         for(i=0; i<_maxUploaders; i++) {
@@ -575,6 +575,10 @@ public:
         _entryLock.release();
         return rcode;
     }
+
+    int authProblems();
+
+    void resetAuthProblems();
 
     static void stateChanged(void *contextp);
 

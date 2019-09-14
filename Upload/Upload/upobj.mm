@@ -68,6 +68,6 @@ void
 Upload::backup()
 {
     if (_uploadApp) {
-	_uploadApp->start();
+	_uploadApp->startAll();
     }
 }

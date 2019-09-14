@@ -424,6 +424,8 @@ UploadReq::UploadHomeScreenMethod()
         
     uploadApp = UploadApp::getGlobalApp();
 
+    uploadApp->resetAuthProblems();
+
     /* this does a get if it already exists */
     contextp = SApiLogin::createLoginCookie(this);
     contextp->enableSaveRestore();
@@ -1278,7 +1280,10 @@ UploadReq::UploadStatusDataMethod()
         obufferp = tbuffer;
     }
     else {
-        response = "<table style=\"width:80%\">";
+        if (uploadApp->authProblems()) {
+            response += "<a href=\"/helpPics\"><font color=\"red\">WARNING: saved login info appears to have expired; logout and login again; click for more info</font></a><p>";
+        }
+        response += "<table style=\"width:80%\">";
         response += "<tr><th>Select</th><th>Local dir</th><th>Cloud dir</th><th>"
             "Files copied</th><th>"
             "Files skipped</th><th>"
@@ -2004,6 +2009,38 @@ UploadEntry::stop() {
     while(!_uploaderp->isIdle()) {
         sleep(1);
     }
+}
+
+void
+UploadApp::resetAuthProblems()
+{
+    uint32_t i;
+    Uploader *up;
+
+    for(i=0;i<_maxUploaders;i++) {
+        up = (_uploadEntryp[i] ? _uploadEntryp[i]->_uploaderp : NULL);
+        if (up && up->_status == Uploader::STOPPED && up->_stopReason == Uploader::REASON_AUTH) {
+            up->_stopReason = Uploader::REASON_DONE;
+        }
+    }
+}
+
+int
+UploadApp::authProblems()
+{
+    uint32_t i;
+    int rcode = 0;
+    Uploader *up;
+
+    for(i=0;i<_maxUploaders;i++) {
+        up = (_uploadEntryp[i] ? _uploadEntryp[i]->_uploaderp : NULL);
+        if (up && up->_status == Uploader::STOPPED && up->_stopReason == Uploader::REASON_AUTH) {
+            rcode = 1;
+            break;
+        }
+    }
+
+    return rcode;
 }
 
 void
