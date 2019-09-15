@@ -89,6 +89,7 @@ class Rst {
         uint8_t _inboundData;   /* PUT or POST */
         uint8_t _outboundData;  /* GET */
         uint8_t _isPost;
+        uint8_t _sawDataRecently;
 
         int32_t rcvData();
 
