@@ -335,6 +335,9 @@ CnodeMs::lookup(std::string name, int forceBackend, Cnode **childpp, CEnv *envp)
         break;
     }
 
+    if (reqp)
+        delete reqp;
+
     return code;
 }
 
@@ -494,7 +497,8 @@ CnodeMs::sendSmallFile(std::string name, CDataSource *sourcep, CEnv *envp)
         break;
     }
 
-    osp_assert(reqp == NULL);
+    if (reqp)
+        delete reqp;
 
     if (jnodep) {
         delete jnodep;
@@ -653,7 +657,8 @@ CnodeMs::mkdir(std::string name, Cnode **newDirpp, CEnv *envp)
         jnodep = NULL;
     }
 
-    osp_assert(reqp == NULL);
+    if (reqp)
+        delete reqp;
 
     if (code)
         *newDirpp = NULL;
@@ -761,6 +766,9 @@ CnodeMs::fillAttrs( CEnv *envp, CnodeLockSet *lockSetp)
         code = 0;
         break;
     }
+
+    if (reqp)
+        delete reqp;
 
     if (_cfsp->_verbose)
         printf("fillAttrs: id='%s' done code=%d\n", _id.c_str(), code);
@@ -908,7 +916,9 @@ CnodeMs::startSession( std::string name,
         delete jnodep;
         jnodep = NULL;
     }
-    osp_assert(reqp == NULL);
+
+    if (reqp)
+        delete reqp;
 
     return code;
     
@@ -1021,14 +1031,17 @@ CnodeMs::sendData( std::string *sessionUrlp,
         break;
     }
 
+    if (reqp)
+        delete reqp;
+
     if (jnodep) {
         delete jnodep;
         jnodep = NULL;
     }
+
     if (dataBufferp) {
         delete [] dataBufferp;
     }
-    osp_assert(reqp == NULL);
 
     if (code == 0) {
         *bytesReadp = actuallyReadCount;
