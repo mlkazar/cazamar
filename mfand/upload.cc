@@ -1957,7 +1957,7 @@ UploadApp::startEntry(UploadEntry *ep) {
     Uploader *uploaderp;
     Uploader::Status upStatus;
 
-    if (!ep || !ep->_enabled || !_loginCookiep || !_loginCookiep->_loginMSp)
+    if (!ep || !_loginCookiep || !_loginCookiep->_loginMSp)
         return;
     uploaderp = ep->_uploaderp;
 

@@ -534,8 +534,10 @@ public:
         _entryLock.take();
         if (ix < _maxUploaders) {
             ep = _uploadEntryp[ix];
-            ep->_manual = 0;
-            startEntry(ep);
+            if (ep && ep->_enabled) {
+                ep->_manual = 0;
+                startEntry(ep);
+            }
         }
         _entryLock.release();
     }
@@ -548,7 +550,7 @@ public:
         _entryLock.take();
         for(i=0; i<_maxUploaders; i++) {
             ep = _uploadEntryp[i];
-            if (ep) {
+            if (ep && ep->_enabled) {
                 ep->_manual = 0;
                 startEntry(ep);
                 rcode = 1;
