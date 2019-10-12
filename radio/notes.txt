@@ -9,8 +9,6 @@ WRCT http://stream.wrct.org:8000/wrct-hi.mp3
 tunein
 
 get set of addresses:
-curl http://provisioning.streamtheworld.com/pls/WYEPFMaac.pls
-curl http://provisioning.streamtheworld.com/pls/WYEPaac.pls
 
 curl http://playerservices.streamtheworld.com/pls/WERSFMAAC.pls
 also works
