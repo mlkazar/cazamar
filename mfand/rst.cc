@@ -645,6 +645,7 @@ Rst::Call::callExpired(OspTimer *timerp, void *contextp)
      * abort based on a timeout.
      */
     if (callp->_sawDataRecently) {
+        callp->_sawDataRecently = 0;
         callp->_timerp = new OspTimer();
         callp->_timerp->init(60000, &Rst::Call::callExpired, callp);
         _timerMutex.release();

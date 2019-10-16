@@ -440,8 +440,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Upload/Upload.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Upload/Info.plist;
@@ -457,6 +459,7 @@
 					"$(inherited)",
 					/Users/kazar/mac/lib,
 				);
+				MARKETING_VERSION = 1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.Upload;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -467,8 +470,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Upload/Upload.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Upload/Info.plist;
@@ -484,6 +489,7 @@
 					"$(inherited)",
 					/Users/kazar/mac/lib,
 				);
+				MARKETING_VERSION = 1.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.Upload;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

@@ -967,9 +967,12 @@ CnodeMs::sendData( std::string *sessionUrlp,
                      fileLength - byteOffset :
                      byteCount);
         actuallyReadCount = sourcep->read( byteOffset, readCount, dataBufferp);
-        if (actuallyReadCount == 0)
+        if (actuallyReadCount == 0) {
+            connp->setBusy(0);  /* marked busy by getConn */
             break;
+        }
         if (actuallyReadCount < 0) {
+            connp->setBusy(0);  /* marked busy by getConn */
             code = CFS_ERR_IO;
             break;
         }

@@ -249,6 +249,12 @@ CfsLog::opToString(OpType type)
         case opSendFile:
             result = "sendFile";
             break;
+        case opPosix:
+            result = "posix error";
+            break;
+        case opMisc:
+            result = "misc";
+            break;
         default:
             result = "badOp";
             break;

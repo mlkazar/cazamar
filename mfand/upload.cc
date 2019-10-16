@@ -330,9 +330,11 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
             up->_filesCopied++;         /* dir created */
         }
         else {
-            if (code != 17)
+            if (code != 17) {
                 printf("Upload: mkdir failed with code=%d path=%s\n",
                        (int) code, pathp->c_str());
+                logError(code, "mkdir failed", *pathp);
+            }
             up->_filesSkipped++;        /* dir exists */
             if (up->checkAbort(code))
                 return 0;
@@ -344,6 +346,7 @@ Uploader::mainCallback(void *contextp, std::string *pathp, struct stat *statp)
         code = dataFile.open(pathp->c_str());
         if (code != 0) {
             up->_fileCopiesFailed++;
+            logError(code, "failed to open regular file", *pathp);
             printf("Upload: failed to open file %s\n", pathp->c_str());
             up->checkAbort(code);
             return code;
@@ -400,6 +403,14 @@ Uploader::checkAbort(int32_t code)
     }
 
     return 0;
+}
+
+void
+Uploader::logError(int32_t code, std::string errorString, std::string longErrorString) {
+    UploadApp *app = UploadApp::getGlobalApp();
+    if (app) {
+        app->_log.logError(CfsLog::opPosix, code, errorString, longErrorString);
+    }
 }
 
 void
@@ -653,6 +664,7 @@ UploadApp::writeConfig(std::string pathPrefix)
     return code;
 }
 
+/* must be called with entry lock */
 int32_t
 UploadApp::deleteConfigEntry(int32_t ix)
 {
@@ -661,16 +673,13 @@ UploadApp::deleteConfigEntry(int32_t ix)
     if (ix < 0 || ix >= _maxUploaders)
         return -1;
 
-    _entryLock.take();
     if ((ep = _uploadEntryp[ix]) == NULL) {
-        _entryLock.release();
         return -2;
     }
 
     ep->stop();
     _uploadEntryp[ix] = NULL;
     delete ep;
-    _entryLock.release();
     return 0;
 }
 
@@ -835,6 +844,60 @@ UploadReq::UploadStartSelScreenMethod()
                 strcpy(tbuffer, "Started backups");
             else
                 strcpy(tbuffer, "Select backup entries to start");
+        }
+    }
+
+    setSendContentLength(strlen(tbuffer));
+
+    /* reverse the pipe -- must know length, or have set content length to -1 by now */
+    inputReceived();
+    
+    code = outPipep->write(tbuffer, strlen(tbuffer));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+UploadReq::UploadDeleteSelScreenMethod()
+{
+    char tbuffer[16384];
+    int32_t code=0;
+    std::string response;
+    SApi::Dict dict;
+    Json json;
+    CThreadPipe *outPipep = getOutgoingPipe();
+    std::string loginHtml;
+    UploadApp *uploadApp;
+    SApiLoginCookie *loginCookiep;
+    std::string authToken;
+    std::string fileName;
+    int startCode;
+        
+    tbuffer[0] = 0;
+    if ((uploadApp = UploadApp::getGlobalApp()) == NULL) {
+        strcpy(tbuffer, "<html>No app; visit home page first<p><a href=\"/\">"
+               "Home screen</a></html>");
+    }
+    else {
+       /* this does a get if it already exists */
+        loginCookiep = SApiLogin::createLoginCookie(this);
+        /* don't care about this, since we're using a global login cookie */
+        // loginCookiep->enableSaveRestore();
+        // uploadApp->setGlobalLoginCookie(loginCookiep);
+
+        if (loginCookiep->getActive())
+            authToken = loginCookiep->getActive()->getAuthToken();
+
+        if (authToken.length() == 0) {
+            strcpy(tbuffer, "Must login before doing backups");
+        }
+        else {
+            startCode = uploadApp->deleteSel();
+            if (startCode)
+                strcpy(tbuffer, "Deleted entries");
+            else
+                strcpy(tbuffer, "Select backup entries to delete");
         }
     }
 
@@ -1893,6 +1956,9 @@ UploadApp::init(SApi *sapip, int single)
     sapip->registerUrl("/zapBothTokens", 
                        (SApi::RequestFactory *) &UploadReq::factory,
                        (SApi::StartMethod) &UploadReq::UploadZapBothTokensMethod);
+    sapip->registerUrl("/deleteSel",
+                       (SApi::RequestFactory *) &UploadReq::factory,
+                       (SApi::StartMethod) &UploadReq::UploadDeleteSelScreenMethod);
 
     _cdisp = new CDisp();
     _cdisp->init(single? 1 : 24);   /*24*/

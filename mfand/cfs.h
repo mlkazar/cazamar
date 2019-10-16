@@ -59,7 +59,10 @@ class CfsLog {
         opClose,
         opRead,
         opWrite,
-        opSendFile} OpType;
+        opSendFile,
+        opPosix,
+        opMisc,
+    } OpType;
 
     virtual void logError( OpType type,
                            int32_t httpCode,

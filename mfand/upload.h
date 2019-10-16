@@ -143,6 +143,8 @@ public:
 
     void UploadHelpPicsMethod();
 
+    void UploadDeleteSelScreenMethod();
+
     void UploadSetSelectedConfigMethod();
 
     void UploadSetEnabledConfigMethod();
@@ -348,6 +350,8 @@ public:
                         uint64_t *bytesCopiedp,
                         uint64_t *totalFilesp,
                         uint64_t *totalBytesp);
+
+    static void logError(int32_t code, std::string errorString, std::string longErrorString);
 };
 
 /* these fields should all be indexed by a cookie dictionary hanging
@@ -439,6 +443,23 @@ public:
     int32_t deleteConfigEntry(int32_t ix);
 
     int32_t setEnabledConfig(int32_t ix);
+
+    int deleteSel() {
+        uint32_t i;
+        UploadEntry *ep;
+        int rcode = 0;
+
+        _entryLock.take();
+        for(i=0; i<_maxUploaders; i++) {
+            ep = _uploadEntryp[i];
+            if (!ep || !ep->_selected)
+                continue;
+            deleteConfigEntry(i);
+            rcode = 1;
+        }
+        _entryLock.release();
+        return rcode;
+    }
 
     int stopSel() {
         uint32_t i;

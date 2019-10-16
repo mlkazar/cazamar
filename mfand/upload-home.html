@@ -157,6 +157,18 @@ function pauseSel() {
     xhttp.send();
 };
 
+function deleteSel() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == 4 && xhttp.status == 200) {
+            updateStatusInternal();
+	    popupAlert(xhttp.responseText);
+        }
+    };
+    xhttp.open("GET", "deleteSel", true);
+    xhttp.send();
+};
+
 function stopAll() {
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
@@ -219,6 +231,10 @@ window.onload=updateStatus;
 <p>
 <div class="homeButton" style="width:30%">
 <button onclick="document.getElementById('id01').style.display='block'" style="width:auto;">Add Backup Entry</button>
+</div>
+<p>
+<div class="homeButton" style="width:30%">
+<button type="button" onclick="deleteSel()">Delete Selected Entries</button>
 </div>
 <p>
 <div class="homeButton" style="width:50%">
