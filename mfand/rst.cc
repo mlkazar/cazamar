@@ -54,6 +54,7 @@ Rst::Common::rcvData()
                 release();
                 return code;
             }
+            _sawDataRecently = 1;
             tbuffer[code] = 0;
             chunkBytes = nbytes = (int32_t) strtol(tbuffer, NULL, 16);
 
@@ -89,8 +90,9 @@ Rst::Common::rcvData()
             }
 
             /* watch for "EOF" chunk */
-            if (chunkBytes == 0)
+            if (chunkBytes == 0) {
                 break;
+            }
 
         } /* loop over all chunks */
         if (!indicatedEof) {
@@ -121,6 +123,7 @@ Rst::Common::rcvData()
                 /* short read, we'll treat that as OK for now */
                 break;
             }
+            _sawDataRecently = 1;
             tlen = code;
 
             if (_rcvProcp && !_closed) {
@@ -210,6 +213,7 @@ Rst::Common::sendData()
             code = socketp->write("\r\n", 2);
             if (code != 2)
                 return RST_ERR_IO;
+            _sawDataRecently = 1;
         }
         code = socketp->write("0\r\n", 3);      /* last chunk */
         if (code != 3)
@@ -242,6 +246,7 @@ Rst::Common::sendData()
             if (code != nbytes) {
                 return RST_ERR_IO;
             }
+            _sawDataRecently = 1;
         }
         socketp->flush();
         osp_assert(remaining == 0);
@@ -358,6 +363,7 @@ Rst::Common::Common()
     _headersDoneProcp = NULL;
     _contextp = NULL;
     _error = 0;
+    _sawDataRecently = 0;
     _httpError = 0;
     _rcvContentLength = 0;
     _sendContentLength = 0;
@@ -635,6 +641,16 @@ Rst::Call::callExpired(OspTimer *timerp, void *contextp)
         return;
     }
     
+    /* if data is still flowing for this call, either in or out, don't
+     * abort based on a timeout.
+     */
+    if (callp->_sawDataRecently) {
+        callp->_timerp = new OspTimer();
+        callp->_timerp->init(60000, &Rst::Call::callExpired, callp);
+        _timerMutex.release();
+        return;
+    }
+
     /* canceled by timer system on callback */
     callp->_timerp = NULL;
 

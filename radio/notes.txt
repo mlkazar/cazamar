@@ -9,8 +9,9 @@ WRCT http://stream.wrct.org:8000/wrct-hi.mp3
 tunein
 
 get set of addresses:
-curl http://provisioning.streamtheworld.com/pls/WYEPFMaac.pls
-curl http://provisioning.streamtheworld.com/pls/WYEPaac.pls
+
+curl http://playerservices.streamtheworld.com/pls/WERSFMAAC.pls
+also works
 
 ----
 
@@ -28,6 +29,9 @@ http://iheart.com/live/<number> and when you get a 301, the location
 header gives the real URL, which will be something like
 /live/kiss-108-1097, i.e. tells you it is Kiss 108.  The <title> line
 under <head> will give a better description (Boston's Hit Radio Station).
+
+http://www.radiosure.com/rsdbms/stations2.zip
+gets you the big file
 
 ----
 

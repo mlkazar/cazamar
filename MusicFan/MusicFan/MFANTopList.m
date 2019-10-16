@@ -462,7 +462,7 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
 
 	tableFrame = _appFrame;
 	if (_channelType == MFANChannelRadio)
-	    nbuttons = 4;
+	    nbuttons = 3;
 	else if (_channelType == MFANChannelPodcast)
 	    nbuttons = 7;
 	else {
@@ -505,22 +505,22 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
 	    buttonGap = (_appFrame.size.width - _buttonWidth) / (nbuttons-1);
 	    nextButtonX = _appFrame.origin.x;
 	}
-
-	/* now layout the clear/done/cancel buttons */
-	tframe.origin.x = nextButtonX;
-	tframe.origin.y = nextButtonY;
-	tframe.size.width = _buttonWidth;
-	tframe.size.height = _buttonHeight;
-	_editButton = [[MFANIconButton alloc] initWithFrame: tframe
-					      title: @"+Media"
-					      color: [MFANTopSettings baseColor]
-					      file: @"icon-add.png"];
-	[self addSubview: _editButton];
-	[_editButton addCallback: self
-		     withAction: @selector(editPressed:)];
-	nextButtonX += buttonGap;
-
+	
 	if (_channelType != MFANChannelRadio) {
+	    /* now layout the clear/done/cancel buttons */
+	    tframe.origin.x = nextButtonX;
+	    tframe.origin.y = nextButtonY;
+	    tframe.size.width = _buttonWidth;
+	    tframe.size.height = _buttonHeight;
+	    _editButton = [[MFANIconButton alloc] initWithFrame: tframe
+						  title: @"+Media"
+						  color: [MFANTopSettings baseColor]
+						  file: @"icon-add.png"];
+	    [self addSubview: _editButton];
+	    [_editButton addCallback: self
+			 withAction: @selector(editPressed:)];
+	    nextButtonX += buttonGap;
+
 	    tframe.origin.x = nextButtonX;
 	    tframe.origin.y = nextButtonY;
 	    tframe.size.width = _buttonWidth;

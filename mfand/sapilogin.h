@@ -80,10 +80,12 @@ public:
 
     virtual void setAuthToken(std::string newStr) {
         _authToken = newStr;
+        _changeCounter++;
     }
 
     virtual void setRefreshToken(std::string newStr) {
         _refreshToken = newStr;
+        _changeCounter++;
     }
 
     /* by default, login mechanisms don't support refresh tokens */
@@ -96,6 +98,7 @@ public:
     std::string _finalUrl;      /* URL to switch to when authentication done */
     std::string _authId;        /* ID used as key in key server */
     SApiLoginCookie *_cookiep;
+    uint32_t _changeCounter;
 
 #ifdef __linux__
     random_data _randomBuf;
@@ -104,6 +107,7 @@ public:
 
     SApiLoginGeneric() {
         _cookiep = NULL;
+        _changeCounter = 0;
 #ifdef __linux__
         _randomBuf.state = NULL;
         initstate_r(time(0) + getpid(),
@@ -116,6 +120,17 @@ public:
     }
 
     SApiLoginCookie *getCookie();
+
+    void testDamaged(int doRefresh) {
+        _authToken = std::string("Jello Biafra");
+        if (doRefresh) {
+            _refreshToken = std::string("Gang of Four");
+        }
+    }
+
+    uint32_t getChangeCounter() {
+        return _changeCounter;
+    }
 
     void logout() {
         _authToken.erase();
