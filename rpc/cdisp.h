@@ -164,6 +164,8 @@ class CDisp {
     void tryDispatches();
 
  public:
+    int32_t queueOrExecute(CDispTask *taskp);
+
     void getStats( CDispStats *statsp);
 
     int32_t init(uint32_t ntasks);

@@ -206,4 +206,43 @@ class CThreadHandle {
     static void *startWrapper(void *contextp);
 };
 
+/* basic semaphore class.  The p function waits if _counter <= 0, and then decrements
+ * the counter by its argument if _counter > 0.  The v function increments the counter.
+ */
+class CThreadSema {
+    public:
+    int32_t _counter;
+    CThreadMutex _lock;
+    CThreadCV _cv;
+
+    CThreadSema() : _cv(&_lock) {
+        _counter = 0;
+    }
+
+    void init(int32_t counter) {
+        _counter = counter;
+    }
+
+    void p(int32_t ct=1) {
+        _lock.take();
+        while(ct > 0) {
+            if (_counter > 0) {
+                _counter--;
+                ct--;
+            }
+            else {
+                _cv.wait();
+            }
+        }
+        _lock.release();
+    }
+
+    void v(int32_t ct=1) {
+        _lock.take();
+        _counter += ct;
+        _lock.release();
+        _cv.broadcast();
+    }
+};
+
 #endif /* __CTHREAD_H_ENV__ */
