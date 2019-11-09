@@ -459,7 +459,7 @@
 					"$(inherited)",
 					/Users/kazar/mac/lib,
 				);
-				MARKETING_VERSION = 1.7;
+				MARKETING_VERSION = 1.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.Upload;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -489,7 +489,7 @@
 					"$(inherited)",
 					/Users/kazar/mac/lib,
 				);
-				MARKETING_VERSION = 1.7;
+				MARKETING_VERSION = 1.8;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.Upload;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
