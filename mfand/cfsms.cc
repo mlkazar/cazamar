@@ -1099,7 +1099,7 @@ CnodeMs::sendFile( std::string name,
     /* MS claims in docs that multiples of this are only safe values;
      * commenters don't believe them.
      */
-    uint32_t bytesPerPut = 320*1024;
+    uint32_t bytesPerPut = 12*320*1024;
     
     code = startSession( name, &sessionUrl);
     if (code) {

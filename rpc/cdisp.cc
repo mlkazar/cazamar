@@ -78,8 +78,10 @@ CDispHelper::start(void *contextp)
         osp_assert(taskp->_inQueue == CDispTask::_queueActive);
         taskp->_inQueue = CDispTask::_queueNone;
         disp->_activeTasks.remove(taskp);
-        osp_assert(group->_activeCount > 0);
-        group->_activeCount--;
+        if (group) {
+            osp_assert(group->_activeCount > 0);
+            group->_activeCount--;
+        }
         osp_assert(disp->_activeCount > 0);
         disp->_activeCount--;
 
@@ -106,7 +108,8 @@ CDispHelper::start(void *contextp)
         /* check if this group's tasks have completed, and if so, run
          * the dispatcher.
          */
-        group->checkCompletionNL(disp);
+        if (group)
+            group->checkCompletionNL(disp);
 
         disp->_lock.release();
 
@@ -197,6 +200,39 @@ CDisp::queueTask(CDispTask *taskp, int head)
     tryDispatches();
 
     return 0;
+}
+
+/* External: queue or do a function immediately, depending upon if we can
+ * find an idle worker.
+ *
+ * Return 0 if queued, 1 if done immediately.
+ */
+int32_t
+CDisp::queueOrExecute(CDispTask *taskp)
+{
+    CDispHelper *helperp;
+
+    _lock.take();
+    if ((helperp = _availableHelpers.pop()) != NULL) {
+        _activeCount++;
+        _activeTasks.append(taskp);
+        taskp->_inQueue = CDispTask::_queueActive;
+        _activeHelpers.append(helperp);
+        helperp->_inQueue = CDispHelper::_queueActive;
+
+        taskp->_group = NULL;
+        taskp->_disp = this;
+        osp_assert(helperp->_taskp == NULL);
+        helperp->_taskp = taskp;
+        helperp->_cv.broadcast();
+        _lock.release();
+        return 0;
+    }
+    else {
+        _lock.release();
+        taskp->start();
+        return 1;
+    }
 }
 
 /* External: called with a task to queue for this group, and a boolean
