@@ -2,6 +2,7 @@
 #include <string>
 #include <unistd.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #include "sapi.h"
 #include "xapi.h"
@@ -76,6 +77,8 @@ public:
 
     void AppleLoginMethod();
 
+    void RetrievalMethod();
+
     void sendResponse(uint32_t error, const char *errorp, const char *responsep);
 };
 
@@ -95,6 +98,73 @@ main(int argc, char **argv)
     server(argc-2, argv+2, port);
 
     return 0;
+}
+
+void
+AppleLoginReq::RetrievalMethod()
+{
+    // Rst::Hdr *hdrp;
+    std::string response;
+    SApi::Dict dict;
+    Rst::Hdr *hdrp;
+    dqueue<Rst::Hdr> *urlPairsp;
+    std::string id;
+    FILE *filep;
+    char tbuffer[4096];
+    struct stat tstat;
+    uint32_t nbytes;
+    int32_t code;
+    CThreadPipe *pipep;
+    
+#if 0
+    for(hdrp = getRecvHeaders(); hdrp; hdrp=hdrp->_dqNextp) {
+        printf("Header %s:%s\n", hdrp->_key.c_str(), hdrp->_value.c_str());
+    }
+#endif
+    
+    urlPairsp = _rstReqp->getUrlPairs();
+    for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
+        if (strcasecmp(hdrp->_key.c_str(), "id") == 0) {
+            id = hdrp->_value;
+        }
+    }
+
+    if (id.length() == 0) {
+        sendResponse(100, "no 'id' string", "");
+        return;
+    }
+    
+    filep = fopen(id.c_str(), "r");
+    if (!filep) {
+        sendResponse(500, "Ugh -- file not found", "");
+        return;
+    }
+
+    code = fstat(fileno(filep), &tstat);
+    if (code < 0) {
+        sendResponse(500, "Ugh -- file not found", "");
+        return;
+    }
+
+    nbytes = tstat.st_size;
+    setSendContentLength(nbytes);
+
+    inputReceived();
+
+    pipep = getOutgoingPipe();
+    filep = fopen(id.c_str(), "r");
+    while(nbytes > 0) {
+        code = fread(tbuffer, 1, sizeof(tbuffer), filep);
+        if (code > 0)
+            pipep->write(tbuffer, code);
+
+        if (code != sizeof(tbuffer))
+            break;
+    }
+    pipep->eof();
+    requestDone();
+    fclose(filep);
+
 }
 
 void
@@ -380,6 +450,12 @@ server(int argc, char **argv, int port)
     sapip->registerUrl("/keyData", 
                        (SApi::RequestFactory *) &AppleLoginReq::factory,
                        (SApi::StartMethod) &AppleLoginReq::AppleLoginKeyDataMethod);
+
+    /* simple file retrieval scheme */
+    sapip->registerUrl("/get",
+                       (SApi::RequestFactory *) &AppleLoginReq::factory,
+                       (SApi::StartMethod) &AppleLoginReq::RetrievalMethod);
+
     sapip->initWithPort(port);
 
     cp = new CThreadHandle();
