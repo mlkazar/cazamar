@@ -1,0 +1,16 @@
+				Intro
+
+Maintain separate set of directories with references to object IDs to
+other dirs and files, so that we can handle renames.  Note that moving
+objects between directories doesn't seem to work in cloud (looks like
+it copies the tree).  Renaming without moving a directory, OTOH, seems
+to do just that, without a copy.
+
+				Design
+
+We maintain a tree of our own CFSX directories.  A CFSX dir contains a
+collection of names and corresponding object IDs (not paths, but the
+IDs that both Google and MS assign to objects).  The names are stored
+as UTF8 strings, so we don't have to worry about the litany of file
+names that are illegal in various cloud drive systems.
+

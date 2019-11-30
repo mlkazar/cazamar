@@ -514,6 +514,11 @@ BufTls::flush()
     if (nbytes == 0)
         return 0;
 
+    if (!_sslp) {
+        disconnect();
+        return 0;
+    }
+
     while(1) {
         code = SSL_write(_sslp, _outp->data(), nbytes);
         if (code != nbytes) {
