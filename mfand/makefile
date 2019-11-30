@@ -1,4 +1,4 @@
-all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libupload.a liblfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest walktest uptest
+all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libupload.a liblfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest walktest uptest scantest
 
 install: all *.h
 	cp *.h ../include/.
@@ -25,7 +25,7 @@ endif
 RSTINCLS=rst.h bufsocket.h bufgen.h buftls.h jsdb.h
 
 INCLS=../include/*.h mfclient.h mfdata.h mfand.h $(RSTINCLS) radiostream.h xapi.h xapipool.h \
-strdb.h upnp.h radixtree.h streams.h sapi.h sapilogin.h upload.h
+strdb.h upnp.h radixtree.h streams.h sapi.h sapilogin.h upload.h radioscan.h
 
 liboauth.a: oahash.o oauth.o oasha1.o oapass.o oaxmalloc.o
 	ar cru liboauth.a oahash.o oauth.o oasha1.o oapass.o oaxmalloc.o 
@@ -61,6 +61,8 @@ libupload.a: upload.o
 rst.o: $(RSTINCLS)
 
 radiostream.o: radiostream.cc $(INCLS)
+
+radioscan.o: radioscan.cc $(INCLS)
 
 streams.o: streams.cc $(INCLS)
 
@@ -123,9 +125,20 @@ jsdbtest: jsdbtest.o libjsdb.a ../lib/libext.a ../lib/libcore.a
 
 strdb.o: strdb.cc $(INCLS)
 
+scantest.o: scantest.cc $(INCLS)
+
+radioscan.o: radioscan.cc $(INCLS)
+
 strload: strload.o strdb.o radiostream.o libstream.a librst.a liboauth.a libjsdb.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSXVERSION) -o strload strload.o strdb.o radiostream.o libstream.a \
 	    librst.a liboauth.a libjsdb.a ../lib/libext.a ../lib/libcore.a -lpthread
+
+scantest: scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a
+ifeq ($(OS),Linux)
+	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a -lssl -lcrypto -lpthread
+else
+	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
+endif
 
 ifeq ($(OS),Linux)
 xapitest: xapitest.o librst.a ../lib/libext.a ../lib/libcore.a
@@ -183,8 +196,8 @@ walktest: walktest.o liblfs.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSXVERSION) -o walktest walktest.o liblfs.a ../lib/libext.a ../lib/libcore.a
 endif
 
-libstream.a: radiostream.o
-	ar cru libstream.a radiostream.o
+libstream.a: radiostream.o radioscan.o
+	ar cru libstream.a radiostream.o radioscan.o
 	ranlib libstream.a
 
 mfand: mfand.o ../lib/librpc.a libmf.a ../lib/libext.a ../lib/libcore.a
