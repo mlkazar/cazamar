@@ -542,6 +542,10 @@ XApi::ClientReq::callRecvProc( void *contextp,
         return 0;
     }
 
+    if (clientReqp->_incomingDatap->atEof()) {
+        return -1;
+    }
+
     clientReqp->_incomingDatap->write(bufferp, dataSize);
     return 0;
 }
@@ -608,6 +612,21 @@ XApi::ClientReq::startMethod()
                         headersDoneProc,
                         allDoneProc,
                         this);
+}
+
+/* returns 0 on success, and valuep is a pointer to a string in the request */
+int32_t
+XApi::ClientReq::findIncomingHeader(const char *headerp, std::string *valuep)
+{
+    Rst::Hdr *hdrp;
+    for(hdrp = _recvHeaders.head(); hdrp; hdrp=hdrp->_dqNextp) {
+        if (strcasecmp(headerp, hdrp->_key.c_str()) == 0) {
+            *valuep = hdrp->_value;
+            return 0;
+        }
+    }
+
+    return -1;
 }
 
 /* note that we have to delete the ClientReq after each call to xapipool::getconn, since

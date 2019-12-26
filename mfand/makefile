@@ -133,11 +133,11 @@ strload: strload.o strdb.o radiostream.o libstream.a librst.a liboauth.a libjsdb
 	c++ $(OSXVERSION) -o strload strload.o strdb.o radiostream.o libstream.a \
 	    librst.a liboauth.a libjsdb.a ../lib/libext.a ../lib/libcore.a -lpthread
 
-scantest: scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a
+scantest: scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a ../lib/libext.a
 ifeq ($(OS),Linux)
-	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a -lssl -lcrypto -lpthread
+	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a ../lib/libext.a -lssl -lcrypto -lpthread
 else
-	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
+	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
 endif
 
 ifeq ($(OS),Linux)

@@ -156,7 +156,10 @@ class XApi : public CThread {
             _mutex.release();
             _doneCV.broadcast();
         }
-
+        
+        void reset() {
+            _bufGenp->disconnect();
+        }
     };
 
     /* The user begin by creating a new XApi::ClientReq, adding any
@@ -259,6 +262,8 @@ class XApi : public CThread {
         }
 
         void addHeader(const char *keyp, const char *valuep);
+
+        int32_t findIncomingHeader(const char *keyp, std::string *valuep);
 
     private:
         /* called internally to start helper userThread, which runs the HTTP 

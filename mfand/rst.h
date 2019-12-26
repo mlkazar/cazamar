@@ -304,7 +304,8 @@ class Rst {
     static int32_t splitUrl( std::string url,
                              std::string *hostp,
                              std::string *pathp,
-                             uint16_t *defaultPortp = 0);
+                             uint16_t *defaultPortp = 0,
+                             int *isSecure = 0);
 
     static void freeHeaders(HdrQueue *hqp);
 

@@ -301,7 +301,6 @@ BufSocket::disconnect()
 
     _connected = 0;
     _closed = 1;
-    // printf("bufsocket close fd=%d\n", _s);
     if (_s >= 0)
         ::close(_s);
     _s = -1;

@@ -1174,6 +1174,7 @@
 					"$(inherited)",
 					/Users/kazar/mac/rpc,
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Cazamar.DJ-To-Go";
 				PRODUCT_NAME = AudioGalaxy;
 				PROVISIONING_PROFILE = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1196,6 +1197,7 @@
 					"$(inherited)",
 					/Users/kazar/mac/rpc,
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.Cazamar.DJ-To-Go";
 				PRODUCT_NAME = AudioGalaxy;
 				PROVISIONING_PROFILE = "";
 				TARGETED_DEVICE_FAMILY = "1,2";

@@ -111,7 +111,12 @@ Rst::Common::rcvData()
         return 0;
     }
     else {
-        nbytes = _rcvContentLength;
+        if (_rcvContentLength == -2) {
+            nbytes = 0x7FFFFFFF; /* max signed -- hitting EOF will tell us we're done */
+        }
+        else {
+            nbytes = _rcvContentLength;
+        }
         while(nbytes > 0) {
             tlen = (nbytes > (signed) sizeof(tbuffer)? sizeof(tbuffer) : nbytes);
             code = socketp->read(tbuffer, tlen);
@@ -314,7 +319,7 @@ Rst::Common::parseCommonHeaders()
     std::string cookieLine;
 
     /* if we get here, all of the headers have been received; parse out the interesting ones */
-    _rcvContentLength = 0;
+    _rcvContentLength = -2;
     for(hdrp = _rcvHeadersp->head(); hdrp; hdrp=hdrp->_dqNextp) {
         if (strcasecmp(hdrp->_key.c_str(), "content-type") == 0) {
             _rcvContentType = hdrp->_value;
@@ -437,12 +442,17 @@ Rst::Call::init( const char *relPathp,
 }
 
 /* static */ int32_t
-Rst::splitUrl(std::string url, std::string *hostp, std::string *pathp, uint16_t *defaultPortp)
+Rst::splitUrl( std::string url, 
+               std::string *hostp,
+               std::string *pathp,
+               uint16_t *defaultPortp,
+               int *isSecurep)
 {
     char *tp;
     char *urlStrp;
     char *portp;
     uint16_t defaultPort;
+    int isSecure = 0;
 
     urlStrp = const_cast<char *>(url.c_str());
 
@@ -455,6 +465,7 @@ Rst::splitUrl(std::string url, std::string *hostp, std::string *pathp, uint16_t 
         url.erase(0,8);
         urlStrp = const_cast<char *>(url.c_str());
         defaultPort = 443;
+        isSecure = 1;
     }
     else {
         defaultPort = 80;
@@ -479,6 +490,10 @@ Rst::splitUrl(std::string url, std::string *hostp, std::string *pathp, uint16_t 
 
     if (defaultPortp)
         *defaultPortp = defaultPort;
+
+    if (isSecurep)
+        *isSecurep = isSecure;
+
     return 0;
 }
 
