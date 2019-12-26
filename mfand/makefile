@@ -6,7 +6,8 @@ install: all *.h
 
 clean:
 	rm -f *.o *.a mfand mfanc stream strload ssls sslc jsdbtest \
-          upnptest rcv.mp3 xapitest idtest sapitest apptest cfstest keyserv walktest uptest
+          upnptest rcv.mp3 xapitest idtest sapitest apptest cfstest keyserv \
+	  walktest uptest scantest stations.checked
 
 OS=$(shell uname -s)
 
