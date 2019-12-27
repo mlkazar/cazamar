@@ -52,7 +52,9 @@ class RadioScanStation {
     public:
         Entry *_dqNextp;
         Entry *_dqPrevp;
+        uint32_t _streamRateKb;    /* station stream rate in kbits/second */
         std::string _streamUrl;
+        std::string _streamType;
         int8_t _alive;  /* -1 means unknown, 0 is no, 1 is yes */
     };
 
@@ -66,6 +68,9 @@ class RadioScanStation {
     std::string _stationShortDescr;
     RadioScanStation *_dqNextp;
     RadioScanStation *_dqPrevp;
+    std::string _stationSource;
+    uint32_t _streamRateKb;    /* station stream rate in kbits/second */
+    std::string _streamType;
 
     void init(RadioScanQuery *queryp) {
         _queryp = queryp;
@@ -77,7 +82,7 @@ class RadioScanStation {
         _queryp->_stations.remove(this);
     }
 
-    void addEntry(const char *streamUrlp);
+    void addEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb);
 
     int32_t streamApply(std::string url, streamUrlProc *urlProcp, void *urlContextp);
 

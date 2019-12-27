@@ -8,6 +8,7 @@
 #include "radioscan.h"
 #include "buftls.h"
 #include "json.h"
+#include "xgml.h"
 
 /* stupid statics */
 CThreadMutex RadioScan::_lock;
@@ -23,10 +24,12 @@ RadioScan::init(CDisp *disp)
 
     _dirBufp = new BufTls("");
     _dirBufp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7700);
+    _dirBufp->setTimeoutMs(15000);
     _dirConnp = _xapip->addClientConn(_dirBufp);
 
     _stwBufp = new BufSocket();
     _stwBufp->init(const_cast<char *>("playerservices.streamtheworld.com"), 80);
+    _stwBufp->setTimeoutMs(15000);
     _stwConnp = _xapip->addClientConn(_stwBufp);
 
     RadioScanLoadTask *loadTaskp;
@@ -117,7 +120,9 @@ RadioScanStation::streamApply( std::string url, streamUrlProc *urlProcp, void *u
                 isPls = 1;
             else if (hasISubstr("url", contentType))
                 isUrl = 1;
-            else 
+            else if (hasISubstr("audio/mpeg", contentType) ||
+                     hasISubstr("audio/aacp", contentType) ||
+                     hasISubstr("audio/mp3", contentType))
                 isStream = 1;
         }
         else {
@@ -127,6 +132,17 @@ RadioScanStation::streamApply( std::string url, streamUrlProc *urlProcp, void *u
         }
 
         if (isStream) {
+            std::string brValue;
+
+            /* before calling callback, set the stream rate and type in the station,
+             * which the callback may use to define the stream.
+             */
+            _streamType = contentType;
+            code = reqp->findIncomingHeader("icy-br", &brValue);
+            if (code == 0) {
+                _streamRateKb = atoi(brValue.c_str());
+            }
+
             /* this will terminate the RST call when data is next delivered on
              * the socket and RST attempts to deliver it to us.
              */
@@ -218,7 +234,9 @@ RadioScan::retrieveContents(std::string url , std::string *strp)
             /* redirect */
             code = reqp->findIncomingHeader("location", &url);
             delete reqp;
+            reqp = NULL;
             delete bufGenp;
+            bufGenp = NULL;
             if (code) {
                 return code;
             }
@@ -226,6 +244,8 @@ RadioScan::retrieveContents(std::string url , std::string *strp)
         }
 
         if (httpError < 200 || httpError >= 300) {
+            delete reqp;
+            delete bufGenp;
             return -1;
         }
 
@@ -340,7 +360,7 @@ RadioScanStation::parsePls( const char *resultp,
              */
             skipPastEol(&strp, &tlen);
 
-            (*urlProcp)(urlContextp, urlBuffer);
+            streamApply(std::string(urlBuffer), RadioScanStation::stwCallback, this);
             found = 1;
         }
         else {
@@ -385,7 +405,7 @@ RadioScanStation::parseUrl( const char *resultp,
              */
             skipPastEol(&strp, &tlen);
 
-            (*urlProcp)(urlContextp, urlBuffer);
+            streamApply(std::string(urlBuffer), RadioScanStation::stwCallback, this);
             found = 1;
         }
         else {
@@ -400,6 +420,7 @@ RadioScanStation::parseUrl( const char *resultp,
     return !found;
 }
 
+/* all words in sp1 must be present in sp2 to return true */
 /* static */int
 RadioScanStation::queryMatch(const char *sp1, const char *sp2)
 {
@@ -414,9 +435,10 @@ RadioScanStation::queryMatch(const char *sp1, const char *sp2)
     const char *ntp;
     int spaceIx;
     int tc;
+    int match;
 
-    /* divide both strings into words, and then match if case folded version of any match
-     * with any other.
+    /* divide both strings into words, and then match if case folded
+     * version of every word in p1 is somewhere in p2.
      */
     p1WordCount = 0;
     p2WordCount = 0;
@@ -478,18 +500,29 @@ RadioScanStation::queryMatch(const char *sp1, const char *sp2)
         tp = ntp;
     }
 
-    /* now do the n*k comparisons */
+    /* every word in p1 words must be present as one of the words in p2's list
+     * for us to return true.  Note that if p2 is empty, we should return false, not
+     * true, though our condition is vacuously true.
+     */
+    if (p2WordCount == 0 || p1WordCount == 0)
+        return 0;
+
     for(i=0;i<p1WordCount;i++) {
+        match = 0;
         for(j=0;j<p2WordCount;j++) {
-            if (strcasecmp(p1Words[i],p2Words[j]) == 0) {
-                /* found a match */
-                return 1;
+            if (strcasecmp(p1Words[i], p2Words[j]) == 0) {
+                match = 1;
+                break;
             }
         }
+        /* if match is 0, we didn't find a match for p1Words[i] in
+         * p2Words, so we return false.
+         */
+        if (!match)
+            return 0;
     }
 
-    /* no matches here */
-    return 0;
+    return 1;
 }
 
 /* split line by \t characters; last may be terminated by \r, \n or
@@ -614,6 +647,7 @@ RadioScanQuery::searchFile()
             /* set these so that addEntry has some useful defaults */
             stationp->_stationName = std::string(stationName);
             stationp->_stationShortDescr = std::string(stationShortDescr);
+            stationp->_stationSource = std::string("tunein file");
 
             for(i=0;i<6;i++) {
                 if (addr[i][0] != '-') {
@@ -629,7 +663,107 @@ RadioScanQuery::searchFile()
 int32_t
 RadioScanQuery::searchShoutcast()
 {
-    return -1;
+    int32_t code;
+    char tbuffer[4096];
+    const char *keyStringp = "HF3T2bjHaPcadpSG";
+    std::string data;
+    char *datap;
+    const char *tp;
+    int eatingSpaces;
+    int32_t count;
+    Xgml xgmlSys;
+    Xgml::Node *xgmlNodep;
+    Xgml::Node *childListp;
+    Xgml::Attr *attrNodep;
+    const char *stationNamep;
+    const char *stationGenrep;
+    const char *basep;
+    uint32_t stationId;
+    int tc;
+    RadioScanStation *stationp;
+
+    sprintf(tbuffer, "http://api.shoutcast.com/legacy/stationsearch?k=%s&limit=100&search=",
+            keyStringp);
+
+    /* concatenate words from search string, with spaces turned into '+' characters */
+    eatingSpaces = 1;
+    count = 0;
+    for(tp = _query.c_str(); count < sizeof(tbuffer) - 1024; tp++) {
+        tc = *tp;
+        if (tc == 0)
+            break;
+        if (tc == ' ') {
+            if (eatingSpaces)
+                continue;
+            else {
+                eatingSpaces = 1;
+                strcat(tbuffer, "+");
+                count++;
+            }
+        }
+        else {
+            char dummy[2];
+            dummy[0] = tc;
+            dummy[1] = 0;
+            strcat(tbuffer, dummy);
+            count++;
+            eatingSpaces = 0;
+        }
+    }
+
+    code = _scanp->retrieveContents(std::string(tbuffer), &data);
+
+    datap = const_cast<char *>(data.c_str());
+    code = xgmlSys.parse(&datap, &xgmlNodep);
+    if (code) {
+        printf("xml parse failed\n");
+        return -1;
+    }
+
+    basep = "/sbin/tunein-station.pls";
+    childListp = xgmlNodep->searchForChild("tunein");
+    if (childListp) {
+        for(attrNodep = childListp->_attrs.head(); attrNodep; attrNodep = attrNodep->_dqNextp) {
+            if (strcmp(attrNodep->_name.c_str(), "base") == 0) {
+                basep = attrNodep->_value.c_str();
+                break;
+            }
+        }
+    }
+
+    for(childListp = xgmlNodep->_children.head(); childListp; childListp=childListp->_dqNextp) {
+        if (strcmp(childListp->_name.c_str(), "station") == 0) {
+            for( attrNodep = childListp->_attrs.head(); 
+                 attrNodep; 
+                 attrNodep = attrNodep->_dqNextp) {
+                if (strcmp(attrNodep->_name.c_str(), "name") == 0) {
+                    stationNamep = attrNodep->_value.c_str();
+                }
+                else if (strcmp(attrNodep->_name.c_str(), "genre") == 0) {
+                    stationGenrep = attrNodep->_value.c_str();
+                }
+                else if (strcmp(attrNodep->_name.c_str(), "id") == 0) {
+                    stationId = atoi(attrNodep->_value.c_str());
+                }
+            } /* loop over all attrs */
+
+            /* now make a call to get the station attributes, including the stream URL */
+            sprintf(tbuffer, "http://yp.shoutcast.com%s?id=%d", basep, stationId);
+
+            stationp = new RadioScanStation();
+            stationp->init(this);
+
+            /* set these so that addEntry has some useful defaults */
+            stationp->_stationName = std::string(stationNamep);
+            stationp->_stationShortDescr = std::string(stationGenrep);
+            stationp->_stationSource = std::string("shoutcast");
+
+            stationp->streamApply(std::string(tbuffer), RadioScanStation::stwCallback, stationp);
+            /* tbuffer names the playlist file, so add the stream */
+        } /* this is a station record */
+    } /* loop over all stations */
+
+    return 0;
 }
 
 int32_t
@@ -685,6 +819,8 @@ RadioScanQuery::searchDar()
     /* set these so that addEntry has some useful defaults */
     stationp->_stationName = _query;
     stationp->_stationShortDescr = stationShortDescr;
+    stationp->_stationSource = std::string("dar.fm");
+
     stationp->streamApply(url, RadioScanStation::stwCallback, stationp);
 
     return 0;
@@ -694,8 +830,17 @@ RadioScanQuery::searchDar()
 RadioScanStation::stwCallback(void *contextp, const char *urlp)
 {
     RadioScanStation *stationp = (RadioScanStation *)contextp;
+    const char *streamTypep;
     
-    stationp->addEntry(urlp);
+    /* add streamRateKb, stream type; stored temporarily */
+    if (stationp->_streamType == "audio/mp3" || stationp->_streamType == "audio/mpeg")
+        streamTypep = "MP3";
+    else if (stationp->_streamType == "audio/aacp")
+        streamTypep = "AAC";
+    else
+        streamTypep = stationp->_streamType.c_str();
+
+    stationp->addEntry(urlp, streamTypep, stationp->_streamRateKb);
     
     return 0;
 }
@@ -713,6 +858,7 @@ RadioScanQuery::searchStreamTheWorld()
     stationp->init(this);
     stationp->_stationName = _query;
     stationp->_stationShortDescr = "FM Radio";
+    stationp->_stationSource = std::string("StreamTheWorld FM");
     sprintf(tbuffer, "http://playerservices.streamtheworld.com/pls/%sFMAAC.pls", _query.c_str());
     code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp);
     if (code || stationp->_entries.count() == 0) {
@@ -724,6 +870,7 @@ RadioScanQuery::searchStreamTheWorld()
     stationp->init(this);
     stationp->_stationName = _query;
     stationp->_stationShortDescr = "AM Radio";
+    stationp->_stationSource = std::string("StreamTheWorld AM");
     sprintf(tbuffer, "http://playerservices.streamtheworld.com/pls/%sAMAAC.pls", _query.c_str());
     code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp);
     if (code || stationp->_entries.count() == 0) {
@@ -883,7 +1030,7 @@ RadioScanStation::del()
  * 'http://foo.com/bar.pls'
  */
 void
-RadioScanStation::addEntry(const char *streamUrlp) 
+RadioScanStation::addEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb)
 {
     Entry *ep;
 
@@ -896,6 +1043,8 @@ RadioScanStation::addEntry(const char *streamUrlp)
     ep = new Entry();
     ep->_streamUrl = std::string(streamUrlp);
     ep->_alive = -1;
+    ep->_streamRateKb = streamRateKb;
+    ep->_streamType = typep;
     _scanp->takeLock();
     _entries.append(ep);
     _scanp->releaseLock();
