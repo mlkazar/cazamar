@@ -21,7 +21,7 @@ RadioScan::init(BufGenFactory *factoryp)
     _factoryp = factoryp;
     _xapip = new XApi();
 
-    _dirBufp = factoryp->allocate(1);
+    _dirBufp = factoryp->allocate(0);
     if (_dirBufp) {
         _dirBufp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7701);
         _dirBufp->setTimeoutMs(15000);
