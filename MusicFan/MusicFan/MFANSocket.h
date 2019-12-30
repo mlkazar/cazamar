@@ -98,6 +98,6 @@ class MFANSocket : public BufGen {
 };
 
 class MFANSocketFactory : public BufGenFactory {
-    BufGen *allocate();
+    BufGen *allocate(int secure);
 };
 #endif /* __MFANSOCKET_H_ENV__ */

@@ -567,9 +567,12 @@ MFANSocket::setTimeoutMs(uint32_t ms)
 }
 
 BufGen *
-MFANSocketFactory::allocate()
+MFANSocketFactory::allocate(int secure)
 {
-    return new MFANSocket();
+    if (secure)
+        return NULL;
+    else
+        return new MFANSocket();
 }
 
 void

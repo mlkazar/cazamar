@@ -6,7 +6,7 @@
 
 #include "osp.h"
 #include "radioscan.h"
-#include "buftls.h"
+
 #include "json.h"
 #include "xgml.h"
 
@@ -14,28 +14,36 @@
 CThreadMutex RadioScan::_lock;
 
 void
-RadioScan::init(CDisp *disp)
+RadioScan::init(BufGenFactory *factoryp)
 {
-    _cdisp = disp;
-    _cdispGroup = new CDispGroup();
-    _cdispGroup->init(_cdisp);
+    CThreadHandle *loadHandlep;
 
+    _factoryp = factoryp;
     _xapip = new XApi();
 
-    _dirBufp = new BufTls("");
-    _dirBufp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7700);
-    _dirBufp->setTimeoutMs(15000);
-    _dirConnp = _xapip->addClientConn(_dirBufp);
+    _dirBufp = factoryp->allocate(1);
+    if (_dirBufp) {
+        _dirBufp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7700);
+        _dirBufp->setTimeoutMs(15000);
+        _dirConnp = _xapip->addClientConn(_dirBufp);
+    }
 
-    _stwBufp = new BufSocket();
+    _stwBufp = factoryp->allocate(0);
     _stwBufp->init(const_cast<char *>("playerservices.streamtheworld.com"), 80);
     _stwBufp->setTimeoutMs(15000);
     _stwConnp = _xapip->addClientConn(_stwBufp);
 
-    RadioScanLoadTask *loadTaskp;
-    loadTaskp = new RadioScanLoadTask();
-    loadTaskp->init(this);
-    _cdispGroup->queueTask(loadTaskp);
+    /* if we can't establish a connection to the file download source, don't start
+     * the loader task.
+     */
+    if (_dirBufp) {
+        RadioScanLoadTask *loadTaskp;
+        loadTaskp = new RadioScanLoadTask();
+        loadTaskp->init(this);
+    
+        loadHandlep = new CThreadHandle();
+        loadHandlep->init((CThread::StartMethod) &RadioScanLoadTask::start, loadTaskp, NULL);
+    }
 }
 
 /* start with the object at the URL, and resolve it until we get to an
@@ -71,12 +79,10 @@ RadioScanStation::streamApply( std::string url, streamUrlProc *urlProcp, void *u
         if (code)
             return code;
 
-        if (isSecure) {
-            bufGenp = new BufTls("");
-        }
-        else {
-            bufGenp = new BufSocket();
-        }
+        bufGenp = _scanp->_factoryp->allocate(isSecure);
+        if (!bufGenp)
+            return -2;
+
         bufGenp->init(const_cast<char *>(host.c_str()), defaultPort);
         bufGenp->setTimeoutMs(10000);
         clientConnp = _scanp->_xapip->addClientConn(bufGenp);
@@ -212,12 +218,11 @@ RadioScan::retrieveContents(std::string url , std::string *strp)
         if (code)
             return code;
 
-        if (isSecure) {
-            bufGenp = new BufTls("");
+        bufGenp = _factoryp->allocate(isSecure);
+        if (!bufGenp) {
+            return -1;
         }
-        else {
-            bufGenp = new BufSocket();
-        }
+
         bufGenp->init(const_cast<char *>(host.c_str()), defaultPort);
         bufGenp->setTimeoutMs(10000);
         connp = _xapip->addClientConn(bufGenp);
@@ -324,7 +329,7 @@ RadioScanStation::parsePls( const char *resultp,
     const char *strp;
     int32_t code;
 
-    tlen = strlen(resultp);
+    tlen = (int32_t) strlen(resultp);
     strp = resultp;
     found = 0;
     while(tlen > 0) {
@@ -351,7 +356,7 @@ RadioScanStation::parsePls( const char *resultp,
              * the new line is the web address.  The strcspn function returns the
              * character array index of the first EOL or null character in strp.
              */
-            code = strcspn(strp, "\r\n");
+            code = (int32_t) strcspn(strp, "\r\n");
             strncpy(urlBuffer, strp, code);
             urlBuffer[code] = 0;
 
@@ -387,7 +392,7 @@ RadioScanStation::parseUrl( const char *resultp,
     const char *strp;
     int32_t code;
 
-    tlen = strlen(resultp);
+    tlen = (int32_t) strlen(resultp);
     strp = resultp;
     found = 0;
     while(tlen > 0) {
@@ -396,7 +401,7 @@ RadioScanStation::parseUrl( const char *resultp,
              * the new line is the web address.  The strcspn function returns the
              * character array index of the first EOL or null character in strp.
              */
-            code = strcspn(strp, "\r\n");
+            code = (int32_t) strcspn(strp, "\r\n");
             strncpy(urlBuffer, strp, code);
             urlBuffer[code] = 0;
 
@@ -461,7 +466,7 @@ RadioScanStation::queryMatch(const char *sp1, const char *sp2)
             break;
         }
         else {
-            spaceIx = ntp-tp;
+            spaceIx = (int) (ntp-tp);
             strncpy(p1Words[i], tp, spaceIx);
             p1Words[i][spaceIx] = 0;
             p1WordCount = i+1;
@@ -490,7 +495,7 @@ RadioScanStation::queryMatch(const char *sp1, const char *sp2)
             break;
         }
         else {
-            spaceIx = ntp-tp;
+            spaceIx = (int)(ntp-tp);
             strncpy(p2Words[i], tp, spaceIx);
             p2Words[i][spaceIx] = 0;
             p2WordCount = i+1;
@@ -675,10 +680,10 @@ RadioScanQuery::searchShoutcast()
     Xgml::Node *xgmlNodep;
     Xgml::Node *childListp;
     Xgml::Attr *attrNodep;
-    const char *stationNamep;
-    const char *stationGenrep;
+    const char *stationNamep = NULL;
+    const char *stationGenrep = NULL;
     const char *basep;
-    uint32_t stationId;
+    uint32_t stationId=0;
     int tc;
     RadioScanStation *stationp;
 
@@ -712,6 +717,10 @@ RadioScanQuery::searchShoutcast()
     }
 
     code = _scanp->retrieveContents(std::string(tbuffer), &data);
+    if (code) {
+        printf("retrieval of '%s' failed\n", tbuffer);
+        return -2;
+    }
 
     datap = const_cast<char *>(data.c_str());
     code = xgmlSys.parse(&datap, &xgmlNodep);
@@ -889,6 +898,8 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     resp->init(this, query);
     *respp = resp;
 
+    resp->_baseStatus = std::string("Searching StreamTheWorld");
+
     /* if we have 4 character call letters like WESA, we use call
      * letter lookup with streamtheworld.
      */ 
@@ -896,11 +907,17 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
         resp->searchStreamTheWorld();
     }
 
+    resp->_baseStatus = std::string("Searching TuneIn file");
+
     /* add entries from the file */
     resp->searchFile();
 
+    resp->_baseStatus = std::string("Searching dar.fm");
+
     /* add entries from DAR.fm */
     resp->searchDar();
+
+    resp->_baseStatus = std::string("Searching Shoutcast");
 
     resp->searchShoutcast();
 
@@ -911,8 +928,8 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     *respp = resp;
 }
 
-int32_t
-RadioScanLoadTask::start()
+void
+RadioScanLoadTask::start(void *argp)
 {
     FILE *newFilep;
     char tbuffer[4096];
@@ -924,17 +941,19 @@ RadioScanLoadTask::start()
     struct stat tstat;
     uint32_t myTime;
     uint32_t fileMTime;
+    uint32_t httpError;
+    int failed = 0;
     
     code = stat("stations.checked", &tstat);
-    myTime = time(0);
+    myTime = (uint32_t) time(0);
 #ifdef __LINUX__
     fileMTime = tstat.st_mtim.tv_sec;
 #else
-    fileMTime = tstat.st_mtimespec.tv_sec;
+    fileMTime = (uint32_t) tstat.st_mtimespec.tv_sec;
 #endif
     if (code == 0 && fileMTime + 24*3600 > myTime) {
         printf("No download -- stations.checked is recent\n");
-        return 0;
+        return;
     }
 
     printf("Starting download\n");
@@ -943,24 +962,33 @@ RadioScanLoadTask::start()
     reqp->startCall(_scanp->_dirConnp, "/get?id=stations.rsd", /* isGet */ XApi::reqGet);
     
     code = reqp->waitForHeadersDone();
+    if (code == 0) {
+        httpError=reqp->getHttpError();
+    }
+    else
+        httpError = 999;
 
     inPipep = reqp->getIncomingPipe();
 
     totalBytes = 0;
-    if (code) {
+    if (httpError < 200 || httpError >= 300) {
         delete reqp;
+        failed = 1;
     }
     else {
         while(1) {
             nbytes = inPipep->read(tbuffer, sizeof(tbuffer));
             if (nbytes > 0) {
-                code = fwrite(tbuffer, 1, nbytes, newFilep);
+                code = (int32_t) fwrite(tbuffer, 1, nbytes, newFilep);
                 totalBytes += code;
                 if (code <= 0)
                     break;
             }
-            else
+            else {
+                if (nbytes < 0)
+                    failed = 1;
                 break;
+            }
         } /* loop over all */
     }
 
@@ -968,10 +996,11 @@ RadioScanLoadTask::start()
     delete reqp;
     fclose(newFilep);
     newFilep = NULL;
-    rename("stations.new", "stations.checked");
+    if (failed)
+        unlink("stations.new");
+    else
+        rename("stations.new", "stations.checked");
     printf("Received %d bytes\n", totalBytes);
-
-    return 0;
 }
 
 RadioScanStation::Entry *
@@ -1058,8 +1087,8 @@ RadioScanStation::hasISubstr(const char *keyp, std::string target)
     const char *targetp;
     int32_t i;
 
-    keyLen = strlen(keyp);
-    targetLen = target.length();
+    keyLen = (int32_t) strlen(keyp);
+    targetLen = (int32_t) target.length();
     if (keyLen > targetLen)
         return 0;
     targetp = target.c_str();

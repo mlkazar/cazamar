@@ -15,6 +15,7 @@
 #import "MFANPlayerView.h"
 #import "MFANTopUpnp.h"
 #import "MFANDownload.h"
+#import "MFANSocket.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -23,6 +24,7 @@
 #include "xgml.h"
 #include "json.h"
 #include "upnp.h"
+#include "radioscan.h"
 
 /* represents one element of a playlist -- either an iPod playlist,
  * a song, all songs by an artist or all songs on an album.  Further
@@ -287,7 +289,7 @@ wrapMediaItems(NSArray *mediaArray)
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -440,7 +442,7 @@ wrapMediaItems(NSArray *mediaArray)
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -584,7 +586,7 @@ wrapMediaItems(NSArray *mediaArray)
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -776,6 +778,12 @@ wrapMediaItems(NSArray *mediaArray)
     NSMutableArray *_radioArray;
     NSMutableArray *_namesArray;
     FILE *_filep;
+    RadioScan *_scanp;
+    MFANSocketFactory *_factoryp;
+    RadioScanQuery *_queryp;
+    NSThread *_searchThread;
+    NSString *_searchString;
+    BOOL _asyncSearchRunning;
 
     /* count of the # of local entries added by the phone's owner, rather than
      * having come from stations.rsd.
@@ -793,9 +801,86 @@ wrapMediaItems(NSArray *mediaArray)
     return _localCount;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (void) searchAsync: (id) junk
 {
-    return NO;
+    const char *searchStringp;
+    RadioScanStation *stationp;
+    RadioScanStation::Entry *streamp;
+    RadioScanStation::Entry *bestStreamp;
+    NSString *stationName;
+    NSString *stationShortDescr;
+    NSString *stationUrl;
+    NSString *streamInfo;
+    MFANMediaItem *radioItem;
+
+    searchStringp = [_searchString cStringUsingEncoding: NSUTF8StringEncoding];
+    NSLog(@"search is %s", searchStringp);
+    _scanp->searchStation(std::string(searchStringp), &_queryp);
+    NSLog(@"back from search -- %ld stations", _queryp->_stations.count());
+    
+    _asyncSearchRunning = NO;
+
+    /* now add in all the stations we found */
+    for(stationp = _queryp->_stations.head(); stationp; stationp=stationp->_dqNextp) {
+	bestStreamp = NULL;
+	for(streamp = stationp->_entries.head(); streamp; streamp=streamp->_dqNextp) {
+	    if (bestStreamp == NULL || bestStreamp->_streamRateKb < streamp->_streamRateKb) {
+		bestStreamp = streamp;
+	    }
+	}
+
+	if (!bestStreamp)
+	    continue;
+
+	/* here, if we found a stream, record it */
+	stationName = [NSString stringWithUTF8String: stationp->_stationName.c_str()];
+	stationShortDescr = [NSString stringWithUTF8String: stationp->_stationShortDescr.c_str()];
+	stationUrl = [NSString stringWithUTF8String: bestStreamp->_streamUrl.c_str()];
+	streamInfo = [NSString stringWithFormat: @"%s %d Kbits/sec", 
+			    bestStreamp->_streamType.c_str(), bestStreamp->_streamRateKb];
+	[_namesArray addObject: stationName];
+	radioItem = [[MFANMediaItem alloc] initWithUrl: stationUrl
+						 title: stationName
+					    albumTitle: streamInfo];
+
+	radioItem.details = [NSString stringWithFormat: @"%@ [%d Kb/s]", 
+				      stationShortDescr, bestStreamp->_streamRateKb];
+
+	[_radioArray addObject: radioItem];
+    }
+
+    [NSThread exit];
+}
+
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
+{
+    /* so our status update knows if we're really done */
+    _asyncSearchRunning = YES;
+
+    _searchString = searchString;
+
+    _searchThread = [[NSThread alloc] initWithTarget: self
+					    selector: @selector(searchAsync:)
+					      object: nil];
+    [_searchThread start];
+
+    *isAsyncp = YES;
+    return YES;
+}
+
+- (NSString *) getStatus
+{
+    if (_asyncSearchRunning) {
+	if (_queryp != nil) {
+	    return [NSString stringWithUTF8String: _queryp->_baseStatus.c_str()];
+	}
+	else 
+	    return @"Search initializing";
+    }
+    else {
+	/* no longer running */
+	return nil;
+    }
 }
 
 - (int) rowHeight
@@ -898,15 +983,18 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 
 - (MFANRadioSel *) init
 {
-    NSString *stationFile;
     NSString *localFile;
 
     self = [super init];
     if (self) {
-	stationFile = [[NSBundle mainBundle] pathForResource: @"stations" ofType: @"rsd"];
+	_factoryp = new MFANSocketFactory();
+	_scanp = new RadioScan();
+	_scanp->init(_factoryp);
+
 	_radioArray = [[NSMutableArray alloc] init];
 	_namesArray = [[NSMutableArray alloc] init];
 	_localCount = 0;
+	_asyncSearchRunning = NO;
 
 	/* read the local updates file first, since its contents shows up first in the
 	 * list.
@@ -924,11 +1012,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 	 */
 	_localCount = (int) [_radioArray count];
 
-	_filep = fopen([stationFile cStringUsingEncoding: NSUTF8StringEncoding], "r");
-	if (_filep != NULL) {
-	    [self readRadioFile];
-	    fclose(_filep);
-	}
+	_queryp = NULL;
     }
     return self;
 }
@@ -1116,7 +1200,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -1329,7 +1413,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -1506,7 +1590,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -1649,7 +1733,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     NSArray *comps;
     NSString *tstr;
@@ -1768,6 +1852,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 	}
     }
 
+    *isAsyncp = NO;
     return YES;
 }
 
@@ -1980,7 +2065,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -2184,7 +2269,7 @@ addHelper(void *callbackContextp, void *recordContextp)
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -2439,7 +2524,7 @@ addSongsForAlbumsHelper(void *callbackContextp, void *recordContextp)
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -2644,7 +2729,7 @@ addSongsForArtistsHelper(void *callbackContextp, void *recordContextp)
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -2839,7 +2924,7 @@ addSongsForGenresHelper(void *callbackContextp, void *recordContextp)
     return 0;
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }
@@ -2998,7 +3083,7 @@ addSongsForGenresHelper(void *callbackContextp, void *recordContextp)
     return (int) [_recordingsArray count];
 }
 
-- (BOOL) populateFromSearch: (NSString *)searchString
+- (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
     return NO;
 }

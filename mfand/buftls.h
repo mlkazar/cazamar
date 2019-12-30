@@ -121,8 +121,11 @@ class BufTls : public BufGen {
 
 class BufTlsFactory : public BufGenFactory {
  public:
-    BufGen *allocate() {
-        return new BufTls("");
+    BufGen *allocate(int secure) {
+        if (secure)
+            return new BufTls("");
+        else
+            return NULL;
     }
 };
 

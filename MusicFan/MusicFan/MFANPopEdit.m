@@ -202,6 +202,9 @@ static UIColor *_backgroundColor;
     int _mapAllocSize;			/* size of array */
     int _mapCount;			/* count of # of valid entries in array */
 
+    UIAlertView *_alertView;		/* view for search status alert */
+    NSTimer *_alertTimer;		/* timer for search status */
+
     id _callbackObj;
     SEL _finishedSel;
     SEL _nextSel;
@@ -496,16 +499,67 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     [self updateSearchResults];
 }
 
+- (void) displayStatus
+{
+    NSString *status;
+
+    status = [_popMediaSel getStatus];
+    NSLog(@"DS: status %@", status);
+
+    if (status == nil) {
+	[_alertView dismissWithClickedButtonIndex: 0 animated: YES];
+	_alertView = nil;
+	NSLog(@"DS: returning");
+	[self updateSearchResults];
+	return;
+    }
+
+    if (_alertView == nil) {
+	_alertView = [[UIAlertView alloc]
+			 initWithTitle:@"Search in progress"
+			       message:status
+			      delegate:nil 
+			 cancelButtonTitle:@"Cancel"
+			 otherButtonTitles: nil];
+	[_alertView show];
+	NSLog(@"DS: did show for %p", _alertView);
+    }
+    else {
+	_alertView.message = status;
+    }
+
+    _alertTimer = [NSTimer scheduledTimerWithTimeInterval: 1.0
+						   target:self
+						 selector:@selector(displayStatusTimer:)
+						 userInfo:nil
+						  repeats: NO];
+}
+
+- (void) displayStatusTimer: (id) junk
+{
+    NSLog(@"DS: in timer");
+    _alertTimer = nil;
+
+    [self displayStatus];
+}
+
 - (void) searchBarSearchButtonClicked:(UISearchBar *)searchBar
 {
+    BOOL isAsync;
+
     [_searchBar resignFirstResponder];
 
     /* save current selections, since we're about to change table */
     [self saveSelections];
 
-    if ([_popMediaSel populateFromSearch: _searchBar.text]) {
-	[self setupDefaultMap];
-	[self updatePopViewInfo];
+    if ([_popMediaSel populateFromSearch: _searchBar.text async: &isAsync]) {
+	if (!isAsync) {
+	    [self setupDefaultMap];
+	    [self updatePopViewInfo];
+	}
+	else {
+	    [self displayStatus];
+	}
     }
     else {
 	[self updateSearchResults];

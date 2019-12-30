@@ -97,7 +97,7 @@ class BufGen {
 
 class BufGenFactory {
  public:
-    virtual BufGen *allocate()= 0;
+    virtual BufGen *allocate(int isSecure) = 0;
 };
 #endif /* _BUFGEN_H_ENV__ */
 

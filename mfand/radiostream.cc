@@ -478,7 +478,7 @@ RadioStream::init( BufGenFactory *factoryp,
 
         icyUrlp = NULL;
 
-        _bufSocketp = factoryp->allocate();
+        _bufSocketp = factoryp->allocate(0);
         _bufSocketp->init((char *) hostNamep, _defaultPort);
         _bufSocketp->setTimeoutMs(_baseTimeoutMs);
         if ((code = _bufSocketp->getError()) != 0) {

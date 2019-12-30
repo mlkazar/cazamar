@@ -85,8 +85,11 @@ class BufSocket : public BufGen {
 };
 
 class BufSocketFactory : public BufGenFactory {
-    BufGen *allocate() {
-        return new BufSocket();
+    BufGen *allocate(int isSecure) {
+        if (isSecure)
+            return NULL;
+        else
+            return new BufSocket();
     }
 };
 

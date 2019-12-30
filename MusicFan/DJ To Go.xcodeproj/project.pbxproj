@@ -100,6 +100,8 @@
 		7F80B3A91E3465A100680191 /* icon-cancel.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F80B3A71E3465A100680191 /* icon-cancel.png */; };
 		7F80B3AA1E34686200680191 /* icon-edit.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F80B3A61E3465A100680191 /* icon-edit.png */; };
 		7F80B3AB1E34686700680191 /* icon-cancel.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F80B3A71E3465A100680191 /* icon-cancel.png */; };
+		7F83BF1D23B70674001F2815 /* radioscan.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F83BF1B23B70673001F2815 /* radioscan.cc */; };
+		7F83BF1E23B70674001F2815 /* radioscan.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F83BF1B23B70673001F2815 /* radioscan.cc */; };
 		7F84C7431E37067C0052D2D1 /* icon-refresh.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F84C7421E37067C0052D2D1 /* icon-refresh.png */; };
 		7F84C7441E3706820052D2D1 /* icon-refresh.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F84C7421E37067C0052D2D1 /* icon-refresh.png */; };
 		7F84C7461E3706A20052D2D1 /* icon-randomize.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F84C7451E3706A20052D2D1 /* icon-randomize.png */; };
@@ -286,6 +288,8 @@
 		7F80B3A31E34637400680191 /* MFANIconButton.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MFANIconButton.m; sourceTree = "<group>"; };
 		7F80B3A61E3465A100680191 /* icon-edit.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-edit.png"; sourceTree = "<group>"; };
 		7F80B3A71E3465A100680191 /* icon-cancel.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-cancel.png"; sourceTree = "<group>"; };
+		7F83BF1B23B70673001F2815 /* radioscan.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = radioscan.cc; path = ../mfand/radioscan.cc; sourceTree = "<group>"; };
+		7F83BF1C23B70674001F2815 /* radioscan.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = radioscan.h; path = ../mfand/radioscan.h; sourceTree = "<group>"; };
 		7F84C7421E37067C0052D2D1 /* icon-refresh.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-refresh.png"; sourceTree = "<group>"; };
 		7F84C7451E3706A20052D2D1 /* icon-randomize.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-randomize.png"; sourceTree = "<group>"; };
 		7F84C7481E3706C40052D2D1 /* icon-delprev.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon-delprev.png"; sourceTree = "<group>"; };
@@ -434,6 +438,8 @@
 			children = (
 				7F690F801DEA8B3B00202E95 /* radiostream.cc */,
 				7F690F811DEA8B3B00202E95 /* radiostream.h */,
+				7F83BF1B23B70673001F2815 /* radioscan.cc */,
+				7F83BF1C23B70674001F2815 /* radioscan.h */,
 			);
 			name = MFAND;
 			path = ..;
@@ -940,6 +946,7 @@
 				7F455C1119532D67006DAFE5 /* MFANIndicator.m in Sources */,
 				7F8D357F1C76A10C00281498 /* xapi.cc in Sources */,
 				7F9BEDB5198BABD500BCB37D /* MFANRadioConsole.m in Sources */,
+				7F83BF1E23B70674001F2815 /* radioscan.cc in Sources */,
 				7F455C1319532D67006DAFE5 /* MFANPlayContext.mm in Sources */,
 				7F119BFD1DFA016200567CF1 /* MFANPlayerStatus.mm in Sources */,
 				7F23D6661C98B10D00DF978E /* MFANPopStatus.m in Sources */,
@@ -1002,6 +1009,7 @@
 				7F68A44B191FB20B00D9B001 /* MFANIndicator.m in Sources */,
 				7F8D35721C769FBC00281498 /* bufgen.cc in Sources */,
 				7F9BEDB4198BABD500BCB37D /* MFANRadioConsole.m in Sources */,
+				7F83BF1D23B70674001F2815 /* radioscan.cc in Sources */,
 				7FB96ECA190BF4AE00A2272A /* MFANPlayContext.mm in Sources */,
 				7F119BFC1DFA013C00567CF1 /* MFANPlayerStatus.mm in Sources */,
 				7F23D6651C98B0FF00DF978E /* MFANPopStatus.m in Sources */,
@@ -1058,6 +1066,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"MFAN_DEMO=1",
+					"MFAN_OS=1",
 				);
 				INFOPLIST_FILE = "DJ To Go Lite-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
@@ -1077,7 +1086,10 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MusicFan/DJ To Go-Prefix.pch";
-				GCC_PREPROCESSOR_DEFINITIONS = "MFAN_DEMO=1";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"MFAN_DEMO=1",
+					"MFAN_OS=1",
+				);
 				INFOPLIST_FILE = "DJ To Go Lite-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				PRODUCT_NAME = AudioGalaxyL;
@@ -1168,6 +1180,11 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MusicFan/DJ To Go-Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"MFAN_OS=1",
+					"$(inherited)",
+				);
 				INFOPLIST_FILE = "MusicFan/DJ To Go-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LIBRARY_SEARCH_PATHS = (
@@ -1191,6 +1208,7 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MusicFan/DJ To Go-Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = "MFAN_OS=1";
 				INFOPLIST_FILE = "MusicFan/DJ To Go-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LIBRARY_SEARCH_PATHS = (

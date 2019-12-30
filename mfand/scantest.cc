@@ -1,22 +1,20 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "bufsocket.h"
 #include "radioscan.h"
 
 int 
 main(int argc, char **argv)
 {
-    CDisp *cdisp;
     RadioScan *scanp;
     RadioScanQuery *queryp;
     RadioScanStation *stationp;
     RadioScanStation::Entry *ep;
-
-    cdisp = new CDisp();
-    cdisp->init(4);
+    BufSocketFactory socketFactory;
 
     scanp = new RadioScan();
-    scanp->init(cdisp);
+    scanp->init(&socketFactory);
     printf("back from init\n");
 
     scanp->searchStation(std::string(argv[1]), &queryp);

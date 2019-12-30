@@ -1,0 +1,3 @@
+add local stations (display)
+remove local stations (crash)
+verify file is used

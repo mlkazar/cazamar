@@ -60,7 +60,7 @@
  * data. 
  */
 @protocol MFANMediaSel
-- (BOOL) populateFromSearch: (NSString *) searchString;
+- (BOOL) populateFromSearch: (NSString *) searchString async: (BOOL *) isAsyncp;
 
 - (NSString *) nameByIx: (int) ix;
 
@@ -113,4 +113,11 @@
 
 @optional
 - (BOOL) localRemoveEntry: (long) slot;
+
+/* returns null if search is done, otherwise returns current status expressed
+ * as an NSString.
+ */
+@optional
+- (NSString *) getStatus;
+
 @end

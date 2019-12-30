@@ -1,10 +1,10 @@
 #include <string>
-#include <cdisp.h>
-#include <dqueue.h>
+#include "dqueue.h"
 
 #include "xapi.h"
-#include "buftls.h"
-#include "bufsocket.h"
+
+#include "bufgen.h"
+#include "cthread.h"
 
 /* Usage: this module is responsible for taking a query string, like 'WYEP' and finding
  * the radio station info for that station, and providing the info, and the stream URL,
@@ -26,6 +26,8 @@ public:
     RadioScan *_scanp;
     dqueue<RadioScanStation> _stations;
     uint32_t _refCount;
+    std::string _baseStatus;
+    std::string _detailedStatus;
 
     RadioScanQuery() {
         _refCount = 0;
@@ -120,19 +122,18 @@ class RadioScanStation {
  * thread pool, we can pass in a cdisp instead.
  */
 class RadioScan {
-    CDisp *_cdisp;
-    CDispGroup *_cdispGroup;
     dqueue<RadioScanQuery> _activeQueries;
     static CThreadMutex _lock;
 
  public:
     XApi *_xapip;
-    BufTls *_dirBufp;
+    BufGen *_dirBufp;
     XApi::ClientConn *_dirConnp;
-    BufSocket *_stwBufp;
+    BufGen *_stwBufp;
     XApi::ClientConn *_stwConnp;
+    BufGenFactory *_factoryp;
 
-    void init(CDisp *cdisp);
+    void init(BufGenFactory *factoryp);
 
     void searchStation(std::string query, RadioScanQuery **respp);
 
@@ -147,10 +148,10 @@ class RadioScan {
     int32_t retrieveContents(std::string url , std::string *strp);
 };
 
-class RadioScanLoadTask : public CDispTask {
+class RadioScanLoadTask : public CThread {
     RadioScan *_scanp;
 public:
-    int32_t start();
+    void start(void *argp);
 
     void init(RadioScan *scanp) {
         _scanp = scanp;

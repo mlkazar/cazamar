@@ -23,7 +23,7 @@ ifeq ($(OS),Linux)
 CXXFLAGS += -Wno-sign-compare -Wno-unused-but-set-variable 
 endif
 
-RSTINCLS=rst.h bufsocket.h bufgen.h buftls.h jsdb.h
+RSTINCLS=rst.h bufsocket.h bufgen.h buftls.h jsdb.h buffactory.h
 
 INCLS=../include/*.h mfclient.h mfdata.h mfand.h $(RSTINCLS) radiostream.h xapi.h xapipool.h \
 strdb.h upnp.h radixtree.h streams.h sapi.h sapilogin.h upload.h radioscan.h

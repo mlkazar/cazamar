@@ -65,3 +65,19 @@ shoutcast key=HF3T2bjHaPcadpSG
 email=michael.kazar@verizon.net
 
 ----
+
+OPML
+
+http://opml.radiotime.com/Tune.ashx?id=s142111
+	gives real stations for tunein/radiotime station ID
+http://opml.radiotime.com/Search.ashx?&query=wyep&types=station&format=mp3,aac
+	gets radio info for query.
+http://opml.radiotime.com/Browse.ashx?id=s240000
+	describe station <id>
+http://opml.radiotime.com/Browse.ashx?c=playlist&id=s32500
+	download playlist
+partnerId: add '&parterId=k2YHnXyS' to above
+docs: checkout
+      https://raw.githubusercontent.com/diegofn/Tunein-Radio-VLC/master/tunein.lua
+      https://github.com/brianhornsby/plugin.audio.tuneinradio/wiki/RadioTime-API-Methods:-Browse
+----
