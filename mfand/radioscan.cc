@@ -960,7 +960,7 @@ RadioScanLoadTask::start(void *argp)
     
     code = stat("stations.checked", &tstat);
     myTime = (uint32_t) time(0);
-#ifdef __LINUX__
+#ifdef __linux__
     fileMTime = tstat.st_mtim.tv_sec;
 #else
     fileMTime = (uint32_t) tstat.st_mtimespec.tv_sec;
