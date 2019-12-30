@@ -23,7 +23,7 @@ RadioScan::init(BufGenFactory *factoryp)
 
     _dirBufp = factoryp->allocate(1);
     if (_dirBufp) {
-        _dirBufp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7700);
+        _dirBufp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7701);
         _dirBufp->setTimeoutMs(15000);
         _dirConnp = _xapip->addClientConn(_dirBufp);
     }
@@ -660,6 +660,8 @@ RadioScanQuery::searchFile()
                 }
             } /* loop over all addresses */
         }
+        if (isAborted())
+            return -1;
     }
 
     return 0;
@@ -768,6 +770,9 @@ RadioScanQuery::searchShoutcast()
             stationp->_stationSource = std::string("shoutcast");
 
             stationp->streamApply(std::string(tbuffer), RadioScanStation::stwCallback, stationp);
+
+            if (isAborted())
+                return -1;
             /* tbuffer names the playlist file, so add the stream */
         } /* this is a station record */
     } /* loop over all stations */
@@ -874,6 +879,9 @@ RadioScanQuery::searchStreamTheWorld()
         delete stationp;
     }
 
+    if (isAborted())
+        return -1;
+
     /* try AM */
     stationp = new RadioScanStation();
     stationp->init(this);
@@ -905,27 +913,33 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
      */ 
     if (query.size() <= 4) {
         resp->searchStreamTheWorld();
+        if (resp->isAborted())
+            return;
     }
 
     resp->_baseStatus = std::string("Searching TuneIn file");
 
     /* add entries from the file */
     resp->searchFile();
+    if (resp->isAborted())
+        return;
 
     resp->_baseStatus = std::string("Searching dar.fm");
 
     /* add entries from DAR.fm */
     resp->searchDar();
+    if (resp->isAborted())
+        return;
 
     resp->_baseStatus = std::string("Searching Shoutcast");
 
     resp->searchShoutcast();
+    if (resp->isAborted())
+        return;
 
     takeLock();
     
     releaseLock();
-
-    *respp = resp;
 }
 
 void

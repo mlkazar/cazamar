@@ -97,7 +97,9 @@
 	return nil;
 }
 
-/* generate filtered media item list */
+/* generate filtered media item list; this only filters iTunes media information; it 
+ * passes other items through directly.
+ */
 - (NSArray *) performFilters: (NSArray *) itemsArray
 {
     MPMediaItem *item;
@@ -841,19 +843,29 @@ wrapMediaItems(NSArray *mediaArray)
 	[_namesArray addObject: stationName];
 	radioItem = [[MFANMediaItem alloc] initWithUrl: stationUrl
 						 title: stationName
-					    albumTitle: streamInfo];
-
-	radioItem.details = [NSString stringWithFormat: @"%@ [%d Kb/s]", 
-				      stationShortDescr, bestStreamp->_streamRateKb];
+					    albumTitle: stationShortDescr];
+	radioItem.details = streamInfo;
 
 	[_radioArray addObject: radioItem];
     }
+
+    delete _queryp;
+    _queryp = NULL;
 
     [NSThread exit];
 }
 
 - (BOOL) populateFromSearch: (NSString *)searchString async: (BOOL *) isAsyncp
 {
+    /* delete all items after the local search items, so that each
+     * search presents results of new search plus manually entered
+     * stations.
+     */
+    while([_radioArray count] > _localCount)
+	[_radioArray removeLastObject];
+    while([_namesArray count] > _localCount)
+	[_namesArray removeLastObject];
+
     /* so our status update knows if we're really done */
     _asyncSearchRunning = YES;
 
@@ -864,6 +876,9 @@ wrapMediaItems(NSArray *mediaArray)
 					      object: nil];
     [_searchThread start];
 
+    /* indicate that population occurs asynchronously, with current status of
+     * search returned by getStatus method below.
+     */
     *isAsyncp = YES;
     return YES;
 }
@@ -881,6 +896,16 @@ wrapMediaItems(NSArray *mediaArray)
 	/* no longer running */
 	return nil;
     }
+}
+
+- (void) abortSearch
+{
+    RadioScanQuery *qp;
+
+    /* need to reference count these structures to avoid crash race condition */
+    qp = _queryp;
+    if (qp) 
+	qp->abort();
 }
 
 - (int) rowHeight
@@ -1128,12 +1153,15 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 
 - (MFANScanItem *) scanItemByIx: (int) ix
 {
-    MPMediaItem *item;
+    MFANMediaItem *item;
     MFANScanItem *scan;
 
     item = _radioArray[ix];
     scan = [[MFANScanItem alloc] init];
-    scan.title = _namesArray[ix];
+    scan.title = item.urlTitle;
+    scan.secondaryKey = item.urlAlbumTitle;
+    scan.stationDetails = item.details;
+    scan.stationUrl = item.url;
     scan.scanFlags = [MFANScanItem scanRadio];
     scan.minStars = 0;
     scan.cloud = 0;
@@ -1144,18 +1172,18 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 - (NSArray *) mediaItemsForScan: (MFANScanItem *) scan
 {
     NSArray *itemsArray;
-    long i;
+    MFANMediaItem *item;
 
     if (scan.items == nil) {
 	/* redo the query */
-	itemsArray = nil;
-	for(i=0;i<[_radioArray count];i++) {
-	    if ([_namesArray[i] isEqualToString: scan.title]) {
-		itemsArray = [NSArray arrayWithObject: _radioArray[i]];
-		scan.items = itemsArray;
-		break;
-	    }
-	}
+	item = [[MFANMediaItem alloc] init];
+	item.urlTitle= scan.title;
+	item.urlAlbumTitle = scan.secondaryKey;
+	item.details = scan.stationDetails;
+	item.url = scan.stationUrl;
+
+	itemsArray = [NSArray arrayWithObject: item];
+	scan.items = itemsArray;
     }
     else {
 	itemsArray = scan.items;
@@ -3450,8 +3478,10 @@ UIAlertView *_alertView;
 
     isPodcastList = NO;
     for(scanItem in scanArray) {
-	if ([scanItem scanFlags] & podcastFlags)
+	if ([scanItem scanFlags] & podcastFlags) {
 	    isPodcastList = YES;
+	    break;
+	}
     }
     /* make sure we have the list of artists, playlists, etc setup */
     [MFANSetList doSetup: nil force: NO];

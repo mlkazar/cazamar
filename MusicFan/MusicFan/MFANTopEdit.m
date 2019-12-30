@@ -651,8 +651,9 @@ shouldIndentWhileEditingRowAtIndexPath:(NSIndexPath *)indexPath {
     if (media != nil) {
 	tframe = _appFrame;
 	popEdit = [[MFANPopEdit alloc] initWithFrame: tframe
-				       scanHolder: self
-				       mediaSel: media];
+					  scanHolder: self
+					    mediaSel: media
+				      viewController: _viewCont];
 	[popEdit addCallback: self
 		 finishedSel: @selector(bridgeFinished:withData:)
 		 nextSel: @selector(bridgePopupMedia:)];
@@ -777,8 +778,9 @@ shouldIndentWhileEditingRowAtIndexPath:(NSIndexPath *)indexPath {
     if (media != nil) {
 	tframe = _appFrame;
 	popEdit = [[MFANPopEdit alloc] initWithFrame: tframe
-				       scanHolder: self
-				       mediaSel: media];
+					  scanHolder: self
+					    mediaSel: media
+				      viewController: _viewCont];
 	[popEdit addCallback: self
 		 finishedSel: @selector(popFinished:withData:)
 		 nextSel: @selector(pushPopupMedia:)];

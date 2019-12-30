@@ -202,8 +202,10 @@ static UIColor *_backgroundColor;
     int _mapAllocSize;			/* size of array */
     int _mapCount;			/* count of # of valid entries in array */
 
-    UIAlertView *_alertView;		/* view for search status alert */
+    UIAlertController *_alertController; /* view for search status alert */
+    UIAlertAction *_alertAction;	/* action for pressing cancel button */
     NSTimer *_alertTimer;		/* timer for search status */
+    BOOL _finishedSearch;		/* set when we know the search is done */
 
     id _callbackObj;
     SEL _finishedSel;
@@ -212,6 +214,8 @@ static UIColor *_backgroundColor;
     CGFloat _scaledDefaultImageSize;
     UIImage *_defaultImage;
     UIImage *_scaledDefaultImage;
+
+    MFANViewController *_viewCont;
 
     /* first sectionExtras sections contain sectionSize+1 rows, and
      * the rest have exactly sectionSize rows.  The _sectionCount is
@@ -258,6 +262,7 @@ static UIColor *_backgroundColor;
 - (MFANPopEdit *) initWithFrame: (CGRect) appFrame
 		     scanHolder: (id<MFANAddScan>) scanHolder
 		       mediaSel: (id<MFANMediaSel>) mediaSel
+		 viewController: (MFANViewController *) viewCont
 {
     self = [super init];
     if (self) {
@@ -272,6 +277,7 @@ static UIColor *_backgroundColor;
 	_scaledDefaultImageSize = 0.0;
 	_defaultImage = [UIImage imageNamed: @"record-152.png"];
 	_scaledDefaultImage = nil;
+	_viewCont = viewCont;
 
 	/* we set our frame in our parent's coordinate system, and then adjust
 	 * appFrame so that it describes our coordinate space to our children.
@@ -448,7 +454,8 @@ static UIColor *_backgroundColor;
 	  _override.keyView.text, _override.valueView.text);
     [_popMediaSel localAddKey: _override.keyView.text value: _override.valueView.text];
 
-    [_popTableView reloadData];
+    [self updateSearchResults];
+    // [_popTableView reloadData];
 }
 
 - (BOOL)tableView:(UITableView *)tableView 
@@ -483,7 +490,8 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 	    NSLog(@"remove failed for slot %d", (int) row);
 	}
 	else {
-	    [_popTableView reloadData];
+	    // [_popTableView reloadData];
+	    [self updateSearchResults];
 	}
     }
 }
@@ -507,25 +515,31 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     NSLog(@"DS: status %@", status);
 
     if (status == nil) {
-	[_alertView dismissWithClickedButtonIndex: 0 animated: YES];
-	_alertView = nil;
+	_finishedSearch = YES;
+	[_alertController dismissViewControllerAnimated: YES completion: nil];
+	_alertController = nil;
+	_alertAction = nil;
 	NSLog(@"DS: returning");
 	[self updateSearchResults];
 	return;
     }
 
-    if (_alertView == nil) {
-	_alertView = [[UIAlertView alloc]
-			 initWithTitle:@"Search in progress"
-			       message:status
-			      delegate:nil 
-			 cancelButtonTitle:@"Cancel"
-			 otherButtonTitles: nil];
-	[_alertView show];
-	NSLog(@"DS: did show for %p", _alertView);
+    if (_alertController == nil) {
+	_alertController = [UIAlertController 
+			       alertControllerWithTitle:@"Search in progress"
+						message:status
+					 preferredStyle: UIAlertControllerStyleAlert];
+	_alertAction = [UIAlertAction actionWithTitle: @"Cancel" 
+						style: UIAlertActionStyleDefault
+					      handler: ^(UIAlertAction *act) {
+		[_popMediaSel abortSearch];
+	    }];
+	[_alertController addAction: _alertAction];
+	[_viewCont presentViewController:_alertController animated:YES completion: nil];
+	NSLog(@"DS: did show for %p", _alertController);
     }
     else {
-	_alertView.message = status;
+	_alertController.message = status;
     }
 
     _alertTimer = [NSTimer scheduledTimerWithTimeInterval: 1.0
@@ -547,14 +561,16 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 {
     BOOL isAsync;
 
+    _finishedSearch = NO;
+
     [_searchBar resignFirstResponder];
 
     /* save current selections, since we're about to change table */
     [self saveSelections];
 
     if ([_popMediaSel populateFromSearch: _searchBar.text async: &isAsync]) {
+	[self setupDefaultMap];
 	if (!isAsync) {
-	    [self setupDefaultMap];
 	    [self updatePopViewInfo];
 	}
 	else {
@@ -588,10 +604,10 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     searchLength = (int) [searchText length];
 
     /* update the mapArrayp to match the selected items */
-    if (searchLength == 0) {
+    if (1 /*searchLength == 0*/) {
 	[self setupDefaultMap];
     }
-    else {
+    {
 	realCount = (int) [_popMediaSel count];
 	_mapCount = 0;
 	for(i=0;i<realCount;i++) {

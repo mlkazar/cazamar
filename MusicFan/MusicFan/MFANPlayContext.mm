@@ -323,6 +323,14 @@ static const int _maxFileSize = 1024*1024;
 		    scanItem.secondaryKey = [NSString stringWithCString: attrp->_value.c_str()
 						      encoding:NSUTF8StringEncoding];
 		}
+		else if (strcmp(attrp->_name.c_str(), "stationDetails") == 0) {
+		    scanItem.stationDetails = [NSString stringWithCString: attrp->_value.c_str()
+								 encoding:NSUTF8StringEncoding];
+		}
+		else if (strcmp(attrp->_name.c_str(), "stationUrl") == 0) {
+		    scanItem.stationUrl = [NSString stringWithCString: attrp->_value.c_str()
+							     encoding:NSUTF8StringEncoding];
+		}
 		else if (strcmp(attrp->_name.c_str(), "scanFlags") == 0) {
 		    scanItem.scanFlags = atoi(attrp->_value.c_str());
 		}
@@ -560,6 +568,24 @@ static const int _maxFileSize = 1024*1024;
 	    attrNodep->init("secondaryKey",
 			    [[scanItem secondaryKey] cStringUsingEncoding:
 							  NSUTF8StringEncoding]);
+	    attrNodep->saveQuoted();
+	    tempNodep->appendAttr(attrNodep);
+	}
+
+	if ([scanItem stationDetails] != nil) {
+	    attrNodep = new Xgml::Attr();
+	    attrNodep->init("stationDetails",
+			    [[scanItem stationDetails] cStringUsingEncoding:
+							   NSUTF8StringEncoding]);
+	    attrNodep->saveQuoted();
+	    tempNodep->appendAttr(attrNodep);
+	}
+
+	if ([scanItem stationUrl] != nil) {
+	    attrNodep = new Xgml::Attr();
+	    attrNodep->init("stationUrl",
+			    [[scanItem stationUrl] cStringUsingEncoding:
+						       NSUTF8StringEncoding]);
 	    attrNodep->saveQuoted();
 	    tempNodep->appendAttr(attrNodep);
 	}

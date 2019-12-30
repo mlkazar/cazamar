@@ -458,6 +458,16 @@ server(int argc, char **argv, int port)
 
     sapip->initWithPort(port);
 
+    /* handle non-SSL get requests as well, on port N+1 (7701) */
+    sapip = new SApi();
+    sapip->setContext(keyServp);
+    /* simple file retrieval scheme */
+    sapip->registerUrl("/get",
+                       (SApi::RequestFactory *) &AppleLoginReq::factory,
+                       (SApi::StartMethod) &AppleLoginReq::RetrievalMethod);
+
+    sapip->initWithPort(port+1);
+
     cp = new CThreadHandle();
     cp->init((CThread::StartMethod) &KeyServ::prune, keyServp, NULL);
 

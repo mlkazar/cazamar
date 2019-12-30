@@ -13,8 +13,10 @@
 @interface MFANScanItem : NSObject
 
 @property NSString *title;      /* this is primary key */
-@property NSString *secondaryKey;
+@property NSString *secondaryKey; /* this holds stationShortDescr for radio stations */
 @property NSString *genreKey;
+@property NSString *stationDetails;
+@property NSString *stationUrl;
 @property int scanFlags;
 @property long minStars;
 @property int cloud;
@@ -119,5 +121,8 @@
  */
 @optional
 - (NSString *) getStatus;
+
+@optional
+- (void) abortSearch;
 
 @end

@@ -1,3 +1,8 @@
-add local stations (display)
-remove local stations (crash)
-verify file is used
+* add local stations (display)
+* remove local stations (crash)
+get download to use http, not https
+  involves keyserv to listen to 7701
+ verify file is used
+cancel button during search doesn't work
+* empty out list at start of search
+Better displayed titles in mfanpopedit, playerview and mfantopedit

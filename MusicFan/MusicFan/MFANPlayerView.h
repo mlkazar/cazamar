@@ -25,6 +25,8 @@
 @property NSString *urlTitle;
 @property NSString *details;
 @property float playbackTime;
+@property NSString *urlAlbumTitle;
+@property NSString *url;
 
 - (MFANMediaItem *) initWithUrl: (NSString *) url
 			  title: (NSString *) title

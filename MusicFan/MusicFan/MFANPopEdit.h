@@ -7,6 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "MFANViewController.h"
 #import "MFANMediaSel.h"
 
 @interface MFANPopEditOverride : UIView <UITextFieldDelegate>
@@ -25,7 +26,8 @@
 
 - (MFANPopEdit *) initWithFrame: (CGRect) appFrame
 		     scanHolder: (id<MFANAddScan>) scanHolder
-		       mediaSel: (id<MFANMediaSel>) mediaSel;
+		       mediaSel: (id<MFANMediaSel>) mediaSel
+		 viewController: (MFANViewController *)viewCont;
 
 - (void) addCallback: (id) callbackObj finishedSel: (SEL) finishedSel nextSel: (SEL) nextSel;
 

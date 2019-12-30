@@ -28,9 +28,11 @@ public:
     uint32_t _refCount;
     std::string _baseStatus;
     std::string _detailedStatus;
+    int _aborted;
 
     RadioScanQuery() {
         _refCount = 0;
+        _aborted = 0;
     }
 
     void init(RadioScan *scanp, std::string query) {
@@ -45,6 +47,15 @@ public:
     int32_t searchFile();
 
     int32_t searchShoutcast();
+
+    void abort() {
+        _aborted = 1;
+        _baseStatus = std::string("Aborting");
+    }
+
+    int isAborted() {
+        return _aborted;
+    }
 };
 
 class RadioScanStation {

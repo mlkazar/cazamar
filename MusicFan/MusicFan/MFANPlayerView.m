@@ -39,21 +39,13 @@
 @implementation MFANMediaItem {
     int _usePlayer;
 
-    /* fields for URL */
-    /* property NSString *urlRemote */
-    NSString *_urlAlbumTitle;
-    NSString *_url;
+    /* fields for URL are mostly properties in MFANPlayerView.h */
 
     /* fields for library items */
     MPMediaItem *_item;
 }
 
 UIImage *_defaultImage;
-
-- (void) setUrl: (NSString *) url
-{
-    _url = url;
-}
 
 - (NSString *) localUrl
 {
@@ -114,16 +106,11 @@ UIImage *_defaultImage;
     return (_usePlayer == MFANUseAvPlayer);
 }
 
-- (NSString *) url
-{
-    return _url;
-}
-
 /* http stream */
 - (BOOL) isWebStream
 {
-    return ( _url != nil && [_url length] > 4 &&
-	     [[_url substringToIndex: 4] isEqualToString: @"http"]);
+    return ( self.url != nil && [self.url length] > 4 &&
+	     [[self.url substringToIndex: 4] isEqualToString: @"http"]);
 }
 
 - (BOOL) isPodcast
@@ -200,7 +187,7 @@ UIImage *_defaultImage;
 	}
 
 	_item = nil;
-	_url = url;
+	self.url = url;
 	_urlTitle = title;	/* may be nil */
 	_urlAlbumTitle = albumTitle;	/* may be nil */
 	_urlArtwork = nil;
@@ -231,12 +218,12 @@ UIImage *_defaultImage;
 	if (url == nil) {
 	    /* no URL, so this is a cloud item, which only MPMediaPlayer can play */
 	    _usePlayer = MFANUseMainPlayer;
-	    _url = nil;
+	    self.url = nil;
 	}
 	else {
 	    /* we have a URL */
 	    _usePlayer = MFANUseMainPlayer;
-	    _url = [url absoluteString];
+	    self.url = [url absoluteString];
 	}
     }
 
