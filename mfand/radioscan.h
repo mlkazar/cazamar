@@ -126,6 +126,8 @@ class RadioScanStation {
     static int skipPastEol(const char **datap, int32_t *lenp);
 
     static int32_t splitLine(const char *bufferp, uint32_t count, char **targetsp);
+
+    static std::string upperCase(std::string name);
 };
 
 /* instantiate a radioscan object once, and then perform multiple search operations.
@@ -143,8 +145,9 @@ class RadioScan {
     BufGen *_stwBufp;
     XApi::ClientConn *_stwConnp;
     BufGenFactory *_factoryp;
+    std::string _dirPrefix;
 
-    void init(BufGenFactory *factoryp);
+    void init(BufGenFactory *factoryp, std::string dirPrefix);
 
     void searchStation(std::string query, RadioScanQuery **respp);
 
@@ -161,10 +164,13 @@ class RadioScan {
 
 class RadioScanLoadTask : public CThread {
     RadioScan *_scanp;
+    std::string _dirPrefix;
+
 public:
     void start(void *argp);
 
-    void init(RadioScan *scanp) {
+    void init(RadioScan *scanp, std::string dirPrefix) {
         _scanp = scanp;
+        _dirPrefix = dirPrefix;
     }
 };

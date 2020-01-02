@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "osp.h"
 #include "radioscan.h"
@@ -13,13 +14,21 @@
 /* stupid statics */
 CThreadMutex RadioScan::_lock;
 
+/* we supply a bufgen factory that can create sockets to URLs, and a
+ * prefix string to add to all file names.  As such, it should either be
+ * an empty string or end with a '/' character.  The directory will control 
+ * where the stations.checked file will be downloaded, and consulted when
+ * searching for radiosure-registered stations.
+ */
 void
-RadioScan::init(BufGenFactory *factoryp)
+RadioScan::init(BufGenFactory *factoryp, std::string dirPrefix)
 {
     CThreadHandle *loadHandlep;
 
     _factoryp = factoryp;
     _xapip = new XApi();
+
+    _dirPrefix = dirPrefix;
 
     _dirBufp = factoryp->allocate(0);
     if (_dirBufp) {
@@ -39,7 +48,7 @@ RadioScan::init(BufGenFactory *factoryp)
     if (_dirBufp) {
         RadioScanLoadTask *loadTaskp;
         loadTaskp = new RadioScanLoadTask();
-        loadTaskp->init(this);
+        loadTaskp->init(this, dirPrefix);
     
         loadHandlep = new CThreadHandle();
         loadHandlep->init((CThread::StartMethod) &RadioScanLoadTask::start, loadTaskp, NULL);
@@ -594,6 +603,23 @@ RadioScanStation::splitLine(const char *bufferp, uint32_t count, char **targetsp
     return itemCount;
 }
 
+/* static */ std::string
+RadioScanStation::upperCase(std::string name)
+{
+    uint32_t i;
+    uint32_t len;
+    std::string result;
+    const char *tp;
+    int tc;
+
+    len = (uint32_t) name.length();
+    for(i=0, tp = name.c_str(); i<len; i++, tp++) {
+        tc = *tp;
+        result.push_back(toupper(tc));
+    }
+    return result;
+}
+
 /* search a stations.rsd file, generating a series of stations, one for
  * each station matching the query string.
  */
@@ -614,8 +640,10 @@ RadioScanQuery::searchFile()
     uint32_t count;
     char *parseArray[12];
     RadioScanStation *stationp;
+    std::string checkedFileName;
 
-    filep = fopen("stations.checked", "r");
+    checkedFileName = _scanp->_dirPrefix + "stations.checked";
+    filep = fopen(checkedFileName.c_str(), "r");
     if (!filep)
         return -1;
 
@@ -831,7 +859,7 @@ RadioScanQuery::searchDar()
     stationp->init(this);
 
     /* set these so that addEntry has some useful defaults */
-    stationp->_stationName = _query;
+    stationp->_stationName = RadioScanStation::upperCase(_query);
     stationp->_stationShortDescr = stationShortDescr;
     stationp->_stationSource = std::string("dar.fm");
 
@@ -870,7 +898,7 @@ RadioScanQuery::searchStreamTheWorld()
     /* try FM */
     stationp = new RadioScanStation();
     stationp->init(this);
-    stationp->_stationName = _query;
+    stationp->_stationName = RadioScanStation::upperCase(_query);
     stationp->_stationShortDescr = "FM Radio";
     stationp->_stationSource = std::string("StreamTheWorld FM");
     sprintf(tbuffer, "http://playerservices.streamtheworld.com/pls/%sFMAAC.pls", _query.c_str());
@@ -885,7 +913,7 @@ RadioScanQuery::searchStreamTheWorld()
     /* try AM */
     stationp = new RadioScanStation();
     stationp->init(this);
-    stationp->_stationName = _query;
+    stationp->_stationName = RadioScanStation::upperCase(_query);
     stationp->_stationShortDescr = "AM Radio";
     stationp->_stationSource = std::string("StreamTheWorld AM");
     sprintf(tbuffer, "http://playerservices.streamtheworld.com/pls/%sAMAAC.pls", _query.c_str());
@@ -957,21 +985,31 @@ RadioScanLoadTask::start(void *argp)
     uint32_t fileMTime;
     uint32_t httpError;
     int failed = 0;
+    std::string checkedFileName;
+    std::string newFileName;
     
-    code = stat("stations.checked", &tstat);
+    /* generate required names of final file and temp file name for download */
+    checkedFileName = _dirPrefix + "stations.checked";
+    newFileName = _dirPrefix + "stations.new";
+
+    code = stat(checkedFileName.c_str(), &tstat);
     myTime = (uint32_t) time(0);
 #ifdef __linux__
     fileMTime = tstat.st_mtim.tv_sec;
 #else
     fileMTime = (uint32_t) tstat.st_mtimespec.tv_sec;
 #endif
-    if (code == 0 && fileMTime + 24*3600 > myTime) {
+    if (code == 0 && fileMTime + 7*24*3600 > myTime) {
         printf("No download -- stations.checked is recent\n");
         return;
     }
 
     printf("Starting download\n");
-    newFilep = fopen("stations.new", "w");
+    newFilep = fopen(newFileName.c_str(), "w");
+    if (!newFilep) {
+        printf("failed to create stations.new\n");
+        return;
+    }
     reqp = new XApi::ClientReq();
     reqp->startCall(_scanp->_dirConnp, "/get?id=stations.rsd", /* isGet */ XApi::reqGet);
     
@@ -1011,9 +1049,11 @@ RadioScanLoadTask::start(void *argp)
     fclose(newFilep);
     newFilep = NULL;
     if (failed)
-        unlink("stations.new");
-    else
-        rename("stations.new", "stations.checked");
+        unlink(newFileName.c_str());
+    else {
+        /* new file name is the rename source and ends '.new' */
+        rename(newFileName.c_str(), checkedFileName.c_str());
+    }
     printf("Received %d bytes\n", totalBytes);
 }
 

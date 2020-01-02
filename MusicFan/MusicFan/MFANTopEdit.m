@@ -223,7 +223,7 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     else if (scan.scanFlags == [MFANScanItem scanChildAlbum])
 	suffix = @" [Album w/Artist]";
     else if (scan.scanFlags == [MFANScanItem scanRadio])
-	suffix = @" [Radio]";
+	suffix = [NSString stringWithFormat: @" (%@)", scan.stationDetails];
     else if (scan.scanFlags == [MFANScanItem scanUpnpSong])
 	suffix = @" [Song/Net]";
     else if (scan.scanFlags == [MFANScanItem scanUpnpArtist])
@@ -239,7 +239,10 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     cell.textLabel.font = [MFANTopSettings basicFontWithSize: 18];
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
-    if (scan.cloud)
+    if (scan.scanFlags == [MFANScanItem scanRadio]) {
+	suffix = scan.secondaryKey;
+    }
+    else if (scan.cloud)
 	suffix = @"Cloud";
     else
 	suffix = @"Local";

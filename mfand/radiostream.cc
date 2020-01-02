@@ -596,9 +596,15 @@ void RadioStream::release()
 void
 RadioStream::close() {
     _closed = 1;
+#if 0
     if (_callp) {
         _callp->close();        /* does release also */
         _callp = NULL;
     }
+#else
+    /* _closed flag forces next call to rcv to return a failure, which
+     * will terminate the RST call.
+     */
+#endif
     release();
 }

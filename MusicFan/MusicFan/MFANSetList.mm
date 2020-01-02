@@ -820,8 +820,6 @@ wrapMediaItems(NSArray *mediaArray)
     _scanp->searchStation(std::string(searchStringp), &_queryp);
     NSLog(@"back from search -- %ld stations", _queryp->_stations.count());
     
-    _asyncSearchRunning = NO;
-
     /* now add in all the stations we found */
     for(stationp = _queryp->_stations.head(); stationp; stationp=stationp->_dqNextp) {
 	bestStreamp = NULL;
@@ -838,8 +836,8 @@ wrapMediaItems(NSArray *mediaArray)
 	stationName = [NSString stringWithUTF8String: stationp->_stationName.c_str()];
 	stationShortDescr = [NSString stringWithUTF8String: stationp->_stationShortDescr.c_str()];
 	stationUrl = [NSString stringWithUTF8String: bestStreamp->_streamUrl.c_str()];
-	streamInfo = [NSString stringWithFormat: @"%s %d Kbits/sec", 
-			    bestStreamp->_streamType.c_str(), bestStreamp->_streamRateKb];
+	streamInfo = [NSString stringWithFormat: @"%d Kb/s %s",
+			       bestStreamp->_streamRateKb, bestStreamp->_streamType.c_str()];
 	[_namesArray addObject: stationName];
 	radioItem = [[MFANMediaItem alloc] initWithUrl: stationUrl
 						 title: stationName
@@ -848,6 +846,12 @@ wrapMediaItems(NSArray *mediaArray)
 
 	[_radioArray addObject: radioItem];
     }
+
+    /* don't turn this off until we're done messing with _radioArray and _namesArray,
+     * so that MFANPopEdit doesn't let the user navigate to operations that
+     * might access those variables
+     */
+    _asyncSearchRunning = NO;
 
     delete _queryp;
     _queryp = NULL;
@@ -1012,9 +1016,13 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 
     self = [super init];
     if (self) {
+	std::string dirPrefix;
+
+	dirPrefix = std::string([fileNameForFile(@"") cStringUsingEncoding: NSUTF8StringEncoding]);
+
 	_factoryp = new MFANSocketFactory();
 	_scanp = new RadioScan();
-	_scanp->init(_factoryp);
+	_scanp->init(_factoryp, dirPrefix);
 
 	_radioArray = [[NSMutableArray alloc] init];
 	_namesArray = [[NSMutableArray alloc] init];
@@ -1121,7 +1129,15 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 
 - (NSString *) nameByIx: (int) ix
 {
-    return _namesArray[ix];
+    MFANMediaItem *mfanItem;
+
+    if (ix < [_radioArray count]) {
+	mfanItem = [_radioArray objectAtIndex: ix];
+	return [NSString stringWithFormat: @"%@ (%@)", _namesArray[ix], mfanItem.details];
+    }
+    else {
+	return _namesArray[ix];
+    }
 }
 
 - (UIImage *) imageByIx: (int) ix size: (CGFloat) size
@@ -1135,7 +1151,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 
     if (ix < [_radioArray count]) {
 	mfanItem = [_radioArray objectAtIndex: ix];
-	return mfanItem.details;
+	return mfanItem.urlAlbumTitle;
     }
     else
 	return nil;

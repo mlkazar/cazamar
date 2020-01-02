@@ -533,6 +533,12 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 						style: UIAlertActionStyleDefault
 					      handler: ^(UIAlertAction *act) {
 		[_popMediaSel abortSearch];
+		_alertAction = nil;
+		_alertController = [UIAlertController 
+				       alertControllerWithTitle:@"Search stopping"
+							message: status
+						 preferredStyle: UIAlertControllerStyleAlert];
+		[_viewCont presentViewController:_alertController animated:YES completion: nil];
 	    }];
 	[_alertController addAction: _alertAction];
 	[_viewCont presentViewController:_alertController animated:YES completion: nil];

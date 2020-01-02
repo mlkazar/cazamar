@@ -14,7 +14,7 @@ main(int argc, char **argv)
     BufSocketFactory socketFactory;
 
     scanp = new RadioScan();
-    scanp->init(&socketFactory);
+    scanp->init(&socketFactory, "");
     printf("back from init\n");
 
     scanp->searchStation(std::string(argv[1]), &queryp);
