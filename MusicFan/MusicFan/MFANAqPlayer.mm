@@ -19,7 +19,7 @@
  *
  * The init function initializes the object.
  *
- * The play: function starts playing a stream, given a URl.  It uses
+ * The play: function starts playing a stream, given a URL.  It uses
  * the radiostream module to handle indirection through playlists and
  * other random junk that people put in radiostation URLs.
  *
@@ -60,9 +60,10 @@
  * which come with embedded stream labels.
  *
  * Once data arrives from the radiostream module (via rsDataProc), we
- * open an AudioFileStream, which is a packet parser that understands the
- * stream data type that the stream's content type specifies.  The headers
- * have already been processed by the time the data stream starts.
+ * open an AudioFileStream, which is a packet parser that understands
+ * the stream data type that the stream's content type specifies.  The
+ * HTTP headers have already been processed by the time the data
+ * stream starts.
  *
  * The parser calls back to the PacketsProc and PropertyProc function,
  * and is supplied with data to parse by the radiostream's data proc's
@@ -252,13 +253,22 @@ int _songCount = 0;
  * aqMutex after checking for the deleted flag in the upcalling
  * object.  However, Objective C's ARC doesn't let us access to the
  * ref count, so instead, if the ref count is non-zero, we set a
- * pointer in refHeld which holds the ARC ref count.
+ * pointer in refHeld which holds the ARC ref count on our own
+ * structure.
+ *
+ * Also note that when init has been called, but our caller hasn't
+ * called play yet, our caller may not call shutdownAudio before just
+ * dropping a pointer to the MFANAqPlayer.  To ensure that we will
+ * free the structure properly in that case, we delay setting _refHeld
+ * until play is called, even though the refCount > 0.  The play
+ * function calls checkRefNL, which set refHeld if the refCount > 0
+ * (which it will be).  This is probably a stupid feature, but c'est
+ * la vie.
  */
 - (void) holdNL
 {
-    if (_refCount++ == 0) {
-	_refHeld = self;
-    }
+    _refCount++;
+    _refHeld = self;
 }
 
 - (void) releaseNL
@@ -266,6 +276,12 @@ int _songCount = 0;
     if (--_refCount == 0) {
 	_refHeld = nil;
     }
+}
+
+- (void) checkRefNL
+{
+    if (_refCount > 0)
+	_refHeld = self;
 }
 
 /* one per system, i.e. static variables; we keep aqMutex static so
@@ -277,6 +293,8 @@ pthread_mutex_t _aqMutex;
 
 /* this is called by the AudioQueue package when it finishes playing some music, telling
  * us to make available for filling with data a buffer we'd been using.
+ *
+ * This can be called on threads other than the main thread.
  */
 void
 MFANAqPlayer_handleOutput( void *acontextp,
@@ -292,11 +310,21 @@ MFANAqPlayer_handleOutput( void *acontextp,
     pthread_mutex_unlock(&_aqMutex);
 }
 
+/* called on the main thread to create a new player */
 - (MFANAqPlayer *) init
 {
     self = [super init];
     if (self) {
 	NSLog(@"- aqplayer init starts for %p", self);
+
+	/* refHeld starts off nil in case someone just deletes the
+	 * object before using it at all, and doesn't shut it down
+	 * first.  Note that until play is called, you can delete this
+	 * object by dropping a pointer to it, or by calling
+	 * shutdownAudio (and dropping pointer to it).  Afterwards,
+	 * you must call shutdownAudio before dropping pointer, since
+	 * refHeld will be set.
+	 */
 	_refCount = 1;
 	_refHeld = nil;
 
@@ -366,6 +394,9 @@ MFANAqPlayer_handleOutput( void *acontextp,
     return self;
 }
 
+/* called on main thread to see if the music is actually playing, i.e. if buffers
+ * of music are being returned to our free pool.
+ */
 - (void) spyMonitor: (id) junk
 {
     uint32_t now;
@@ -422,7 +453,9 @@ MFANAqPlayer_handleOutput( void *acontextp,
 #pragma clang diagnostic pop
 }
 
-/* must be called with the aqLock held; drops lock temporarily */
+/* must be called with the aqLock held; drops lock temporarily;
+ * Called from various threads.
+ */
 - (void) shutdownAudio
 {
     NSLog(@"- in shutdown audio for aqp=%p", self);
@@ -430,6 +463,17 @@ MFANAqPlayer_handleOutput( void *acontextp,
     /* check if we've started a shutdown procedure */
     if (_shutdown) {
 	NSLog(@"- shutdownAudio for stopped player %p", self);
+	return;
+    }
+
+    /* if we're called on the wrong thread, move to the right one.  If we don't
+     * do this, the NSTimer stuff doesn't work.
+     */
+    if (![NSThread isMainThread]) {
+	NSLog(@" - shutdownAudio bouncing to main thread");
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[self shutdownAudio];
+	    });
 	return;
     }
 
@@ -528,6 +572,13 @@ MFANAqPlayer_handleOutput( void *acontextp,
 	[_spyTimer invalidate];
 	_spyTimer = nil;
     }
+
+    /* release of reference set by init function; from this point on,
+     * if someone drops the last pointer to our structure, our structure
+     * will actually get freed.
+     */
+    [self releaseNL];
+    NSLog(@"- release done in shutdown, refct=%d ref=%p", _refCount, _refHeld);
 
     pthread_mutex_unlock(&_aqMutex);
 
@@ -756,6 +807,9 @@ MFANAqPlayer_PacketsProc( void *contextp,
     bytesCopied = 0;
     for(i=0;i<numPackets;i++) {
 	if (aqp->_stopped) {
+	    if (bufRefp != NULL) {
+		[aqp pushBuffer: bufRefp];
+	    }
 	    return;
 	}
 
@@ -994,6 +1048,10 @@ MFANAqPlayer_rsControlProc( void *contextp,
 
 - (void) play: (NSString *) urlString
 {
+    pthread_mutex_lock(&_aqMutex);
+    [self checkRefNL];
+    pthread_mutex_unlock(&_aqMutex);
+
     /* kick this off on a different dispatcher, since it reads data from
      * the network synchronously.
      */
@@ -1054,7 +1112,10 @@ MFANAqPlayer_rsControlProc( void *contextp,
     pthread_exit(NULL);
 }
 
-/* called with _aqMutex held */
+/* called with _aqMutex held, to add a buffer to the free list of buffers
+ * More can be sent to us than we have room for, in which case we block
+ * until room has freed up.
+ */
 - (void) pushBuffer: (AudioQueueBufferRef) item
 {
     uint32_t ix;

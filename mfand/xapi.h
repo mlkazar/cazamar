@@ -156,10 +156,6 @@ class XApi : public CThread {
             _mutex.release();
             _doneCV.broadcast();
         }
-        
-        void reset() {
-            _bufGenp->disconnect();
-        }
     };
 
     /* The user begin by creating a new XApi::ClientReq, adding any
@@ -193,6 +189,10 @@ class XApi : public CThread {
      *
      * Finally, when all done, the user calls delete on the
      * XApi::ClientReq.
+     *
+     * To terminate one of these calls early while streaming data,
+     * call eof() on the incoming pipe, and the call will terminate
+     * shortly after the next data is delivered.
      */
     class ClientReq : public CommonReq {
     public:
