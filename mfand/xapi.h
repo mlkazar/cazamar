@@ -244,6 +244,7 @@ class XApi : public CThread {
         }
 
         int32_t waitForAllDone() {
+            _incomingDatap->eof();
             _connp->waitForAllDone();
             return _error;
         }

@@ -57,7 +57,7 @@ CThreadPipe::write(const char *bufferp, int32_t count)
             bytesThisTime = tcount;
 
         /* don't copy beyond the wrap */
-        tcount = _maxBytes - _pos;
+        tcount = _maxBytes - endPos;
         if (bytesThisTime > tcount)
             bytesThisTime = tcount;
 
@@ -109,6 +109,9 @@ CThreadPipe::read(char *bufferp, int32_t count)
             continue;
         }
 
+        /* if _pos was pointing to the end, move it back to the start
+         * of the buffer.
+         */
         if (_pos >= _maxBytes)
             _pos -= _maxBytes;
 

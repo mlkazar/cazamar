@@ -610,33 +610,37 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     searchLength = (int) [searchText length];
 
     /* update the mapArrayp to match the selected items */
-    if (1 /*searchLength == 0*/) {
-	[self setupDefaultMap];
-    }
-    {
-	realCount = (int) [_popMediaSel count];
-	_mapCount = 0;
-	for(i=0;i<realCount;i++) {
-	    name = [_popMediaSel nameByIx: i];
-	    details = [_popMediaSel subtitleByIx: i];
+    [self setupDefaultMap];
 
-	    if ([name length] >= searchLength) {
-		nameRange = [name rangeOfString: searchText
-				  options:NSCaseInsensitiveSearch];
-	    }
-	    detailsRange.location = NSNotFound;
-	    if (details != nil && [details length] >= searchLength) {
-		detailsRange = [details rangeOfString: searchText
-					options: NSCaseInsensitiveSearch];
-	    }
+    realCount = (int) [_popMediaSel count];
+    _mapCount = 0;
+    for(i=0;i<realCount;i++) {
+	if ([_popMediaSel searchAlreadyFiltered]) {
+	    /* just add in the search result */
+	    _mapArrayp[_mapCount] = i;
+	    _mapCount++;
+	    continue;
+	}
 
-	    if (nameRange.location != NSNotFound ||
-		(details != nil && detailsRange.location != NSNotFound)) {
-		_mapArrayp[_mapCount] = i;
-		_mapCount++;
-	    }
-	} 
-    }
+	name = [_popMediaSel nameByIx: i];
+	details = [_popMediaSel subtitleByIx: i];
+
+	if ([name length] >= searchLength) {
+	    nameRange = [name rangeOfString: searchText
+				    options:NSCaseInsensitiveSearch];
+	}
+	detailsRange.location = NSNotFound;
+	if (details != nil && [details length] >= searchLength) {
+	    detailsRange = [details rangeOfString: searchText
+					  options: NSCaseInsensitiveSearch];
+	}
+
+	if (nameRange.location != NSNotFound ||
+	    (details != nil && detailsRange.location != NSNotFound)) {
+	    _mapArrayp[_mapCount] = i;
+	    _mapCount++;
+	}
+    } 
 
     [self updatePopViewInfo];
 }

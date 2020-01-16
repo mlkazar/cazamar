@@ -95,6 +95,11 @@
 
 - (BOOL) hasRssItems;
 
+/* return YES if this type of selector's search function already filters
+ * the results well enough to present to the user.
+ */
+- (BOOL) searchAlreadyFiltered;
+
 /* if supports localAdd is set, we can add new entries, using the
  * prompt returned for the key and value from localAddPrompKey, and
  * setting the result in localAddKey.

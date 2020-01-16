@@ -22,7 +22,13 @@ class RadioScanLoadTask;
 
 class RadioScanQuery {
 public:
-    std::string _query;
+    std::string _query;         /* for simple queries */
+
+    std::string _browseCountry;       /* for browsing */
+    std::string _browseCity;
+    std::string _browseGenre;
+    int32_t _browseMaxCount;
+
     RadioScan *_scanp;
     dqueue<RadioScanStation> _stations;
     uint32_t _refCount;
@@ -40,6 +46,12 @@ public:
         _scanp = scanp;
     }
 
+    void initBrowse(RadioScan *scanp, 
+                    int32_t maxCount,
+                    std::string country,
+                    std::string city,
+                    std::string genre);
+
     int32_t searchStreamTheWorld();
 
     int32_t searchDar();
@@ -47,6 +59,8 @@ public:
     int32_t searchFile();
 
     int32_t searchShoutcast();
+
+    int32_t browseFile();
 
     void abort() {
         _aborted = 1;
@@ -146,10 +160,15 @@ class RadioScan {
     XApi::ClientConn *_stwConnp;
     BufGenFactory *_factoryp;
     std::string _dirPrefix;
+    int32_t _fileLineCount;
 
     void init(BufGenFactory *factoryp, std::string dirPrefix);
 
     void searchStation(std::string query, RadioScanQuery **respp);
+
+    void browseStations( RadioScanQuery *resp);
+
+    void countLines();
 
     static void takeLock() {
         _lock.take();
@@ -158,6 +177,8 @@ class RadioScan {
     static void releaseLock() {
         _lock.release();
     }
+
+    static void scanSort(int32_t *datap, int32_t count);
 
     int32_t retrieveContents(std::string url , std::string *strp);
 };

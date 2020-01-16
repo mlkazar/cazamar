@@ -281,6 +281,11 @@ wrapMediaItems(NSArray *mediaArray)
     NSMutableArray *_countsArray;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -434,6 +439,11 @@ wrapMediaItems(NSArray *mediaArray)
     NSArray *_artistsArray;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -576,6 +586,11 @@ wrapMediaItems(NSArray *mediaArray)
 
     /* corresponding array of arrays of mpmediaitems objects */
     NSMutableArray *_albumsArray;
+}
+
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
 }
 
 - (BOOL) supportsLocalAdd
@@ -793,6 +808,11 @@ wrapMediaItems(NSArray *mediaArray)
     int _localCount;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return YES;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return YES;
@@ -817,7 +837,29 @@ wrapMediaItems(NSArray *mediaArray)
 
     searchStringp = [_searchString cStringUsingEncoding: NSUTF8StringEncoding];
     NSLog(@"search is %s", searchStringp);
-    _scanp->searchStation(std::string(searchStringp), &_queryp);
+
+    if (strncasecmp("c:", searchStringp, 2) == 0) {
+	/* choose random set, matching country */
+	_queryp = new RadioScanQuery();
+	_queryp->initBrowse(_scanp, 10, std::string(searchStringp+2), "", "");
+	_scanp->browseStations(_queryp);
+    }
+    else if (strncasecmp("ct:", searchStringp, 3) == 0) {
+	/* choose random set, matching specific city */
+	_queryp = new RadioScanQuery();
+	_queryp->initBrowse(_scanp, 10, "", std::string(searchStringp+3), "");
+	_scanp->browseStations(_queryp);
+    }
+    else if (strncasecmp("g:", searchStringp, 2) == 0) {
+	/* choose random set, matching specific genre */
+	_queryp = new RadioScanQuery();
+	_queryp->initBrowse(_scanp, 10, "", "", std::string(searchStringp+2));
+	_scanp->browseStations(_queryp);
+    }
+    else {
+	_queryp = NULL;	/* searchStation will allocate it */
+	_scanp->searchStation(std::string(searchStringp), &_queryp);
+    }
     NSLog(@"back from search -- %ld stations", _queryp->_stations.count());
     
     /* now add in all the stations we found */
@@ -1234,6 +1276,11 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     NSString *_artistName;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -1447,6 +1494,11 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     NSArray *_mediaItemsArray;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -1624,6 +1676,11 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     NSArray *_songsArray;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -1765,6 +1822,11 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     NSOperationQueue *_urlQueue;
     Xgml *_xgmlp;
     Json *_jsonp;
+}
+
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
 }
 
 - (BOOL) supportsLocalAdd
@@ -2099,6 +2161,11 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     NSArray *_genresArray;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -2250,6 +2317,11 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     NSString *_albumNameFilter;
     NSString *_artistNameFilter;
     NSString *_genreNameFilter;
+}
+
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
 }
 
 - (BOOL) supportsLocalAdd
@@ -2513,6 +2585,11 @@ addHelper(void *callbackContextp, void *recordContextp)
     NSString *_artistNameFilter;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -2730,6 +2807,11 @@ addSongsForAlbumsHelper(void *callbackContextp, void *recordContextp)
     UIImage *_defaultImage;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -2924,6 +3006,11 @@ addSongsForArtistsHelper(void *callbackContextp, void *recordContextp)
     UIImage *_defaultImage;
 }
 
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
+}
+
 - (BOOL) supportsLocalAdd
 {
     return NO;
@@ -3115,6 +3202,11 @@ addSongsForGenresHelper(void *callbackContextp, void *recordContextp)
     /* array of MFANMediaItem objects */
     long _dirMTime;
     NSArray *_recordingsArray;
+}
+
+- (BOOL) searchAlreadyFiltered
+{
+    return NO;
 }
 
 - (BOOL) supportsLocalAdd
