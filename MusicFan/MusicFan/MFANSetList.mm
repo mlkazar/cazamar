@@ -933,7 +933,7 @@ wrapMediaItems(NSArray *mediaArray)
 {
     if (_asyncSearchRunning) {
 	if (_queryp != nil) {
-	    return [NSString stringWithUTF8String: _queryp->_baseStatus.c_str()];
+	    return [NSString stringWithUTF8String: _queryp->getStatus().c_str()];
 	}
 	else 
 	    return @"Search initializing";

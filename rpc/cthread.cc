@@ -180,3 +180,12 @@ CThreadPipe::eof()
 
     _cv.broadcast();
 }
+
+void
+ CThreadCV::broadcast() {
+    int32_t code;
+    code = pthread_cond_broadcast(&_pthreadCV);
+    if (code) {
+        printf("broadcast failed code=%d\n", code);
+    }
+}

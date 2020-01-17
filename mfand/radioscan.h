@@ -21,6 +21,9 @@ class RadioScanStation;
 class RadioScanLoadTask;
 
 class RadioScanQuery {
+    friend class RadioScan;
+private:
+    std::string _baseStatus;
 public:
     std::string _query;         /* for simple queries */
 
@@ -32,7 +35,6 @@ public:
     RadioScan *_scanp;
     dqueue<RadioScanStation> _stations;
     uint32_t _refCount;
-    std::string _baseStatus;
     std::string _detailedStatus;
     int _aborted;
 
@@ -61,6 +63,8 @@ public:
     int32_t searchShoutcast();
 
     int32_t browseFile();
+
+    std::string getStatus();
 
     void abort() {
         _aborted = 1;

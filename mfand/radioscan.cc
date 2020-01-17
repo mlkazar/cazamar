@@ -838,8 +838,7 @@ RadioScanQuery::browseFile()
         if (skipping && lineNumber < lineNumbers[randIx])
             continue;
 
-        sprintf(lineBuffer, "On line %d of %d, with %lu stations",
-                lineNumber, _scanp->_fileLineCount, _stations.count());
+        sprintf(lineBuffer, "On line %d of %d", lineNumber, _scanp->_fileLineCount);
         _baseStatus = std::string(lineBuffer);
 
         /* no longer skipping, now we're searching for a match */
@@ -1150,6 +1149,21 @@ RadioScanQuery::initBrowse(RadioScan *scanp,
     _scanp = scanp;
 }
 
+std::string
+RadioScanQuery::getStatus()
+{
+    std::string result;
+    char tbuffer[1024];
+
+    if (_stations.count() == 1)
+        strcpy(tbuffer, " (1 station)");
+    else
+        sprintf(tbuffer, " (%ld stations)", _stations.count());
+
+    result = _baseStatus + std::string(tbuffer);
+    return result;
+}
+
 /* call initBrowse, and then browseStations with the resulting initialized query */
 void
 RadioScan::browseStations( RadioScanQuery *resp)
@@ -1286,7 +1300,6 @@ RadioScanLoadTask::start(void *argp)
         } /* loop over all */
     }
 
-    delete inPipep;
     delete reqp;
     fclose(newFilep);
     newFilep = NULL;

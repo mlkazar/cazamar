@@ -88,6 +88,7 @@ class CThreadCV {
  private:
     pthread_cond_t _pthreadCV;
     CThreadMutex *_mutexp;
+    uint8_t _state;
 
  public:
     /* if you don't have a convenient pointer to the mutex at construction time,
@@ -96,8 +97,11 @@ class CThreadCV {
     CThreadCV(CThreadMutex *mutexp) {
         int32_t code;
 
+        _state = 1;
         _mutexp = mutexp;
         code = pthread_cond_init(&_pthreadCV, NULL);
+        if (code)
+            printf("condinit failed code=%d\n", code);
     }
 
     void setMutex(CThreadMutex *mutexp) {
@@ -118,19 +122,14 @@ class CThreadCV {
             printf("cond wait code=%d\n", code);
     }
 
-    void broadcast() {
-        int32_t code;
-        code = pthread_cond_broadcast(&_pthreadCV);
-        if (code) {
-            printf("broadcast failed code=%d\n", code);
-        }
-    }
+    void broadcast();
 
     void signalOne() {
         pthread_cond_signal(&_pthreadCV);
     }
 
     ~CThreadCV() {
+        _state = 2;
         pthread_cond_destroy(&_pthreadCV);
     }
 };

@@ -25,7 +25,7 @@ public:
              * and this is just a test program.
              */
             if (_queryp)
-                printf("Status: %s\n", _queryp->_baseStatus.c_str());
+                printf("Status: %s\n", _queryp->getStatus().c_str());
         }
     }
 
