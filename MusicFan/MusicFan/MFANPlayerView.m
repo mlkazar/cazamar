@@ -1898,7 +1898,8 @@ static const float _hijackDelay = 4.0;
      */
     if (_audioPlayer) {
 	/* is this expensive? */
-	[_mpPlayer pause];
+	if ([_mpPlayer playbackState] == MPMusicPlaybackStatePlaying)
+	    [_mpPlayer pause];
     }
     else if (_avPlayer) {
 	// [_mpPlayer pause];
