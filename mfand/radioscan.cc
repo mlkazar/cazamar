@@ -1281,6 +1281,7 @@ RadioScanLoadTask::start(void *argp)
     totalBytes = 0;
     if (httpError < 200 || httpError >= 300) {
         delete reqp;
+        reqp = NULL;
         failed = 1;
     }
     else {
@@ -1300,7 +1301,8 @@ RadioScanLoadTask::start(void *argp)
         } /* loop over all */
     }
 
-    delete reqp;
+    if (reqp)
+        delete reqp;
     fclose(newFilep);
     newFilep = NULL;
     if (failed)
