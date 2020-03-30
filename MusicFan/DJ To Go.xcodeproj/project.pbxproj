@@ -1178,6 +1178,7 @@
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 680;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MusicFan/DJ To Go-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1191,6 +1192,7 @@
 					"$(inherited)",
 					/Users/kazar/mac/rpc,
 				);
+				MARKETING_VERSION = 6.8;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Cazamar.DJ-To-Go";
 				PRODUCT_NAME = AudioGalaxy;
 				PROVISIONING_PROFILE = "";
@@ -1206,6 +1208,7 @@
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 680;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "MusicFan/DJ To Go-Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "MFAN_OS=1";
@@ -1215,6 +1218,7 @@
 					"$(inherited)",
 					/Users/kazar/mac/rpc,
 				);
+				MARKETING_VERSION = 6.8;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Cazamar.DJ-To-Go";
 				PRODUCT_NAME = AudioGalaxy;
 				PROVISIONING_PROFILE = "";

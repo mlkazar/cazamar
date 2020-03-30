@@ -322,6 +322,8 @@ UIImage *_defaultImage;
     uint32_t _lastChangeMs;	/* last time song changed */
     uint32_t _lastStateChangeMs; /* last time isPlaying changed */
     MFANViewController *_viewCon;
+    uint32_t _lastHijackSecs;	/* seconds since last hijack */
+    uint32_t _lastHijackCount;	/* count since last time we had a 20 second gap in hijackings */
 
     /* we count how many times in a row we thought we were playing,
      * but currentTime didn't change (for AV player).  This is often
@@ -510,6 +512,8 @@ static const float _hijackDelay = 4.0;
 	_usePlayer = MFANUseMainPlayer;
 	_reboundToMainPlayer = NO;
 	_hijackInProgress = NO;
+	_lastHijackSecs = 0;
+	_lastHijackCount = 0;
 
 	_mpPlayer = [MPMusicPlayerController systemMusicPlayer];
 
@@ -2442,6 +2446,23 @@ static const float _hijackDelay = 4.0;
 	if (jumpDistance < 0)
 	    jumpDistance = -jumpDistance;
 
+	/* for safety, we maintain a count of how many hijackings
+	 * occur in a row, meaning without a gap of 20 seconds or more
+	 * in the stream of hijackings.  If this count gets > 5, we
+	 * stop detecting hijackings, since there may be a bug causing
+	 * them to be found too often.
+	 *
+	 * That's what happend when IOS started wrapping some
+	 * MPMediaItems with a proxy structure, so that the comparison
+	 * to see if the song playing is the right one.  We'd rather
+	 * have a fail safe mechanism here.
+	 */
+	if (osp_get_sec() - _lastHijackSecs > 60) {
+	    _lastHijackCount = 0;
+	}
+	if (_lastHijackCount >= 4)
+	    return NO;
+
 	if (nowPlayingIx <= 1) { /* usually resets us to first song */
 	    /* watch for us playing a significantly different index
 	     * than we expect to be playing (our code in setIndex: to
@@ -2454,6 +2475,8 @@ static const float _hijackDelay = 4.0;
 	    if (jumpDistance > 1) {
 		NSLog(@"- hijacked really playing %ld when shouldBeIx=%ld",
 		      (long) nowPlayingIx, (long) shouldBeIx);
+		_lastHijackCount++;
+		_lastHijackSecs = osp_get_sec();
 		return YES;
 	    }
 
@@ -2466,9 +2489,13 @@ static const float _hijackDelay = 4.0;
 	    else
 		shouldBeItem = nil;
 
-	    if (shouldBeItem != nil && nowPlayingItem != nil && shouldBeItem != nowPlayingItem) {
+	    if ( shouldBeItem != nil && nowPlayingItem != nil && 
+		 [shouldBeItem persistentID] != [nowPlayingItem persistentID]) {
 		NSLog(@"- hijack avIx=%d nowPlayingIx=%d", (int) _avMediaIndex, (int) shouldBeIx);
-		NSLog(@"- hijacked mpItem=%p nowPlayingItem=%p", shouldBeItem, nowPlayingItem);
+		NSLog(@"- hijacked mpItem=%llx nowPlayingItem=%llx",
+		      [shouldBeItem persistentID], [nowPlayingItem persistentID]);
+		_lastHijackCount++;
+		_lastHijackSecs = osp_get_sec();
 		return YES;
 	    }
 	    return NO;
