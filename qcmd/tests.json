@@ -1,0 +1,5 @@
+{
+    "commands": ["echo $host$ = $host:name$", "pwd;sleep 20;pwd", "ls"],
+    "hosts": ["localhost", "localhost"],
+    "echo" : ["echo abc"]
+}

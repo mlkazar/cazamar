@@ -1507,6 +1507,9 @@ UploadReq::UploadInfoDataMethod()
         sprintf(tbuffer, "<tr><td>Stalled 409</td><td>%llu</td></tr>\n",
                 (long long) sp->_busy409);
         response += tbuffer;
+        sprintf(tbuffer, "<tr><td>Duplicate seg received 416</td><td>%llu</td></tr>\n",
+                (long long) sp->_duplicateReceived416);
+        response += tbuffer;
         sprintf(tbuffer, "<tr><td>Mkdir random 400</td><td>%llu</td></tr>\n",
                 (long long) sp->_bad400);
         response += tbuffer;

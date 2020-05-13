@@ -1,0 +1,42 @@
+8 clients, 3 mount points to different nodes
+90 files per client per mount point, total of 2160 files
+
+strw -- 30 file writers * 3 mount points * 8 clients = 720 writers at a time
+1.78 GB/s writes
+
+randr -- 90 file readers * 3 mount points * 8 clients  (720 threads across 8 client machines)
+144656 ops/sec
+
+randw -- same as randr
+32610 ops/sec (cluster)
+
+strr -- same as randr
+4.566 GB/s
+
+================
+8 clients, 6 mount points to 3 different nodes (2 IPs per node)
+45 files per client per mount point, total of 2160 files
+
+strw -- 15 file writers * 6 mount points * 8 clients = 720 writers at a time
+1.75 GB/s writes
+
+randr -- 45 file readers * 6 mount points * 8 clients (720 threads across 8 client machines)
+108951 ops/sec
+
+randw
+31458 ops/sec
+
+strr
+4.54 GB/s
+
+================
+back to first config
+
+strw 1.71 GB/s, 1.74 GB/s
+
+randr -- 113468, 113058
+
+strr -- 4.561 GB/s, 4.558 GB/s
+
+randw -- 33592, 32145
+

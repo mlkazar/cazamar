@@ -9,3 +9,7 @@ Identifiers / iCloud Containers -- iCloud.com.Cazamar.Web
 icloud.developer.apple.com:
 Go to API Access to define an API Token for postMessage (named Web1)
 Go to Record Types to define a record type for holding data, and define a field for Assets.
+
+Move kite.app into base.dmg.  Then convert base.dmg to kite.dmg
+
+hdiutil convert -format UDZO base.dmg -o kite.dmg

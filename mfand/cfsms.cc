@@ -152,7 +152,7 @@ CnodeMs::parseResults( Json::Node *jnodep,
     tnodep = jnodep->searchForChild("size", 0);
     if (tnodep) {
         sizeStr = tnodep->_children.head()->_name;
-        *sizep = atoi(sizeStr.c_str());
+        *sizep = atoll(sizeStr.c_str());
     }
     else
         allFound = 0;
@@ -1620,6 +1620,11 @@ CfsMs::retryError( CfsLog::OpType type,
             *parsedNodepp = NULL;
             return 1;
         }
+    }
+    else if (httpError == 416) {
+        _stats._duplicateReceived416++;
+        retryStatep->_finalCode = CFS_ERR_OK;
+        return 0;
     }
     else if ( (httpError >= 500 && httpError <= 504) ||
               httpError == 429) {

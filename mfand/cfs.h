@@ -29,6 +29,7 @@ class CfsStats {
     uint64_t _busy429;
     uint64_t _busy409;
     uint64_t _bad400;   /* incremented on bogus mkdir 400s that we retry */
+    uint64_t _duplicateReceived416;
     uint64_t _mysteryErrors;
     uint64_t _xapiErrors;
 

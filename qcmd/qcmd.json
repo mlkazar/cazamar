@@ -1,0 +1,19 @@
+{
+    "commands": ["pwd", "mkdir /mnt/a10;mkdir /mnt/a11;mkdir /mnt/a12;mkdir /mnt/a13; mkdir /mnt/a14;mkdir /mnt/a15"],
+    "mount" : ["mount -o hard,intr,tcp,rsize=524288,wsize=524288 10.54.97.127:/1_1_1_0 /mnt/a10",
+	       "mount -o hard,intr,tcp,rsize=524288,wsize=524288 10.54.97.125:/1_1_1_0 /mnt/a11",
+	       "mount -o hard,intr,tcp,rsize=524288,wsize=524288 10.54.97.129:/1_1_1_0 /mnt/a12"],
+    "umount" : ["umount -f /mnt/a10","umount -f /mnt/a11","umount -f /mnt/a12",
+		"umount -f /mnt/a13","umount -f /mnt/a14","umount -f /mnt/a15"],
+    "lroot" : ["ls -lid /mnt/a10", "ls -lid /mnt/a11","ls -lid /mnt/a12"],
+    "strw" : [
+	"for i in {0..29}; do for j in {a10,a11,a12}; do cd /mnt/$$j;dd if=/dev/zero of=big.$$j.$host$.$$i.dat bs=65536 count=16384& done; done; wait",
+	"for i in {30..59}; do for j in {a10,a11,a12}; do cd /mnt/$$j;dd if=/dev/zero of=big.$$j.$host$.$$i.dat bs=65536 count=16384& done; done; wait",
+	"for i in {60..89}; do for j in {a10,a11,a12}; do cd /mnt/$$j;dd if=/dev/zero of=big.$$j.$host$.$$i.dat bs=65536 count=16384& done; done; wait"],
+    "randw": ["for i in {0..89}; do for j in {a10,a11,a12}; do cd /mnt/$$j;/root/randio w big.$$j.$host$.$$i.dat 262144& done; done;wait"],
+    "randr": ["for i in {0..89}; do for j in {a10,a11,a12}; do cd /mnt/$$j;/root/randio r big.$$j.$host$.$$i.dat 262144&done; done; wait"],
+    "strr" : ["for i in {0..89}; do for j in {a10,a11,a12}; do cd /mnt/$$j;dd of=/dev/null if=big.$$j.$host$.$$i.dat bs=65536 count=16384& done; done; wait"],
+    "fillr" : ["while true; do for k in /mnt/a10/fill.*; do cd $$k;pwd; for j in {a10,a11,a12}; do sum big.$$j.$host$.*.dat& done; wait; done; done"],
+    "fillw" : ["for k in {0..1000000}; do mkdir /mnt/a10/fill.$$k;for i in {0..29}; do for j in {a10,a11,a12}; do cd /mnt/$$j/fill.$$k;dd if=/dev/zero of=big.$$j.$host$.$$i.dat bs=65536 count=16384& done; done; wait; done"],
+    "hosts": ["10.54.4.74","10.54.4.75","10.54.4.76","10.54.4.77","10.54.4.83","10.54.4.85","10.54.4.88","10.54.4.90"]
+}
