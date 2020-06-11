@@ -1,8 +1,8 @@
 all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libupload.a liblfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest walktest uptest scantest
 
 install: all *.h
-	cp *.h ../include/.
-	cp *.a ../lib/.
+	cp -p *.h ../include/.
+	cp -p *.a ../lib/.
 
 clean:
 	rm -f *.o *.a mfand mfanc stream strload ssls sslc jsdbtest \
