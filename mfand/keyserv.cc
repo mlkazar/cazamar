@@ -355,6 +355,7 @@ AppleLoginReq::AppleLoginMethod()
 #endif
         }
     }
+#if 0
     while(1) {
         code = inPipep->read(tbuffer, sizeof(tbuffer)-1);
         if (code <= 0)
@@ -364,6 +365,7 @@ AppleLoginReq::AppleLoginMethod()
         tbuffer[code] = 0;
         printf("%s", tbuffer);
     }
+#endif
 
     {
         /* print out some info for debugging */
