@@ -752,6 +752,7 @@ Rst::Request::init( CopyProc *sendProcp,
     BufGen *socketp;
     char *methodp;
     char *urlp;
+    char *versionp;
     std::string firstLine;
     Rst::Hdr *hdrp;
     size_t qpos;
@@ -803,6 +804,14 @@ Rst::Request::init( CopyProc *sendProcp,
     }
     *tp = 0;
     _url = std::string(urlp);
+    versionp = tp+1;
+    if (strncasecmp(versionp, "HTTP/1.1", 8) == 0) {
+        _version = 1;   /* 1.1 */
+    }
+    else {
+        _version = 0;   /* 1.0 */
+    }
+    
 
     code = readCommonHeaders();
     if (code) {

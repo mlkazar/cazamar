@@ -1,0 +1,2 @@
+rm -rf ~/safe.repl
+cp -r . ~/safe.repl

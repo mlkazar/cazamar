@@ -212,6 +212,7 @@ class Rst {
     class Request : public Common {
         std::string _url;
         std::string _baseUrl;
+        uint8_t _version;
         std::string _op;
         std::string _sessionCookie;
         dqueue<Hdr> _urlPairs;
