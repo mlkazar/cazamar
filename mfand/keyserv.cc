@@ -304,7 +304,6 @@ AppleLoginReq::AppleLoginMethod()
     dqueue<Rst::Hdr> *urlPairsp;
 
     rstReqp = getRstReq();
-    CThreadPipe *inPipep = getIncomingPipe();
     CThreadPipe *outPipep = getOutgoingPipe();
 
     baseUrlp = rstReqp->getBaseUrl();
@@ -356,6 +355,7 @@ AppleLoginReq::AppleLoginMethod()
         }
     }
 #if 0
+    CThreadPipe *inPipep = getIncomingPipe();
     while(1) {
         code = inPipep->read(tbuffer, sizeof(tbuffer)-1);
         if (code <= 0)

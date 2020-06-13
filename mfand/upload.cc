@@ -427,6 +427,7 @@ UploadReq::UploadHomeScreenMethod()
     UploadApp *uploadApp;
     SApiLoginCookie *contextp;
     std::string authToken;
+    std::string authTokenName;
     std::string pathPrefix;
     std::string fileName;
     DIR *picDirp;
@@ -455,8 +456,10 @@ UploadReq::UploadHomeScreenMethod()
     }
     
 
-    if (contextp && contextp->getActive())
+    if (contextp && contextp->getActive()) {
         authToken = contextp->getActive()->getAuthToken();
+        authTokenName = contextp->getActive()->getAuthTokenName();
+    }
 
     if (noPic) {
         loginHtml += "<a href=\"/helpPics\"><font color=\"red\">WARNING: Kite needs permission to read Pictures; click to fix</font></a><p>";
@@ -465,7 +468,7 @@ UploadReq::UploadHomeScreenMethod()
         loginHtml += "<a href=\"/msLoginScreen\">MS Login</a>";
     }
     else {
-        loginHtml += "Logged in<p><a href=\"/logoutScreen\">Logout</a>";
+        loginHtml += "Logged in (" + authTokenName + ")<p><a href=\"/logoutScreen\">Logout</a>";
     }
     sprintf(tbuffer, "<p><a href=\"/\" onclick=\"getBackupInt(); return false\">Set backup interval (%s)</a>", UploadApp::showInterval(uploadApp->_backupInterval).c_str());
     loginHtml += tbuffer;

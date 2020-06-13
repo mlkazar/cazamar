@@ -78,9 +78,10 @@ public:
         return _authId;
     }
 
-    virtual void setAuthToken(std::string newStr) {
-        _authToken = newStr;
-        _changeCounter++;
+    virtual void setAuthToken(std::string newStr);
+
+    virtual std::string getAuthTokenName() {
+        return _authTokenUniqueName;
     }
 
     virtual void setRefreshToken(std::string newStr) {
@@ -94,6 +95,7 @@ public:
     }
 
     std::string _authToken;     /* auth token for authenticated calls */
+    std::string _authTokenUniqueName;
     std::string _refreshToken;  /* refresh token if auth token has limited lifetime */
     std::string _finalUrl;      /* URL to switch to when authentication done */
     std::string _authId;        /* ID used as key in key server */

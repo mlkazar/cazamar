@@ -9,6 +9,7 @@
 #include "bufsocket.h"
 #include "buftls.h"
 #include "json.h"
+#include "jwt.h"
 
 /* This file contains the basics for a toy test application, and the
  * login authentication framework used by any application that
@@ -330,7 +331,7 @@ SApiLoginMS::initFromFile( SApiLoginCookie *cookiep,
                            std::string refreshToken)
 {
     _sapip = NULL;
-    _authToken = authToken;
+    setAuthToken(authToken);
     _refreshToken = refreshToken;
     cookiep->setActive(this);
 }
@@ -630,6 +631,7 @@ SApiLoginReq::MSLoginScreenMethod()
     SApiLoginCookie *cookiep = SApiLogin::getLoginCookie(this);
     std::string authToken;
 
+    printf("In MSLoginScreenMethod cookiep=%p\n", cookiep);
     if (cookiep == NULL) {
         cookiep = new SApiLoginCookie();
         setCookieKey("sapiLogin", cookiep);
@@ -645,6 +647,7 @@ SApiLoginReq::MSLoginScreenMethod()
             cookiep->_loginMSp->init(_sapip, cookiep, "/");
             code = cookiep->_loginMSp->getLoginPage(&response, cookiep);
             obufferp = const_cast<char *>(response.c_str());
+            printf("Using authId %s\n", cookiep->_loginMSp->_authId.c_str());
         }
         else {
             obufferp = tbuffer;
@@ -863,4 +866,36 @@ SApiLoginCookie::restore()
 
     delete [] origFileDatap;
     return code;
+}
+
+void
+ SApiLoginGeneric::setAuthToken(std::string newStr) {
+    const char *tp;
+    std::string jsonData;
+    char *jsonDatap;
+    Json::Node *jnodep;
+    Json::Node *childNodep;
+    std::string failString;
+    int32_t code;
+
+    _authToken = newStr;
+    _changeCounter++;
+
+    /* try decoding JWT, if this *is* a JWT */
+    _authTokenUniqueName = std::string("Personal account");     /* default */
+    tp = newStr.c_str();
+    if (strchr(tp, '.') != NULL) {
+        code = Jwt::decode(newStr, &jsonData);
+        if (code == 0) {
+            Json jsys;
+            jsonDatap = (char *) jsonData.c_str();
+            code = jsys.parseJsonChars(&jsonDatap, &jnodep);
+            if (code == 0) {
+                childNodep = jnodep->searchForChild("unique_name", 0);
+                if (childNodep)
+                    _authTokenUniqueName = childNodep->_children.head()->_name.c_str();
+                delete jnodep;
+            }
+        }
+    }
 }

@@ -1,4 +1,4 @@
-all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libupload.a liblfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest walktest uptest scantest
+all: mfand libmf.a liboauth.a libjsdb.a librst.a libcfs.a libupload.a liblfs.a libstream.a libupnp.a mfanc strload ssls sslc jsdbtest upnptest xapitest idtest sapitest apptest keyserv cfstest walktest uptest scantest jwttest
 
 install: all *.h
 	cp -p *.h ../include/.
@@ -23,7 +23,7 @@ ifeq ($(OS),Linux)
 CXXFLAGS += -Wno-sign-compare -Wno-unused-but-set-variable 
 endif
 
-RSTINCLS=rst.h bufsocket.h bufgen.h buftls.h jsdb.h buffactory.h
+RSTINCLS=rst.h bufsocket.h bufgen.h buftls.h jsdb.h buffactory.h jwt.h
 
 INCLS=../include/*.h mfclient.h mfdata.h mfand.h $(RSTINCLS) radiostream.h xapi.h xapipool.h \
 strdb.h upnp.h radixtree.h streams.h sapi.h sapilogin.h upload.h radioscan.h
@@ -39,8 +39,8 @@ libmf.a: mfclient.o
 	ar cru libmf.a mfclient.o 
 	ranlib libmf.a
 
-librst.a: rst.o bufsocket.o buftls.o bufgen.o xapi.o xapipool.o sapi.o sapilogin.o
-	ar cru librst.a rst.o bufsocket.o buftls.o bufgen.o xapi.o xapipool.o sapi.o sapilogin.o
+librst.a: rst.o bufsocket.o buftls.o bufgen.o xapi.o xapipool.o sapi.o sapilogin.o jwt.o
+	ar cru librst.a rst.o bufsocket.o buftls.o bufgen.o xapi.o xapipool.o sapi.o sapilogin.o jwt.o
 	ranlib librst.a
 
 libjsdb.a: jsdb.o
@@ -70,6 +70,8 @@ streams.o: streams.cc $(INCLS)
 id.o: id.cc $(INCLS)
 
 idtest.o: idtest.cc $(INCLS)
+
+jwttest.o: jwttest.cc $(INCLS)
 
 xapi.o: xapi.cc $(INCLS)
 
@@ -228,3 +230,6 @@ upnptest: upnptest.o librst.a libupnp.a ../lib/libext.a ../lib/libcore.a liboaut
 
 idtest: idtest.o id.o streams.o
 	c++ $(OSXVERSION) -o idtest idtest.o id.o streams.o ../lib/libcore.a ../lib/librpc.a
+
+jwttest: jwttest.o librst.a ../lib/libext.a
+	c++ $(OSXVERSION) -o jwttest jwttest.o librst.a ../lib/libext.a
