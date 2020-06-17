@@ -81,7 +81,11 @@ public:
     virtual void setAuthToken(std::string newStr);
 
     virtual std::string getAuthTokenName() {
-        return _authTokenUniqueName;
+        return _authTokenName;
+    }
+
+    void setAuthTokenName(std::string newStr) {
+        _authTokenName = newStr;
     }
 
     virtual void setRefreshToken(std::string newStr) {
@@ -94,13 +98,22 @@ public:
         return -1;
     }
 
+    void setIsJwt(uint8_t is) {
+        _isJwt = is;
+    }
+
+    uint8_t getIsJwt() {
+        return _isJwt;
+    }
+
     std::string _authToken;     /* auth token for authenticated calls */
-    std::string _authTokenUniqueName;
+    std::string _authTokenName; /* name logged in */
     std::string _refreshToken;  /* refresh token if auth token has limited lifetime */
     std::string _finalUrl;      /* URL to switch to when authentication done */
     std::string _authId;        /* ID used as key in key server */
     SApiLoginCookie *_cookiep;
     uint32_t _changeCounter;
+    uint8_t _isJwt;
 
 #ifdef __linux__
     random_data _randomBuf;
@@ -110,6 +123,7 @@ public:
     SApiLoginGeneric() {
         _cookiep = NULL;
         _changeCounter = 0;
+        _isJwt = 0;
 #ifdef __linux__
         _randomBuf.state = NULL;
         initstate_r(time(0) + getpid(),
@@ -212,6 +226,8 @@ public:
     }
 
     int32_t refineAuthToken(std::string *tokenp, SApiLoginCookie *cookiep);
+
+    int32_t getUserInfo(SApiLoginCookie *cookiep);
 
     int32_t refresh();
 };

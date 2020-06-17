@@ -5,9 +5,10 @@
 
 class SockConn;
 
-/* Archticture: an application creates a SockSys object, and registers
- * its identity by calling 'listen' if it expects to be contacted by
- * remote users, rather than only initiating outgoing sends.
+/* Architecture: an application creates a SockSys object, and
+ * registers its identity by calling 'listen' if it expects to be
+ * contacted by remote users, rather than only initiating outgoing
+ * sends.
  * 
  * Using this as a server requires first creating a SockSys object and
  * calling its listen method with a node description (IP address +

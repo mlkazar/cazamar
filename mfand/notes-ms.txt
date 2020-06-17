@@ -1,5 +1,6 @@
 register with apps.dev.microsoft.com (not Azure Active Directory)
 
+Obsolete, but still present for mikazar@microsoft.com
 CloudMS
 Web app
 pw awqdimBY081)~-nXYMPD19:
@@ -8,6 +9,7 @@ https://djtogoapp.duckdns.org:7700/login4ms
 https://djtogoapp.duckdns.org:7700/logout4ms
 Files.ReadWrite Files.ReadWriteAll Files.ReadWrite.AppFolder Files.ReadWriteSelected User.Read
 
+Current app for michael.kazar@verizon.net:
 Kite4Cloud (Michael.Kazar@verizon.net)
 cd97cce7-f4a3-40c2-acc7-66a7924c6341
 pw lznisJHEK|msZGD85941{@)

@@ -334,6 +334,7 @@ SApiLoginMS::initFromFile( SApiLoginCookie *cookiep,
     setAuthToken(authToken);
     _refreshToken = refreshToken;
     cookiep->setActive(this);
+    getUserInfo(cookiep);
 }
 
 /* return a string representing the contents of a login web page for
@@ -377,6 +378,80 @@ SApiLoginMS::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
     }
     return 0;
 }
+
+int32_t
+SApiLoginMS::getUserInfo(SApiLoginCookie *cookiep)
+    /* now use the API to get info about the user */
+{
+    char tbuffer[0x4000];
+    XApi *xapip;
+    XApi::ClientConn *connp;
+    BufGen *bufGenp;
+    XApi::ClientReq *reqp;
+    CThreadPipe *inPipep;
+    const char *tp;
+    Json json;
+    Json::Node *userNodep;
+    Json::Node *createdNodep;
+    Json::Node *jnodep;
+    std::string callbackString;
+    std::string tokenString;
+    int32_t code;
+    CThreadPipe *outPipep;
+
+    /* JWT tokens already self-identify, and do so better than this hack, which 
+     * returns the display name of the root dirs creator.  We can't use the graph
+     * 'me' identification, since for an enterprise user, we don't have the rights
+     * to read the user's info.
+     */
+    if (getIsJwt())
+        return 0;
+
+    callbackString = "/v1.0/me/drive/root";
+
+    xapip = new XApi();
+    bufGenp = new BufTls(cookiep->getPathPrefix());
+    bufGenp->init(const_cast<char *>("graph.microsoft.com"), 443);
+    connp = xapip->addClientConn(bufGenp);
+    reqp = new XApi::ClientReq();
+    tokenString = "Bearer " + getAuthToken();
+    reqp->addHeader("Authorization", tokenString.c_str());
+    reqp->addHeader("Content-Type", "application/json");
+    reqp->startCall( connp,
+                     callbackString.c_str(),
+                     /* isPost */ XApi::reqGet);
+
+    outPipep = reqp->getOutgoingPipe();
+    outPipep->eof();
+
+    code = reqp->waitForHeadersDone();
+    inPipep = reqp->getIncomingPipe();
+    code = inPipep->read(tbuffer, sizeof(tbuffer));
+    if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
+        tbuffer[code] = 0;
+    }
+        
+    tp = tbuffer;
+    code = json.parseJsonChars((char **) &tp, &jnodep);
+    tp = (char *) "Default junk";
+    if (code == 0) {
+        createdNodep = jnodep->searchForChild("user", 0);
+        if (createdNodep) {
+            userNodep = createdNodep->searchForChild("displayName", 0);
+            if (userNodep) {
+                printf("user '%s'\n", userNodep->_children.head()->_name.c_str());
+                setAuthTokenName("Personal: " + userNodep->_children.head()->_name);
+            }
+        }
+    }
+
+    delete reqp;
+    delete jnodep;
+    reqp = NULL;
+
+    return 0;
+}
+
 
 int32_t
 SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
@@ -424,6 +499,7 @@ SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
         code = reqp->waitForHeadersDone();
         inPipep = reqp->getIncomingPipe();
         code = inPipep->read(tbuffer, sizeof(tbuffer));
+        printf("Refine code %d\n", code);
         if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
             tbuffer[code] = 0;
         }
@@ -447,6 +523,9 @@ SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
         reqp = NULL;
     }
     
+    /* make a call to Graph API to get principal name, and set it in the context */
+    getUserInfo(cookiep);
+
     return 0;
 }
 
@@ -869,7 +948,7 @@ SApiLoginCookie::restore()
 }
 
 void
- SApiLoginGeneric::setAuthToken(std::string newStr) {
+SApiLoginGeneric::setAuthToken(std::string newStr) {
     const char *tp;
     std::string jsonData;
     char *jsonDatap;
@@ -882,8 +961,9 @@ void
     _changeCounter++;
 
     /* try decoding JWT, if this *is* a JWT */
-    _authTokenUniqueName = std::string("Personal account");     /* default */
+    setAuthTokenName(std::string("Personal account"));
     tp = newStr.c_str();
+    setIsJwt(0);        /* default */
     if (strchr(tp, '.') != NULL) {
         code = Jwt::decode(newStr, &jsonData);
         if (code == 0) {
@@ -891,9 +971,10 @@ void
             jsonDatap = (char *) jsonData.c_str();
             code = jsys.parseJsonChars(&jsonDatap, &jnodep);
             if (code == 0) {
+                setIsJwt(1);
                 childNodep = jnodep->searchForChild("unique_name", 0);
                 if (childNodep)
-                    _authTokenUniqueName = childNodep->_children.head()->_name.c_str();
+                    setAuthTokenName(childNodep->_children.head()->_name);
                 delete jnodep;
             }
         }
