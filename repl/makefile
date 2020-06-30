@@ -1,3 +1,4 @@
+
 all: libdisp.a librcall.a disptest sltest rbuftest
 
 install: all
@@ -21,7 +22,7 @@ ifeq ($(OS),Linux)
 CXXFLAGS += -Wno-unused-but-set-variable
 endif
 
-INCLS=disp.h lock.h sock.h socklocal.h rbuf.h rbufstr.h ../include/*.h
+INCLS=ezcall.h rsfwds.h disp.h lock.h sock.h socklocal.h rbuf.h rbufstr.h ../include/*.h
 
 disp.o: disp.cc ${INCLS}
 
@@ -41,14 +42,18 @@ sltest.o: sltest.cc ${INCLS}
 
 socklocal.o: socklocal.cc $(INCLS)
 
-sltest: sltest.o socklocal.o libdisp.a $(LIBS)
-	g++ -g -o sltest sltest.o socklocal.o libdisp.a
+sltest: sltest.o socklocal.o libdisp.a librcall.a $(LIBS)
+	g++ -g -o sltest sltest.o socklocal.o libdisp.a librcall.a $(LIBS)
 
 rbufstr.o: rbufstr.cc $(INCLS)
 
-librcall.a: rbufstr.o
+rbuf.o: rbuf.cc $(INCLS)
+
+ezcall.o: ezcall.cc $(INCLS)
+
+librcall.a: rbufstr.o rbuf.o ezcall.o
 	rm -f librcall.a
-	ar -cr librcall.a rbufstr.o
+	ar -cr librcall.a rbufstr.o rbuf.o ezcall.o
 	ranlib librcall.a
 
 rbuftest.o: rbuftest.cc librcall.a $(INCLS)
@@ -57,4 +62,4 @@ rbuftest: rbuftest.o librcall.a
 	g++ -g -o rbuftest rbuftest.o librcall.a
 
 install: all
-	cp -p libdisp.a ../lib
+	cp -p libdisp.a librcall.a ../lib

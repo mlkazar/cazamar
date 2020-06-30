@@ -1,0 +1,25 @@
+Import('env')
+
+objs = [
+          env.Object('rs.cc'),
+          env.Object('sdr.cc')
+       ]
+
+liblist = env.Library('librs', objs)
+env.Install("$LIBDIR", liblist)
+env.OspTraceProgram('testrs.cc', LIBS=env['LIBS_CORE'])
+env.Install("$TESTDIR", 'testrs')
+env.Install("$INCDIR/rs", ['sdr.h', 'rs.h', 'rsfwds.h'])
+
+rxenv = env.Clone()
+rxenv['CPPFLAGS'] = ' -fno-strict-aliasing '
+rxenv.RxGen('testsim.xg')
+
+tsobjs = [
+		rxenv.Object('testsim.cs.cc'),
+		rxenv.Object('testsim.ss.cc'),
+		rxenv.Object('testsim.xdr.cc')
+	 ]
+
+env.OspTraceProgram('testsim', env.Object('testsim.cc') + tsobjs, LIBS=env['LIBS_CORE'])
+env.Install("$TESTDIR", 'testsim')

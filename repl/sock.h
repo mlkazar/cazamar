@@ -2,6 +2,7 @@
 #define _SOCK_H_ENV__ 1
 
 #include "dqueue.h"
+#include "rbuf.h"
 
 class SockConn;
 
@@ -21,7 +22,7 @@ class SockConn;
  * requests arrive.
  *
  * If a requestArrived method is provided, that function will be
- * called with a SockBuf including the request/packet, and a SockConn
+ * called with a Rbuf including the request/packet, and a SockConn
  * indicating from whom the request was sent, every time that a new
  * packet arrives.  The SockConn's send method can be used to send
  * messages back to the originator of the received message.
@@ -65,54 +66,19 @@ public:
     }
 };
 
-/* one of these per data packet; buffers can be stored in a queue.
- *
- * Not typically subclassed.
- */
-class SockBuf {
- public:
-    std::string _data;
-
-    /* provide a static factory to ensure shared ptr always created */
-    static std::shared_ptr<SockBuf> getSockBuf() {
-        return std::make_shared<SockBuf>();
-    }
-
-    SockBuf() {
-        return;
-    }
-};
-
-class SockBufRef {
-public:
-    SockBufRef *_dqNextp;
-    SockBufRef *_dqPrevp;
-    std::shared_ptr<SockBuf> _bufp;
-
-    SockBufRef() {
-        _dqNextp = _dqPrevp = NULL;
-    }
-
-    static SockBufRef *wrapBuf(std::shared_ptr<SockBuf> bufp) {
-        SockBufRef *brefp;
-        brefp = new SockBufRef();
-        brefp->_bufp = bufp;
-        return brefp;
-    }
-};
-
 /* one of these per operational socket; always subclassed */
 class SockConn : public std::enable_shared_from_this<SockConn> {
  public:
-    virtual int32_t send( std::shared_ptr<SockBuf> bufp) = 0;
+    virtual int32_t send( Rbuf *bufp) = 0;
 
     virtual int isClosed() = 0;
 
+    virtual ~SockConn() {};
+
+protected:
     SockConn() {
         return;
     }
-
-    virtual ~SockConn() {};
 };
 
 /* typically subclassed; one of these per user of SockSys.  Virtual
@@ -128,7 +94,7 @@ protected:
 public:
     /* required method */
     virtual void indicatePacket( std::shared_ptr<SockConn> connp,
-                                 std::shared_ptr<SockBuf> bufp) = 0;
+                                 Rbuf *bufp) = 0;
 
     /* optional */
     virtual void connArrived(std::shared_ptr<SockConn> connp) {

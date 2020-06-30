@@ -3,6 +3,7 @@
 
 #include "osptypes.h"
 #include "dqueue.h"
+#include <string>
 
 /* interface for buffers; note that read position is used and modified by read and scan,
  * but pop, prepend, append all affect the buffer indepdent of the read position, although
@@ -43,13 +44,23 @@ class Rbuf {
     /* like read, and proceeding from the read point, but just returns
      * pointers into the rbuf and lengths, and increments the rbuf read
      * pointer.
-     *
+    * 
      * So, you can use repeated calls to scan to iterate over all the data in an
      * rbuf, say to call write on each segment.  Normally returns the # of bytes
      * in the next contiguous segment, but returns 0 at EOF, and negative values
      * if an error occurs.
      */
     virtual uint32_t scan(char **datapp) = 0;
+
+    /* has side effect of reseting read pointer to start */
+    virtual std::string getStr();
+};
+
+class RbufRef {
+public:
+    RbufRef *_dqNextp;
+    RbufRef *_dqPrevp;
+    Rbuf *_rbufp;
 };
 
 #endif /* __RBUF_H_ENV__ */

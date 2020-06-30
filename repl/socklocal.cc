@@ -6,10 +6,10 @@
 void
 SockLocalConn::DeliveryTask::start()
 {
-    std::shared_ptr<SockBuf> bufp;
+    Rbuf *bufp;
     std::shared_ptr<SockLocalConn> otherConnp;
     std::shared_ptr<SockLocalLink> linkp;
-    SockBufRef *trefp;
+    RbufRef *trefp;
 
     setRunMethod(&SockLocalConn::DeliveryTask::start);
     _connp->_lock.take();
@@ -17,13 +17,13 @@ SockLocalConn::DeliveryTask::start()
     otherConnp = (_connp->_isIncoming? linkp->_clientConnp : linkp->_serverConnp);
     while(1) {
         /* deliveryQueue is a linked list of shared pointers stored with
-         * the SockBuf (which is how they also have dqNext/dqPrev pointers)
+         * the Rbuf (which is how they also have dqNext/dqPrev pointers)
          *
          * So, we pop off a combo structure, and then copy out the
          * actual shared pointer.
          */
         if ((trefp = _connp->_deliveryQueue.pop()) != NULL) {
-            bufp = trefp->_bufp;
+            bufp = trefp->_rbufp;
             delete trefp;
             trefp = NULL;
 
@@ -54,13 +54,13 @@ SockLocalConn::DeliveryTask::ensureRunning()
 
 /* send a request on a connection */
 int32_t
-SockLocalConn::send(std::shared_ptr<SockBuf> bufp)
+SockLocalConn::send(Rbuf *bufp)
 {
-    SockBufRef *refp;
+    RbufRef *refp;
 
-    refp = new SockBufRef();
+    refp = new RbufRef();
     _lock.take();
-    refp->_bufp = bufp;
+    refp->_rbufp = bufp;
     _deliveryQueue.append(refp);
     _deliveryTask.ensureRunning();
     _lock.release();

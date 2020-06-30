@@ -19,6 +19,28 @@ struct Bad
     ~Bad() { std::cout << "Bad::~Bad() called\n"; }
 };
  
+class Frob {
+    int a;
+
+    class Bozo {
+        void func() {
+            printf("a is %d\n", a);
+        }
+
+    public:
+        Bozo() {
+            func();
+        }
+    };
+
+public:
+    Frob() {
+        a = 1;
+
+        Bozo bozo;
+    }
+};
+
 int main()
 {
     // Good: the two shared_ptr's share the same object
@@ -26,6 +48,7 @@ int main()
     std::shared_ptr<Good> gp2 = gp1->getptr();
     std::cout << "gp2.use_count() = " << gp2.use_count() << '\n';
     std::cout << "gp1.use_count() = " << gp1.use_count() << '\n';
+    Frob f;
  
     // Bad: shared_from_this is called without having std::shared_ptr owning the caller 
     try {

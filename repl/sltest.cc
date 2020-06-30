@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "rbufstr.h"
 #include "socklocal.h"
 
 class ServerTask : public Task {
@@ -8,14 +9,14 @@ public:
     class Client : public SockClient {
     public:
         ServerTask *_serverTaskp;
-        void indicatePacket(std::shared_ptr<SockConn> connp, std::shared_ptr<SockBuf> bufp) {
-            std::shared_ptr<SockBuf> newBufp;
+        void indicatePacket(std::shared_ptr<SockConn> connp, Rbuf *bufp) {
+            Rbuf *newBufp;
             if (_serverTaskp->_firstTime) {
-                printf("Server received '%s'\n", bufp->_data.c_str());
+                printf("Server received '%s'\n", bufp->getStr().c_str());
                 _serverTaskp->_firstTime = 0;
             }
-            newBufp = SockBuf::getSockBuf();
-            newBufp->_data = std::string("Biafra");
+            newBufp = new RbufStr();
+            newBufp->append((char * )"Biafra", 6);
             connp->send(newBufp);
         }
         
@@ -47,9 +48,9 @@ class ClientTask : public Task {
 
         Client(ClientTask *ctp) : _clientTaskp(ctp) {};
 
-        void indicatePacket(std::shared_ptr<SockConn> connp, std::shared_ptr<SockBuf> bufp) {
+        void indicatePacket(std::shared_ptr<SockConn> connp, Rbuf *bufp) {
             if (_clientTaskp->_firstTime) {
-                printf("Client received '%s'\n", bufp->_data.c_str());
+                printf("Client received '%s'\n", bufp->getStr().c_str());
                 _clientTaskp->_firstTime = 0;
             }
             _clientTaskp->_counter++;
@@ -66,7 +67,7 @@ public:
     void doSends() {
         SockNode node("server-1");
         std::shared_ptr<SockConn> connp;
-        std::shared_ptr<SockBuf> bufp;
+        Rbuf *bufp;
 
         if (_counter > 1000000) {
             printf("All done\n");
@@ -79,8 +80,8 @@ public:
             return;
         }
 
-        bufp = SockBuf::getSockBuf();
-        bufp->_data = std::string("Jello");
+        bufp = new RbufStr();
+        bufp->append((char *) "Jello", 5);
         connp->send( bufp);
     }
 

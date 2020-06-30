@@ -23,8 +23,6 @@ CThreadMutex RadioScan::_lock;
 void
 RadioScan::init(BufGenFactory *factoryp, std::string dirPrefix)
 {
-    CThreadHandle *loadHandlep;
-
     _factoryp = factoryp;
     _xapip = new XApi();
 
@@ -46,18 +44,6 @@ RadioScan::init(BufGenFactory *factoryp, std::string dirPrefix)
      * we compute on demand.
      */
     _fileLineCount = -1;
-
-    /* if we can't establish a connection to the file download source, don't start
-     * the loader task.
-     */
-    if (_dirBufp) {
-        RadioScanLoadTask *loadTaskp;
-        loadTaskp = new RadioScanLoadTask();
-        loadTaskp->init(this, dirPrefix);
-    
-        loadHandlep = new CThreadHandle();
-        loadHandlep->init((CThread::StartMethod) &RadioScanLoadTask::start, loadTaskp, NULL);
-    }
 }
 
 /* start with the object at the URL, and resolve it until we get to an
@@ -1180,6 +1166,7 @@ void
 RadioScan::searchStation(std::string query, RadioScanQuery **respp)
 {
     RadioScanQuery *resp;
+    RadioScanLoadTask *loadTaskp;
 
     resp = *respp;
     if (resp == NULL) {
@@ -1188,6 +1175,12 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
 
     resp->init(this, query);
     *respp = resp;
+
+    /* do this inline to prevent mysterious hangs on startup */
+    resp->_baseStatus = std::string("Downloading directory file");
+    loadTaskp = new RadioScanLoadTask();
+    loadTaskp->init(this, _dirPrefix);
+    loadTaskp->start(NULL);
 
     resp->_baseStatus = std::string("Searching StreamTheWorld");
 

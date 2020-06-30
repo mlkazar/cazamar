@@ -1,0 +1,75 @@
+%#define TESTRPC_CODE_APPLE	232
+%#define TESTRPC_CODE_PEAR	233
+
+struct JBFoo
+{
+	uint32_t x;
+	uint32_t y;
+};
+
+typedef JBFoo JBBar<>;
+
+struct Leak
+{
+	JBBar _Bar;
+};
+
+struct testrpcPie {
+	int32_t _c;
+	int32_t _d;
+
+	uint32_t _e32;
+	uint16_t _e16;
+	uint8_t _e8;
+	int32_t _f32;
+	int16_t _f16;
+	int8_t _f8;
+	uint64_t _f64;
+	int64_t _e64;
+};
+
+struct testSauce {
+	int32_t _a;
+	uint8_t _c;
+	char _b[20];
+};
+
+union barf 
+      switch (uint32_t sd) {
+      	case 1: uint32_t a;
+	case 2: uint32_t b;
+    };
+
+
+typedef testSauce testBreakfast<20>;
+typedef testSauce testLunch<10>;
+typedef opaque testDinner<10>;
+typedef opaque testChar[10];
+
+package TESTRPC
+service 17
+statindex 1
+prefix S
+
+fetchData(
+	IN int32_t ix,
+	IN testChar *entry,
+	IN string foo<20>,
+	IN testBreakfast *bf,
+	OUT testrpcPie *pie,
+	OUT testDinner *dinnerp,
+	OUT testLunch *lc,
+	OUT string bar<20>
+) split = 1;
+
+streamIO (
+	IN uint32_t a,
+	IN SdrPipe *inPipep,
+	OUT uint32_t *b,
+	OUT SdrPipe *outPipe
+) split = 2;
+
+JBCall (
+       IN uint32_t a,
+       OUT Leak *b
+) split = 3;

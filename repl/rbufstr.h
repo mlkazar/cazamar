@@ -9,11 +9,13 @@ class RbufStr : public Rbuf {
     uint32_t _readPos;
     std::string _data;
     
- public:
+protected:
+    /* use shared pointers */
     RbufStr() {
         _readPos = 0;
     };
 
+ public:
     /* append data to the end of the rbuf, allocating more storage
      * if required.  There is no need for the data to be allocated
      * contiguously.

@@ -56,7 +56,7 @@ class SockLocalConn : public SockConn {
     
     SpinLock _lock;
     DeliveryTask _deliveryTask;
-    dqueue<SockBufRef> _deliveryQueue;
+    dqueue<RbufRef> _deliveryQueue;
     SockLocalSys *_incomingSysp;
     SockLocalSys *_outgoingSysp;
     std::shared_ptr<SockLocalLink> _linkp;
@@ -75,7 +75,7 @@ class SockLocalConn : public SockConn {
         return 0;
     }
 
-    int32_t send(std::shared_ptr<SockBuf> bufp);
+    int32_t send(Rbuf *bufp);
 
     static std::shared_ptr<SockLocalConn> getLocalConn() {
         std::shared_ptr<SockLocalConn> connp;
