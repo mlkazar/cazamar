@@ -8,7 +8,7 @@ setup:
 install: all
 
 clean:
-	(cd rpc;make clean); (cd mfand; make clean); (cd radio; make clean)
+	(cd rpc;make clean); (cd mfand; make clean); (cd radio; make clean); (cd repl; make clean)
 	-rm -rf include lib
 
 beancount:
