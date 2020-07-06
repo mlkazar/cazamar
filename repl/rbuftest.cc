@@ -60,7 +60,7 @@ main(int argc, char **argv)
     a.prepend((char *) "Wedge Salad", 11);
     a.setReadPosition(0);
     
-    tprint(&a, (char *) "another 50s food");
+    tprint(&a, (char *) "another 50s food + Biafra");
 
     a.erase();
     printf("Read position after erase %d\n", a.getReadPosition());

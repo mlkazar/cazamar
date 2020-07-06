@@ -9,13 +9,13 @@ public:
     class Client : public SockClient {
     public:
         ServerTask *_serverTaskp;
-        void indicatePacket(std::shared_ptr<SockConn> connp, Rbuf *bufp) {
-            Rbuf *newBufp;
+        void indicatePacket(std::shared_ptr<SockConn> connp, std::shared_ptr<Rbuf> bufp) {
+            std::shared_ptr<Rbuf> newBufp;
             if (_serverTaskp->_firstTime) {
                 printf("Server received '%s'\n", bufp->getStr().c_str());
                 _serverTaskp->_firstTime = 0;
             }
-            newBufp = new RbufStr();
+            newBufp = std::make_shared<RbufStr>();
             newBufp->append((char * )"Biafra", 6);
             connp->send(newBufp);
         }
@@ -48,7 +48,7 @@ class ClientTask : public Task {
 
         Client(ClientTask *ctp) : _clientTaskp(ctp) {};
 
-        void indicatePacket(std::shared_ptr<SockConn> connp, Rbuf *bufp) {
+        void indicatePacket(std::shared_ptr<SockConn> connp, std::shared_ptr<Rbuf> bufp) {
             if (_clientTaskp->_firstTime) {
                 printf("Client received '%s'\n", bufp->getStr().c_str());
                 _clientTaskp->_firstTime = 0;
@@ -67,7 +67,7 @@ public:
     void doSends() {
         SockNode node("server-1");
         std::shared_ptr<SockConn> connp;
-        Rbuf *bufp;
+        std::shared_ptr<Rbuf> bufp;
 
         if (_counter > 1000000) {
             printf("All done\n");
@@ -80,7 +80,7 @@ public:
             return;
         }
 
-        bufp = new RbufStr();
+        bufp = std::make_shared<RbufStr>();
         bufp->append((char *) "Jello", 5);
         connp->send( bufp);
     }

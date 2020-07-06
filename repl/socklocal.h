@@ -75,7 +75,7 @@ class SockLocalConn : public SockConn {
         return 0;
     }
 
-    int32_t send(Rbuf *bufp);
+    int32_t send(std::shared_ptr<Rbuf> bufp);
 
     static std::shared_ptr<SockLocalConn> getLocalConn() {
         std::shared_ptr<SockLocalConn> connp;

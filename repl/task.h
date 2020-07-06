@@ -16,6 +16,10 @@ public:
         Disp::queue(this);
     }
 
+    void queueForce() {
+        Disp::queue(this);
+    }
+
     void run() {
         (this->*(_runMethod))();
     }

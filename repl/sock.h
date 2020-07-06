@@ -69,7 +69,7 @@ public:
 /* one of these per operational socket; always subclassed */
 class SockConn : public std::enable_shared_from_this<SockConn> {
  public:
-    virtual int32_t send( Rbuf *bufp) = 0;
+    virtual int32_t send( std::shared_ptr<Rbuf> bufp) = 0;
 
     virtual int isClosed() = 0;
 
@@ -94,7 +94,7 @@ protected:
 public:
     /* required method */
     virtual void indicatePacket( std::shared_ptr<SockConn> connp,
-                                 Rbuf *bufp) = 0;
+                                 std::shared_ptr<Rbuf> bufp) = 0;
 
     /* optional */
     virtual void connArrived(std::shared_ptr<SockConn> connp) {
@@ -120,6 +120,10 @@ public:
     /* you can use null, but have to set it before doing anything else */
     SockSys(SockClient *clientp) {
         _clientp = clientp;
+    }
+
+    SockClient *getClient() {
+        return _clientp;
     }
 
     void setClient( SockClient *clientp) {

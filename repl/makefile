@@ -1,10 +1,10 @@
 
-all: libdisp.a librcall.a disptest sltest rbuftest
+all: libdisp.a librcall.a disptest sltest rbuftest eztest
 
 install: all
 
 clean:
-	rm -f *.o *.a disptest sltest rbuftest
+	rm -f *.o *.a disptest sltest rbuftest eztest
 	rm -rf *.dSYM
 
 OS=$(shell uname -s)
@@ -22,7 +22,7 @@ ifeq ($(OS),Linux)
 CXXFLAGS += -Wno-unused-but-set-variable
 endif
 
-INCLS=ezcall.h rsfwds.h disp.h lock.h sock.h socklocal.h rbuf.h rbufstr.h ../include/*.h
+INCLS=ezcall.h disp.h lock.h sock.h socklocal.h rbuf.h rbufstr.h ../include/*.h
 
 disp.o: disp.cc ${INCLS}
 
@@ -40,10 +40,15 @@ disptest: disptest.o libdisp.a $(LIBS)
 
 sltest.o: sltest.cc ${INCLS}
 
+eztest.o: eztest.cc ${INCLS}
+
 socklocal.o: socklocal.cc $(INCLS)
 
 sltest: sltest.o socklocal.o libdisp.a librcall.a $(LIBS)
 	g++ -g -o sltest sltest.o socklocal.o libdisp.a librcall.a $(LIBS)
+
+eztest: eztest.o socklocal.o libdisp.a librcall.a $(LIBS)
+	g++ -g -o eztest eztest.o socklocal.o libdisp.a librcall.a $(LIBS)
 
 rbufstr.o: rbufstr.cc $(INCLS)
 

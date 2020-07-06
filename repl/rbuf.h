@@ -54,13 +54,17 @@ class Rbuf {
 
     /* has side effect of reseting read pointer to start */
     virtual std::string getStr();
+
+    virtual ~Rbuf() {
+        return;
+    }
 };
 
 class RbufRef {
 public:
     RbufRef *_dqNextp;
     RbufRef *_dqPrevp;
-    Rbuf *_rbufp;
+    std::shared_ptr<Rbuf> _rbufp;
 };
 
 #endif /* __RBUF_H_ENV__ */

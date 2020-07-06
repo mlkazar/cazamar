@@ -6,7 +6,7 @@
 void
 SockLocalConn::DeliveryTask::start()
 {
-    Rbuf *bufp;
+    std::shared_ptr<Rbuf> bufp;
     std::shared_ptr<SockLocalConn> otherConnp;
     std::shared_ptr<SockLocalLink> linkp;
     RbufRef *trefp;
@@ -26,6 +26,7 @@ SockLocalConn::DeliveryTask::start()
             bufp = trefp->_rbufp;
             delete trefp;
             trefp = NULL;
+            bufp->setReadPosition(0);
 
             _connp->_lock.release();
             _outgoingSysp->_clientp->indicatePacket
@@ -54,7 +55,7 @@ SockLocalConn::DeliveryTask::ensureRunning()
 
 /* send a request on a connection */
 int32_t
-SockLocalConn::send(Rbuf *bufp)
+SockLocalConn::send(std::shared_ptr<Rbuf> bufp)
 {
     RbufRef *refp;
 
