@@ -16,6 +16,7 @@ EzCall::init(SockSys *sockSysp)
     return 0;
 }
 
+/* allocate a channel and generate a new call ID */
 int32_t
 EzCall::ClientReq::allocateChannel()
 {
@@ -37,6 +38,7 @@ EzCall::ClientReq::allocateChannel()
 
     _channel = i;
     connp->_currentReqsp[i] = this;
+    _callId = ++connp->_callId[_channel];
     return i;
 }
 
@@ -46,19 +48,17 @@ EzCall::CommonReq::prepareHeader()
 {
     Header h;
     EzCall::ClientConn *connp = static_cast<EzCall::ClientConn *>(_connp);
-    int32_t channel;
 
     if (!_headerAdded) {
         _headerAdded = 1;
-        
+
         h._opcode = _rpcCallOp;
         memcpy(&h._clientId, connp->_uuid, sizeof(uuid_t));
 
-        channel = _channel;
-        osp_assert(channel >= 0);
+        osp_assert(_channel >= 0);
 
-        h._channelId = channel;
-        h._callId = ++connp->_callId[channel];
+        h._channelId = _channel;
+        h._callId = _callId;
 
         /* now prepend the header; fix to use sdr */
         _outBufp->prepend((char *) &h, sizeof(h));
@@ -76,7 +76,6 @@ EzCall::call(SockNode *nodep, std::shared_ptr<Rbuf> rbufp, ClientReq **reqpp, Ta
 {
     ClientConn *connp;
     ClientReq *reqp;
-    uint32_t nextCallId;
     Header h;
 
     /* just in case */
@@ -87,10 +86,10 @@ EzCall::call(SockNode *nodep, std::shared_ptr<Rbuf> rbufp, ClientReq **reqpp, Ta
     _lock.take();
     connp = getConnectionByNode(nodep);
     reqp = connp->getClientReq();
-    nextCallId = reqp->_callId++;
     _lock.release();
 
     reqp->_outBufp = rbufp;
+    reqp->_responseTaskp = responseTaskp;
 
     _lock.take();
     *reqpp = reqp;
@@ -127,8 +126,14 @@ void
 EzCall::ServerReq::doSend(std::shared_ptr<Rbuf> rbufp)
 {
     std::shared_ptr<SockConn> sockConnp;
+    ServerConn *connp;
     
-    sockConnp = _sysp->_sockSysp->getConnection(&_connp->_sockNode);
+    /* actually, return socket should never be null */
+    connp = static_cast<ServerConn *> (_connp);
+    sockConnp = connp->_serverConn;
+    if (sockConnp == nullptr)
+        return;
+
     sockConnp->send(rbufp);
 }
 
@@ -140,6 +145,7 @@ EzCall::indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> r
     Header hdr;
     int32_t channel;
     int newCall;
+    uint32_t channelCallId;
     CommonConn *connp;
     ClientConn *clientConnp;
     ServerReq *serverReqp;
@@ -160,29 +166,33 @@ EzCall::indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> r
         return;
     }
 
-    /* if we haven't setup our server side handler, ignore calls */
-    if (!_factoryProcp) {
-        return;
-    }
-
     _lock.take();
     /* find and/or create a connection structure; for responses, we don't
      * create a new connection if not found.
      */
     if (hdr._opcode == _rpcCallOp) {
+        /* if we haven't setup our server side handler, ignore incoming calls */
+        if (!_factoryProcp) {
+            _lock.release();
+            return;
+        }
+
         /* incoming call -- create a new connection if none found, and 
          * set the call and channel up
          */
-        connp = getConnectionByClientId(&hdr._clientId, hdr._channelId, hdr._callId);
+        connp = getConnectionByClientId(&hdr._clientId, hdr._channelId, hdr._callId, aconnp);
     }
     else {
         /* incoming response -- connection should already exist, or discard the packet */
-        connp = getConnectionByClientId(&hdr._clientId, -1, 0);
+        connp = getConnectionByClientId(&hdr._clientId, -1, 0, nullptr);
     }
     if (!connp) {
         _lock.release();
         return;
     }
+
+    /* get the current channel's callId */
+    channelCallId = connp->_callId[channel];
 
     if (hdr._opcode == _rpcCallOp) {
         /* incoming call */
@@ -198,12 +208,12 @@ EzCall::indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> r
             newCall = 1;
             /* request reference is transferred to currentReqsp */
         }
-        else if (serverReqp->sentResponse()) {
+        else if (!serverReqp->sentResponse()) {
             if (hdr._callId == serverReqp->_callId) {
                 /* retransmitted call after we sent a response; resend the response */
                 serverReqp->doSend(serverReqp->_outBufp);
             }
-            else if (hdr._callId == serverReqp->_callId+1) {
+            else if (loopCmp(hdr._callId, serverReqp->_callId) > 0) {
                 connp->_currentReqsp[channel] = NULL;
                 serverReqp->del();
                 serverReqp = new ServerReq();
@@ -323,16 +333,23 @@ EzCall::ServerReq::sendResponse(std::shared_ptr<Rbuf> rbufp)
 }
 
 EzCall::CommonConn *
-EzCall::getConnectionByClientId(uuid_t *uuidp, int32_t channelId, uint32_t callId)
+EzCall::getConnectionByClientId(uuid_t *uuidp,
+                                int32_t channelId,
+                                uint32_t callId,
+                                std::shared_ptr<SockConn> aconnp)
 {
     uint32_t hash = idHash(uuidp);
     CommonConn *connp;
     for(connp = _idHashTablep[hash]; connp; connp = connp->_idHashNextp) {
         if (memcmp(uuidp, &connp->_uuid, sizeof(uuid_t)) == 0) {
             if (channelId >= 0) {
-                if (connp->_callId[channelId] <= 0)
+                if (loopCmp(callId, connp->_callId[channelId]) > 0)
                     connp->_callId[channelId] = callId;
             }
+            if (!connp->_isClient && aconnp != nullptr) {
+                connp->_serverConn = aconnp;
+            }
+                
             return connp;
         }
     }
@@ -341,12 +358,14 @@ EzCall::getConnectionByClientId(uuid_t *uuidp, int32_t channelId, uint32_t callI
         return NULL;
 
     /* only server connections provide us real channel IDs */
+    osp_assert(aconnp != nullptr);
     connp = new ServerConn();
     connp->_isClient = 0;
-    if (connp->_callId[channelId] <= 0) {
+    if (loopCmp(callId, connp->_callId[channelId]) > 0) {
         /* adjust the expected call ID */
         connp->_callId[channelId] = callId;
     }
+    connp->_serverConn = aconnp;
 
     /* use incoming UUID */
     memcpy(connp->_uuid, uuidp, sizeof(uuid_t));

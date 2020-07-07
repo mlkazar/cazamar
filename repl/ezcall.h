@@ -129,6 +129,11 @@ class EzCall {
         uint16_t _freeChannels;
         EzCall *_sysp;
 
+        /* should really be in ServerConn, but its inconvenient to cast after
+         * searching in generic code.
+         */
+        std::shared_ptr<SockConn> _serverConn;
+
         CommonConn() {
             uint32_t i;
 
@@ -143,7 +148,7 @@ class EzCall {
             _idHashNextp = NULL;
             _freeChannels = _maxChannels;
             for(i=0;i<_maxChannels;i++) {
-                _callId[i] = -1;
+                _callId[i] = 0;
                 _currentReqsp[i] = 0;
             }
 
@@ -224,6 +229,13 @@ class EzCall {
 
     /* inherit from this for new tasks that receive incoming server requests */
     class ServerConn : public CommonConn {
+        /* when a server connection is created, we remember the socket from which
+         * the last request was received.  We send responses back to this guy.
+         *
+         * By doing this instead of reconnecting to the peer address,
+         * we can function in a NAT environment, since in these
+         * environments we may be unable to open new sockets.
+         */
     public:
         ~ServerConn() {
             return;
@@ -356,7 +368,10 @@ public:
         _factoryProcp = procp;
     }
 
-    CommonConn *getConnectionByClientId(uuid_t *uuidp, int32_t channelId, uint32_t callId);
+    CommonConn *getConnectionByClientId( uuid_t *uuidp,
+                                         int32_t channelId,
+                                         uint32_t callId,
+                                         std::shared_ptr<SockConn> aconnp);
 
     ClientConn *getConnectionByNode(SockNode *nodep);
 
@@ -374,6 +389,14 @@ public:
             hashValue = hashValue ^ (*tp++);
         }
         return hashValue % _hashSize;
+    }
+
+    static int loopCmp(int32_t a, int32_t b) {
+        if (a-b < 0)
+            return -1;
+        else if (a == b)
+            return 0;
+        else return 1;
     }
 
     /* fnv1 */
