@@ -46,7 +46,7 @@ EzCall::CommonReq::prepareHeader()
 {
     Header h;
     EzCall::ClientConn *connp = static_cast<EzCall::ClientConn *>(_connp);
-    uint32_t channel;
+    int32_t channel;
 
     if (!_headerAdded) {
         _headerAdded = 1;
@@ -105,7 +105,7 @@ void
 EzCall::ClientReq::doSend()
 {
     std::shared_ptr<SockConn> sockConnp;
-    uint32_t channel;
+    int32_t channel;
     std::shared_ptr<Rbuf> rbufp = _outBufp;
     
     if ((channel = allocateChannel()) < 0) {
@@ -138,7 +138,7 @@ EzCall::indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> r
 {
     int32_t code;
     Header hdr;
-    uint32_t channel;
+    int32_t channel;
     int newCall;
     CommonConn *connp;
     ClientConn *clientConnp;
@@ -169,7 +169,16 @@ EzCall::indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> r
     /* find and/or create a connection structure; for responses, we don't
      * create a new connection if not found.
      */
-    connp = getConnectionByClientId(&hdr._clientId);
+    if (hdr._opcode == _rpcCallOp) {
+        /* incoming call -- create a new connection if none found, and 
+         * set the call and channel up
+         */
+        connp = getConnectionByClientId(&hdr._clientId, hdr._channelId, hdr._callId);
+    }
+    else {
+        /* incoming response -- connection should already exist, or discard the packet */
+        connp = getConnectionByClientId(&hdr._clientId, -1, 0);
+    }
     if (!connp) {
         _lock.release();
         return;
@@ -199,31 +208,38 @@ EzCall::indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> r
                 serverReqp->del();
                 serverReqp = new ServerReq();
                 connp->hold();  /* for reference from serverReqp */
+
+                /* drop lock over init call, in case it calls back to ezcall */
                 serverReqp->init(channel, this, static_cast<ServerConn *>(connp), hdr._callId);
+
                 newCall = 1;
             }
             else {
                 /* old request, hopefully; just ignore */
-            }
-            if (newCall) {
-                /* attach a task to the server request */
-                if (_factoryProcp) {
-                    serverTaskp = _factoryProcp();
-                    /* note that the serverTask will call its own (inherited) sendResponse
-                     * method when done, which will call ::ServerReq::sendResponse.
-                     */
-                    serverReqp->_serverTaskp = serverTaskp;
-                    serverReqp->hold();
-
-                    /* now start the child */
-                    serverTaskp->init(serverReqp->_inBufp, serverReqp, NULL);
-                }
             }
         }
         else {
             /* didn't send a response yet because a call is still executing, we
              * should send back a busy message, but right now, this is a TODO
              */
+        }
+
+        /* if incoming new call, fire up a task to handle it */
+        if (newCall) {
+            /* attach a task to the server request */
+            if (_factoryProcp) {
+                serverTaskp = _factoryProcp();
+                /* note that the serverTask will call its own (inherited) sendResponse
+                 * method when done, which will call ::ServerReq::sendResponse.
+                 */
+                serverReqp->_serverTaskp = serverTaskp;
+                serverReqp->hold();
+
+                /* now start the child */
+                _lock.release();
+                serverTaskp->init(serverReqp->_inBufp, serverReqp, NULL);
+                _lock.take();
+            }
         }
     }
     else if (hdr._opcode == _rpcResponseOp) {
@@ -307,16 +323,39 @@ EzCall::ServerReq::sendResponse(std::shared_ptr<Rbuf> rbufp)
 }
 
 EzCall::CommonConn *
-EzCall::getConnectionByClientId(uuid_t *uuidp)
+EzCall::getConnectionByClientId(uuid_t *uuidp, int32_t channelId, uint32_t callId)
 {
     uint32_t hash = idHash(uuidp);
     CommonConn *connp;
     for(connp = _idHashTablep[hash]; connp; connp = connp->_idHashNextp) {
         if (memcmp(uuidp, &connp->_uuid, sizeof(uuid_t)) == 0) {
+            if (channelId >= 0) {
+                if (connp->_callId[channelId] <= 0)
+                    connp->_callId[channelId] = callId;
+            }
             return connp;
         }
     }
-    return NULL;
+
+    if (channelId < 0)
+        return NULL;
+
+    /* only server connections provide us real channel IDs */
+    connp = new ServerConn();
+    connp->_isClient = 0;
+    if (connp->_callId[channelId] <= 0) {
+        /* adjust the expected call ID */
+        connp->_callId[channelId] = callId;
+    }
+
+    /* use incoming UUID */
+    memcpy(connp->_uuid, uuidp, sizeof(uuid_t));
+    connp->_idHash = hash;
+
+    connp->_idHashNextp = _idHashTablep[hash];
+    _idHashTablep[hash] = connp;
+    connp->_inIdHash = 1;
+    return connp;
 }
 
 
@@ -335,18 +374,19 @@ EzCall::getConnectionByNode(SockNode *nodep)
     connp = new ClientConn();
     connp->_sockNode.setName(nodep->getName());
     connp->_sysp = this;
+    connp->_isClient = 1;
 
     /* and hash in */
-    connp->_nodeHash = nodeHash(&connp->_sockNode);
+    connp->_nodeHash = hash;
     connp->_nodeHashNextp = _nodeHashTablep[connp->_nodeHash];
     _nodeHashTablep[connp->_nodeHash] = connp;
+    connp->_inNodeHash = 1;
+
+    connp->_idHashNextp = _idHashTablep[connp->_idHash];
+    _idHashTablep[connp->_idHash] = connp;
+    connp->_inIdHash = 1;
+
     return connp;
-}
-
-
-EzCall::ClientConn::ClientConn()
-{
-    return;
 }
 
 

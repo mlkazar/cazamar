@@ -85,7 +85,7 @@ public:
 class EzCall {
  public:
     static const uint32_t _hashSize = 251;
-    static const uint32_t _maxChannels = 4;
+    static const int32_t _maxChannels = 4;
 
     /* opcodes for call and response packets */
     static const uint32_t _rpcCallOp = 1;
@@ -103,7 +103,7 @@ class EzCall {
     public:
         char _opcode;
         char _padding;
-        uint16_t _channelId;
+        int16_t _channelId;
         uint32_t _callId;
         uuid_t _clientId;
     };
@@ -119,10 +119,12 @@ class EzCall {
         uuid_t _uuid;
         uint8_t _isClient;
         uint8_t _deleted;
+        uint8_t _inIdHash;
+        uint8_t _inNodeHash;
         
         dqueue<ClientReq> _pendingReqs;         /* reqs waiting for a slot */
         CommonReq *_currentReqsp[_maxChannels]; /* active reqs, by channel # */
-        uint32_t _callId[_maxChannels];
+        int32_t _callId[_maxChannels];
         uint16_t _idHash;
         uint16_t _freeChannels;
         EzCall *_sysp;
@@ -133,29 +135,42 @@ class EzCall {
             _sysp = NULL;
             _refCount = 1;
             _deleted = 0;
+            _inIdHash = 0;
+            _inNodeHash = 0;
             uuid_generate(_uuid);
             _isClient = 0;
             _idHash = idHash(&_uuid);
             _idHashNextp = NULL;
             _freeChannels = _maxChannels;
             for(i=0;i<_maxChannels;i++) {
-                _callId[i] = 0; /* used? */
+                _callId[i] = -1;
                 _currentReqsp[i] = 0;
             }
-            /****STOP HERE: add to id hash table */
+
+            /* most of the initialization is handled in getConnectionByX, including
+             * inserting the connections in the appropriate hash tables.
+             */
         }
 
         virtual ~CommonConn() {
             /* remove from hash table */
             CommonConn *treqp;
             CommonConn **lreqpp;
-            for( lreqpp = &_sysp->_idHashTablep[_idHash], treqp = *lreqpp;
-                 treqp;
-                 lreqpp = &treqp->_idHashNextp, treqp = *lreqpp) {
-                *lreqpp = treqp->_idHashNextp;
-                break;
+            if (_inIdHash) {
+                for( lreqpp = &_sysp->_idHashTablep[_idHash], treqp = *lreqpp;
+                     treqp;
+                     lreqpp = &treqp->_idHashNextp, treqp = *lreqpp) {
+                    *lreqpp = treqp->_idHashNextp;
+                    break;
+                }
+                osp_assert(treqp);
+                _inIdHash = 0;
             }
-            osp_assert(treqp);
+
+            /* should have been removed by ClientConn's destructor before CommonConn's
+             * destructor is called.
+             */
+            osp_assert(!_inNodeHash);
         }
 
         void hold() {
@@ -182,9 +197,25 @@ class EzCall {
 
         ClientReq *getClientReq();
 
-        ClientConn();
+        ClientConn() {
+            /* inNodeHash is cleared in CommonConn's constructor */
+            _nodeHashNextp = NULL;
+            _nodeHash = 0;
+        }
 
         ~ClientConn() {
+            ClientConn *treqp;
+            ClientConn **lreqpp;
+            if (_inNodeHash) {
+                for( lreqpp = &_sysp->_nodeHashTablep[_idHash], treqp = *lreqpp;
+                     treqp;
+                     lreqpp = &treqp->_nodeHashNextp, treqp = *lreqpp) {
+                    *lreqpp = treqp->_nodeHashNextp;
+                    break;
+                }
+                osp_assert(treqp);
+                _inNodeHash = 0;
+            }
             return;
         }
 
@@ -232,7 +263,7 @@ class EzCall {
 
         int32_t prepareHeader();
 
-        void init(uint16_t channel, EzCall *ezp, ServerConn *connp, uint32_t callId) {
+        void init(int16_t channel, EzCall *ezp, ServerConn *connp, uint32_t callId) {
             _channel = channel;
             _sysp = ezp;
             _connp = connp;
@@ -291,7 +322,7 @@ class EzCall {
             _serverTaskp= NULL;
         }
 
-        void init(uint16_t channel, EzCall *ezp, ServerConn *connp, uint32_t callId) {
+        void init(int16_t channel, EzCall *ezp, ServerConn *connp, uint32_t callId) {
             CommonReq::init(channel, ezp, connp, callId);
             _isClient = 0;
         }
@@ -325,7 +356,7 @@ public:
         _factoryProcp = procp;
     }
 
-    CommonConn *getConnectionByClientId(uuid_t *uuidp);
+    CommonConn *getConnectionByClientId(uuid_t *uuidp, int32_t channelId, uint32_t callId);
 
     ClientConn *getConnectionByNode(SockNode *nodep);
 
