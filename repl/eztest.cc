@@ -112,8 +112,8 @@ main(int argc, char **argv)
     uint32_t maxCounter;
 
     if (argc < 2) {
-        printf("usage: eztest <max counter> -- using 1000 default\n");
-        maxCounter = 1000;
+        printf("usage: eztest <max counter> -- using 100,000 default\n");
+        maxCounter = 100000;
     }
     else {
         maxCounter = atoi(argv[1]);
