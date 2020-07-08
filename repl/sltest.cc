@@ -12,7 +12,7 @@ public:
         void indicatePacket(std::shared_ptr<SockConn> connp, std::shared_ptr<Rbuf> bufp) {
             std::shared_ptr<Rbuf> newBufp;
             if (_serverTaskp->_firstTime) {
-                printf("Server received '%s'\n", bufp->getStr().c_str());
+                printf("Server received '%s' -- should be 'Jello'\n", bufp->getStr().c_str());
                 _serverTaskp->_firstTime = 0;
             }
             newBufp = std::make_shared<RbufStr>();
@@ -34,9 +34,9 @@ public:
     void init(SockLocalNet *netp) {
         SockNode node("server-1");
         _firstTime = 1;
-        _sysp = new SockLocalSys(&_me, netp);
+        _sysp = new SockLocalSys(netp);
         _sysp->ifconfig(&node);
-        _sysp->listen("");
+        _sysp->listen("server-port", &_me);
     }
 
 } mainServerTask;
@@ -50,7 +50,7 @@ class ClientTask : public Task {
 
         void indicatePacket(std::shared_ptr<SockConn> connp, std::shared_ptr<Rbuf> bufp) {
             if (_clientTaskp->_firstTime) {
-                printf("Client received '%s'\n", bufp->getStr().c_str());
+                printf("Client received '%s' -- should be 'Biafra'\n", bufp->getStr().c_str());
                 _clientTaskp->_firstTime = 0;
             }
             _clientTaskp->_counter++;
@@ -74,7 +74,7 @@ public:
             exit(0);
         }
 
-        connp = _sysp->getConnection(&node);
+        connp = _sysp->getConnection(&node, "server-port", &_me);
         if (connp.get() == NULL) {
             printf("getConnection failed\n");
             return;
@@ -89,7 +89,7 @@ public:
         SockNode node("client-1");
         _firstTime = 1;
         _counter = 0;
-        _sysp = new SockLocalSys(&_me, netp);
+        _sysp = new SockLocalSys(netp);
         _sysp->ifconfig(&node);
         doSends();
     }

@@ -7,12 +7,12 @@ EzCall::EzCall()
 
 /* EXTERNAL: call to setup system */
 int32_t
-EzCall::init(SockSys *sockSysp)
+EzCall::init(SockSys *sockSysp, std::string port)
 {
     _sockSysp = sockSysp;
     _sockClient.setSys(this, sockSysp);
-    sockSysp->setClient(&_sockClient);
-    sockSysp->listen("");
+    if (port.size() != 0)
+        sockSysp->listen(port, &_sockClient);
     return 0;
 }
 
@@ -72,7 +72,11 @@ EzCall::CommonReq::prepareHeader()
  * haven't returned yet.  Reference is passed along with ClientReq pointer.
  */
 int32_t
-EzCall::call(SockNode *nodep, std::shared_ptr<Rbuf> rbufp, ClientReq **reqpp, Task *responseTaskp)
+EzCall::call(SockNode *nodep, 
+             std::string port,
+             std::shared_ptr<Rbuf> rbufp,
+             ClientReq **reqpp,
+             Task *responseTaskp)
 {
     ClientConn *connp;
     ClientReq *reqp;
@@ -84,7 +88,7 @@ EzCall::call(SockNode *nodep, std::shared_ptr<Rbuf> rbufp, ClientReq **reqpp, Ta
     memset(&h, 0, sizeof(h));
 
     _lock.take();
-    connp = getConnectionByNode(nodep);
+    connp = getConnectionByNode(nodep, port);
     reqp = connp->getClientReq();
     _lock.release();
 
@@ -116,7 +120,9 @@ EzCall::ClientReq::doSend()
     /* otherwise, we can create the header */
     prepareHeader();
 
-    sockConnp = _sysp->_sockSysp->getConnection(&_connp->_sockNode);
+    sockConnp = _sysp->_sockSysp->getConnection( &_connp->_sockNode,
+                                                 _connp->_port, 
+                                                 &_sysp->_sockClient);
     sockConnp->send(rbufp);
     _lastSendMs = osp_time_ms();
 }
@@ -247,7 +253,7 @@ EzCall::indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> r
 
                 /* now start the child */
                 _lock.release();
-                serverTaskp->init(serverReqp->_inBufp, serverReqp, NULL);
+                serverTaskp->init(rbufp, serverReqp, NULL);
                 _lock.take();
             }
         }
@@ -265,9 +271,10 @@ EzCall::indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> r
         if (clientReqp->_callId != hdr._callId)
             return;
         clientReqp->_responseTaskp->queueForce();
+        clientReqp->_inBufp = rbufp;
         connp->_currentReqsp[channel] = NULL;
         clientReqp->del();
-        clientReqp->release();
+        /* the hold will be released by the client code */
         clientConnp->checkPending();
     }
 
@@ -379,12 +386,12 @@ EzCall::getConnectionByClientId(uuid_t *uuidp,
 
 
 EzCall::ClientConn *
-EzCall::getConnectionByNode(SockNode *nodep)
+EzCall::getConnectionByNode(SockNode *nodep, std::string port)
 {
     uint32_t hash = nodeHash(nodep);
     ClientConn *connp;
     for(connp = _nodeHashTablep[hash]; connp; connp = connp->_nodeHashNextp) {
-        if (connp->_sockNode.getName() == nodep->getName()) {
+        if (connp->_sockNode.getName() == nodep->getName() && connp->_port == port) {
             connp->hold();
             return connp;
         }
@@ -392,6 +399,7 @@ EzCall::getConnectionByNode(SockNode *nodep)
 
     connp = new ClientConn();
     connp->_sockNode.setName(nodep->getName());
+    connp->_port = port;
     connp->_sysp = this;
     connp->_isClient = 1;
 

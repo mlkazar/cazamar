@@ -9,12 +9,18 @@
 
 class MainServer : public Task {
     class MainServerTask : public EzCall::ServerTask {
-        std::shared_ptr<RbufStr> newBufp;
+        std::shared_ptr<RbufStr> _newBufp;
+        static int32_t _counter;
     public:
+        /* reqp is live from init to sendResponse */
         void init(std::shared_ptr<Rbuf> rbufp, EzCall::ServerReq *reqp, void *contextp) {
-            newBufp = std::make_shared<RbufStr>();
-            newBufp->append((char *) "Biafra", 7);
-            reqp->sendResponse(newBufp);
+            if (_counter == 0)
+                printf("Server task received '%s' -- should be 'Jello'\n",
+                       rbufp->getStr().c_str());
+            _newBufp = std::make_shared<RbufStr>();
+            _newBufp->append((char *) "Biafra", 7);
+            reqp->sendResponse(_newBufp);
+            _counter++;
         }
     };
 
@@ -31,32 +37,40 @@ public:
     void init(SockLocalNet *netp, const char *namep) {
         SockLocalNode *nodep;
         nodep = new SockNode(std::string(namep));
-        sysp = new SockLocalSys(NULL, netp);
+        sysp = new SockLocalSys(netp);
         sysp->ifconfig(nodep);
         ezCallp = new EzCall();
-        ezCallp->init(sysp);
+        ezCallp->init(sysp, "royal");
         ezCallp->setFactoryProc( &MainServer::factoryProc);
     }
 };
 
+int32_t MainServer::MainServerTask::_counter = 0;
+
 class MainClient : public Task {
     SockLocalSys *_sysp;
-    SockLocalNode *_nodep;
+    SockLocalNode *_serverNodep;
+    SockLocalNode *_myNodep;
     EzCall::ClientReq *_reqp;
     uint32_t _counter;
     uint32_t _maxCounter;
     EzCall *_ezCallp;
 
 public:
-    void init(SockLocalNet *netp, const char *serverNamep, uint32_t maxCounter) {
+    void init( SockLocalNet *netp, 
+               const char *myNamep,
+               const char *serverNamep, 
+               uint32_t maxCounter) {
         _counter = 0;
         _maxCounter = maxCounter;
 
-        _nodep = new SockLocalNode(serverNamep);
+        _serverNodep = new SockLocalNode(serverNamep);
+        _myNodep = new SockLocalNode(myNamep);
 
-        _sysp = new SockLocalSys(NULL, netp);
+        _sysp = new SockLocalSys(netp);
+        _sysp->ifconfig(_myNodep);
         _ezCallp = new EzCall();
-        _ezCallp->init(_sysp);
+        _ezCallp->init(_sysp, "");
         doCall();
     }
         
@@ -71,13 +85,18 @@ public:
         setRunMethod(&MainClient::afterCall);
         rbufp = std::make_shared<RbufStr>();
         rbufp->append((char *) "Jello", 5);
-        _ezCallp->call(_nodep, rbufp, &_reqp, this);
+        _ezCallp->call(_serverNodep, "royal", rbufp, &_reqp, this);
     }
     
     void afterCall() {
-        if (_counter == 0)
-            printf("back after call\n");
+        std::shared_ptr<Rbuf> rbufp;
+        if (_counter == 0) {
+            rbufp = _reqp->getResponseBuffer();
+            printf("back after call with '%s' -- should be 'Biafra'\n",
+                   rbufp->getStr().c_str());
+        }
         _counter++;
+        _reqp->release();
         doCall();
     }
 
@@ -104,8 +123,8 @@ main(int argc, char **argv)
 
     netp = new SockLocalNet();
     
-    server.init(netp, "jello");
-    client.init(netp, "jello", maxCounter);
+    server.init(netp, "biafra");
+    client.init(netp, "jello", "biafra", maxCounter);
 
     while(1) {
         sleep(1);

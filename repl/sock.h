@@ -106,9 +106,8 @@ public:
 
 class SockSys {
 public:
-    SockClient *_clientp;
     /* calling listen allows incoming requests */
-    virtual void listen(std::string portInfo) = 0;
+    virtual void listen(std::string port, SockClient *clientp ) = 0;
 
     /* if we're not listening, we still need a function that we can call to label
      * our SockSys with an address so it can receive responses.
@@ -118,20 +117,12 @@ public:
     };
 
     /* you can use null, but have to set it before doing anything else */
-    SockSys(SockClient *clientp) {
-        _clientp = clientp;
-    }
-
-    SockClient *getClient() {
-        return _clientp;
-    }
-
-    void setClient( SockClient *clientp) {
-        _clientp = clientp;
-    }
+    SockSys() { }
 
     /* get an outgoing connection */
-    virtual std::shared_ptr<SockConn> getConnection(SockNode *nodep) = 0;
+    virtual std::shared_ptr<SockConn> getConnection( SockNode *nodep,
+                                                     std::string port,
+                                                     SockClient *clientp) = 0;
 
     virtual ~SockSys() {};
 };

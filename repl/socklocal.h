@@ -36,6 +36,7 @@ class SockLocalConn : public SockConn {
         std::shared_ptr<SockLocalConn> _connp;
         int _running;
         SockLocalSys *_outgoingSysp;
+        SockClient *_outgoingClientp;
 
     public:
         void start();
@@ -45,6 +46,7 @@ class SockLocalConn : public SockConn {
         void init( std::shared_ptr<SockLocalConn> connp) {
             _connp = std::static_pointer_cast<SockLocalConn>(connp);
             _outgoingSysp = connp->_outgoingSysp;
+            _outgoingClientp = connp->_outgoingClientp;
         }
 
         DeliveryTask() {
@@ -57,16 +59,22 @@ class SockLocalConn : public SockConn {
     SpinLock _lock;
     DeliveryTask _deliveryTask;
     dqueue<RbufRef> _deliveryQueue;
-    SockLocalSys *_incomingSysp;
     SockLocalSys *_outgoingSysp;
+    SockClient *_outgoingClientp;
+    SockLocalSys *_incomingSysp;
+    SockClient *_incomingClientp;
     std::shared_ptr<SockLocalLink> _linkp;
     int _isIncoming;
     
     void init( SockLocalSys *incomingSysp,
+               SockClient *incomingClientp,
                SockLocalSys *outgoingSysp, 
+               SockClient *outgoingClientp,
                int isIncoming) {
         _incomingSysp = incomingSysp;
         _outgoingSysp = outgoingSysp;
+        _incomingClientp = incomingClientp;
+        _outgoingClientp = outgoingClientp;
         _isIncoming = isIncoming;
         _deliveryTask.init( std::static_pointer_cast<SockLocalConn>(shared_from_this()));
     }
@@ -86,6 +94,7 @@ class SockLocalConn : public SockConn {
 
     SockLocalConn() {
         _incomingSysp = _outgoingSysp = NULL;
+        _incomingClientp = NULL;
         _isIncoming = 0;
         return;
     }
@@ -110,48 +119,43 @@ public:
 };
 
 class SockLocalSys : public SockSys {
+    class Listener {
+    public:
+        Listener *_dqNextp;
+        Listener *_dqPrevp;
+        std::string _port;
+        SockClient *_clientp;
+    };
+
  private:
     SockLocalOutConnMap _outConnMap;
     SockLocalInConnMap _inConnMap;
     std::string _name;
-    int _listening;
     SockLocalNet *_netp;
+    dqueue<Listener> _allListeners;
 
  public:
-#if 0
-    std::shared_ptr<SockLocalConn> getLocalInConn( std::string name) {
-        std::shared_ptr<SockLocalConn> connp;
-        SockLocalInConnMap::iterator it;
-        SockLocalSys *incomingSysp;
-
-        it = _inConnMap.find(name);
-        if (it != _inConnMap.end()) {
-            /* we already have an entry */
-            return it->second;
-        }
-
-        incomingSysp = _netp->findSysByName(name);
-        if (!incomingSysp) {
-            return connp;
-        }
-
-        /* otherwise, we create a new node */
-        connp = SockLocalConn::getLocalConn();
-        connp->init(incomingSysp, this, /* isIncoming */ 1);
-        _inConnMap[name] = connp;       /* do we need this?  As a map? */
-
-        return connp;
-    }
-#endif
-
     void ifconfig(SockNode *nodep) {
         _name = nodep->getName();
         _netp->addHost(this);
     }
 
-    void listen(std::string portInfo) {
+    void listen(std::string portInfo, SockClient *clientp) {
         /* no ports, so just mark as listening */
-        _listening = 1;
+        Listener *listp;
+        listp = new Listener();
+        listp->_port = portInfo;
+        listp->_clientp = clientp;
+        _allListeners.append(listp);
+    }
+
+    Listener *findListener(std::string portName) {
+        Listener *listp;
+        for(listp = _allListeners.head(); listp; listp=listp->_dqNextp) {
+            if (listp->_port == portName)
+                return listp;
+        }
+        return NULL;
     }
 
     std::string getName() {
@@ -159,10 +163,9 @@ class SockLocalSys : public SockSys {
     }
 
     /* get an outgoing connection to the specified target host */
-    std::shared_ptr<SockConn> getConnection(SockNode *nodep);
+    std::shared_ptr<SockConn> getConnection(SockNode *nodep, std::string port, SockClient *clp);
 
-    SockLocalSys(SockClient *clientp, SockLocalNet *netp) : SockSys(clientp) {
-        _listening = 0;
+    SockLocalSys(SockLocalNet *netp) : SockSys () {
         _netp = netp;
     };
 };

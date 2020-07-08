@@ -116,6 +116,7 @@ class EzCall {
         CommonConn *_dqPrevp;
         CommonConn *_idHashNextp;
         SockNode _sockNode;
+        std::string _port;
         uuid_t _uuid;
         uint8_t _isClient;
         uint8_t _deleted;
@@ -315,6 +316,10 @@ class EzCall {
 
         int32_t allocateChannel();
 
+        std::shared_ptr<Rbuf> getResponseBuffer() {
+            return _inBufp;
+        }
+
         void doSend();
     };
 
@@ -348,6 +353,7 @@ public:
     EzCall();
 
     int32_t call( SockNode *nodep,
+                  std::string port,
                   std::shared_ptr<Rbuf> rbufp, 
                   ClientReq **reqpp, 
                   Task *responseTaskp);
@@ -360,7 +366,7 @@ public:
         void sendResponse(std::shared_ptr<Rbuf> rbufp);
     };
 
-    int32_t init(SockSys *sockSysp);
+    int32_t init(SockSys *sockSysp, std::string port);
 
     typedef ServerTask *(ServerFactoryProc)();
 
@@ -373,7 +379,7 @@ public:
                                          uint32_t callId,
                                          std::shared_ptr<SockConn> aconnp);
 
-    ClientConn *getConnectionByNode(SockNode *nodep);
+    ClientConn *getConnectionByNode(SockNode *nodep, std::string port);
 
     void indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> rbufp);
 

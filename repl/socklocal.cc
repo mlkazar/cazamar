@@ -29,7 +29,7 @@ SockLocalConn::DeliveryTask::start()
             bufp->setReadPosition(0);
 
             _connp->_lock.release();
-            _outgoingSysp->_clientp->indicatePacket
+            otherConnp->_incomingClientp->indicatePacket
                 (std::static_pointer_cast<SockConn>(otherConnp), bufp);
             _connp->_lock.take();
         }
@@ -68,9 +68,11 @@ SockLocalConn::send(std::shared_ptr<Rbuf> bufp)
     return 0;
 }
 
-/* get an outgoing connection to a remote node */
+/* get an outgoing connection to a remote node; packets will be delivered to the
+ * specified client.
+ */
 std::shared_ptr<SockConn> 
-SockLocalSys::getConnection(SockNode *nodep)
+SockLocalSys::getConnection(SockNode *nodep, std::string port, SockClient *clp)
 {
     std::shared_ptr<SockLocalConn> connp;
     std::shared_ptr<SockLocalConn> peerConnp;
@@ -78,6 +80,7 @@ SockLocalSys::getConnection(SockNode *nodep)
     std::string nodeName = nodep->getName();
     SockLocalOutConnMap::iterator it;
     SockLocalSys *outgoingSysp;
+    Listener *listp;
 
     it = _outConnMap.find(nodeName);
     if (it != _outConnMap.end()) {
@@ -93,22 +96,26 @@ SockLocalSys::getConnection(SockNode *nodep)
      * to respond to.
      */
     outgoingSysp = _netp->findSysByName(nodeName);
-    if (!outgoingSysp || !outgoingSysp->_listening) {
-        return connp;       /* compares equal to null */
+    if (!outgoingSysp) {
+        return nullptr;
     }
+
+    listp = outgoingSysp->findListener(port);
+    if (!listp)
+        return nullptr;
 
     /* create our connection, in our system, with the target sys as the outgoing
      * system.
      */
     connp = SockLocalConn::getLocalConn();
-    connp->init(this, outgoingSysp, /* !isIncoming */ 0);
+    connp->init(this, clp, outgoingSysp, listp->_clientp, /* !isIncoming */ 0);
     _outConnMap[nodeName] = connp;
 
     /* now create the connection's other side which looks like another connection, but
      * one owned by the other side.
      */
     peerConnp = SockLocalConn::getLocalConn();
-    peerConnp->init(outgoingSysp, this, /* isIncoming */ 1);
+    peerConnp->init(outgoingSysp, listp->_clientp, this, clp, /* isIncoming */ 1);
 
     /* link the connections together before we start using them.  To destroy these, you
      * first reset the pointers from the link back to the connections, and then
