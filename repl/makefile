@@ -1,4 +1,3 @@
-
 all: libdisp.a librcall.a disptest sltest rbuftest eztest
 
 install: all
@@ -68,3 +67,4 @@ rbuftest: rbuftest.o librcall.a
 
 install: all
 	cp -p libdisp.a librcall.a ../lib
+	cp -p *.h ../include

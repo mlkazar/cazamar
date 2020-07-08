@@ -1,6 +1,6 @@
 all:
 	-mkdir include lib
-	(cd rpc;make install); (cd mfand; make install); (cd radio; make install)
+	(cd rpc;make install); (cd mfand; make install); (cd radio; make install); (cd repl; make install)
 
 setup:
 	-mkdir include lib
