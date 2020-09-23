@@ -2053,6 +2053,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     char *urlp;
     char *detailsp;
     NSMutableArray *scanArray;
+    NSString *titleDate;
 
     /* take the RSS feed and us it to populate an array of MFANMediaItems representing
      * the individual podcasts.
@@ -2123,10 +2124,15 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 		}
 
 		if (urlp != NULL) {
+		    titleDate = [NSString stringWithFormat: @"%d/%d/%d - %@",
+					  (podcastDate/100) % 100,
+					  podcastDate%100,
+					  (podcastDate/10000) % 100,
+					  [scan title]];
 		    mfanItem = [[MFANMediaItem alloc]
 				   initWithUrl: @""
 				   title:  [NSString stringWithUTF8String: titlep]
-				   albumTitle: [scan title]];
+				   albumTitle: titleDate];
 		    mfanItem.podcastDate = podcastDate;
 		    mfanItem.urlRemote = [NSString stringWithUTF8String: urlp];
 		    mfanItem.mustDownload = YES;

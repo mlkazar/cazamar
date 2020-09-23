@@ -999,6 +999,12 @@ didDismissWithButtonIndex: (NSInteger) buttonIndex
     [self updatePodcastsWithForce: (ix == 1? YES : NO)];
     [[_playContext download] checkDownloadedArray: _itemArray];
 
+    /* save the file so that a cancel after this doesn't forget the items that we
+     * added, while at the same time having updated the last refresh time.
+     */
+    [_setList setMediaArray: _itemArray];
+    [_playContext saveListToFile];
+
     _changedArray = YES;
     [_tableView reloadData];
 }
