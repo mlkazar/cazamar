@@ -214,8 +214,29 @@ RadioStream::upcallMetaData()
             /* pull out the actual title, ending with a single quote */
             for(j=i+13;j<metaLen;j++) {
                 tc = _icyMetap[j];
-                if (tc == 0 || tc == '\'')
+                if (tc == 0)
                     break;
+                else if (tc == '\'') {
+                    /* no standard quoting convention; I often see
+                     * them just raw in the string.
+                     */
+                    if (j >= metaLen - 1) {
+                        /* no more characters */
+                        break;
+                    }
+                    else if (_icyMetap[j+1] == ';') {
+                        /* if we have '; in the stream, this really is a terminating quote */
+                        break;
+                    }
+                }
+                else if (tc == '\\') {
+                    /* we see a quoting character, take the next character if one exists */
+                    if (j == metaLen - 1)
+                        break;
+                    j++;
+                    tc = _icyMetap[j];
+                }
+
                 changedData._song.append(1, tc);
             }
         }
