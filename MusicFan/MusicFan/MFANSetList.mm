@@ -1866,6 +1866,9 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     int32_t code;
     MFANMediaItem *mfanItem;
     int foundGenre;
+    std::string encodeIn;
+    std::string encoded;
+    char *encodedStrp;
 
     /* build URL string from search key */
     first = 1;
@@ -1874,10 +1877,14 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     for(tstr in comps) {
 	if ([tstr length] == 0)
 	    continue;
+	encodedStrp = (char *) [tstr cStringUsingEncoding: NSUTF8StringEncoding]; /* get C str*/
+	encodeIn = std::string(encodedStrp); /* get as std::string */
+	encoded = Rst::urlEncode(&encodeIn);	/* map to urlEncode */
 	if (!first)
 	    [searchUrl appendString: @"+"];
 	first = 0;
-	[searchUrl appendString: tstr];
+	[searchUrl appendString: [NSString stringWithCString: encoded.c_str()
+						    encoding: NSUTF8StringEncoding]];
     }
 
     sema = dispatch_semaphore_create(0);

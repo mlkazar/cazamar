@@ -175,16 +175,18 @@ Xgml::parse(char **inDatapp, Node **nodepp)
 
     if (isSingle && token == "<") {
         if (strncmp(inDatap, "?xml", 4) == 0) {
-            /* skip <?xml ....> line */
-            inDatap = strchr(inDatap, '\n');
-            if (!inDatap) {
-                parseFailed("no newline in xml line");
-                return -1;
+            /* skip <?xml ....> until "?>" */
+            inDatap += 4;
+            while(1) {
+                if (inDatap[0] == '?' && inDatap[1] == '>')
+                    break;
+                if (inDatap[0] == 0)
+                    return -1;
+                inDatap++;
             }
-            else {
-                *inDatapp = inDatap+1;  /* skip past newline */
-                return parse(inDatapp, nodepp);
-            }
+            inDatap += 2;       /* skip "?>" */
+            *inDatapp = inDatap;
+            return parse(inDatapp, nodepp);
         }
         else if (strncmp(inDatap, "!--", 3) == 0) {
             inDatap += 3;       /* skip above */
