@@ -1,0 +1,39 @@
+all: zipdecode ritestores ritecheck
+
+install:
+	echo Nothing to install for vaccine
+
+clean:
+	rm -f *.o *.a zipdecode ritestores ritecheck
+
+OS=$(shell uname -s)
+
+ifneq ($(OS),Linux)
+OSXVERSION=-mmacosx-version-min=10.10
+else
+OSXVERSION=
+endif
+
+CXXFLAGS=-g -Wall -I../include -I/usr/local/ssl/include $(OSXVERSION)
+CFLAGS=-g -Wall -I../include -I/usr/local/ssl/include $(OSXVERSION)
+ifeq ($(OS),Linux)
+CXXFLAGS += -Wno-sign-compare -Wno-unused-but-set-variable 
+endif
+
+INCLS=../include/*.h
+
+zipdecode.o: zipdecode.cc $(INCLS)
+
+zipdecode: zipdecode.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a
+	g++ -g -o zipdecode zipdecode.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a -lpthread
+
+ritestores.o: ritestores.cc $(INCLS)
+
+ritestores: ritestores.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib/librst.a
+	g++ -g -o ritestores ritestores.o ../lib/librst.a ../lib/libcore.a ../lib/librpc.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
+
+ritecheck.o: ritecheck.cc $(INCLS)
+
+ritecheck: ritecheck.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib/librst.a
+	g++ -g -o ritecheck ritecheck.o ../lib/librst.a ../lib/libcore.a ../lib/librpc.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
+

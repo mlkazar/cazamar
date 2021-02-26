@@ -181,6 +181,10 @@ class XApi : public CThread {
             _mutex.release();
             _doneCV.broadcast();
         }
+
+        void reset() {
+            _bufGenp->disconnect();
+        }
     };
 
     /* The user begin by creating a new XApi::ClientReq, adding any

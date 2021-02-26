@@ -170,6 +170,13 @@ Xgml::parse(char **inDatapp, Node **nodepp)
     nodep = NULL;
     inDatap = *inDatapp;
 
+    /* watch for UTF-8 byte order mark (U+0xFEFF), and ignore it if found */
+    if ( (inDatap[0] & 0xff) == 0xef &&
+         (inDatap[1] & 0xff) == 0xbb &&
+         (inDatap[2] & 0xff) == 0xbf) {
+        inDatap += 3;
+    }
+
     prevDatap = inDatap;
     getToken(&inDatap, &token, &isSingle);
 

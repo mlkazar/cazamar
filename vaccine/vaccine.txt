@@ -1,0 +1,56 @@
+================================RITE AID================================
+https://www.riteaid.com/services/ext/v2/vaccine/checkSlots?storeNumber=721
+    returns simple json with store status
+
+https://www.riteaid.com/locations/search.html?id=00703
+    returns giant pile of documentation on stores
+    class info-window-title includes the name of the store
+
+also, rite aid store locator URL https://www.riteaid.com/locations/search.html?id=00703
+will display info
+
+https://www.riteaid.com/locations/search.html?q=15213
+
+will return a bunch of HTML text, adn if you search for "Rite Aid #" you'll find a 5 digit store
+number.  You can search the state with zip codes.  Only returns 20 stores at a time.
+
+https://www.riteaid.com/pharmacy/covid-qualifier
+
+gets you to the qualifying page, which you definitely need.
+
+================================Walgreens================================
+https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/availability
+
+post req:
+{"serviceId":"99","position":{"latitude":40.4737114,"longitude":-79.9612368},"appointmentAvailability":{"startDateTime":"2021-02-22"},"radius":25}
+
+post resp
+
+{
+    "appointmentsAvailable": false,
+    "stateName": "Pennsylvania",
+    "stateCode": "PA",
+    "zipCode": "15201",
+    "radius": 25,
+    "days": 3
+}
+
+curl "https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/availability" --data @junk.txt -H "Content-Type: application/json"  
+{"appointmentsAvaila
+
+curl "https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/availability" --data @junk.txt -H "Content-Type: application/json"  
+{"appointmentsAvailable":false,"stateName":"Pennsylvania","stateCode":"PA","zipCode":"15221","radius":25,"days":3}%
+
+with junk.txt:
+
+{"serviceId":"99","position":{"latitude":40.4368825,"longitude":-79.85768279999999},"appointmentAvailability":{"startDateTime":"2021-02-22"},"radius":25}
+
+================================================================
+
+https://www.ahn.org/coronavirus/vaccine/ |grep -v "All COVID-19 vaccine appointments are booked"
+
+================================================================
+
+https://vaccine.upmc.com
+
+to register once eligible
