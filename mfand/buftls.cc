@@ -261,6 +261,11 @@ BufTls::doConnect()
         ERR_print_errors_fp(stdout);
         osp_assert(0);
     }
+    SSL_CTX_set_verify(_sslClientContextp, SSL_VERIFY_NONE, NULL);
+
+    SSL_CTX_set_options(_sslClientContextp, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
+    SSL_CTX_set_cipher_list(_sslClientContextp,"ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256");
+
 
     _sslp = SSL_new(_sslClientContextp);
     if (!_sslp){
@@ -268,6 +273,8 @@ BufTls::doConnect()
         return -1;
     }
     SSL_set_fd(_sslp, _s);
+    SSL_set_verify(_sslp, SSL_VERIFY_NONE, NULL);
+    SSL_set_tlsext_host_name(_sslp, _hostName.c_str());
 
     code = SSL_connect(_sslp);
     if (code < 0) {

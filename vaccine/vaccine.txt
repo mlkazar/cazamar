@@ -18,7 +18,15 @@ https://www.riteaid.com/pharmacy/covid-qualifier
 
 gets you to the qualifying page, which you definitely need.
 
+ritecheck -f pa-rite.txt
+ (or use -i to check specific store #)
+
 ================================Walgreens================================
+PA: LAT 42.0 - 39.71 / Long -80.536 - 75.193
+69 miles per lat degree / 51.2 to 53.08
+
+check every 17 miles = .246 degrees lat, .320 degrees long
+
 https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/availability
 
 post req:
@@ -44,6 +52,21 @@ curl "https://www.walgreens.com/hcschedulersvc/svc/v1/immunizationLocations/avai
 with junk.txt:
 
 {"serviceId":"99","position":{"latitude":40.4368825,"longitude":-79.85768279999999},"appointmentAvailability":{"startDateTime":"2021-02-22"},"radius":25}
+
+walcheck -x (checks all of PA)
+
+================================================================
+
+Giant Eagle
+
+gianteaglesched.rxtouch.com
+POST /gesched/program/immunizations/Patient/CheckZipCode HTTP/1.1
+
+MIME Type: application/x-www-form-urlencoded; charset=UTF-8
+zip: 15232
+appointmentType: 5945
+PatientInterfaceMode: 0
+
 
 ================================================================
 

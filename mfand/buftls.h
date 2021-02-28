@@ -45,13 +45,16 @@ class BufTls : public BufGen {
     SSL *_sslp;
     uint32_t _baseTimeoutMs;
 
-
     int32_t fillFromSocket(OspMBuf *mbp);
 
  public:
     static void mainInit();
 
     void init(struct sockaddr *sockAddrp, int socklen);
+
+    int getSocket() {
+        return _s;
+    }
 
     int32_t listen();
 

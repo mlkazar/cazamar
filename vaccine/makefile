@@ -1,10 +1,10 @@
-all: zipdecode ritestores ritecheck
+all: zipdecode ritestores ritecheck walcheck
 
-install:
+install: all
 	echo Nothing to install for vaccine
 
 clean:
-	rm -f *.o *.a zipdecode ritestores ritecheck
+	rm -f *.o *.a zipdecode ritestores ritecheck walcheck
 
 OS=$(shell uname -s)
 
@@ -36,4 +36,9 @@ ritecheck.o: ritecheck.cc $(INCLS)
 
 ritecheck: ritecheck.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib/librst.a
 	g++ -g -o ritecheck ritecheck.o ../lib/librst.a ../lib/libcore.a ../lib/librpc.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
+
+walcheck.o: walcheck.cc $(INCLS)
+
+walcheck: walcheck.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib/librst.a
+	g++ -g -o walcheck walcheck.o ../lib/librst.a ../lib/libcore.a ../lib/librpc.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
 
