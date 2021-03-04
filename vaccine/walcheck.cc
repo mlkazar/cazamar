@@ -29,6 +29,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <time.h>
 #include <signal.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include "xapi.h"
 #include "bufsocket.h"
@@ -39,7 +41,13 @@ int main_verbose = 0;
 int main_fd;
 int main_fd_used = 0;
 
+char *cookiep=0;
+
+char *xtokenp=0;
+
+
 int32_t client(XApi::ClientConn *connp, double latitude, double longitude);
+void printCookieRecipe();
 
 void *
 monitor(void *ctxp)
@@ -108,6 +116,77 @@ parseSlots(const char *aresp)
 }
 
 int
+readCookies()
+{
+    struct stat tstat;
+    char *datap;
+    int fd;
+    long tlen;
+    int code;
+
+    fd = open("walcookie.txt", O_RDONLY);
+    if (fd < 0) {
+        printCookieRecipe();
+        return -1;
+    }
+
+    code = fstat(fd, &tstat);
+    if (code) {
+        perror("fstat");
+        return -1;
+    }
+               
+    tlen = tstat.st_size;
+    datap = (char *) malloc(tlen+1);
+    memset(datap, 0, tlen+1);
+    code = read(fd, datap, tlen);
+    if (code > 0) {
+        code--; /* last char read */
+        while(datap[code] == '\n' || datap[code] == '\r' || datap[code] == ' ') {
+            datap[code] = 0;
+            code--;
+        }
+    }
+    close(fd);
+    cookiep = datap;
+
+    fd = open("waltoken.txt", O_RDONLY);
+    if (fd < 0) {
+        printCookieRecipe();
+        return -1;
+    }
+
+    code = fstat(fd, &tstat);
+    if (code) {
+        perror("fstat");
+        return -1;
+    }
+               
+    tlen = tstat.st_size;
+    datap = (char *) malloc(tlen+1);
+    code = read(fd, datap, tlen);
+    if (code > 0) {
+        code--; /* last char read */
+        while(datap[code] == '\n' || datap[code] == '\r' || datap[code] == ' ') {
+            datap[code] = 0;
+            code--;
+        }
+    }
+    close(fd);
+    xtokenp = datap;
+    return 0;
+}
+
+void
+printCookieRecipe()
+{
+    printf("  NOTE: must turn on Safari web inspector, \n");
+    printf("   go to 'https://www.walgreens.com/findcare/vaccination/covid-19/location-screening'\n");
+    printf("   check 'availability' headers\n");
+    printf("   and copy cookie to walcookie.txt and X-XSRF-TOKEN to waltoken.txt\n");
+}
+
+int
 main(int argc, char **argv)
 {
     uint32_t counter;
@@ -134,6 +213,7 @@ main(int argc, char **argv)
         printf(" -s <sleep time in seconds = 2>\n");
         printf(" -v (verbose)\n");
         printf(" -x (actually do the work, instead of printing this message)\n");
+        printCookieRecipe();
         return 1;
     }
 
@@ -159,6 +239,8 @@ main(int argc, char **argv)
             i++;
         }
     }
+
+    readCookies();
 
     {
         counter = 0;
@@ -193,6 +275,31 @@ main(int argc, char **argv)
     return 0;
 }
 
+std::string
+unzip(std::string adata)
+{
+    int fd;
+    char tbuffer[10240];
+    int code;
+
+    fd = open("/tmp/unzipdata.gz", O_CREAT | O_RDWR, 0666);
+    if (fd<0) {
+        perror("open unzipdata");
+    }
+    write(fd, adata.data(), adata.length());
+    close(fd);
+
+    printf("Done with data prep\n");
+    system("rm /tmp/unzipdata");
+    system("gunzip /tmp/unzipdata.gz");
+    fd = open("/tmp/unzipdata", O_RDONLY);
+    code = read(fd, tbuffer, sizeof(tbuffer));
+    if (code == sizeof(tbuffer)) {
+        printf("tbuffer too small\n");
+    }
+    return std::string(tbuffer, code);
+}
+
 int32_t
 client(XApi::ClientConn *connp, double latitude, double longitude)
 {
@@ -210,6 +317,7 @@ client(XApi::ClientConn *connp, double latitude, double longitude)
     uint32_t dateMonth;
     uint32_t dateDay;
     uint32_t nbytes;
+    std::string hdrValue;
 
     ctimeValue = time(0);
     tmValuep = localtime(&ctimeValue);
@@ -231,6 +339,8 @@ client(XApi::ClientConn *connp, double latitude, double longitude)
     reqp->addHeader("User-Agent", "curl/7.66.0");
     reqp->addHeader("Accept", "*/*");
     reqp->addHeader("Content-Type", "application/json");
+    reqp->addHeader("Cookie", cookiep);
+    reqp->addHeader("X-XSRF-TOKEN", xtokenp);
     main_fd = static_cast<BufTls *>(connp->_bufGenp)->getSocket();
     main_fd_used = time(0);
     reqp->startCall(connp, path.c_str(), /* isPost */ XApi::reqPost);
@@ -251,6 +361,11 @@ client(XApi::ClientConn *connp, double latitude, double longitude)
             }
 
             response.append(tbuffer, code);
+        }
+
+        code = reqp->findIncomingHeader("content-encoding", &hdrValue);
+        if (code == 0 && hdrValue.find("gzip", 0) != std::string::npos) {
+            response = unzip(response);
         }
 
         code = parseSlots(response.c_str());
