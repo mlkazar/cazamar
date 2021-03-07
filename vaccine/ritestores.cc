@@ -159,6 +159,8 @@ client(uint32_t zipCode)
         parseStoreNumbers(response.c_str());
     }
 
+    reqp->resetConn();
+
     delete reqp;
     reqp = NULL;
 }

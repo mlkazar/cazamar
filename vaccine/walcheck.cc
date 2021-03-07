@@ -186,6 +186,21 @@ printCookieRecipe()
     printf("   and copy cookie to walcookie.txt and X-XSRF-TOKEN to waltoken.txt\n");
 }
 
+class Rect {
+public:
+    double _latStart;
+    double _latEnd;
+    double _longStart;
+    double _longEnd;
+
+    Rect(double latStart, double latEnd, double longStart, double longEnd) {
+        _latStart = latStart;
+        _latEnd = latEnd;
+        _longStart = longStart;
+        _longEnd = longEnd;
+    }
+};
+
 int
 main(int argc, char **argv)
 {
@@ -199,12 +214,14 @@ main(int argc, char **argv)
     uint32_t sleepTime = 1;
     pthread_t junkId;
 
+    Rect paRect(39.739, 42.0, -80.55, -75.193);
+    Rect eohRect(38.783, 41.709, -82.648, -80.550);
+    Rect *rectp;
+
     double latSkip = 0.246;     /* degrees */
     double longSkip = 0.320;    /* degrees longitude */
-    double latStart = 39.739;
-    double latEnd = 42.0;
-    double longStart = -80.55;
-    double longEnd = -75.193;
+
+
     double latitude;
     double longitude;
 
@@ -212,7 +229,7 @@ main(int argc, char **argv)
         printf("usage: walstores -x\n");
         printf(" -s <sleep time in seconds = 2>\n");
         printf(" -v (verbose)\n");
-        printf(" -x (actually do the work, instead of printing this message)\n");
+        printf(" -x {eoh, pa} (do work for specific region)\n");
         printCookieRecipe();
         return 1;
     }
@@ -232,7 +249,17 @@ main(int argc, char **argv)
         if (strcmp(argv[i], "-v") == 0)
             main_verbose = 1;
         else if (strcmp(argv[i], "-x") == 0) {
-            /* nothing to do here; -x just avoids the help message */
+            if (strcmp(argv[i+1], "pa") == 0) {
+                rectp = &paRect;
+            }
+            else if (strcmp(argv[i+1], "eoh") == 0) {
+                rectp = &eohRect;
+            }
+            else {
+                printf("unknown region '%s'\n", argv[i+1]);
+                exit(1);
+            }
+            i++;
         }
         else if (strcmp(argv[i], "-s") == 0) {
             sleepTime = atoi(argv[i+1]);
@@ -244,8 +271,12 @@ main(int argc, char **argv)
 
     {
         counter = 0;
-        for(latitude = latStart; latitude <= latEnd; latitude += latSkip) {
-            for(longitude = longStart; longitude <= longEnd; longitude += longSkip) {
+        for( latitude = rectp->_latStart;
+             latitude <= rectp->_latEnd;
+             latitude += latSkip) {
+            for( longitude = rectp->_longStart;
+                 longitude <= rectp->_longEnd;
+                 longitude += longSkip) {
                 counter++;
                 for(i=0;i<4;i++) {
                     if (main_verbose)
