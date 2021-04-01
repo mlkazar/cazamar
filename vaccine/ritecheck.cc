@@ -145,7 +145,8 @@ main(int argc, char **argv)
     }
 
     if (storeId != 0) {
-        client(connp, storeId);
+        code = client(connp, storeId);
+        printf("***Store %05d has appointments\n", storeId);
     }
     else if (fileNamep != NULL) {
         FILE *filep;

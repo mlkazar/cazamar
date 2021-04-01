@@ -87,6 +87,7 @@ main(int argc, char **argv)
                 break;
             zipCode = atoi(tbuffer);
             if (zipCode != 0) {
+                printf("ZIP %05d\n", zipCode);
                 client(zipCode);
             }
             
