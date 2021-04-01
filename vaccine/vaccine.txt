@@ -1,3 +1,13 @@
+================================Walmart================================
+
+https://www.walmart.com/pharmacy/v2/clinical-services/inventory/store/2059/b34e79f7-e444-4a94-8f4f-8abed397c3bc?type=imz
+
+POST https://www.walmart.com/pharmacy/v2/clinical-services/time-slots/b34e79f7-e444-4a94-8f4f-8abed397c3bc
+
+with post data:{"startDate":"04012021","endDate":"04072021","imzStoreNumber":{"USStoreId":3262}}
+
+Have to set walmart.txt to the Cookie on the request -- it ages out pretty quickly.
+
 ================================RITE AID================================
 https://www.riteaid.com/services/ext/v2/vaccine/checkSlots?storeNumber=721
     returns simple json with store status

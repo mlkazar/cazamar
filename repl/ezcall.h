@@ -384,7 +384,8 @@ public:
     void indicatePacket(std::shared_ptr<SockConn> aconnp, std::shared_ptr<Rbuf> rbufp);
 
     static uint32_t nodeHash(SockNode *nodep) {
-        const char *tp = (char *) nodep->getName().c_str();
+        std::string nodeName = nodep->getName();
+        const char *tp = (char *) nodeName.c_str();
         uint32_t len;
         uint32_t i;
         uint32_t hashValue = 0x811c9dc5;

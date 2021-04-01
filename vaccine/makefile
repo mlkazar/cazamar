@@ -20,7 +20,7 @@ ifeq ($(OS),Linux)
 CXXFLAGS += -Wno-sign-compare -Wno-unused-but-set-variable 
 endif
 
-INCLS=../include/*.h
+INCLS=../include/*.h distutils.h
 
 zipdecode.o: zipdecode.cc $(INCLS)
 
@@ -34,11 +34,13 @@ ritestores: ritestores.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib
 
 ritecheck.o: ritecheck.cc $(INCLS)
 
-ritecheck: ritecheck.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib/librst.a
-	g++ -g -o ritecheck ritecheck.o ../lib/librst.a ../lib/libcore.a ../lib/librpc.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
+distutils.o: distutils.cc $(INCLS)
+
+ritecheck: ritecheck.o distutils.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib/librst.a
+	g++ -g -o ritecheck ritecheck.o distutils.o ../lib/librst.a ../lib/libcore.a ../lib/librpc.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
 
 walcheck.o: walcheck.cc $(INCLS)
 
-walcheck: walcheck.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib/librst.a
+walcheck: walcheck.o distutils.o ../lib/libcore.a ../lib/librpc.a ../lib/libext.a ../lib/librst.a
 	g++ -g -o walcheck walcheck.o ../lib/librst.a ../lib/libcore.a ../lib/librpc.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
 

@@ -36,6 +36,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "bufsocket.h"
 #include "buftls.h"
 #include "json.h"
+#include "distutils.h"
 
 int main_verbose = 0;
 int main_fd;
@@ -216,6 +217,7 @@ main(int argc, char **argv)
 
     Rect paRect(39.739, 42.0, -80.55, -75.193);
     Rect eohRect(38.783, 41.709, -82.648, -80.550);
+    Rect mdvaRect(37.795015, 39.692805, -78.31409, -75.644412);
     Rect *rectp;
 
     double latSkip = 0.246;     /* degrees */
@@ -229,7 +231,7 @@ main(int argc, char **argv)
         printf("usage: walstores -x\n");
         printf(" -s <sleep time in seconds = 2>\n");
         printf(" -v (verbose)\n");
-        printf(" -x {eoh, pa} (do work for specific region)\n");
+        printf(" -x {eoh, pa, mdva} (do work for specific region)\n");
         printCookieRecipe();
         return 1;
     }
@@ -254,6 +256,9 @@ main(int argc, char **argv)
             }
             else if (strcmp(argv[i+1], "eoh") == 0) {
                 rectp = &eohRect;
+            }
+            else if (strcmp(argv[i+1], "mdva") == 0) {
+                rectp = &mdvaRect;
             }
             else {
                 printf("unknown region '%s'\n", argv[i+1]);

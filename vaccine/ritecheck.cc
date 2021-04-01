@@ -27,15 +27,20 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdlib.h>
 #include <unistd.h>
 #include <string>
+#include <math.h>
 
 #include "xapi.h"
 #include "bufsocket.h"
 #include "buftls.h"
 #include "json.h"
+#include "distutils.h"
 
 int main_verbose = 0;
 
 int32_t client(XApi::ClientConn *connp, uint32_t zipcode);
+int32_t getStoreInfo(XApi::ClientConn *connp, uint32_t storeId, double *latp, double *longp);
+int32_t parseLocation(const char *datap, double *latp, double *longp);
+double getDistance(double alat1, double along1, double alat2, double along2);
 
 /* return 0 for success, -1 for mystery errors and 1 for non-false value for slots */
 int
@@ -105,6 +110,8 @@ main(int argc, char **argv)
     const char *hostNamep = "www.riteaid.com";
     uint32_t i;
     uint32_t sleepTime = 1;
+    double latitude;
+    double longitude;
 
     if (argc <= 1) {
         printf("usage: ritestores -i storeId\n");
@@ -146,7 +153,14 @@ main(int argc, char **argv)
 
     if (storeId != 0) {
         code = client(connp, storeId);
-        printf("***Store %05d has appointments\n", storeId);
+        if (code == 0) {
+            printf("***Store %05d has appointments\n", storeId);
+        }
+        else {
+            printf("Store %05d has no appointments\n", storeId);
+        }
+        getStoreInfo(connp, storeId, &latitude, &longitude);
+        printDistances(latitude, longitude);
     }
     else if (fileNamep != NULL) {
         FILE *filep;
@@ -174,6 +188,8 @@ main(int argc, char **argv)
                     sleep(sleepTime);
                     if (code == 0) {
                         printf("***Store %05d has appointments\n", storeId);
+                        getStoreInfo(connp, storeId, &latitude, &longitude);
+                        printDistances(latitude, longitude);
                     }
                     else if (code < 0) {
                         printf("resetting conn\n");
@@ -236,6 +252,126 @@ client(XApi::ClientConn *connp, uint32_t storeId)
         }
 
         code = parseSlots(response.c_str());
+    }
+    else {
+        code = -2;
+    }
+
+    delete reqp;
+    reqp = NULL;
+
+    return code;
+}
+
+int32_t
+parseLocation(const char *datap, double *latp, double *longp)
+{
+    char *tp;
+    uint32_t tlen;
+    int found;
+    int tc;
+    uint32_t i;
+    char tbuffer[1024];
+
+    tlen = strlen(datap);
+    found = 0;
+    for(i=0, tp = (char *) datap; i<tlen; i++, tp++) {
+        if (strncmp(tp, "GeoCoordinates", 14) == 0) {
+            found = 1;
+            break;
+        }
+    }
+    if (!found)
+        return -1;
+    datap = tp;
+
+    tlen = strlen(datap);
+    found = 0;
+    for(i=0, tp = (char *) datap; i<tlen; i++, tp++) {
+        if (strncmp(tp, "content=\"", 9) == 0) {
+            found = 1;
+            break;
+        }
+    }
+    if (!found)
+        return -1;
+    datap = tp+9;
+
+    /* copy out first content line, which has the latitude */
+    tp = tbuffer;
+    while((tc = *datap++) != '"') {
+        *tp++ = tc;
+    }
+    *tp++ = 0;
+    *latp = atof(tbuffer);
+
+    /* now search for second "content=" line, which is longitude.  Again, take the 
+     * quoted value and treat it as a float
+     */
+    tlen = strlen(datap);
+    found = 0;
+    for(i=0, tp = (char *) datap; i<tlen; i++, tp++) {
+        if (strncmp(tp, "content=\"", 8) == 0) {
+            found = 1;
+            break;
+        }
+    }
+    if (!found)
+        return -1;
+    datap = tp+9;
+
+    /* copy out first content line, which has the latitude */
+    tp = tbuffer;
+    while((tc = *datap++) != '"') {
+        *tp++ = tc;
+    }
+    *tp++ = 0;
+    *longp = atof(tbuffer);
+
+    return 0;
+}
+
+int32_t
+getStoreInfo(XApi::ClientConn *connp, uint32_t storeId, double *latp, double *longp)
+{
+    XApi::ClientReq *reqp;
+    char tbuffer[8192];
+    CThreadPipe *inPipep;
+    CThreadPipe *outPipep;
+    int32_t code;
+    std::string path;
+    std::string response;
+
+    sprintf(tbuffer, "/locations/search.html?id=%05d", storeId);
+    path = std::string(tbuffer);
+
+    /* now prepare a call */
+    strcpy(tbuffer, "Client call data\n");
+    reqp = new XApi::ClientReq();
+
+    reqp->setSendContentLength(0x7FFFFFFF);
+
+    reqp->addHeader("User-Agent", "curl/7.66.0");
+    reqp->addHeader("Accept", "*/*");
+
+    reqp->startCall(connp, path.c_str(), /* isPost */ XApi::reqGet);
+
+    inPipep = reqp->getIncomingPipe();
+    outPipep = reqp->getOutgoingPipe();
+
+    code = reqp->waitForHeadersDone();
+
+    if (code == 0) {
+        while(1) {
+            code = inPipep->read(tbuffer, sizeof(tbuffer));
+            if (code <= 0) {
+                break;
+            }
+
+            response.append(tbuffer, code);
+        }
+
+        code = parseLocation(response.c_str(), latp, longp);
     }
     else {
         code = -2;
