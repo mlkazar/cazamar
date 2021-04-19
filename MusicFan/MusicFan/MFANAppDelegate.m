@@ -71,17 +71,20 @@ didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
      * saves time to complete before our process stops.
      */
     _bkgId = [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler: ^ {
-	    _bkgTimer = [NSTimer scheduledTimerWithTimeInterval: 10.0
-				 target: self
-				 selector: @selector(bkgDone:)
-				 userInfo: nil
-				 repeats: NO];
+	    NSLog(@"beginBack magic block");
 	}];
+    _bkgTimer = [NSTimer scheduledTimerWithTimeInterval: 10.0
+						 target: self
+					       selector: @selector(bkgDone:)
+					       userInfo: nil
+						repeats: NO];
+    NSLog(@"beginBackgroundTaskWithExpirationHander started timer for id=%d", _bkgId);
 }
 
 - (void) bkgDone: (id) context
 {
     [[UIApplication sharedApplication] endBackgroundTask: _bkgId];
+    NSLog(@"Background Timer: back from endBackgroundTask for id=%d", _bkgId);
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application
