@@ -1034,7 +1034,7 @@ static const float _hijackDelay = 4.0;
 	    _mpPlayer.nowPlayingItem = mpMediaItem;
 
 	    /* put in a timeout on this spinning */
-	    if (osp_get_ms() > waitStartMs + 2000) {
+	    if (osp_get_ms() > waitStartMs + 1200) {
 		NSLog(@"* hackPlayer breaks out of loop");
 		break;
 	    }
