@@ -239,6 +239,7 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
     BOOL isPresent;
     BOOL isLoadable;
     int percentLoaded;
+    BOOL displayImage = YES;
 
     ix = [path row];
     
@@ -277,8 +278,8 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
     cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle
 					reuseIdentifier: nil];
     cell.textLabel.text = titleString;
-    cell.textLabel.font = [MFANTopSettings basicFontWithSize: 18];
-    cell.textLabel.adjustsFontSizeToFitWidth = YES;
+    cell.textLabel.font = [MFANTopSettings basicFontWithSize: 11];
+    cell.textLabel.adjustsFontSizeToFitWidth = NO;
 
     /* if the MPMediaItem entry is null, then we either have a podcast
      * (downloaded or not), a recorded radio station, a real radio
@@ -288,6 +289,7 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
      */
     if (mfanItem.item == nil && ![mfanItem isWebStream]) {
 	static float dim = 0.25;
+	displayImage = NO;
 	isLoadable = YES;
 	if ([[_playContext download] isLoading: mfanItem]) {
 	    cell.textLabel.textColor = [UIColor colorWithRed: dim green: dim blue: 1.0 alpha: 1.0];
@@ -301,9 +303,9 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
 						    alpha: 1.0];
 	    }
 	    else {
-		cell.textLabel.textColor = [UIColor colorWithRed: dim
-						    green: 1.0
-						    blue:dim
+		cell.textLabel.textColor = [UIColor colorWithRed: 0.0
+						    green: 0.8
+						    blue: 0.0
 						    alpha: 1.0];
 	    }
 	    if ([mfanItem localUrl].length == 0)
@@ -322,7 +324,8 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
     cell.detailTextLabel.text = detailString;
     cell.detailTextLabel.textColor = [MFANTopSettings textColor];
 
-    [[cell imageView] setImage: artImage];
+    if (displayImage)
+	[[cell imageView] setImage: artImage];
 
     cell.shouldIndentWhileEditing = NO;
 

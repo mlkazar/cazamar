@@ -2052,6 +2052,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     Xgml::Attr *attrNodep;
     Xgml::Node *pubDateNodep;
     Xgml::Node *subtitleNodep;
+    Xgml::Node *summaryNodep;
     uint32_t podcastDate;
     char *pubDatep;
     Xgml::Node *childNodep;
@@ -2059,6 +2060,8 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     char *titlep;
     char *urlp;
     char *detailsp;
+    char *subtitlep;
+    char *summaryp;
     NSMutableArray *scanArray;
     NSString *titleDate;
 
@@ -2122,13 +2125,31 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 		else
 		    podcastDate = 0;
 
-		detailsp = NULL;
+		/* set details to be the longer of itunes:subtitle and itunes:summary,
+		 * or null if neither is present.
+		 */
+		subtitlep = NULL;
 		subtitleNodep = inodep->searchForChild("itunes:subtitle", 0);
 		if (subtitleNodep) {
 		    subtitleNodep = subtitleNodep->dive();
-		    detailsp = const_cast<char *>(subtitleNodep->_name.c_str());
-		    NSLog(@"- details='%s'", detailsp);
+		    subtitlep = const_cast<char *>(subtitleNodep->_name.c_str());
 		}
+
+		summaryp = NULL;
+		summaryNodep = inodep->searchForChild("itunes:summary", 0);
+		if (summaryNodep) {
+		    summaryNodep = summaryNodep->dive();
+		    summaryp = const_cast<char *>(summaryNodep->_name.c_str());
+		}
+
+		/* now find best of subtitle and summary to use */
+		detailsp = subtitlep;	/* start off with this */
+		if (summaryp != NULL) {
+		    if (!detailsp || strlen(summaryp) > strlen(detailsp))
+			detailsp = summaryp;
+		}
+		if (detailsp)
+		    NSLog(@"- details='%s'", detailsp);
 
 		if (urlp != NULL) {
 		    titleDate = [NSString stringWithFormat: @"%d/%d/%d - %@",
