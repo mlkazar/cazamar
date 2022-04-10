@@ -22,6 +22,7 @@
 @property int cloud;
 @property long podcastDate;	/* date of latest podcast seen */
 @property NSArray *items;
+@property BOOL itemsNeverLoaded;
 
 + (int) scanArtist;
 + (int) scanSong;

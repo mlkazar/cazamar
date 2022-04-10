@@ -170,6 +170,7 @@
 	_title = title;
 	_podcastDate = 0;
 	_scanFlags = flags;
+	_itemsNeverLoaded = YES;
 
 	_items = nil;
     }
@@ -184,6 +185,7 @@
 	_cloud = 0;
 	_title = nil;
 	_scanFlags = 0;
+	_itemsNeverLoaded = YES;
     }
     return self;
 }
@@ -2088,7 +2090,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     NSLog(@"- Parsing '%s'", rssDatap);
     code = _xgmlp->parse(&rssDatap, &rootNodep);
     if (code != 0) {
-	NSLog(@"!Parse of '%s' failed codee=%d", rssDatap, code);
+	NSLog(@"!Parse of '%s' failed code=%d", rssDatap, code);
 	return scan.items;
     }
 
@@ -3609,15 +3611,10 @@ UIAlertView *_alertView;
     NSArray *itemsArray;
     int podcastFlags;
     BOOL isPodcastList;
+    long oldestPodcastDate;
+    long podcastDate;
 
     podcastFlags = [MFANScanItem scanPodcast];
-
-    /* save for later */
-    _scanArray = scanArray;
-
-    /* initialize our query and query results to empty */
-    _itemArray = [[NSMutableArray alloc] init];
-
     isPodcastList = NO;
     for(scanItem in scanArray) {
 	if ([scanItem scanFlags] & podcastFlags) {
@@ -3625,6 +3622,20 @@ UIAlertView *_alertView;
 	    break;
 	}
     }
+
+    if (isPodcastList) {
+	oldestPodcastDate = 0;
+	if ([_itemArray count] > 0) {
+	    oldestPodcastDate = [_itemArray[0] podcastDate];
+	}
+    }
+
+    /* save for later */
+    _scanArray = scanArray;
+
+    /* initialize our query and query results to empty */
+    _itemArray = [[NSMutableArray alloc] init];
+
     /* make sure we have the list of artists, playlists, etc setup */
     [MFANSetList doSetup: nil force: NO];
 
@@ -3638,10 +3649,18 @@ UIAlertView *_alertView;
 	else {
 	    /* podcasts, sort by date */
 	    for (scanItem in scanArray) {
+		if ([scanItem itemsNeverLoaded]) {
+		    /* new podcast, load all items */
+		    podcastDate = 0;
+		}
+		else {
+		    /* existing podcast, reload from already pruned date */
+		    podcastDate = oldestPodcastDate - 1;
+		}
 		itemsArray = [scanItem performFilters: [scanItem mediaItems]];
 		_itemArray = [self mergeItems: _itemArray
 				   withItems: itemsArray
-				   fromDate: 0];
+				   fromDate: podcastDate];
 	    }
 	}
     }
@@ -3666,6 +3685,10 @@ UIAlertView *_alertView;
 		[_itemArray addObject: mfanItem];
 	    }
 	}
+    }
+
+    for(scanItem in scanArray) {
+	scanItem.itemsNeverLoaded = NO;
     }
 
     _itemCollectionp = nil;

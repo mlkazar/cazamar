@@ -2463,7 +2463,12 @@ static const float _hijackDelay = 4.0;
 	if (_lastHijackCount >= 4)
 	    return NO;
 
-	if (nowPlayingIx <= 1) { /* usually resets us to first song */
+	/* removed check for "nowPlayingIx <= 1" since the stupid
+	 * music player is now sometimes reseting us back a moderate
+	 * amount, instead of our having only to deal with the car
+	 * resetting us to the first or second song.
+	 */
+	if (1) {
 	    /* watch for us playing a significantly different index
 	     * than we expect to be playing (our code in setIndex: to
 	     * change currently playing item updates the expected item
@@ -2500,8 +2505,10 @@ static const float _hijackDelay = 4.0;
 	    }
 	    return NO;
 	}
-	else
+	else {
+	    /* this is leftover from the check for nowPlayingIx <= 1 that's been removed */
 	    return NO;
+	}
     }
 }
 

@@ -860,6 +860,11 @@ didDismissWithButtonIndex: (NSInteger) buttonIndex
 
 - (void) definitionPressed: (id) sender
 {
+    /* make sure the changes we've made in the list are visible to the definition code */
+    if (_changedArray) {
+	[_setList setMediaArray: _itemArray];
+    }
+
     [_viewCont switchToAppByName: @"edit"];
 }
 
