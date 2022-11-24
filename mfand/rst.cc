@@ -471,7 +471,8 @@ Rst::splitUrl( std::string url,
                std::string *hostp,
                std::string *pathp,
                uint16_t *defaultPortp,
-               int *isSecurep)
+               int *isSecurep,
+               int forceInsecure)
 {
     char *tp;
     char *urlStrp;
@@ -489,8 +490,14 @@ Rst::splitUrl( std::string url,
     else if (strncasecmp(urlStrp, "https://", 8) == 0) {
         url.erase(0,8);
         urlStrp = const_cast<char *>(url.c_str());
-        defaultPort = 443;
-        isSecure = 1;
+        if (forceInsecure) {
+            defaultPort = 80;
+            isSecure = 0;
+        }
+        else {
+            defaultPort = 443;
+            isSecure = 1;
+        }
     }
     else {
         defaultPort = 80;

@@ -331,7 +331,8 @@ class Rst {
                              std::string *hostp,
                              std::string *pathp,
                              uint16_t *defaultPortp = 0,
-                             int *isSecure = 0);
+                             int *isSecure = 0,
+                             int forceInsecure = 0);
 
     static void freeHeaders(HdrQueue *hqp);
 
