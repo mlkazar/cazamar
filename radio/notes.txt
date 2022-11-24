@@ -70,8 +70,10 @@ other tags @artist @title @callsign @genre @city @state (2 letter) @country (2 l
 dar.fm partner ID = 6670654103
 email michael.kazar@verizon.net
 
+http://api.shoutcast.com/legacy/stationsearch?k=HF3T2bjHaPcadpSG&limit=100&search=<string+with+spaces>
 shoutcast key=HF3T2bjHaPcadpSG
 email=michael.kazar@verizon.net
+search string has spaces turned into '+'
 
 ----
 
@@ -90,3 +92,8 @@ docs: checkout
       https://raw.githubusercontent.com/diegofn/Tunein-Radio-VLC/master/tunein.lua
       https://github.com/brianhornsby/plugin.audio.tuneinradio/wiki/RadioTime-API-Methods:-Browse
 ----
+
+tunein (seems to be alternate path to radiotime)
+
+https://api.tunein.com/profiles?fullTextSearch=true&query=mix&formats=mp3,aac&partnerId=RadioTime&version=4.5&itemUrlScheme=secure
+

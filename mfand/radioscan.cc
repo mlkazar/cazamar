@@ -74,6 +74,7 @@ RadioScanStation::streamApply( std::string url, streamUrlProc *urlProcp, void *u
     int isPls = 0;
     int isUrl = 0;
     int truncatedRead = 0;
+    uint32_t redirects = 0;
 
     while(1) {
         code = Rst::splitUrl(url, &host, &path, &defaultPort, &isSecure);
@@ -81,8 +82,22 @@ RadioScanStation::streamApply( std::string url, streamUrlProc *urlProcp, void *u
             return code;
 
         bufGenp = _scanp->_factoryp->allocate(isSecure);
-        if (!bufGenp)
-            return -2;
+        if (!bufGenp) {
+            if (isSecure) {
+                /* try forcing http instead of https */
+                code = Rst::splitUrl(url, &host, &path, &defaultPort, &isSecure,
+                                     /* force http */ 1);
+                if (code)
+                    return code;
+
+                bufGenp = _scanp->_factoryp->allocate( isSecure);
+                if (!bufGenp)
+                    return -2;
+            }
+            else {
+                return -2;
+            }
+        }
 
         bufGenp->init(const_cast<char *>(host.c_str()), defaultPort);
         bufGenp->setTimeoutMs(10000);
@@ -101,10 +116,10 @@ RadioScanStation::streamApply( std::string url, streamUrlProc *urlProcp, void *u
          * starting at the location header's value.
          */
         httpError = reqp->getHttpError();
-        if (httpError >=300 && httpError < 400) {
+        if (httpError >= 300 && httpError < 400) {
             /* redirect; location header has our new URL */
             code = reqp->findIncomingHeader("location", &url);
-            if (code) {
+            if (code || ++redirects >= RadioScan::_maxRedirects) {
                 delete reqp;
                 return code;
             }
@@ -234,6 +249,7 @@ RadioScan::retrieveContents(std::string url , std::string *strp)
     XApi::ClientConn *connp;
     BufGen *bufGenp;
     int32_t httpError;
+    uint32_t redirects = 0;
 
     while(1) {
         code = Rst::splitUrl(url, &host, &path, &defaultPort, &isSecure);
@@ -259,6 +275,13 @@ RadioScan::retrieveContents(std::string url , std::string *strp)
         httpError = reqp->getHttpError();
         if (httpError >= 300 && httpError < 400) {
             /* redirect */
+            if (++redirects >= RadioScan::_maxRedirects) {
+                /* redirect loop, return failure */
+                delete reqp;
+                delete bufGenp;
+                return -1;
+            }
+
             code = reqp->findIncomingHeader("location", &url);
             delete reqp;
             reqp = NULL;
@@ -666,16 +689,15 @@ RadioScanQuery::searchFile()
     FILE *filep;
     char *tp;
     char lineBuffer[4096];
-    char addr[6][4096];
+    char addr[4096];
     char stationName[4096];
     char stationShortDescr[4096];
     char stationGenre[128];
     char stationCO[128];
     char stationLang[128];
     int matches;
-    uint32_t i;
     uint32_t count;
-    char *parseArray[12];
+    char *parseArray[6];
     RadioScanStation *stationp;
     std::string checkedFileName;
 
@@ -694,14 +716,9 @@ RadioScanQuery::searchFile()
         parseArray[2] = stationGenre;
         parseArray[3] = stationCO;      /* country */
         parseArray[4] = stationLang;    /* language */
-        parseArray[5] = addr[0];
-        parseArray[6] = addr[1];
-        parseArray[7] = addr[2];
-        parseArray[8] = addr[3];
-        parseArray[9] = addr[4];
-        parseArray[10] = addr[5];
-        count = RadioScanStation::splitLine(lineBuffer, 11, parseArray);
-        if (count != 11)
+        parseArray[5] = addr;
+        count = RadioScanStation::splitLine(lineBuffer, 6, parseArray);
+        if (count != 6)
             continue;
 
         /* now see if we match the station name, or short description */
@@ -719,11 +736,14 @@ RadioScanQuery::searchFile()
             stationp->_stationShortDescr = std::string(stationShortDescr);
             stationp->_stationSource = std::string("tunein file");
 
-            for(i=0;i<6;i++) {
-                if (addr[i][0] != '-') {
-                    stationp->streamApply(addr[i], RadioScanStation::stwCallback, stationp);
+            {
+                if (addr[0] != '-') {
+                    stationp->streamApply(addr, RadioScanStation::stwCallback, stationp);
+                    if (stationp->_entries.count() == 0) {
+                        delete stationp;
+                    }
                 }
-            } /* loop over all addresses */
+            } /* used to loop over all addresses */
         }
         if (isAborted())
             return -1;
@@ -886,6 +906,113 @@ RadioScanQuery::browseFile()
         }
         if (isAborted())
             return -1;
+    }
+
+    return 0;
+}
+
+int32_t
+RadioScanQuery::searchRadioTime()
+{
+    char tbuffer[1024];
+    int32_t code;
+    std::string data;
+
+    Xgml xgmlSys;
+    Xgml::Node *xgmlNodep;
+    Xgml::Node *childListp;
+    Xgml::Attr *attrNodep;
+    std::string textString;
+    int foundBitrate;
+    int foundUrl;
+    int foundText;
+    std::string urlString;
+    const char *qpos;
+    const char *tp;
+    char *datap;
+    int32_t tlen;
+    RadioScanStation *stationp;
+
+    strcpy(tbuffer, "http://opml.radiotime.com/Search.ashx?query=");
+    strcat(tbuffer, _query.c_str());
+    strcat(tbuffer, "&types=station&format=mp3,aac");
+
+    code = _scanp->retrieveContents(std::string(tbuffer), &data);
+    if (code) {
+        printf("retrieval of '%s' failed\n", tbuffer);
+        return -2;
+    }
+
+    /* data is an xml string */
+    datap = const_cast<char *>(data.c_str());
+    code = xgmlSys.parse(&datap, &xgmlNodep);
+    if (code) {
+        printf("xml parse failed\n");
+        return -1;
+    }
+
+    /* we're returned a bunch of "outline" nodes, each of which has
+     * attrs that include a URL attribute and a bitrate attribute.  If
+     * the bitrate isn't present, we skip this outline node, as it is
+     * likely to be something telling us that the station doesn't
+     * stream, or it isn't available in our nation.
+     */
+    childListp = xgmlNodep->searchForChild("outline");
+    for(; childListp; childListp = childListp->_dqNextp) {
+        foundBitrate = 0;
+        foundUrl = 0;
+        foundText = 0;
+        for(attrNodep = childListp->_attrs.head(); attrNodep; attrNodep = attrNodep->_dqNextp) {
+            if (strcmp(attrNodep->_name.c_str(), "bitrate") == 0) {
+                foundBitrate = 1;
+            }
+            else if (strcmp(attrNodep->_name.c_str(), "URL") == 0) {
+                foundUrl = 1;
+                urlString = attrNodep->_value;
+            }
+            else if (strcmp(attrNodep->_name.c_str(), "text") == 0) {
+                textString = attrNodep->_value;
+                foundText = 1;
+            }
+        }
+
+        if (!foundBitrate) {
+            continue;
+        }
+
+        /* here if we found both the URL and bitrate, we have a real radio station and the
+         * URL's contents are actually another URl (barf).
+         */
+        code = _scanp->retrieveContents(urlString, &data);
+        if (code) {
+            printf("retrieval of '%s' failed\n", tbuffer);
+            continue;
+        }
+
+        /* now data is actually the URL.  Sometimes the url has a "?" field
+         * that we should remove before saving it
+         */
+        tp = data.c_str();
+        qpos = strchr(tp, '?');
+        if (qpos) {
+            tlen = qpos - tp;
+            data.erase(tlen);
+        }
+
+        if (!foundText)
+            textString = _query;
+
+        /* here, qpos is the radio station's actual streaming URL */
+        stationp = new RadioScanStation();
+        stationp->init(this);
+        stationp->_stationName = textString;
+        stationp->_stationShortDescr = textString;
+        stationp->_stationSource = std::string("radio time");
+
+        code = stationp->streamApply(data.c_str(), RadioScanStation::stwCallback, stationp);
+        if (code || stationp->_entries.count() == 0) {
+            delete stationp;
+        }
     }
 
     return 0;
@@ -1210,6 +1337,12 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     resp->_baseStatus = std::string("Searching Shoutcast");
 
     resp->searchShoutcast();
+    if (resp->isAborted())
+        return;
+
+    resp->_baseStatus = std::string("Searching RadioTime");
+
+    resp->searchRadioTime();
     if (resp->isAborted())
         return;
 

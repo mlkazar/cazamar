@@ -56,6 +56,8 @@ public:
 
     int32_t searchStreamTheWorld();
 
+    int32_t searchRadioTime();
+
     int32_t searchDar();
 
     int32_t searchFile();
@@ -157,6 +159,9 @@ class RadioScan {
     static CThreadMutex _lock;
 
  public:
+    /* max # of 301 redirects before we call it quits */
+    static const uint32_t _maxRedirects = 4;
+
     XApi *_xapip;
     BufGen *_dirBufp;
     XApi::ClientConn *_dirConnp;
