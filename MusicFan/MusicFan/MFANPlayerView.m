@@ -2468,7 +2468,7 @@ static const float _hijackDelay = 4.0;
 	 * amount, instead of our having only to deal with the car
 	 * resetting us to the first or second song.
 	 */
-	if (1) {
+	if (nowPlayingIx <= 1) {
 	    /* watch for us playing a significantly different index
 	     * than we expect to be playing (our code in setIndex: to
 	     * change currently playing item updates the expected item
