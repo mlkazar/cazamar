@@ -1067,9 +1067,9 @@ static const float _hijackDelay = 4.0;
 	NSLog(@"- setIndex: using avplayer");
 	[_playerStatus disable];
 	if ([_avMediaItem.effectiveUrl length] == 0) {
-	    MFANWarn *warn = [[MFANWarn alloc] initWithTitle:@"Not downloaded yet!"
+	    MFANWarn *warn = [[MFANWarn alloc] initWithTitle:@"No downloaded podcasts"
 					       message:@"File not (fully) downloaded"
-					       secs: 2.0];
+					       secs: 0.5];
 	    warn = nil;
 	    return;
 	}
