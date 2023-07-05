@@ -38,14 +38,12 @@ need to write downloader
 
 ----
 
-get stations.rsd for tunein
+get stations.rsd for tunein:
 
-http://www.radiosure.com/rsdbms/stations2.zip
-gets you the big file, a dated stations-<date>.rsd zipped
-loader generates stations.checked
-we fetch ~/mac/mfand/stations.rsd from pi, and save it into stations.checked
+http://rb2rs.freemyip.com/latest.zip
+unzip to ~/mac/mfand/stations.rsd
 
-http://www.radiosure.com/stations has a download link in case the file moves
+http://radiosure.fr has documentation on all of this.
 
 ----
 
