@@ -471,7 +471,7 @@ RadioStream::init( BufGenFactory *factoryp,
     /* parse incoming string */
     url = urlp;
     _defaultPort = 80;
-    Rst::splitUrl(url, &hostName, &path, &_defaultPort);
+    Rst::splitUrl(url, &hostName, &path, &_defaultPort, NULL, /* forceInsecure */ 1);
     hostNamep = hostName.c_str();
     pathp = path.c_str();
     
