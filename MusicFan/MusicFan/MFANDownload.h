@@ -41,6 +41,8 @@
 
 + (void) deleteDownloadedContent;
 
++ (void) deleteTempFiles;
+
 - (BOOL) unloadItem: (MFANMediaItem *) item;
 
 - (BOOL) loadItem: (MFANMediaItem *) item;

@@ -17,6 +17,7 @@
 #import "MFANCGUtil.h"
 #import "MFANTopSettings.h"
 #import "MFANPopHelp.h"
+#import "MFANDownload.h"
 
 #define MFAN_MAXBUTTONS 8
 
@@ -173,6 +174,8 @@ int _popupIndex = 100;
     _nbuttons = 4;
 
     if (self) {
+	[MFANDownload deleteTempFiles];
+
 	/* clocks the current brightness, as well */
 	_isRecording = NO;
 	_autoDim = [[MFANAutoDim alloc] init];

@@ -335,6 +335,28 @@
     }
 }
 
++ (void) deleteTempFiles
+{
+    NSString *libdir;
+    NSArray *dirArray;
+    NSString *entry;
+    NSString *path;
+
+    libdir = NSTemporaryDirectory();
+    dirArray = [[NSFileManager defaultManager] contentsOfDirectoryAtPath: libdir error:nil];
+    if (dirArray != nil) {
+	for(entry in dirArray) {
+	    if (1) {
+		path = [NSString stringWithFormat: @"%@/%@", libdir, entry];
+		if (![[NSFileManager defaultManager] removeItemAtPath: path
+						     error: nil]) {
+		    NSLog(@"Failed to remove temp file %@", path);
+		}
+	    }
+	}
+    }
+}
+
 + (NSString *) fileNameFromMlkUrl: (NSString *) mlkUrl
 {
     NSArray *paths;
