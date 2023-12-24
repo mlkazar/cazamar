@@ -1273,6 +1273,7 @@ static const float _hijackDelay = 4.0;
     MPMusicPlaybackState playbackState;
     uint32_t now;
     long newIndex;
+    uint32_t msSinceChanged;
 
     /* record our currently best known state */
     playbackState = [_playerStatus state];
@@ -1291,8 +1292,9 @@ static const float _hijackDelay = 4.0;
 
     now = osp_get_ms();
 
-    NSLog(@"- mpMusicChanged %d ms after press", now - _lastChangeMs);
-    if (now - _lastChangeMs < 2000) {
+    msSinceChanged = now - _lastChangeMs;
+    NSLog(@"- mpMusicChanged %d ms after press", msSinceChanged);
+    if (msSinceChanged < 1500) {
 	/* music changed because we changed it recently, so just
 	 * return, since state would have been updated by the guy who
 	 * change the music (setIndex).
@@ -1313,9 +1315,11 @@ static const float _hijackDelay = 4.0;
 
     /* check to see if the car radio has taken control and changed the playing music; if
      * so, just put back our music.  Must do this before updating _avMediaIndex, so that
-     * we don't record the state of a hijack.
+     * we don't record the state of a hijack.  Don't do the test too soon after we've
+     * changed the actual playing item, since iOS has all sorts of random delays
+     * before it reports states accurately.
      */
-    if ([self fixIfHijacked: NO]) {
+    if (msSinceChanged > 3000 && [self fixIfHijacked: NO]) {
 	return;
     }
 
