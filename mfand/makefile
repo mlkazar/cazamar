@@ -12,7 +12,7 @@ clean:
 OS=$(shell uname -s)
 
 ifneq ($(OS),Linux)
-OSXVERSION=-mmacosx-version-min=10.10
+OSXVERSION=-mmacosx-version-min=12.0
 else
 OSXVERSION=
 endif
@@ -140,55 +140,55 @@ scantest: scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a ../lib/lib
 ifeq ($(OS),Linux)
 	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a ../lib/libext.a -lssl -lcrypto -lpthread
 else
-	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a ../lib/libext.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a -lpthread
+	c++ $(OSXVERSION) -o scantest scantest.o libstream.a librst.a  libjsdb.a ../lib/libcore.a ../lib/libext.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a -lpthread
 endif
 
 ifeq ($(OS),Linux)
 xapitest: xapitest.o librst.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSXVERSION) -o xapitest xapitest.o librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
 else
-xapitest: xapitest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o xapitest xapitest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+xapitest: xapitest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
+	c++ $(OSXVERSION) -o xapitest xapitest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
 endif
 
 ifeq ($(OS),Linux)
 sapitest: sapitest.o librst.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSXVERSION) -o sapitest sapitest.o librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
 else
-sapitest: sapitest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o sapitest sapitest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+sapitest: sapitest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
+	c++ $(OSXVERSION) -o sapitest sapitest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
 endif
 
 ifeq ($(OS),Linux)
 keyserv: keyserv.o librst.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSXVERSION) -o keyserv keyserv.o librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
 else
-keyserv: keyserv.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o keyserv keyserv.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+keyserv: keyserv.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
+	c++ $(OSXVERSION) -o keyserv keyserv.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
 endif
 
 ifeq ($(OS),Linux)
 apptest: apptest.o librst.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSXVERSION) -o apptest apptest.o librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
 else
-apptest: apptest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o apptest apptest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+apptest: apptest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
+	c++ $(OSXVERSION) -o apptest apptest.o librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
 endif
 
 ifeq ($(OS),Linux)
 cfstest: cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSXVERSION) -o cfstest cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
 else
-cfstest: cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o cfstest cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+cfstest: cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
+	c++ $(OSXVERSION) -o cfstest cfstest.o libcfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
 endif
 
 ifeq ($(OS),Linux)
 uptest: uptest.o libupload.a libcfs.a liblfs.a  librst.a ../lib/libext.a ../lib/libcore.a
 	c++ $(OSXVERSION) -o uptest uptest.o libupload.a libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a -lssl -lcrypto -lpthread
 else
-uptest: uptest.o libupload.a libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o uptest uptest.o libupload.a libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+uptest: uptest.o libupload.a libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
+	c++ $(OSXVERSION) -o uptest uptest.o libupload.a libcfs.a liblfs.a librst.a ../lib/libext.a ../lib/libcore.a /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
 endif
 
 ifeq ($(OS),Linux)
@@ -213,16 +213,16 @@ ifeq ($(OS),Linux)
 ssls: ssls.o
 	c++ $(OSXVERSION) -o ssls ssls.o -lssl -lcrypto
 else
-ssls: ssls.o /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o ssls ssls.o /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+ssls: ssls.o /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
+	c++ $(OSXVERSION) -o ssls ssls.o /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
 endif
 
 ifeq ($(OS),Linux)
 sslc: sslc.o
 	c++ $(OSXVERSION) -o sslc sslc.o -lssl -lcrypto
 else
-sslc: sslc.o /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
-	c++ $(OSXVERSION) -o sslc sslc.o /usr/local/ssl/lib/libssl.a /usr/local/ssl/lib/libcrypto.a
+sslc: sslc.o /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
+	c++ $(OSXVERSION) -o sslc sslc.o /usr/local/lib/libssl.a /usr/local/lib/libcrypto.a
 endif
 
 upnptest: upnptest.o librst.a libupnp.a ../lib/libext.a ../lib/libcore.a liboauth.a
