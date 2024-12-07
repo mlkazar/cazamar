@@ -1,11 +1,11 @@
-all: librpc.a libext.a libcore.a rpctest jsontest xgmltest cdisptest timertest
+all: librpc.a libext.a libcore.a rpctest jsontest xgmltest cdisptest timertest jsonprinter
 
 install: all
 	cp *.a ../lib
 	cp *.h ../include
 
 clean:
-	rm -f *.o *.a rpctest jsontest xgmltest cdisptest timertest
+	rm -f *.o *.a rpctest jsontest xgmltest cdisptest timertest jsonprinter
 
 OS=$(shell uname -s)
 
@@ -21,7 +21,7 @@ CXXFLAGS += -Wno-unused-but-set-variable
 endif
 
 
-INCLS=cdisp.h cthread.h dqueue.h json.h osp.h ospmbuf.h osptypes.h osptimer.h sdr.h restcall.h rpc.h xgml.h 
+INCLS=cdisp.h cthread.h dqueue.h json.h jsonprint.h osp.h ospmbuf.h osptypes.h osptimer.h sdr.h restcall.h rpc.h xgml.h 
 
 rpc.o: rpc.cc $(INCLS)
 
@@ -44,6 +44,10 @@ xgml.o: xgml.cc $(INCLS)
 json.o: json.cc $(INCLS)
 
 jsontest.o: jsontest.cc $(INCLS)
+
+jsonprint.o: jsonprint.cc $(INCLS)
+
+jsonprinter.o: jsonprinter.cc $(INCLS)
 
 restcall.o: restcall.cc $(INCLS)
 
@@ -72,6 +76,9 @@ timertest: timertest.o libcore.a
 
 jsontest: jsontest.o libext.a
 	c++ $(OSXVERSION) -o jsontest jsontest.o libext.a
+
+jsonprinter:: jsonprinter.o jsonprint.o
+	c++ $(OSXVERSION) -o jsonprinter jsonprinter.o jsonprint.o
 
 xgmltest: xgmltest.o libext.a
 	c++ $(OSXVERSION) -o xgmltest xgmltest.o libext.a
