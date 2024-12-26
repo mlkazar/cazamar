@@ -26,7 +26,7 @@ TestTask3::start()
     uint32_t i;
     int32_t code;
     TestTask3a *taskp;
-    int ntasks = 20;
+    uint ntasks = 20;
 
     printf("Test task 3 %p starts\n", this);
     _sema.init(0);

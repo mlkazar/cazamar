@@ -131,7 +131,7 @@ Json::parseFailed(const char *strp)
 }
 
 void
-Json::printIndentX(int32_t level)
+Json::printIndentX(uint32_t level)
 {
     uint32_t i;
     for(i=0;i<level;i++) {
@@ -152,7 +152,6 @@ Json::parseJsonPair(InStream *streamp, Node **nodepp, int32_t level)
     int isSingle;
     int isQuoted;
     int code = 0;
-    Json::Node *nameNodep;
     Json::Node *nodep;
 
     getToken(streamp, &token, &isSingle, &isQuoted);
@@ -197,7 +196,6 @@ Json::parseJsonValue(InStream *streamp, Node **nodepp, int32_t indent)
     std::string value;
     int isSingle;
     int isQuoted;
-    Json::Node *nodep;
     int32_t code;
 
     code = getToken(streamp, &token, &isSingle, &isQuoted);
@@ -224,7 +222,6 @@ int32_t
 Json::parseJsonComplex(InStream *streamp, std::string *firstTokenp, Node **nodepp, int32_t indent)
 {
     std::string token;
-    Json::Node *parentp;
     Json::Node *childp;
     int32_t code;
     int isSingle;
@@ -624,7 +621,7 @@ InStreamFile::fillBuffer()
 
     count++;
     if (count % 100000000 == 0)
-        fprintf(stderr, "count is %lld\n", count);
+        fprintf(stderr, "count is %ld\n", count);
 }
 
 int

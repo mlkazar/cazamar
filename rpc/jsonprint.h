@@ -310,7 +310,7 @@ class Json {
         return _defaultNeedsEnd;
     }
 
-    static void printIndentX(int32_t level);
+    static void printIndentX(uint32_t level);
 
     static void printIndent(std::string *resultp, uint32_t level);
 };
