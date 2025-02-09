@@ -80,8 +80,6 @@
 	[_viewCont switchToAppByName: @"menu"];
 	return;
     }
-    _changedArray = NO;
-    _changedSelection = NO;
     _originalIndex = _currentIndex = (int) [_playContext getCurrentIndex];
     _originalMFANItem = [_setList itemWithIndex: _originalIndex];
     [[_playContext download] checkDownloadedArray: _itemArray];
@@ -404,6 +402,8 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
 
 	_detailIndex = -1;
 	_lastDownloadCount = 0;
+	_changedArray = NO;
+	_changedSelection = NO;
 
 	_topLevel = level;
 	_radioConsole = console;
@@ -895,6 +895,7 @@ didDismissWithButtonIndex: (NSInteger) buttonIndex
 - (void) editDone: (id) sender
 {
     NSLog(@"- topedit edit done");
+    _changedArray = YES;
     [_viewCont makeActive: self];
     [_tableView reloadData];
 }
