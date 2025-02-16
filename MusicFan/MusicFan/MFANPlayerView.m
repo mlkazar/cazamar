@@ -1538,7 +1538,10 @@ static const float _hijackDelay = 4.0;
 	[self updateSliderView];
     }
     else {
-	if ([self currentPlaybackTime] < 4.0) {
+	// if first few seconds of a song, or if this is a podcast, just
+	// move to previous item.  For podcasts, motivation is not to
+	// lose our place accidentally.
+	if ([self currentPlaybackTime] < 4.0 || [_avMediaItem isPodcast]) {
 	    if (_avMediaIndex == 0)
 		[self setIndex: count-1 rollForward: NO];
 	    else
