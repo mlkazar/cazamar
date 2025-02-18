@@ -84,6 +84,8 @@
 
 - (void) setIndex: (long) ix rollForward: (BOOL) forward;
 
+- (void) highlightPressed: (id) button withEvent: (UIEvent *)event;
+
 - (void) play;
 
 - (void) pause;

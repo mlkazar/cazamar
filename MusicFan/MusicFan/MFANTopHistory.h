@@ -20,7 +20,7 @@
 @property long when;
 @property NSString *song;	/* stream title */
 @property NSString *station;
-
+@property BOOL highlighted;
 @end
 
 @interface MFANListHistory: NSObject<UITableViewDelegate,
@@ -51,5 +51,9 @@
 - (NSMutableArray *) histItems;
 
 - (void) addHistoryStation: (NSString *) station withSong: (NSString *) song;
+
+- (void) toggleHighlight;
+
+- (BOOL) isHighlighted;
 
 @end

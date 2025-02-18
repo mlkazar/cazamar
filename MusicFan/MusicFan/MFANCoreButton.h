@@ -25,6 +25,8 @@
 
 - (void) setClearText: (NSString *)text;
 
+- (void) setFillColor: (UIColor *) fillColor;
+
 - (NSString *) title;
 
 @end

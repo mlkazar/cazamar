@@ -16,6 +16,7 @@
     id __weak _context2;
     int _selected;
     UIColor *_color;
+    UIColor *_fillColor;
     CGRect _frame;
     NSString *_title;
     UIImage *_settingsImage;
@@ -75,6 +76,7 @@
 	self.titleLabel.font = [UIFont boldSystemFontOfSize: frame.size.height*0.6];
 	[self.titleLabel setTextAlignment: NSTextAlignmentCenter];
 	_color = baseColor;
+	_fillColor = [UIColor clearColor];
 	_selected = YES;
 	_frame = frame;
 	_title = title;
@@ -98,6 +100,11 @@
 	      forControlEvents: UIControlEventAllTouchEvents];
     }
     return self;
+}
+
+- (void) setFillColor: (UIColor *) fillColor
+{
+    _fillColor = fillColor;
 }
 
 - (void) addCallback: (id) contextp
@@ -198,7 +205,7 @@
 
 	/* erase whole rectangle so that old junk doesn't show through */
 	cx = UIGraphicsGetCurrentContext();
-	CGContextSetFillColorWithColor(cx, [UIColor clearColor].CGColor);
+	CGContextSetFillColorWithColor(cx, _fillColor.CGColor);
 	CGContextFillRect(cx, rect);
 
 	insetRect = CGRectInset(rect, strokeWidth, strokeWidth);

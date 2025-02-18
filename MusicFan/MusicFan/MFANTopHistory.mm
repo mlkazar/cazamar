@@ -68,6 +68,7 @@ static UIColor *_backgroundColor;
     return;
 }
 
+#ifdef notdef
 - (void) tableView: (UITableView *) tview
 commitEditingStyle: (UITableViewCellEditingStyle) style
  forRowAtIndexPath: (NSIndexPath *) path
@@ -94,11 +95,103 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 		 userInfo: nil
 		 repeats: NO];
     }
+    NSLog(@"SURPRISE CALL TO commiteditngstyle");
+}
+#endif
+
+- (void) removeRowAtPath: (NSIndexPath *) path
+{
+    long row;
+    NSMutableArray *histItemArray;
+
+    row = [path row];
+    histItemArray = [_topHist histItems];
+    [histItemArray removeObjectAtIndex: row];
+
+    /* and mark that we've made changes so that we'll randomize and reload 
+     * song list when Done is pressed.
+     */
+    _topHist.changesMade = YES;
+
+    /* what a sad, sad joke is iOS -- clowns broke deleting an
+     * item from a view from the swipe handler in ios 8.0.2.
+     */
+    [NSTimer scheduledTimerWithTimeInterval: 0.01
+				     target: self
+				   selector: @selector(updateView:)
+				   userInfo: nil
+				    repeats: NO];
+}
+
+- (void) highlightRowAtPath: (NSIndexPath *) path
+{
+    long row;
+    NSMutableArray *histItemArray;
+    MFANHistoryItem *hist;
+
+    row = [path row];
+    histItemArray = [_topHist histItems];
+    hist = [histItemArray objectAtIndex: row];
+    hist.highlighted = !hist.highlighted;
+    [histItemArray replaceObjectAtIndex: row withObject: hist];
+
+    /* and mark that we've made changes so that we'll randomize and reload 
+     * song list when Done is pressed.
+     */
+    _topHist.changesMade = YES;
+
+    /* what a sad, sad joke is iOS -- clowns broke deleting an
+     * item from a view from the swipe handler in ios 8.0.2.
+     */
+    [NSTimer scheduledTimerWithTimeInterval: 0.01
+				     target: self
+				   selector: @selector(updateView:)
+				   userInfo: nil
+				    repeats: NO];
 }
 
 - (void) updateView: (id) junk
 {
     [_tableView reloadData];
+}
+
+- (NSArray *) tableView: (UITableView *) tview
+editActionsForRowAtIndexPath: (NSIndexPath *) path
+{
+    long row;
+    NSMutableArray *histItemArray;
+    MFANHistoryItem *hist;
+    NSString *hlString;
+    
+    row = [path row];
+    histItemArray = [_topHist histItems];
+    hist = [histItemArray objectAtIndex: row];
+
+    UITableViewRowAction *deleteAction =
+	[UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
+					   title:@"Delete"
+					 handler:^(UITableViewRowAction *action,
+						   NSIndexPath *path) {
+		[self removeRowAtPath: path];
+	    }];
+
+    deleteAction.backgroundColor = [UIColor redColor];
+
+    if (hist.highlighted)
+	hlString = @"Unhighlight";
+    else
+	hlString = @"Highlight";
+
+    UITableViewRowAction *hlAction =
+	[UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
+					   title:hlString
+					 handler:^(UITableViewRowAction *action,
+						   NSIndexPath *path) {
+		[self highlightRowAtPath: path];
+	    }];
+    hlAction.backgroundColor = [UIColor blueColor];
+
+    return @[hlAction, deleteAction];
 }
 
 - (NSInteger) tableView: (UITableView *)tview numberOfRowsInSection: (NSInteger) section
@@ -134,7 +227,7 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle
 				    reuseIdentifier: nil];
     cell.textLabel.text = hist.song;
-    cell.textLabel.textColor = textColor;
+    cell.textLabel.textColor = [MFANTopSettings textColor];
     cell.textLabel.font = [MFANTopSettings basicFontWithSize: 18];
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
@@ -150,7 +243,11 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     // cell.backgroundView.backgroundColor = [UIColor clearColor];
     // cell.multipleSelectionBackgroundView.backgroundColor = [UIColor clearColor];
     // cell.selectedBackgroundView.backgroundColor = [UIColor clearColor];
-    cell.backgroundColor = [UIColor clearColor];
+    if (hist.highlighted) {
+	cell.backgroundColor = [MFANTopSettings selectedBackgroundColor];
+    } else {
+	cell.backgroundColor = [UIColor clearColor];
+    }
 
     return cell;
 }
@@ -336,13 +433,27 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 
 - (void) clearAfterAlert
 {
+    uint32_t ix;
+    uint32_t count;
+    MFANHistoryItem *hist;
+
     if (_alertIndex == 0) {
 	/* did a cancel */
 	return;
     }
 
-    /* otherwise, clear all entries */
-    [_histItems removeAllObjects];
+    // Otherwise prune all unhighlighted entries
+    ix = 0;
+    while(1) {
+	count = [_histItems count];
+	if (ix >= count)
+	    break;
+	hist = [_histItems objectAtIndex: ix];
+	if (hist.highlighted)
+	    ix++;
+	else
+	    [_histItems removeObjectAtIndex: ix];
+    }
 
     _changesMade = YES;
 
@@ -368,6 +479,7 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     Json::Node *childNodep;
     Json::Node *songp;
     Json::Node *stationp;
+    Json::Node *highlightedp;
     Json::Node *whenp;
     Json::Node *rootNodep;
     Json json;
@@ -391,6 +503,7 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 	whenp = childNodep->searchForChild("when", 0);
 	stationp = childNodep->searchForChild("station", 0);
 	songp = childNodep->searchForChild("song", 0);
+	highlightedp = childNodep->searchForChild("highlighted", 0);
 	if (!whenp || !stationp || !songp) {
 	    NSLog(@"* restoreEdits failed to read complete record %p %p %p",
 		  whenp, stationp, songp);
@@ -404,6 +517,9 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 				 encoding: NSUTF8StringEncoding];
 	item.song = [NSString stringWithCString: songp->_children.head()->_name.c_str()
 			      encoding: NSUTF8StringEncoding];
+	if (highlightedp) {
+	    item.highlighted = atoi(highlightedp->_children.head()->_name.c_str());
+	}
 	[_histItems addObject: item];
     }
     fclose(inFilep);
@@ -473,6 +589,13 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 	leafNodep->initString([item.song cStringUsingEncoding: NSUTF8StringEncoding], 1);
 	namedNodep = new Json::Node();
 	namedNodep->initNamed("song", leafNodep);
+	structNodep->appendChild(namedNodep);
+
+	// Add highlighted
+	leafNodep = new Json::Node();
+	leafNodep->initInt(item.highlighted);
+	namedNodep = new Json::Node();
+	namedNodep->initNamed("highlighted", leafNodep);
 	structNodep->appendChild(namedNodep);
 
 	/* and now append the struct to the array */
@@ -557,16 +680,27 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     MFANHistoryItem *hist;
     MFANHistoryItem *prev;
     int32_t count;
+    int32_t ix;
     NSString *unknownString;
 
     /* prune from the head */
+    ix = 0;
     while (1) {
+	// Delete oldest entries, but also watch for situation where
+	// we have selected to keep more than _maxEntries.
 	count = (int32_t) [_histItems count];
-	if (count <= _maxEntries)
+	if (count <= _maxEntries || ix >= count)
 	    break;
-	[_histItems removeObjectAtIndex: 0];
+
+	hist = [_histItems objectAtIndex: ix];
+	if (hist.highlighted)
+	    ix++;
+	else
+	    [_histItems removeObjectAtIndex: ix];
     }
-    /* note that count is accurate from here on down */
+
+    // Recompute in case we bailed from above loop due to large ix.
+    count = [_histItems count];
 
     /* ignore updates from stations that don't provide song information */
     unknownString = MFANAqPlayer_getUnknownString();
@@ -587,6 +721,7 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     hist.station = station;
     hist.song = song;
     hist.when = osp_time_sec();
+    hist.highlighted = NO;
 
     [_histItems addObject: hist];
     _changesMade = YES;
@@ -594,6 +729,37 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     [_listTableView reloadData];
 
     [self saveEdits];
+}
+
+- (void) toggleHighlight
+{
+    uint32_t count;
+    uint32_t ix;
+    MFANHistoryItem *lastItem;
+
+    count = [_histItems count];
+    if (count < 1)
+	return;
+    ix = count-1;	// dealing with the last item
+
+    lastItem = [_histItems objectAtIndex: ix];
+    lastItem.highlighted = !lastItem.highlighted;
+    [_histItems replaceObjectAtIndex: ix withObject: lastItem];
+}
+
+- (BOOL) isHighlighted
+{
+    uint32_t count;
+    uint32_t ix;
+    MFANHistoryItem *lastItem;
+
+    count = [_histItems count];
+    if (count < 1)
+	return NO;
+    ix = count-1;	// dealing with the last item
+
+    lastItem = [_histItems objectAtIndex: ix];
+    return lastItem.highlighted;
 }
 
 - (void)drawRect:(CGRect)rect

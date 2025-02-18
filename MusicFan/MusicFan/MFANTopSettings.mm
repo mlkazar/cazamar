@@ -152,6 +152,7 @@
     UIColor *_lightBaseColor;
     UIColor *_clearBaseColor;
     UIColor *_textColor;
+    UIColor *_selectedBackgroundColor;
 }
 
 MFANTopSettings *_globalSettings;
@@ -205,6 +206,10 @@ MFANTopSettings *_globalSettings;
 	fontSizeScale = 0.6;
 
 	_textColor = [UIColor blackColor];
+	_selectedBackgroundColor = [UIColor colorWithRed: 0.6
+						   green: 0.8
+						    blue:1.0
+						   alpha: 1.0];
 
 	_viewCon = viewCon;
 
@@ -1133,6 +1138,11 @@ MFANTopSettings *_globalSettings;
 + (UIColor *) textColor
 {
     return _globalSettings->_textColor;
+}
+
++ (UIColor *) selectedBackgroundColor
+{
+    return _globalSettings->_selectedBackgroundColor;
 }
 
 + (void) setWarningFlag: (int) flag

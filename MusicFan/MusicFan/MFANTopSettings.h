@@ -88,6 +88,8 @@ static const int MFANTopSettings_forceNoArt = 0;
 
 + (UIColor *) textColor;
 
++ (UIColor *) selectedBackgroundColor;
+
 + (MFANTopSettings *) globalSettings;
 
 @end

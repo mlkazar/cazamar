@@ -272,6 +272,8 @@ UIImage *_defaultImage;
     MarqueeLabel *_radioLabel1;
     CGRect _radioFrame2;
     UILabel *_radioLabel2;
+    CGRect _hlButtonFrame;
+    MFANCoreButton *_hlButton;
     BOOL _artTextVisible;
     AVPlayer *_avPlayer;
     AVPlayerItem *_avItem;
@@ -324,6 +326,7 @@ UIImage *_defaultImage;
     MFANViewController *_viewCon;
     uint32_t _lastHijackSecs;	/* seconds since last hijack */
     uint32_t _lastHijackCount;	/* count since last time we had a 20 second gap in hijackings */
+    UIColor *_radioBackground;
 
     /* we count how many times in a row we thought we were playing,
      * but currentTime didn't change (for AV player).  This is often
@@ -764,6 +767,12 @@ static const float _hijackDelay = 4.0;
 
 	/* last time the isPlaying state changed */
 	_lastStateChangeMs = osp_get_ms();
+
+	// Background color for radio popups
+	_radioBackground = [UIColor colorWithRed: 0.8
+					   green: 0.8
+					    blue: 0.8
+					   alpha: 1.0];
     }
     return self;
 }
@@ -2553,6 +2562,11 @@ static const float _hijackDelay = 4.0;
 	[_radioLabel2 removeFromSuperview];
 	_radioLabel2 = nil;
     }
+
+    if (_hlButton != nil) {
+	[_hlButton removeFromSuperview];
+	_hlButton = nil;
+    }
 }
 
 - (void) stopRecording
@@ -2575,6 +2589,44 @@ static const float _hijackDelay = 4.0;
 
     return 0;
 }
+
+- (NSString *)
+highlightButtonString
+{
+    if ([_hist isHighlighted]) {
+	return @"Remove Highlight";
+    } else {
+	return @"Highlight Song";
+    }
+}
+
+- (void)
+highlightPressed: (id) button
+{
+    NSTimer *restoreTimer;
+
+    NSLog(@"**HL pressed");
+    [_hlButton setFillColor: [UIColor greenColor]];
+    [_hlButton setClearText: @"Highlighting"];
+    [_hlButton setNeedsDisplay];
+
+    [_hist toggleHighlight];
+
+    restoreTimer = [NSTimer scheduledTimerWithTimeInterval: 0.8
+						    target: self
+						  selector: @selector(highlightTimerFired:)
+						  userInfo: nil
+						   repeats: NO];
+}
+
+- (void)
+highlightTimerFired: (id) junk
+{
+    [_hlButton setFillColor: _radioBackground];
+    [_hlButton setClearText: [self highlightButtonString]];
+    [_hlButton setNeedsDisplay];
+}
+
 
 - (void)
 artPressed: (id) button withEvent: (UIEvent *)event
@@ -2604,7 +2656,7 @@ artPressed: (id) button withEvent: (UIEvent *)event
 	    }
 	}
 	else if (channelType == MFANChannelRadio) {
-	    CGFloat textHeight = totalHeight / 6;	/* nboxes + 1 */
+	    CGFloat textHeight = totalHeight / 7;	/* nboxes + 1 */
 
 	    _radioFrame1.size.height = textHeight;
 	    _radioFrame1.size.width = _artFrame.size.width * 0.9;
@@ -2616,10 +2668,7 @@ artPressed: (id) button withEvent: (UIEvent *)event
 	    [_radioLabel1 setTextColor: [MFANTopSettings textColor]];
 	    [_radioLabel1 setFont: [MFANTopSettings basicFontWithSize: textHeight * 0.7]];
 	    [_radioLabel1 setTextAlignment: NSTextAlignmentCenter];
-	    [_radioLabel1 setBackgroundColor: [UIColor colorWithRed: 0.8
-						       green: 0.8
-						       blue: 0.8
-						       alpha: 1.0]];
+	    [_radioLabel1 setBackgroundColor: _radioBackground];
 
 	    _radioLabel1.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
 	    _radioLabel1.layer.borderColor = [MFANTopSettings baseColor].CGColor;
@@ -2633,15 +2682,27 @@ artPressed: (id) button withEvent: (UIEvent *)event
 	    [_radioLabel2 setFont: [MFANTopSettings basicFontWithSize: textHeight * 0.7]];
 	    [_radioLabel2 setTextAlignment: NSTextAlignmentCenter];
 	    [_radioLabel2 setAdjustsFontSizeToFitWidth: YES];
-	    [_radioLabel2 setBackgroundColor: [UIColor colorWithRed: 0.8
-						       green: 0.8
-						       blue: 0.8
-						       alpha: 1.0]];
+	    [_radioLabel2 setBackgroundColor: _radioBackground];
 
 	    _radioLabel2.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
 	    _radioLabel2.layer.borderColor = [MFANTopSettings baseColor].CGColor;
 	    _radioLabel2.layer.borderWidth = 2.0;
 	    [_parent addSubview: _radioLabel2];
+
+	    // Frame for text button to highlight song in history
+	    _hlButtonFrame.size.height = textHeight;
+	    _hlButtonFrame.size.width = _artFrame.size.width * 0.7;
+	    _hlButtonFrame.origin = _artFrame.origin;
+	    _hlButtonFrame.origin.x += _artFrame.size.width * 0.15;	// Center
+	    _hlButtonFrame.origin.y += 4.5* textHeight;
+	    _hlButton = [[MFANCoreButton alloc] initWithFrame: _hlButtonFrame
+							title:@"Border"
+							color: [MFANTopSettings baseColor]];
+	    // could pass setTextAlignment: NSTextAlignmentRight through, but don't need to
+	    [_parent addSubview: _hlButton];
+	    [_hlButton setFillColor: _radioBackground];
+	    [_hlButton setClearText: [self highlightButtonString]];
+	    [_hlButton addCallback: self withAction: @selector(highlightPressed:)];
 	}
     }
     else {
