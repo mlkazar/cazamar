@@ -2666,6 +2666,8 @@ artPressed: (id) button withEvent: (UIEvent *)event
 					 cancelButtonTitle: @"OK"
 					 otherButtonTitles: nil];
 		[alert show];
+
+		_artTextVisible = NO;
 	    }
 	}
 	else if (channelType == MFANChannelRadio) {
@@ -2737,12 +2739,14 @@ artPressedTimer: (id) junk
     _artPressedTimer = nil;
 
     // Remove display
+    _artTextVisible = NO;
     [self removeStars: YES];
 }
 
 - (void)
 starsPressed: (id) junk
 {
+    _artTextVisible = NO;
     [self removeStars: YES];
 }
 
