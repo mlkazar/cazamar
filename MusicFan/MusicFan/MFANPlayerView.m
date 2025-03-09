@@ -302,6 +302,7 @@ UIImage *_defaultImage;
     NSTimer *_sliderDragTimer;		/* for operating once drag is done */
     float _sliderDragValue;
     NSTimer *_hijackTimer;
+    NSTimer *_artPressedTimer;		// Clear art display after a few seconds
     MFANMediaItem *_lastDisplayedSong;
     MFANPlayerStatus *_playerStatus;
     CGRect _rightMarginFrame;
@@ -2655,6 +2656,18 @@ artPressed: (id) button withEvent: (UIEvent *)event
 		[_parent addSubview: _starsView];
 	    }
 	}
+	else if (channelType == MFANChannelPodcast) {
+	    MFANMediaItem *mfanItem = [self currentMFANItem];
+	    if (mfanItem != nil) {
+		UIAlertView *alert = [[UIAlertView alloc]
+					 initWithTitle: @"Details"
+					       message: mfanItem.details
+					      delegate: self
+					 cancelButtonTitle: @"OK"
+					 otherButtonTitles: nil];
+		[alert show];
+	    }
+	}
 	else if (channelType == MFANChannelRadio) {
 	    CGFloat textHeight = totalHeight / 7;	/* nboxes + 1 */
 
@@ -2703,12 +2716,28 @@ artPressed: (id) button withEvent: (UIEvent *)event
 	    [_hlButton setFillColor: _radioBackground];
 	    [_hlButton setClearText: [self highlightButtonString]];
 	    [_hlButton addCallback: self withAction: @selector(highlightPressed:)];
+
+	    _artPressedTimer = [NSTimer scheduledTimerWithTimeInterval: 15.0
+								target:self
+							      selector:@selector(artPressedTimer:)
+							      userInfo:nil
+							       repeats: NO];
+
 	}
     }
     else {
 	_artTextVisible = NO;
 	[self removeStars: YES];
     }
+}
+
+- (void)
+artPressedTimer: (id) junk
+{
+    _artPressedTimer = nil;
+
+    // Remove display
+    [self removeStars: YES];
 }
 
 - (void)
