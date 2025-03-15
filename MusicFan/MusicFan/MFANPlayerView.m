@@ -268,6 +268,7 @@ UIImage *_defaultImage;
     CGRect _cbuttonFrame;
     CGRect _cloudFrame;
     CGRect _starsFrame;
+    CGRect _dateFrame;
     CGRect _radioFrame1;
     MarqueeLabel *_radioLabel1;
     CGRect _radioFrame2;
@@ -295,6 +296,7 @@ UIImage *_defaultImage;
     MFANCoreButton *_fwdButton;
     MFANCoreButton *_nextButton;
     MFANStarsView *_starsView;
+    UILabel *_dateView;
     UISlider *_slider;
     UIImage *_sliderThumbImage;
     UILabel *_timeLabel;
@@ -541,7 +543,13 @@ static const float _hijackDelay = 4.0;
 
 	_starsFrame = _artFrame;
 	_starsFrame.origin.y += _artFrame.size.height/3;
-	_starsFrame.size.height = _artFrame.size.height/3;
+	_starsFrame.size.height = _artFrame.size.height/4;
+
+	_dateFrame = _artFrame;
+	_dateFrame.origin.y += 2*_artFrame.size.height/3;
+	_dateFrame.origin.x += _artFrame.size.width / 4;
+	_dateFrame.size.height = _artFrame.size.height/15;
+	_dateFrame.size.width = _artFrame.size.width/2;
 
 	/* we divide the remaining space under the artwork into equal
 	 * pieces for the song, the album/artist, the controls, and
@@ -2554,6 +2562,11 @@ static const float _hijackDelay = 4.0;
 	_starsView = nil;
     }
 
+    if (_dateView != nil) {
+	[_dateView removeFromSuperview];
+	_dateView = nil;
+    }
+
     if (_radioLabel1 != nil) {
 	[_radioLabel1 removeFromSuperview];
 	_radioLabel1 = nil;
@@ -2629,6 +2642,22 @@ highlightTimerFired: (id) junk
 }
 
 
+- (NSString *)
+releaseDateFromItem: (MPMediaItem *) item
+{
+    NSString *result;
+    NSDate *releaseDate = [item valueForProperty: MPMediaItemPropertyReleaseDate];
+    if (releaseDate == nil) {
+	result = @"Unknown release";
+    } else {
+	NSDateFormatter *fmt = [[NSDateFormatter alloc] init];
+	[fmt setDateFormat:@"yyyy"];
+	NSString *tresult = @"Released ";
+	result = [tresult stringByAppendingString: [fmt stringFromDate: releaseDate]];
+    }
+    return result;
+}
+
 - (void)
 artPressed: (id) button withEvent: (UIEvent *)event
 {
@@ -2654,6 +2683,15 @@ artPressed: (id) button withEvent: (UIEvent *)event
 				   unsignedIntegerValue];
 		_starsView.enabledCount = currentStars;
 		[_parent addSubview: _starsView];
+
+		_dateView = [[UILabel alloc] initWithFrame: _dateFrame];
+		[_dateView setTextColor: [MFANTopSettings textColor]];
+		[_dateView setFont: [MFANTopSettings basicFontWithSize:
+							  _dateFrame.size.height * 0.9]];
+		[_dateView setTextAlignment: NSTextAlignmentCenter];
+		[_dateView setBackgroundColor: [UIColor whiteColor]];
+		[_dateView setText: [self releaseDateFromItem: item]];
+		[_parent addSubview: _dateView];
 	    }
 	}
 	else if (channelType == MFANChannelPodcast) {
