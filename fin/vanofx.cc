@@ -12,6 +12,29 @@
 
 namespace VanOfx {
 
+User::User()
+{
+    _fund_map["0030"] = "VMMXX";
+    _fund_map["0066"] = "VMRXX";
+    _fund_map["0509"] = "VIGAX";
+    _fund_map["0540"] = "VFIAX";
+    _fund_map["1945"] = "VSCSX";
+    _fund_map["5314"] = "VWIUX";
+    // TODO: get the rest of these
+
+    _model_funds = 1;
+}
+
+std::string
+User::LookupFundByNumber(std::string fund_number) {
+    NumberMap::iterator it;
+    it = _fund_map.find(fund_number);
+    if (it == _fund_map.end())
+        return std::string("None");
+    else
+        return it->second;
+}
+
 int32_t
 Fund::ApplyToTrans(std::function<int32_t(Transaction *)>func) {
     int32_t rval;
@@ -31,7 +54,7 @@ User::GetAccount(std::string number) {
     // Create an account object if none found.
     it = _accounts.find(number);
     if (it == _accounts.end()) {
-        account = new Account();
+        account = new Account(this);
         account->_number = number;
         _accounts.insert(make_pair(number, account));
     } else {
@@ -55,7 +78,7 @@ Account::ApplyToFunds(std::function<int32_t(Fund *)> func) {
 }
 
 Fund *
-Account::GetFund(std::string fund_name) {
+Account::GetFundByName(std::string fund_name) {
     FundList::iterator it;
     Fund *fund;
     for(it = _funds.begin(); it != _funds.end(); it++) {
@@ -64,24 +87,35 @@ Account::GetFund(std::string fund_name) {
             return fund;
     }
 
-    fund = new Fund(fund_name);
+    fund = new Fund(_user, fund_name);
     _funds.push_back(fund);
     return fund;
 }
 
+Fund *
+Account::GetFundBySymbol(std::string symbol) {
+    FundList::iterator it;
+    Fund *fund;
+    for(it = _funds.begin(); it != _funds.end(); it++) {
+        fund = *it;
+        if (fund->_symbol == symbol)
+            return fund;
+    }
+
+    return nullptr;
+}
+
 int32_t
-User::AssignSalesGains() {
+User::BackfillBalances() {
+    std::vector<Transaction *>::reverse_iterator rit;
     for(auto &pair : _accounts) {
         Account *acct = pair.second;
         for(auto fund : acct->_funds) {
-            for(auto trans : fund->_trans) {
-                // This is just a placeholder.  We should really check
-                // for a LOT file, figure out which lots still apply
-                // and use mintax or whatever to figure out the
-                // specific gain.  Or if we don't have lots, use Yahoo
-                // finance to get an average purchase price, augmented
-                // by actual Buy transactions we have for the shares.
-                trans->_ex_gain = (trans->_share_price / 2)  * trans->_share_count;
+            double prev_count = fund->_share_count;
+            for(rit = fund->_trans.rbegin(); rit != fund->_trans.rend(); rit++) {
+                Transaction *trans = *rit;
+                trans->_pre_share_count = prev_count - trans->_share_count;
+                prev_count = trans->_pre_share_count;
             }
         }
     }
@@ -103,12 +137,50 @@ User::ApplyToAccounts(std::function<int32_t(Account *)> func) {
 
 double
 Fund::GainDollars(std::string from_date, std::string to_date) {
-    double from_price;
-    double to_price;
+    double from_price = 0.0;
+    double to_price = 0.0;
+    int can_get_prices = (_symbol.length() > 0);
 
-    YFDriver::GetPrice(from_date, _symbol, &from_price);
-    YFDriver::GetPrice(to_date, _symbol, &to_price);
-    return 0.0;
+    double total_gain = 0.0;
+    if (can_get_prices) {
+        _user->GetYF()->GetPrice(from_date, _symbol, &from_price);
+        _user->GetYF()->GetPrice(to_date, _symbol, &to_price);
+    }
+
+    double prev_price = from_price;
+    int did_any = 0;
+    double current_price = 0.0;
+
+    // We have at least one transaction
+    for(Transaction *trans : _trans) {
+        if ( DateStrCmp(from_date, trans->_date) <= 0 &&
+             DateStrCmp(trans->_date, to_date) <= 0) {
+            // date is in range
+            _user->GetYF()->GetPrice(trans->_date, _symbol, &current_price);
+            total_gain += trans->_pre_share_count * (current_price - prev_price);
+            total_gain += trans->_ex_gain;
+            printf("    adding trans date=%s type=%d pre_shares=%f "
+                   "trans_shares=%f price=%f-%f exgain=%f total_gain=%f\n",
+                   trans->_date.c_str(), trans->_type, trans->_pre_share_count,
+                   trans->_share_count,
+                   prev_price, current_price, trans->_ex_gain, total_gain);
+            prev_price = current_price;
+            did_any = 1;
+        }
+    }
+
+    // At this point we've covered from from_date to the first
+    // transaction, but haven't covered from the last transaction to
+    // the to_date.  And if did_any is false, then we just price the
+    // shares from the from_price to the to_price.  Note that
+    // current_price is the last price from a transaction.
+    if (did_any) {
+        total_gain += _share_count * (to_price - current_price);
+    } else {
+        total_gain = (to_price - from_price) * _share_count;
+    }
+
+    return total_gain;
 }
 
 // Parsing an OFX file is pretty hard.  The file is a set of fund
@@ -174,20 +246,29 @@ User::ParseOfx(std::string file_name) {
         if (tc >= '0' && tc <= '9') {
             if (_model_funds) {
                 std::string account_number;
+                std::string fund_number;
                 // If the account # contains a -, the number is really the part
                 // after that point.
                 size_t pos = items[_account_number_ix].find_first_of('-');
                 if (pos != std::string::npos) {
                     account_number = items[_account_number_ix].substr(pos+1);
+                    fund_number = items[_account_number_ix].substr(0,4);
                 } else {
                     account_number = items[_account_number_ix];
                 }
                 // These records represent individual funds within a specfic
                 // account.
                 account = GetAccount(account_number);
-                fund = new Fund(items[_account_name_ix]);
+                fund = new Fund(this, items[_account_name_ix]);
                 fund->_share_price  = stof(items[_account_share_price_ix]);
                 fund->_share_count  = stof(items[_account_share_count_ix]);
+                if (_account_symbol_ix >= 0)
+                    fund->_symbol = items[_account_symbol_ix];
+                else if (fund_number.size() > 0) {
+                    fund->_symbol = LookupFundByNumber(fund_number);
+                }
+                else
+                    fund->_symbol = "None";
                 account->_funds.push_back(fund);
             } else {
                 // these lines describe statements within one or more
@@ -195,7 +276,7 @@ User::ParseOfx(std::string file_name) {
                 // a statement to it.  Note the variety of ways of
                 // expressing the same type of transaction.  Boo!
                 account = GetAccount(items[_stmt_number_ix]);
-                fund = account->GetFund(items[_stmt_name_ix]);
+                fund = account->GetFundByName(items[_stmt_name_ix]);
                 trans = new Transaction();
                 std::string ttype;
 
@@ -203,21 +284,46 @@ User::ParseOfx(std::string file_name) {
                 trans->_fund_name = items[_stmt_name_ix];
                 trans->_share_price = stof(items[_stmt_share_price_ix]);
                 trans->_share_count = stof(items[_stmt_share_count_ix]);
+                if (_stmt_net_amount_ix >= 0)
+                    trans->_net_amount = stof(items[_stmt_net_amount_ix]);
+                else
+                    trans->_net_amount = 0.0;
                 trans->_ex_gain = 0.0;
-                trans->_post_balance = 0.0;
+                trans->_pre_share_count = 0.0;
 
                 ttype = items[_stmt_trans_type_ix];
                 if (IsTranType(ttype,"Plan Contribution")) {
                     trans->_type = TRAN_BUY;
                 } else if (IsTranType(ttype, "Dividend")) {
                     trans->_type = TRAN_DIV;
-                    trans->_ex_gain = trans->_share_price * trans->_share_count;
+                    trans->_ex_gain = trans->_net_amount;
+                    if (trans->_share_count > 0.0) {
+                        // in this case, a dividend is also a purchase, but the
+                        // purchase is not recorded as a separate line in the file.
+                        // So we create one.
+                        Transaction *alt_trans = new Transaction();
+                        *alt_trans = *trans;
+                        alt_trans->_ex_gain = 0.0;
+                        alt_trans->_type = TRAN_BUY;
+                        fund->_trans.push_back(alt_trans);
+
+                        // and zero out the share count in the DIV transaction
+                        trans->_share_count = 0.0;
+                    }
                 } else if (IsTranType(ttype, "Short-term") ||
                            IsTranType(ttype, "(ST)")) {
                     trans->_type = TRAN_STGAIN;
+                    // on a cap gain, the share price is adjusted
+                    // down, but this distribution is really a profit,
+                    // so it needs to show up somewhere.
+                    trans->_ex_gain = trans->_net_amount;
                 } else if (IsTranType(ttype, "Long-term") ||
                            IsTranType(ttype, "(LT)")) {
                     trans->_type = TRAN_LTGAIN;
+                    // on a cap gain, the share price is adjusted
+                    // down, but this distribution is really a profit,
+                    // so it needs to show up somewhere.
+                    trans->_ex_gain = trans->_net_amount;
                 } else if (IsTranType(ttype, "Sell")) {
                     trans->_type = TRAN_SELL;
                 } else if (IsTranType(ttype, "Sweep out")) {
@@ -286,7 +392,6 @@ User::ParseOfx(std::string file_name) {
                     _account_name_ix = ItemsIndex(&items, "Fund Name");
                 } else if ((_account_number_ix = ItemsIndex(&items,"Account Number")) >= 0) {
                     _account_name_ix = ItemsIndex(&items, "Investment Name");
-                    _account_symbol_ix = ItemsIndex(&items, "Symbol");
                 } else if ((_account_number_ix = ItemsIndex(&items, "Plan Number")) >= 0) {
                     // retirement funds
                     _account_name_ix = ItemsIndex(&items, "Fund Name");
@@ -294,6 +399,7 @@ User::ParseOfx(std::string file_name) {
                     // Failure
                 }
 
+                _account_symbol_ix = ItemsIndex(&items, "Symbol");
                 _account_share_count_ix = ItemsIndex(&items, "Shares");
                 _account_share_price_ix = ItemsIndex(&items, "Share Price");
                 if (_account_share_price_ix < 0)
@@ -312,6 +418,7 @@ User::ParseOfx(std::string file_name) {
                 _stmt_trade_date_ix = ItemsIndex(&items, "Trade Date");
                 _stmt_name_ix = ItemsIndex(&items, "Investment Name");
                 _stmt_trans_type_ix = ItemsIndex(&items, "Transaction Type");
+                _stmt_net_amount_ix = ItemsIndex(&items, "Net Amount");
                 if (_stmt_trans_type_ix < 0) {
                     // Use transaction descrption; in this case we're probably looking at
                     // a 401(k) transaction.
@@ -329,11 +436,9 @@ User::ParseOfx(std::string file_name) {
         } // else not a digit
     } // loop over all lines
 
-    AssignSalesGains();
+    BackfillBalances();
 
     return 0;
 }
-
-
 
 }

@@ -7,9 +7,12 @@
 #include <string>
 #include <vector>
 
+#include "yfdriver.h"
+
 namespace VanOfx {
 
 class Transaction;
+class User;
 
 typedef enum {
     TRAN_INVAL = 0,
@@ -29,8 +32,9 @@ class Transaction {
     std::string _date;          // in seconds to start of day GMT
     double _share_count;        // amount of transaction in USD
     double _share_price;        // share price
+    double _net_amount;         // value of net amount field
     double _ex_gain;            // gain beyond share price, or additional shares.
-    double _post_balance;       // balance after transaction
+    double _pre_share_count;    // share balance before transaction
 };
 
 class Fund {
@@ -41,9 +45,11 @@ public:
     double _share_count;
     double _share_price;
     std::vector<Transaction *> _trans;
+    User *_user;
 
-    Fund(std::string name) {
+    Fund(User *user, std::string name) {
         _name = name;
+        _user = user;
     }
 
     int32_t ApplyToTrans(std::function<int32_t(Transaction *)>func);
@@ -56,14 +62,22 @@ public:
     typedef std::list<Fund *> FundList;
     std::string _number;
     FundList _funds;
+    User *_user;
 
-    Fund *GetFund(std::string fund_name);
+    Account(User *user) {
+        _user = user;
+    }
+
+    Fund *GetFundByName(std::string fund_name);
+
+    Fund *GetFundBySymbol(std::string symbol);
 
     int32_t ApplyToFunds(std::function<int32_t(Fund *)> func);
 };
 
 class User {
     typedef std::map<std::string, Account *> AccountMap;
+    typedef std::map<std::string, std::string> NumberMap;
 
     // Parsing state
     //
@@ -92,13 +106,18 @@ class User {
     int _stmt_trans_type_ix;
     int _stmt_share_price_ix;
     int _stmt_share_count_ix;
+    int _stmt_net_amount_ix;
 
     AccountMap _accounts;
+    NumberMap _fund_map;
+    YFDriver _yfdriver;
 
 public:
 
-    User() {
-        _model_funds = 1;
+    User();
+
+    YFDriver *GetYF() {
+        return &_yfdriver;
     }
 
     int32_t ParseOfx(std::string file_name);
@@ -120,13 +139,15 @@ public:
         _stmt_share_count_ix = -1;
     }
 
-    int32_t AssignSalesGains();
+    int32_t BackfillBalances();
 
     Account *GetAccount(std::string account_number);
 
     int32_t PrintFundBalances();
 
     int32_t ApplyToAccounts(std::function<int32_t(Account *)>func);
+
+    std::string LookupFundByNumber(std::string fund_number);
 };
 
 } // Namespace
