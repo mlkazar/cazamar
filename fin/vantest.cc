@@ -27,17 +27,17 @@ main(int argc, char **argv) {
 
     setlocale(LC_NUMERIC, "");
 
-    printf("**Compute balances**\n");
+    printf("\n\n\n**Compute balances**\n");
     {
-        VanOfx::Gain grand_total;
+        double grand_total = 0.0;
         auto acct_lambda = [&grand_total](VanOfx::Account *acct) {
             printf("\nAccount %s:\n", acct->_number.c_str());
-            VanOfx::Gain  acct_total;
+            double  acct_total = 0.0;
             auto fund_lambda = [&acct_total](VanOfx::Fund *fund) -> int32_t {
-                VanOfx::Gain fund_total;
-                fund_total._unrealized_cg = fund->_share_count * fund->_share_price;
+                double fund_total = 0.0;
+                fund_total += fund->_share_count * fund->_share_price;
                 printf(" Fund %s(%s) total $%'.2f\n",
-                       fund->_name.c_str(), fund->_symbol.c_str(), fund_total._unrealized_cg);
+                       fund->_name.c_str(), fund->_symbol.c_str(), fund_total);
                 acct_total += fund_total;
                 return 0;
             };
@@ -46,12 +46,11 @@ main(int argc, char **argv) {
             return 0;
         };
         user.ApplyToAccounts(acct_lambda);
-        printf("Total balance:\n");
-        VanOfx::PrintGain(&grand_total);
+        printf("Total balance is %'.2f\n", grand_total);
     }
 
     
-    printf("**Compute Gains**\n");
+    printf("\n\n\n**Compute Gains**\n");
     {
         // Now compute the gain
         VanOfx::Gain grand_total;
@@ -73,7 +72,7 @@ main(int argc, char **argv) {
             return 0;
         };
         user.ApplyToAccounts(acct_lambda);
-        printf("Total gain for account is:\n");
+        printf("\nTotal gain for user is:\n");
         VanOfx::PrintGain(&grand_total);
     }
 

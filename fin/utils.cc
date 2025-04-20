@@ -187,15 +187,15 @@ ItemsIndex(std::vector<std::string> *items, std::string key) {
 void
 PrintGain(Gain *g) {
     printf("Gains:\n"
-           "Qualified divs=%.2f\n"
-           "Regular divs=%.2f\n"
-           "Unrealized CG=%.2f\n"
-           "Realized CG=%.2f\n"
-           "Short-term dist=%.2f\n"
-           "Long-term dist=%.2f\n"
-           "Tax free divs=%.2f\n"
-           "IRA divs=%.2f\n"
-           "IRA gains=%.2f\n",
+           "Qualified divs=%'.2f\n"
+           "Regular divs=%'.2f\n"
+           "Unrealized CG=%'.2f\n"
+           "Realized CG=%'.2f\n"
+           "Short-term dist=%'.2f\n"
+           "Long-term dist=%'.2f\n"
+           "Tax free divs=%'.2f\n"
+           "IRA divs=%'.2f\n"
+           "IRA gains=%'.2f\n",
            g->_qualified_divs,
            g->_regular_divs,
            g->_unrealized_cg,
