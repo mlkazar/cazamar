@@ -135,8 +135,8 @@ User::ApplyToAccounts(std::function<int32_t(Account *)> func) {
     return 0;
 }
 
-double
-Fund::GainDollars(std::string from_date, std::string to_date) {
+int32_t
+Fund::GainDollars(std::string from_date, std::string to_date, Gain *gain) {
     double from_price = 0.0;
     double to_price = 0.0;
     int can_get_prices = (_symbol.length() > 0);
@@ -151,19 +151,27 @@ Fund::GainDollars(std::string from_date, std::string to_date) {
     int did_any = 0;
     double current_price = 0.0;
 
-    // We have at least one transaction
     for(Transaction *trans : _trans) {
         if ( DateStrCmp(from_date, trans->_date) <= 0 &&
              DateStrCmp(trans->_date, to_date) <= 0) {
             // date is in range
             _user->GetYF()->GetPrice(trans->_date, _symbol, &current_price);
-            total_gain += trans->_pre_share_count * (current_price - prev_price);
-            total_gain += trans->_ex_gain;
+            gain->_unrealized_cg += trans->_pre_share_count * (current_price - prev_price);
+            if (_is_tax_free) {
+                gain->_tax_free_divs += trans->_ex_div;
+            } else if (!_is_bond) {
+                // stock fund divs are qualified
+                gain->_qualified_divs += trans->_ex_div;
+            } else {
+                gain->_regular_divs += trans->_ex_div;
+            }
+            gain->_short_term_dist += trans->_ex_st;
+            gain->_long_term_dist += trans->_ex_lt;
             printf("    adding trans date=%s type=%d pre_shares=%f "
-                   "trans_shares=%f price=%f-%f exgain=%f total_gain=%f\n",
+                   "trans_shares=%f price=%f-%f ex_div=%f total_gain=%f\n",
                    trans->_date.c_str(), trans->_type, trans->_pre_share_count,
                    trans->_share_count,
-                   prev_price, current_price, trans->_ex_gain, total_gain);
+                   prev_price, current_price, trans->_ex_div, total_gain);
             prev_price = current_price;
             did_any = 1;
         }
@@ -175,12 +183,14 @@ Fund::GainDollars(std::string from_date, std::string to_date) {
     // shares from the from_price to the to_price.  Note that
     // current_price is the last price from a transaction.
     if (did_any) {
-        total_gain += _share_count * (to_price - current_price);
+        gain->_unrealized_cg += _share_count * (to_price - current_price);
     } else {
-        total_gain = (to_price - from_price) * _share_count;
+        // No transactions at all, just look at unrealized gain across
+        // the date range.
+        gain->_unrealized_cg = (to_price - from_price) * _share_count;
     }
 
-    return total_gain;
+    return 0;
 }
 
 // Parsing an OFX file is pretty hard.  The file is a set of fund
@@ -190,13 +200,13 @@ Fund::GainDollars(std::string from_date, std::string to_date) {
 // mapping table for the items we're interested in that describes
 // which field index contains a particular item like share price.
 //
-// The _ex_gain field in the transaction requires some
-// explanation. Consider trying to track the total gain of a fund.
-// You might think that you can just compare the USD value of the fund
-// at two different times and estimate the gain, but that doesn't take
-// into account purchases of new shares or sales of existing ones.
-// It also doesn't differentiate shares appearing due to purchases
-// vs. shares appearing vs reinvested dividends.
+// The gain fields (_ex_div, _ex_lt and _ex_st) in the transaction
+// requires some explanation. Consider trying to track the total gain
+// of a fund.  You might think that you can just compare the USD value
+// of the fund at two different times and estimate the gain, but that
+// doesn't take into account purchases of new shares or sales of
+// existing ones.  It also doesn't differentiate shares appearing due
+// to purchases vs. shares appearing vs reinvested dividends.
 //
 // Our approach is to look at inflows and outflows, including sales
 // and purchases, across the window we're examining, in a segment-wise
@@ -251,10 +261,10 @@ User::ParseOfx(std::string file_name) {
                 // after that point.
                 size_t pos = items[_account_number_ix].find_first_of('-');
                 if (pos != std::string::npos) {
-                    account_number = items[_account_number_ix].substr(pos+1);
+                    account_number = RemoveLeadingZeroes(items[_account_number_ix].substr(pos+1));
                     fund_number = items[_account_number_ix].substr(0,4);
                 } else {
-                    account_number = items[_account_number_ix];
+                    account_number = RemoveLeadingZeroes(items[_account_number_ix]);
                 }
                 // These records represent individual funds within a specfic
                 // account.
@@ -275,7 +285,7 @@ User::ParseOfx(std::string file_name) {
                 // funds.  Find the account and then the fund and add
                 // a statement to it.  Note the variety of ways of
                 // expressing the same type of transaction.  Boo!
-                account = GetAccount(items[_stmt_number_ix]);
+                account = GetAccount(RemoveLeadingZeroes(items[_stmt_number_ix]));
                 fund = account->GetFundByName(items[_stmt_name_ix]);
                 trans = new Transaction();
                 std::string ttype;
@@ -288,7 +298,9 @@ User::ParseOfx(std::string file_name) {
                     trans->_net_amount = stof(items[_stmt_net_amount_ix]);
                 else
                     trans->_net_amount = 0.0;
-                trans->_ex_gain = 0.0;
+                trans->_ex_div = 0.0;
+                trans->_ex_st = 0.0;
+                trans->_ex_lt = 0.0;
                 trans->_pre_share_count = 0.0;
 
                 ttype = items[_stmt_trans_type_ix];
@@ -296,14 +308,14 @@ User::ParseOfx(std::string file_name) {
                     trans->_type = TRAN_BUY;
                 } else if (IsTranType(ttype, "Dividend")) {
                     trans->_type = TRAN_DIV;
-                    trans->_ex_gain = trans->_net_amount;
+                    trans->_ex_div = trans->_net_amount;
                     if (trans->_share_count > 0.0) {
                         // in this case, a dividend is also a purchase, but the
                         // purchase is not recorded as a separate line in the file.
                         // So we create one.
                         Transaction *alt_trans = new Transaction();
                         *alt_trans = *trans;
-                        alt_trans->_ex_gain = 0.0;
+                        alt_trans->_ex_div = 0.0;
                         alt_trans->_type = TRAN_BUY;
                         fund->_trans.push_back(alt_trans);
 
@@ -316,14 +328,14 @@ User::ParseOfx(std::string file_name) {
                     // on a cap gain, the share price is adjusted
                     // down, but this distribution is really a profit,
                     // so it needs to show up somewhere.
-                    trans->_ex_gain = trans->_net_amount;
+                    trans->_ex_st = trans->_net_amount;
                 } else if (IsTranType(ttype, "Long-term") ||
                            IsTranType(ttype, "(LT)")) {
                     trans->_type = TRAN_LTGAIN;
                     // on a cap gain, the share price is adjusted
                     // down, but this distribution is really a profit,
                     // so it needs to show up somewhere.
-                    trans->_ex_gain = trans->_net_amount;
+                    trans->_ex_lt = trans->_net_amount;
                 } else if (IsTranType(ttype, "Sell")) {
                     trans->_type = TRAN_SELL;
                 } else if (IsTranType(ttype, "Sweep out")) {
@@ -363,7 +375,7 @@ User::ParseOfx(std::string file_name) {
                 } else if (IsTranType(ttype, "Reinvestment")) {
                     if (trans->_share_count > 0) {
                         trans->_type = TRAN_BUY;
-                        trans->_ex_gain = trans->_share_price * trans->_share_count;
+                        trans->_ex_div = trans->_share_price * trans->_share_count;
                     } else {
                         // this is an extra record that reiterates that the money
                         // is going into cash.

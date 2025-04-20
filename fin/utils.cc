@@ -93,6 +93,23 @@ FirstNonblank(char *datap) {
     }
 }
 
+std::string
+RemoveLeadingZeroes(std::string input) {
+    const char *datap;
+    int tc;
+
+    datap = input.c_str();
+    while(1) {
+        tc = *datap;
+        if (tc == 0)
+            break;
+        if (tc != '0')
+            break;
+        datap++;
+    }
+    return std::string(datap);
+}
+
 int
 CountDelim(char delim, char *datap) {
     int rval = 0;
@@ -167,4 +184,27 @@ ItemsIndex(std::vector<std::string> *items, std::string key) {
     return -1;
 }
 
+void
+PrintGain(Gain *g) {
+    printf("Gains:\n"
+           "Qualified divs=%.2f\n"
+           "Regular divs=%.2f\n"
+           "Unrealized CG=%.2f\n"
+           "Realized CG=%.2f\n"
+           "Short-term dist=%.2f\n"
+           "Long-term dist=%.2f\n"
+           "Tax free divs=%.2f\n"
+           "IRA divs=%.2f\n"
+           "IRA gains=%.2f\n",
+           g->_qualified_divs,
+           g->_regular_divs,
+           g->_unrealized_cg,
+           g->_realized_cg,
+           g->_short_term_dist,
+           g->_long_term_dist,
+           g->_tax_free_divs,
+           g->_ira_divs,
+           g->_ira_gains);
 }
+
+} // name space

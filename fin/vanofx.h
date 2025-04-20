@@ -13,6 +13,7 @@ namespace VanOfx {
 
 class Transaction;
 class User;
+class Fund;
 
 typedef enum {
     TRAN_INVAL = 0,
@@ -33,9 +34,90 @@ class Transaction {
     double _share_count;        // amount of transaction in USD
     double _share_price;        // share price
     double _net_amount;         // value of net amount field
-    double _ex_gain;            // gain beyond share price, or additional shares.
+    double _ex_div;             // gain beyond share price, or additional shares.
+    double _ex_lt;              // LT capital gains
+    double _ex_st;              // ST capital gains
     double _pre_share_count;    // share balance before transaction
+
+    Transaction() {
+        _type = TRAN_INVAL;
+        _share_count = 0;
+        _share_price = 0;
+        _net_amount = 0;
+        _ex_div = 0;
+        _ex_lt = 0;
+        _ex_st = 0;
+        _pre_share_count = 0;
+    }
 };
+
+class Gain {
+public:
+    double _qualified_divs;
+    double _regular_divs;
+    double _unrealized_cg;
+    double _realized_cg;
+    double _short_term_dist;
+    double _long_term_dist;
+    double _tax_free_divs;
+    double _ira_divs;
+    double _ira_gains;
+
+    Gain() {
+        _qualified_divs = 0;
+        _regular_divs = 0;
+        _unrealized_cg = 0;
+        _realized_cg = 0;
+        _short_term_dist = 0;
+        _long_term_dist = 0;
+        _tax_free_divs = 0;
+        _ira_divs = 0;
+        _ira_gains = 0;
+    }
+
+    const Gain operator +(const Gain &other) {
+        Gain rval;
+        rval._qualified_divs = this->_qualified_divs + other._qualified_divs;
+        rval._regular_divs = this->_regular_divs + other._regular_divs;
+        rval._unrealized_cg = this->_unrealized_cg + other._unrealized_cg;
+        rval._realized_cg = this->_realized_cg + other._realized_cg;
+        rval._short_term_dist = this->_short_term_dist + other._short_term_dist;
+        rval._long_term_dist = this->_long_term_dist + other._long_term_dist;
+        rval._tax_free_divs = this->_tax_free_divs + other._tax_free_divs;
+        rval._ira_divs = this->_ira_divs + other._ira_divs;
+        rval._ira_gains = this->_ira_gains + other._ira_gains;
+
+        return rval;
+    }
+
+    Gain operator +=(const Gain &other) {
+        Gain rval;
+        this->_qualified_divs += other._qualified_divs;
+        this->_regular_divs += other._regular_divs;
+        this->_unrealized_cg += other._unrealized_cg;
+        this->_realized_cg += other._realized_cg;
+        this->_short_term_dist += other._short_term_dist;
+        this->_long_term_dist += other._long_term_dist;
+        this->_tax_free_divs += other._tax_free_divs;
+        this->_ira_divs += other._ira_divs;
+        this->_ira_gains += other._ira_gains;
+
+        return *this;
+    }
+
+    double GetRegularIncome() {
+        return _qualified_divs + _regular_divs + _tax_free_divs + _ira_divs;
+    }
+
+    double GetIrregularIncome() {
+        return _realized_cg + _unrealized_cg + _short_term_dist + _long_term_dist + _ira_gains;
+    }
+
+    double GetAllIncome() {
+        return GetRegularIncome() + GetIrregularIncome();
+    }
+};
+
 
 class Fund {
 public:
@@ -46,15 +128,28 @@ public:
     double _share_price;
     std::vector<Transaction *> _trans;
     User *_user;
+    int _is_ira;        // a retirement account
+    int _is_bond;       // not an equity account
+    int _is_tax_free;   // bond fund with tax free divs
 
     Fund(User *user, std::string name) {
         _name = name;
         _user = user;
+        _is_ira = 0;
+        _is_bond = 0;
+        if (strcasestr(name.c_str(), "bond") || strcasestr(name.c_str(), "money")) {
+            _is_bond = 1;
+        }
+        _is_tax_free = 0;
+        if (strcasestr(name.c_str(), "tax exempt")) {
+            _is_tax_free = 1;
+            _is_bond = 1;
+        }
     }
 
     int32_t ApplyToTrans(std::function<int32_t(Transaction *)>func);
 
-    double GainDollars(std::string from_date, std::string to_date);
+    int32_t GainDollars(std::string from_date, std::string to_date, Gain *gain);
 };
 
 class Account {
