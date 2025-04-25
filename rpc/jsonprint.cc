@@ -621,7 +621,7 @@ InStreamFile::fillBuffer()
 
     count++;
     if (count % 100000000 == 0)
-        fprintf(stderr, "count is %ld\n", count);
+        fprintf(stderr, "count is %lld\n", count);
 }
 
 int

@@ -1,11 +1,10 @@
-all: vantest yftest libvan.a
+all: vantest van yftest libvan.a
 
 install: all *.h
-	cp -p *.h ../include/.
 	cp -p *.a ../lib/.
 
 clean:
-	rm -f *.o *.a yftest vantest
+	rm -f *.o *.a yftest vantest van
 
 OS=$(shell uname -s)
 
@@ -25,8 +24,8 @@ else
 CXXFLAGS += -Wno-c++11-extensions -std=c++14
 endif
 
-LIBS=libvan.a
-INCLS=vanofx.h utils.h yfdriver.h
+LIBS=libvan.a ../lib/libext.a
+INCLS=vanofx.h utils.h yfdriver.h profile.h
 
 vanofx.o: vanofx.cc $(INCLS)
 
@@ -34,15 +33,22 @@ utils.o: utils.cc $(INCLS)
 
 yfdriver.o: yfdriver.cc $(INCLS)
 
-libvan.a: vanofx.o utils.o yfdriver.o
-	ar cru libvan.a vanofx.o utils.o yfdriver.o
+libvan.a: vanofx.o profile.o utils.o yfdriver.o
+	ar cru libvan.a vanofx.o profile.o utils.o yfdriver.o
 
 vantest.o: vantest.cc $(INCLS)
 
+van.o: van.cc $(INCLS)
+
 vantest: vantest.o $(LIBS)
 	c++ ${OSXVERSION} -o vantest vantest.o $(LIBS)
+
+van: van.o vancmd.o $(LIBS)
+	c++ ${OSXVERSION} -o van van.o vancmd.o $(LIBS)
 
 yftest.o: yftest.cc $(INCLS)
 
 yftest: yftest.o $(LIBS)
 	c++ ${OSXVERSION} -o yftest yftest.o $(LIBS)
+
+profile.o: profile.cc $(INCLS)

@@ -202,8 +202,40 @@ class Json {
         /* initialize a leaf node with an integer */
         void initInt(uint64_t value) {
             char tbuffer[128];
-            sprintf(tbuffer, "%llu", (unsigned long long) value);
+            snprintf(tbuffer, sizeof(tbuffer), "%llu", (unsigned long long) value);
             initString(tbuffer, /* !quoted */ 0);
+        }
+
+        Json::Node *initIntPair(const char *namep, uint64_t value) {
+            Json::Node *tnodep;
+            tnodep = new Json::Node();
+            tnodep->initInt(value);
+            Json::Node *nnodep = new Json::Node();
+            nnodep->initNamed(namep, tnodep);
+            return nnodep;
+        }
+
+        Json::Node * initStringPair(const char *namep,
+                                    const char *value,
+                                    int isQuoted) {
+            Json::Node *tnodep;
+            tnodep = new Json::Node();
+            tnodep->initString(value, isQuoted);
+            Json::Node *nnodep = new Json::Node();
+            nnodep->initNamed(namep, tnodep);
+            return nnodep;
+        }
+
+        std::string getString() {
+            return _children.head()->_name;
+        }
+
+        std::string getCString() {
+            return _children.head()->_name.c_str();
+        }
+
+        int64_t  getInt() {
+            return atoi(_children.head()->_name.c_str());
         }
 
         /* add a child */
@@ -220,7 +252,7 @@ class Json {
 
         void print();
 
-        void unparse(std::string *resultp);
+        void unparse(std::string *resultp, int pretty=0);
 
         void printInternal(std::string *resultp, int pretty, uint32_t level, int addComma);
 

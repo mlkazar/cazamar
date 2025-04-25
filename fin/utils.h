@@ -11,7 +11,11 @@
 namespace VanOfx {
     int32_t CountDelim(char delim, char *datap);
 
+    int GetYN(std::string prompt);
+
     char FirstNonblank(char *datap);
+
+    std::string RemoveEdgeSpaces(std::string input);
 
     std::string RemoveLeadingZeroes(std::string input);
 

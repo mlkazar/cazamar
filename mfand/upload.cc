@@ -660,8 +660,8 @@ UploadApp::writeConfig(std::string pathPrefix)
         code = -1;
 
     tcode = fclose(filep);
-    if (code == 0)
-        code = tcode;
+    if (tcode != 0 && code == 0)
+        code = -2;
 
     delete rootNodep;
     return code;

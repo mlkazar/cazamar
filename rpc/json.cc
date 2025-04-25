@@ -329,9 +329,9 @@ Json::Node::print()
 }
 
 void
-Json::Node::unparse(std::string *resultp)
+Json::Node::unparse(std::string *resultp, int pretty)
 {
-    printInternal(resultp, 0, 0, 0);
+    printInternal(resultp, pretty, 0, 0);
     resultp->append("\n");
 }
 

@@ -202,7 +202,7 @@ class Json {
         /* initialize a leaf node with an integer */
         void initInt(uint64_t value) {
             char tbuffer[128];
-            sprintf(tbuffer, "%llu", (unsigned long long) value);
+            snprintf(tbuffer, sizeof(tbuffer), "%llu", (unsigned long long) value);
             initString(tbuffer, /* !quoted */ 0);
         }
 

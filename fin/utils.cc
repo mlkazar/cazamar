@@ -1,5 +1,6 @@
 #include <string>
 
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 
@@ -51,6 +52,23 @@ CurrentDateStr(long seconds_adjust) {
     return TimeToDateStr(now);
 }
 
+int
+GetYN(std::string prompt) {
+    char tbuffer[128];
+    while(1) {
+        printf("%s", prompt.c_str());
+        char *tp = fgets(tbuffer, sizeof(tbuffer), stdin);
+        if (!tp) {
+            return 0;
+        }
+        if (strncasecmp(tbuffer, "y", 1) == 0 || strncasecmp(tbuffer,"yes", 3) == 0)
+            return 1;
+        else if (strncasecmp(tbuffer, "n", 1) == 0 || strncasecmp(tbuffer,"no", 2) == 0)
+            return 0;
+        printf("Please answer yes/y or no/n\n");
+    }
+}
+
 std::string
 TimeToDateStr(long secs) {
     struct tm local_tm;
@@ -61,6 +79,35 @@ TimeToDateStr(long secs) {
             local_tm.tm_mon+1,
             local_tm.tm_mday);
     return std::string(tbuffer);
+}
+
+std::string
+RemoveEdgeSpaces(std::string input) {
+    int head_count = 0;
+    int tail_count = 0;
+    int saw_nonspace = 0;
+    const char *tp;
+    int tc;
+    tp = input.c_str();
+    while(1) {
+        tc = *tp++;
+        if (tc == 0) {
+            break;
+        } else if (tc != ' ') {
+            saw_nonspace = 1;
+            tail_count = 0;
+        } else {
+            if (saw_nonspace) {
+                tail_count++;
+            } else {
+                head_count++;
+            }
+        }
+    }
+    if (!saw_nonspace)
+        return std::string("");
+    int tlen = strlen(input.c_str());
+    return input.substr(head_count, tlen - head_count - tail_count);
 }
 
 long
@@ -126,7 +173,7 @@ CountDelim(char delim, char *datap) {
 
 int
 IsWhiteSpace(char c) {
-    return (c == ' ' || c == '\t');
+    return (c == ' ' || c == '\t' || c == '\n');
 }
 
 int
@@ -140,6 +187,10 @@ ParseTokens(char delim, char *datap, std::vector<std::string> *vec) {
     while(1) {
         char tc = *datap++;
         if (tc == 0) {
+            if (current_token.size() > 0) {
+                (*vec).push_back(current_token);
+                current_token.erase();
+            }
             break;
         } else  if (tc == ',') {
             // Complete the token
@@ -147,9 +198,6 @@ ParseTokens(char delim, char *datap, std::vector<std::string> *vec) {
             current_token.erase();
             pending_space = 0;
         } else if (IsWhiteSpace(tc)) {
-            if (pending_space) {
-                current_token.append(1, tc);
-            }
             pending_space = 1;
         } else {
             // regular character.
