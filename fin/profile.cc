@@ -73,11 +73,17 @@ ProfileUser::Init(std::string profile_path) {
                 continue;
             }
             std::string profile_name = tnode->getString();
+            printf("profile name %s\n", profile_name.c_str());
             accounts_node = elt_node->searchForChild("accounts");
-            if (accounts_node) {
+            if (accounts_node == nullptr) {
                 printf("internal error -- no accounts node in profile definition\n");
                 continue;
             }
+
+            // accounts_node is a name node whose first child is an array.
+            // move to the actual array
+            accounts_node = accounts_node->_children.head();
+
             // this should be an array of string leaf nodes, each giving an account
             // number that's part of the profile.
             Profile *profile = GetProfile(profile_name);
