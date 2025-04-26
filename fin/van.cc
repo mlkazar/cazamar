@@ -4,6 +4,7 @@
 #include <locale.h>
 #include <string.h>
 
+#include "profile.h"
 #include "utils.h"
 #include "vancmd.h"
 #include "vanofx.h"
@@ -12,11 +13,15 @@ int
 main(int argc, char **argv) {
     VanOfx::User user;
     VanCmd cmd;
+    ProfileUser prof_user;
 
     if (argc < 3) {
         printf("usage: vantest <ofx file name> operation [args]\n");
         return -1;
     }
+
+    prof_user.Init(cmd.GetProfilePath());
+    prof_user.Print();
 
     setlocale(LC_NUMERIC, "");
 

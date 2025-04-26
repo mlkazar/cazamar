@@ -16,7 +16,7 @@ ProfileUser::Init(std::string profile_path) {
         return -1;
 
     code = json.parseJsonFile(input, &root_node);
-    if (!code) {
+    if (code) {
         fclose(input);
         return -2;
     }
@@ -33,20 +33,25 @@ ProfileUser::Init(std::string profile_path) {
         std::string acct_name;
         Json::Node *tnode;
 
-        tnode = anode->searchForChild("account_number");
-        if (tnode == nullptr) {
-            printf("bad internal account node missing account_number field\n");
-            continue;
-        }
-        acct_number = tnode->getString();
+        // anode is an array, so we have to walk through all the
+        // elemets in the array.
+        Json::Node *elt_node;
+        for(elt_node = anode->_children.head(); elt_node; elt_node=elt_node->_dqNextp) {
+            tnode = elt_node->searchForChild("account_number");
+            if (tnode == nullptr) {
+                printf("bad internal account node missing account_number field\n");
+                continue;
+           }
+            acct_number = tnode->getString();
 
-        tnode = anode->searchForChild("account_name");
-        if (tnode == nullptr) {
-            printf("bad internal account node missing account_name field\n");
-            continue;
+            tnode = elt_node->searchForChild("account_name");
+            if (tnode == nullptr) {
+                printf("bad internal account node missing account_name field\n");
+                continue;
+            }
+            acct_name = tnode->getString();
+            (void) AddAccount(acct_number, acct_name);
         }
-        acct_name = tnode->getString();
-        (void) AddAccount(acct_number, acct_name);
     }
 
     Json::Node *profiles_node = root_node->searchForChild("profiles");
@@ -60,30 +65,33 @@ ProfileUser::Init(std::string profile_path) {
     for ( dnode = profiles_node->_children.head();
           dnode;
           dnode=dnode->_dqNextp) {
-        Json::Node *tnode = dnode->searchForChild("name");
-        if (!tnode) {
-            printf("internal error -- no name node in profile definition\n");
-            continue;
-        }
-        std::string profile_name = tnode->getString();
-        accounts_node = dnode->searchForChild("accounts");
-        if (accounts_node) {
-            printf("internal error -- no accounts node in profile definition\n");
-            continue;
-        }
-        // this should be an array of string leaf nodes, each giving an account
-        // number that's part of the profile.
-        Profile *profile = GetProfile(profile_name);
-        for( Json::Node *tnode = accounts_node->_children.head();
-             tnode;
-             tnode=tnode->_dqNextp) {
-            ProfileAccount *prof_account = FindAccount(tnode->_name);
-            if (prof_account == nullptr) {
-                printf("internal error -- can't find profile's account %s\n",
-                       tnode->_name.c_str());
-                    continue;
+        Json::Node *elt_node;
+        for(elt_node = dnode->_children.head(); elt_node; elt_node=elt_node->_dqNextp) {
+            Json::Node *tnode = elt_node->searchForChild("name");
+            if (!tnode) {
+                printf("internal error -- no name node in profile definition\n");
+                continue;
             }
-            profile->AddAccount(prof_account);
+            std::string profile_name = tnode->getString();
+            accounts_node = elt_node->searchForChild("accounts");
+            if (accounts_node) {
+                printf("internal error -- no accounts node in profile definition\n");
+                continue;
+            }
+            // this should be an array of string leaf nodes, each giving an account
+            // number that's part of the profile.
+            Profile *profile = GetProfile(profile_name);
+            for( Json::Node *tnode = accounts_node->_children.head();
+                 tnode;
+                 tnode=tnode->_dqNextp) {
+                ProfileAccount *prof_account = FindAccount(tnode->_name);
+                if (prof_account == nullptr) {
+                    printf("internal error -- can't find profile's account %s\n",
+                           tnode->_name.c_str());
+                    continue;
+                }
+                profile->AddAccount(prof_account);
+            }
         }
     }
 
@@ -204,6 +212,32 @@ ProfileUser::Save(std::string profile_path) {
     delete root_node;
 
     return code;
+}
+
+void
+ProfileUser::Print() {
+    ProfileMap::iterator prof_it;
+    ProfileAccountMap::iterator acct_it;
+    Profile *profile;
+    ProfileAccount *acct;
+
+    for(prof_it = _profile_map.begin(); prof_it != _profile_map.end(); ++prof_it) {
+        profile = prof_it->second;
+        printf("Profile name=%s with accounts:\n", profile->_name.c_str());
+        std::list<ProfileAccount *>::iterator it;
+        for(it = profile->_accounts.begin(); it != profile->_accounts.end(); ++it) {
+            printf("  account name %s\n", (*it)->_account_name.c_str());
+        }
+    }
+
+    for(acct_it = _account_map.begin(); acct_it != _account_map.end(); ++acct_it) {
+        acct = acct_it->second;
+
+        printf("Acct name=%s number=%s is_ira=%d\n",
+               acct->_account_name.c_str(),
+               acct->_account_number.c_str(),
+               acct->_is_ira);
+    }
 }
 
 ProfileAccount *

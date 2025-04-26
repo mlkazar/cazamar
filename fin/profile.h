@@ -47,6 +47,8 @@ class ProfileUser {
 
     int32_t Save(std::string profile_path);
 
+    void Print();
+
     ProfileAccount *AddAccount(std::string account_number,
                                std::string account_name);
 

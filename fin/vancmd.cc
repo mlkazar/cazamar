@@ -117,6 +117,7 @@ VanCmd::InitProfile(VanOfx::User &user) {
     };
     user.ApplyToAccounts(acct_lambda);
     prof_user->Save(GetProfilePath());
+    prof_user->Print();
 
     return 0;
 }
