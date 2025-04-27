@@ -42,7 +42,14 @@ class ProfileUser {
     ProfileMap _profile_map;
     ProfileAccountMap _account_map;
 
+    // Save this in case we make updates to parts
+    Json::Node *_root_node;
+
  public:
+    ProfileUser() {
+        _root_node = nullptr;
+    }
+
     int32_t Init(std::string profile_path);
 
     int32_t Save(std::string profile_path);
@@ -55,6 +62,8 @@ class ProfileUser {
     ProfileAccount *FindAccount(std::string account_number);
 
     Profile *GetProfile(std::string profile_name);
+
+    Profile *FindProfile(std::string profile_name);
 };
 
 // One of these for each account referenced from a profile.
@@ -64,10 +73,16 @@ public:
     std::string _account_name;
     VanOfx::Account *_account;
     uint8_t _is_ira;
+    ProfileUser *_prof_user;
 
-    ProfileAccount(std::string account_number) {
+    ProfileAccount(std::string account_number, ProfileUser *prof_user) {
+        _prof_user = prof_user;
         _account_number = account_number;
         _is_ira = 0;
+    }
+
+    ProfileUser *GetUser() {
+        return _prof_user;
     }
 };
 
@@ -75,12 +90,20 @@ class Profile {
 public:
     std::string _name;          // Profile name
     std::list<ProfileAccount *> _accounts;
+    ProfileUser *_prof_user;
 
-    Profile(std::string name) {
+    Profile(std::string name, ProfileUser *prof_user) {
+        _prof_user = prof_user;
         _name = name;
     }
 
+    ProfileUser *GetUser() {
+        return _prof_user;
+    }
+
     void AddAccount(ProfileAccount *account);
+
+    int ContainsAccount(ProfileAccount *account);
 };
 
 #endif // __PROFILE_H_ENV__

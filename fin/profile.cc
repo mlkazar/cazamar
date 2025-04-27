@@ -22,6 +22,8 @@ ProfileUser::Init(std::string profile_path) {
     }
     fclose(input);
 
+    _root_node = root_node;
+
     // Create appropriate structures
     Json::Node *accounts_node = root_node->searchForChild("accounts");
     if (!accounts_node)
@@ -73,7 +75,6 @@ ProfileUser::Init(std::string profile_path) {
                 continue;
             }
             std::string profile_name = tnode->getString();
-            printf("profile name %s\n", profile_name.c_str());
             accounts_node = elt_node->searchForChild("accounts");
             if (accounts_node == nullptr) {
                 printf("internal error -- no accounts node in profile definition\n");
@@ -248,7 +249,7 @@ ProfileUser::Print() {
 
 ProfileAccount *
 ProfileUser::AddAccount(std::string account_number, std::string account_name) {
-    ProfileAccount *account = new ProfileAccount(account_number);
+    ProfileAccount *account = new ProfileAccount(account_number, this);
     account->_account_name = account_name;
     _account_map[account_number] = account;
 
@@ -259,9 +260,19 @@ Profile *ProfileUser::GetProfile(std::string profile_name) {
     ProfileMap::iterator it;
     it = _profile_map.find(profile_name);
     if (it == _profile_map.end()) {
-        Profile *profile = new Profile(profile_name);
+        Profile *profile = new Profile(profile_name, this);
         _profile_map[profile_name] = profile;
         return profile;
+    } else {
+        return it->second;
+    }
+}
+
+Profile *ProfileUser::FindProfile(std::string profile_name) {
+    ProfileMap::iterator it;
+    it = _profile_map.find(profile_name);
+    if (it == _profile_map.end()) {
+        return nullptr;
     } else {
         return it->second;
     }
@@ -280,4 +291,17 @@ ProfileUser::FindAccount(std::string account_number) {
 void
 Profile::AddAccount(ProfileAccount *account) {
     _accounts.push_back(account);
+}
+
+int
+Profile::ContainsAccount(ProfileAccount *account) {
+    std::list<ProfileAccount *>::iterator it;
+
+    for(it=_accounts.begin(); it != _accounts.end(); ++it) {
+        if ( *it == account)
+            return 1;
+    }
+
+    // return false
+    return 0;
 }

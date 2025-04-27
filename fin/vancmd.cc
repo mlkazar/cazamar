@@ -13,12 +13,12 @@
 #include "vanofx.h"
 
 int32_t
-VanCmd::Balance(VanOfx::User &user) {
-    printf("\n\n\n**Compute balances**\n");
+VanCmd::Balance(VanOfx::User &user, Profile *prof) {
+    printf("\n**Compute balances**\n");
     double grand_total = 0.0;
-    auto acct_lambda = [&grand_total](VanOfx::Account *acct) {
-        printf("\nAccount %s:\n", acct->_number.c_str());
+    auto acct_lambda = [&prof, &grand_total](VanOfx::Account *acct) {
         double  acct_total = 0.0;
+        ProfileAccount *prof_acct = nullptr;
         auto fund_lambda = [&acct_total](VanOfx::Fund *fund) -> int32_t {
             double fund_total = 0.0;
             fund_total += fund->_share_count * fund->_share_price;
@@ -27,8 +27,17 @@ VanCmd::Balance(VanOfx::User &user) {
             acct_total += fund_total;
             return 0;
         };
-        acct->ApplyToFunds(fund_lambda);
-        grand_total += acct_total;
+
+        // Apply an account filter
+        if (prof != nullptr) {
+            prof_acct = prof->GetUser()->FindAccount(acct->_number);
+        }
+            
+        if (prof == nullptr || prof->ContainsAccount(prof_acct)) {
+            printf("\nAccount %s:\n", acct->_number.c_str());
+            acct->ApplyToFunds(fund_lambda);
+            grand_total += acct_total;
+        }
         return 0;
     };
     user.ApplyToAccounts(acct_lambda);
@@ -68,17 +77,36 @@ VanCmd::GetProfilePath() {
     return path + "/profile.json";
 }
 
+std::string
+VanCmd::GetOfxPath() {
+    std::string path = GetProfileDir();
+    if (path.size() == 0)
+        return path;
+    return path + "/OfxDownload.csv";
+}
+
 int32_t
-VanCmd::InitProfile(VanOfx::User &user) {
+VanCmd::SetupProfile(VanOfx::User &user, Profile *aprofile) {
     ProfileUser *prof_user = new ProfileUser();
     std::string profile_path;
 
     // Applied to every account we have.  Asks about which profiles we want
     // to include the account within.
-    auto acct_lambda = [&prof_user](VanOfx::Account *acct) {
+    auto acct_lambda = [this, &prof_user](VanOfx::Account *acct) {
         char tbuffer[1024];
 
         printf("\nAccount %s:\n", acct->_number.c_str());
+
+        ProfileAccount *prof_acct;
+
+        prof_acct = prof_user->FindAccount(acct->_number);
+        if (prof_acct != nullptr) {
+            printf("Account %s (%s) already setup\n",
+                   prof_acct->_account_number.c_str(),
+                   prof_acct->_account_name.c_str());
+            return 0;
+        }
+
         auto fund_lambda = [](VanOfx::Fund *fund) -> int32_t {
             double fund_total;
             fund_total = fund->_share_count * fund->_share_price;
@@ -89,12 +117,9 @@ VanCmd::InitProfile(VanOfx::User &user) {
         printf("Account %s has funds:\n", acct->_number.c_str());
         acct->ApplyToFunds(fund_lambda);
 
-        ProfileAccount *prof_acct;
-
         while(1) {
             printf("Name to give account: ");
             fgets(tbuffer, sizeof(tbuffer), stdin);
-            printf("len is %ld\n", strlen(tbuffer));
             if (strlen(tbuffer) > 1) {
                 break;
             }
@@ -113,6 +138,9 @@ VanCmd::InitProfile(VanOfx::User &user) {
             profile->AddAccount(prof_acct);
         }
         
+        // save incremental updates
+        prof_user->Save(GetProfilePath());
+
         return 0;
     };
     user.ApplyToAccounts(acct_lambda);
@@ -123,8 +151,8 @@ VanCmd::InitProfile(VanOfx::User &user) {
 }
     
 int32_t
-VanCmd::Gain(VanOfx::User &user) {
-    printf("\n\n\n**Compute Gains**\n");
+VanCmd::Gain(VanOfx::User &user, Profile *prof) {
+    printf("\n**Compute Gains**\n");
     // Now compute the gain
     VanOfx::Gain grand_total;
 
