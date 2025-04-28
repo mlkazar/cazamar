@@ -19,10 +19,16 @@ YFDriver::GetPrice(std::string date, std::string symbol, double *price) {
     // Check cache
     if (symbol == _cached_symbol) {
         PriceMap::iterator it;
-        it = _cached_prices.find(date);
+        // Sometimes there are gaps in the dates of the returned data.
+        // If that happens, lower bound will return first date after
+        // the one we're searching for.  But only use that if the date
+        // that provided the data is <= our search date.
+        it = _cached_prices.lower_bound(date);
         if (it != _cached_prices.end()) {
-            *price = it->second;
-            return 0;
+            if (date >= _cached_start_date) {
+                *price = it->second;
+                return 0;
+            }
         }
     }
 
@@ -44,6 +50,7 @@ YFDriver::GetPrice(std::string date, std::string symbol, double *price) {
         }
     }
     _cached_symbol = symbol;
+    _cached_start_date = date;
     pclose(tfile);
 
     if (did_any)

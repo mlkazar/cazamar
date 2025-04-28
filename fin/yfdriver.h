@@ -12,6 +12,7 @@ class YFDriver {
     int32_t GetPrice(std::string date, std::string symbol, double *price);
 
     std::string _cached_symbol;
+    std::string _cached_start_date;
     PriceMap _cached_prices;
 };
 

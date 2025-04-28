@@ -156,9 +156,10 @@ VanCmd::Gain(VanOfx::User &user, Profile *prof) {
     // Now compute the gain
     VanOfx::Gain grand_total;
 
-    auto acct_lambda = [&grand_total](VanOfx::Account *acct) {
-        printf("\nAccount %s:\n", acct->_number.c_str());
+    auto acct_lambda = [&prof, &grand_total](VanOfx::Account *acct) {
         VanOfx::Gain acct_total;
+        ProfileAccount *prof_acct = nullptr;
+
         auto fund_lambda = [&acct_total](VanOfx::Fund *fund) -> int32_t {
             VanOfx::Gain fund_total;
             fund->GainDollars("2024-01-01", "2024-12-31", &fund_total);
@@ -168,8 +169,17 @@ VanCmd::Gain(VanOfx::User &user, Profile *prof) {
             acct_total += fund_total;
             return 0;
         };
-        acct->ApplyToFunds(fund_lambda);
-        grand_total += acct_total;
+
+        // Apply an account filter
+        if (prof != nullptr) {
+            prof_acct = prof->GetUser()->FindAccount(acct->_number);
+        }
+            
+        if (prof == nullptr || prof->ContainsAccount(prof_acct)) {
+            printf("\nAccount %s:\n", acct->_number.c_str());
+            acct->ApplyToFunds(fund_lambda);
+            grand_total += acct_total;
+        }
         return 0;
     };
     user.ApplyToAccounts(acct_lambda);
