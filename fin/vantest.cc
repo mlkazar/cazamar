@@ -60,7 +60,7 @@ main(int argc, char **argv) {
             VanOfx::Gain acct_total;
             auto fund_lambda = [&acct_total](VanOfx::Fund *fund) -> int32_t {
                 VanOfx::Gain fund_total;
-                fund->GainDollars("2024-01-01", "2024-12-31", &fund_total);
+                fund->GainDollars("2024-01-01", "2025-01-01", 1, &fund_total);
                 printf(" Fund %s(%s):\n",
                        fund->_name.c_str(), fund->_symbol.c_str());
                 VanOfx::PrintGain(&fund_total);

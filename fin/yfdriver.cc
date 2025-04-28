@@ -16,6 +16,11 @@ YFDriver::GetPrice(std::string date, std::string symbol, double *price) {
     int32_t code;
     double tprice;
 
+    if (symbol == "None" || symbol.size() == 0) {
+        *price = 1.0;
+        return 0;
+    }
+
     // Check cache
     if (symbol == _cached_symbol) {
         PriceMap::iterator it;

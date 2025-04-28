@@ -9,6 +9,8 @@
 #include "vanofx.h"
 
 namespace VanOfx {
+    std::string FlipDate(std::string us_date);
+
     int32_t CountDelim(char delim, char *datap);
 
     int GetYN(std::string prompt);

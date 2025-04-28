@@ -136,7 +136,7 @@ User::ApplyToAccounts(std::function<int32_t(Account *)> func) {
 }
 
 int32_t
-Fund::GainDollars(std::string from_date, std::string to_date, Gain *gain) {
+Fund::GainDollars(std::string from_date, std::string to_date, int verbose, Gain *gain) {
     double from_price = 0.0;
     double to_price = 0.0;
     int can_get_prices = (_symbol.length() > 0);
@@ -167,11 +167,13 @@ Fund::GainDollars(std::string from_date, std::string to_date, Gain *gain) {
             }
             gain->_short_term_dist += trans->_ex_st;
             gain->_long_term_dist += trans->_ex_lt;
-            printf("    adding trans date=%s type=%d pre_shares=%f "
-                   "trans_shares=%f price=%f-%f ex_div=%f total_gain=%f\n",
-                   trans->_date.c_str(), trans->_type, trans->_pre_share_count,
-                   trans->_share_count,
-                   prev_price, current_price, trans->_ex_div, total_gain);
+            if (verbose) {
+                printf("    adding trans date=%s type=%d pre_shares=%f "
+                       "trans_shares=%f price=%f-%f ex_div=%f total_gain=%f\n",
+                       trans->_date.c_str(), trans->_type, trans->_pre_share_count,
+                       trans->_share_count,
+                       prev_price, current_price, trans->_ex_div, total_gain);
+            }
             prev_price = current_price;
             did_any = 1;
         }
@@ -306,6 +308,7 @@ User::ParseOfx(std::string file_name) {
                 ttype = items[_stmt_trans_type_ix];
                 if (IsTranType(ttype,"Plan Contribution")) {
                     trans->_type = TRAN_BUY;
+                    trans->_date = FlipDate(trans->_date);
                 } else if (IsTranType(ttype, "Dividend")) {
                     trans->_type = TRAN_DIV;
                     trans->_ex_div = trans->_net_amount;
@@ -375,7 +378,7 @@ User::ParseOfx(std::string file_name) {
                 } else if (IsTranType(ttype, "Reinvestment")) {
                     if (trans->_share_count > 0) {
                         trans->_type = TRAN_BUY;
-                        trans->_ex_div = trans->_share_price * trans->_share_count;
+                        // trans->_ex_div = trans->_share_price * trans->_share_count;
                     } else {
                         // this is an extra record that reiterates that the money
                         // is going into cash.

@@ -8,7 +8,18 @@
 
 namespace VanOfx {
 
-// foo
+// Flip date from MM/DD/YYYY to YYYY-MM-DD
+std::string
+FlipDate(std::string us_date) {
+    const char *input;
+    std::string eu_date;
+    input = us_date.c_str();
+    eu_date = (std::string(input+6, 4) +
+               "-" + std::string(input, 2) +
+               "-" + std::string(input+3,2));
+    return eu_date;
+}
+
 
 // Date strings are yyyy-mm-dd
 int
@@ -234,8 +245,7 @@ ItemsIndex(std::vector<std::string> *items, std::string key) {
 
 void
 PrintGain(Gain *g) {
-    printf("Gains:\n"
-           "Qualified divs=%'.2f\n"
+    printf("Qualified divs=%'.2f\n"
            "Regular divs=%'.2f\n"
            "Unrealized CG=%'.2f\n"
            "Realized CG=%'.2f\n"

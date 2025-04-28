@@ -149,7 +149,7 @@ public:
 
     int32_t ApplyToTrans(std::function<int32_t(Transaction *)>func);
 
-    int32_t GainDollars(std::string from_date, std::string to_date, Gain *gain);
+    int32_t GainDollars(std::string from_date, std::string to_date, int verbose, Gain *gain);
 };
 
 class Account {
