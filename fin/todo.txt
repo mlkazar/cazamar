@@ -1,0 +1,2 @@
+Have 'gain' compute average balance for each fund over the course of
+the selected period.

@@ -171,6 +171,13 @@ VanCmd::Gain(VanOfx::User &user, Selector &sel) {
                               sel._verbose,
                               &fund_total);
             VanOfx::PrintGain(&fund_total);
+            double weighted_balance = 0.0;
+            fund->AvgBalance(sel._from_date.c_str(),
+                             sel._to_date.c_str(),
+                             sel._verbose,
+                             &weighted_balance);
+            printf("Weighted balance %.2f (Final balance %.2f)\n",
+                   weighted_balance, fund->_share_count * fund->_share_price);
             acct_total += fund_total;
             return 0;
         };

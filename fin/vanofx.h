@@ -150,6 +150,13 @@ public:
     int32_t ApplyToTrans(std::function<int32_t(Transaction *)>func);
 
     int32_t GainDollars(std::string from_date, std::string to_date, int verbose, Gain *gain);
+
+    // Weighted by percent time a balance existed within a range.
+    int32_t AvgBalance(std::string from_date,
+                       std::string to_date,
+                       int verbose,
+                       double *balance);
+
 };
 
 class Account {

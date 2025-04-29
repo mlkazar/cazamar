@@ -136,6 +136,83 @@ User::ApplyToAccounts(std::function<int32_t(Account *)> func) {
 }
 
 int32_t
+Fund::AvgBalance(std::string from_date, std::string to_date, int verbose, double *balance) {
+    double from_price = 0.0;
+    double to_price = 0.0;
+    int can_get_prices = (_symbol.length() > 0);
+
+    if (can_get_prices) {
+        _user->GetYF()->GetPrice(from_date, _symbol, &from_price);
+        _user->GetYF()->GetPrice(to_date, _symbol, &to_price);
+    }
+
+    double prev_price = from_price;
+    long prev_date = DateStrToTime(from_date);
+
+    int did_any = 0;
+    double current_price = 0.0;
+    long seconds_in_range = DateStrToTime(to_date) - DateStrToTime(from_date);
+    double weighted_balance = 0.0;
+    long current_time = DateStrToTime(from_date);
+
+    for(Transaction *trans : _trans) {
+        if ( DateStrCmp(from_date, trans->_date) <= 0 &&
+             DateStrCmp(trans->_date, to_date) <= 0) {
+            // date is in range
+            _user->GetYF()->GetPrice(trans->_date, _symbol, &current_price);
+            if (!can_get_prices) {
+                // Assume price was level across first range.
+                prev_price = current_price;
+            }
+
+            // Weighted balance for this section of time is the price
+            // up to this point times the # of shares up to this
+            // point, timed the percent of the total time range that
+            // the segment ending at this transaction's time
+            // represents.
+            current_time = DateStrToTime(trans->_date);
+            weighted_balance += ((trans->_pre_share_count * prev_price) *
+                                 ((double)(current_time - prev_date) /
+                                  seconds_in_range));
+
+            if (verbose) {
+                printf("    adding trans date=%s type=%d current_value=%f "
+                       "range_pct=%3f cumulative-balance=%.4f\n",
+                       trans->_date.c_str(), trans->_type,
+                       trans->_pre_share_count * prev_price,
+                       100 * ((double)(current_time - prev_date) /
+                              seconds_in_range),
+                       weighted_balance);
+            }
+            prev_price = current_price;
+            prev_date = DateStrToTime(trans->_date);
+            did_any = 1;
+        }
+    }
+
+    // At this point we've covered from from_date to the first
+    // transaction, but haven't covered from the last transaction to
+    // the to_date.  And if did_any is false, then we just price the
+    // shares from the from_price to the to_price.  Note that
+    // current_price is the last price from a transaction.
+    if (did_any) {
+        current_time = DateStrToTime(to_date);
+        weighted_balance += ((_share_count * prev_price) *
+                             ((double)(current_time - prev_date) /
+                              seconds_in_range));
+        if (verbose)
+            printf("    final section weighted balance=%.2f\n", weighted_balance);
+    } else {
+        // No transactions at all, just look at the shares * price
+        weighted_balance = _share_count * _share_price;
+    }
+
+    *balance = weighted_balance;
+
+    return 0;
+}
+
+int32_t
 Fund::GainDollars(std::string from_date, std::string to_date, int verbose, Gain *gain) {
     double from_price = 0.0;
     double to_price = 0.0;
