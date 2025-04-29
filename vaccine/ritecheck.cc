@@ -217,12 +217,12 @@ client(XApi::ClientConn *connp, uint32_t storeId)
     XApi::ClientReq *reqp;
     char tbuffer[8192];
     CThreadPipe *inPipep;
-    CThreadPipe *outPipep;
     int32_t code;
     std::string path;
     std::string response;
 
-    sprintf(tbuffer, "/services/ext/v2/vaccine/checkSlots?storeNumber=%05d", storeId);
+    snprintf(tbuffer, sizeof(tbuffer),
+             "/services/ext/v2/vaccine/checkSlots?storeNumber=%05d", storeId);
     path = std::string(tbuffer);
 
     /* now prepare a call */
@@ -237,7 +237,6 @@ client(XApi::ClientConn *connp, uint32_t storeId)
     reqp->startCall(connp, path.c_str(), /* isPost */ XApi::reqGet);
 
     inPipep = reqp->getIncomingPipe();
-    outPipep = reqp->getOutgoingPipe();
 
     code = reqp->waitForHeadersDone();
 
@@ -337,12 +336,11 @@ getStoreInfo(XApi::ClientConn *connp, uint32_t storeId, double *latp, double *lo
     XApi::ClientReq *reqp;
     char tbuffer[8192];
     CThreadPipe *inPipep;
-    CThreadPipe *outPipep;
     int32_t code;
     std::string path;
     std::string response;
 
-    sprintf(tbuffer, "/locations/search.html?id=%05d", storeId);
+    snprintf(tbuffer, sizeof(tbuffer), "/locations/search.html?id=%05d", storeId);
     path = std::string(tbuffer);
 
     /* now prepare a call */
@@ -357,7 +355,6 @@ getStoreInfo(XApi::ClientConn *connp, uint32_t storeId, double *latp, double *lo
     reqp->startCall(connp, path.c_str(), /* isPost */ XApi::reqGet);
 
     inPipep = reqp->getIncomingPipe();
-    outPipep = reqp->getOutgoingPipe();
 
     code = reqp->waitForHeadersDone();
 

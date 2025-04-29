@@ -363,7 +363,7 @@ client(XApi::ClientConn *connp, double latitude, double longitude)
 
     path = std::string("/hcschedulersvc/svc/v1/immunizationLocations/availability");
 
-    sprintf(postBuffer, "{\"serviceId\":\"99\",\"position\":{\"latitude\":%.7f,\"longitude\":%.7f},\"appointmentAvailability\":{\"startDateTime\":\"%4d-%02d-%02d\"},\"radius\":25}",
+    snprintf(postBuffer, sizeof(postBuffer), "{\"serviceId\":\"99\",\"position\":{\"latitude\":%.7f,\"longitude\":%.7f},\"appointmentAvailability\":{\"startDateTime\":\"%4d-%02d-%02d\"},\"radius\":25}",
             latitude, longitude, dateYear, dateMonth, dateDay);
     nbytes = strlen(postBuffer);
 
