@@ -1,5 +1,7 @@
+#include <cstring>
 #include <string>
 
+#include <string.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <unistd.h>

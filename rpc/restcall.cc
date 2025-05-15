@@ -90,7 +90,7 @@ RestCall::getNonce()
     static uint64_t counter = 0;
     if (counter == 0)
         counter = ((uint64_t) time(0))<<32;
-    snprintf(tbuffer, sizeof(tbuffer), "%16llx", counter++);
+    snprintf(tbuffer, sizeof(tbuffer), "%16llx", (long long)(counter++));
     return tbuffer;
 }
 

@@ -83,7 +83,7 @@ GetYN(std::string prompt) {
 std::string
 TimeToDateStr(long secs) {
     struct tm local_tm;
-    char tbuffer[16];
+    char tbuffer[64];
     localtime_r(&secs, &local_tm);
     snprintf(tbuffer, sizeof(tbuffer), "%4d-%02d-%02d",
             local_tm.tm_year+1900,
@@ -135,7 +135,8 @@ int
 IsTranType(std::string id, std::string pattern) {
     char *result;
 
-    result = strcasestr(id.c_str(), pattern.c_str());
+    result = strcasestr(const_cast<char *>(id.c_str()),
+                        const_cast<char *>(pattern.c_str()));
     return (result != nullptr);
 }
 
