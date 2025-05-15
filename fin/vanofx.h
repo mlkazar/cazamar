@@ -131,14 +131,20 @@ public:
     int _is_ira;        // a retirement account
     int _is_bond;       // not an equity account
     int _is_tax_free;   // bond fund with tax free divs
+    int _is_money_market;
 
     Fund(User *user, std::string name) {
         _name = name;
         _user = user;
         _is_ira = 0;
         _is_bond = 0;
-        if (strcasestr(name.c_str(), "bond") || strcasestr(name.c_str(), "money")) {
+        _is_money_market = 0;
+        if (strcasestr(name.c_str(), "bond")) {
             _is_bond = 1;
+        }
+        if (strcasestr(name.c_str(), "money")) {
+            _is_bond = 1;
+            _is_money_market = 1;
         }
         _is_tax_free = 0;
         if (strcasestr(name.c_str(), "tax exempt")) {
@@ -146,6 +152,8 @@ public:
             _is_bond = 1;
         }
     }
+
+    int32_t GetPrice(std::string date, std::string symbol, double *price);
 
     int32_t ApplyToTrans(std::function<int32_t(Transaction *)>func);
 

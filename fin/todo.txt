@@ -1,2 +1,2 @@
 Have 'gain' compute average balance for each fund over the course of
-the selected period.
+the selected period.  Then use that to estimate annualized dividend return

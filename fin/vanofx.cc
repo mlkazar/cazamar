@@ -141,9 +141,11 @@ Fund::AvgBalance(std::string from_date, std::string to_date, int verbose, double
     double to_price = 0.0;
     int can_get_prices = (_symbol.length() > 0);
 
+    _user->GetYF()->SetVerbose(verbose);
+
     if (can_get_prices) {
-        _user->GetYF()->GetPrice(from_date, _symbol, &from_price);
-        _user->GetYF()->GetPrice(to_date, _symbol, &to_price);
+        GetPrice(from_date, _symbol, &from_price);
+        GetPrice(to_date, _symbol, &to_price);
     }
 
     double prev_price = from_price;
@@ -159,7 +161,7 @@ Fund::AvgBalance(std::string from_date, std::string to_date, int verbose, double
         if ( DateStrCmp(from_date, trans->_date) <= 0 &&
              DateStrCmp(trans->_date, to_date) <= 0) {
             // date is in range
-            _user->GetYF()->GetPrice(trans->_date, _symbol, &current_price);
+            GetPrice(trans->_date, _symbol, &current_price);
             if (!can_get_prices) {
                 // Assume price was level across first range.
                 prev_price = current_price;
@@ -213,15 +215,32 @@ Fund::AvgBalance(std::string from_date, std::string to_date, int verbose, double
 }
 
 int32_t
+Fund::GetPrice(std::string date, std::string symbol, double *price) {
+    int32_t code;
+
+    if (_is_money_market) {
+        *price = 1.0;
+        code = 0;
+    } else  {
+        code = _user->GetYF()->GetPrice(date, symbol, price);
+    }
+
+    return code;
+}
+
+int32_t
 Fund::GainDollars(std::string from_date, std::string to_date, int verbose, Gain *gain) {
     double from_price = 0.0;
     double to_price = 0.0;
     int can_get_prices = (_symbol.length() > 0);
 
     double total_gain = 0.0;
+
+    _user->GetYF()->SetVerbose(verbose);
+
     if (can_get_prices) {
-        _user->GetYF()->GetPrice(from_date, _symbol, &from_price);
-        _user->GetYF()->GetPrice(to_date, _symbol, &to_price);
+        GetPrice(from_date, _symbol, &from_price);
+        GetPrice(to_date, _symbol, &to_price);
     }
 
     double prev_price = from_price;
@@ -232,7 +251,7 @@ Fund::GainDollars(std::string from_date, std::string to_date, int verbose, Gain 
         if ( DateStrCmp(from_date, trans->_date) <= 0 &&
              DateStrCmp(trans->_date, to_date) <= 0) {
             // date is in range
-            _user->GetYF()->GetPrice(trans->_date, _symbol, &current_price);
+            GetPrice(trans->_date, _symbol, &current_price);
             gain->_unrealized_cg += trans->_pre_share_count * (current_price - prev_price);
             if (_is_tax_free) {
                 gain->_tax_free_divs += trans->_ex_div;

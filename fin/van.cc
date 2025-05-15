@@ -21,8 +21,9 @@ main(int argc, char **argv) {
         printf("usage: van <command> [args]\n");
         printf("       commands are 'balance', 'gains', or 'setup'\n");
         printf("       --prof <profile name>\n");
-        printf("       --from <from date>n");
+        printf("       --from <from date>\n");
         printf("       --to <to date>\n");
+        printf("       -v or --verbose for verbose\n");
         return -1;
     }
 
@@ -50,7 +51,7 @@ main(int argc, char **argv) {
         } else if (strcmp(argv[i], "--to") == 0) {
             sel._to_date = std::string(argv[i+1]);
             ++i;
-        } else if (strcmp(argv[i], "-v") == 0) {
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
             sel._verbose = 1;
         } else {
             printf("unknown switch/operand '%s'\n", argv[i]);
