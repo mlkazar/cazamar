@@ -230,7 +230,7 @@ Rst::Common::sendData()
                 break;
 
             osp_assert(nbytes <= (signed) sizeof(tbuffer));
-            sprintf(tline, "%x\r\n", nbytes);
+            snprintf(tline, sizeof(tline), "%x\r\n", nbytes);
             tlen = (int32_t) strlen(tline);
             code = socketp->write(tline, tlen);
             if (code != tlen) {
@@ -571,7 +571,7 @@ Rst::Call::sendOperation()
     }
 
     if (_sendProcp != NULL && _sendContentLength != 0x7FFFFFFF) {
-        sprintf(tbuffer, "Content-Length:%d\r\n", _sendContentLength);
+        snprintf(tbuffer, sizeof(tbuffer), "Content-Length:%d\r\n", _sendContentLength);
         firstLine += std::string(tbuffer);
         if (_sendContentLength == -1) {
             firstLine += std::string("Transfer-Encoding:chunked\r\n");
@@ -782,7 +782,6 @@ Rst::Request::init( CopyProc *sendProcp,
     int code;
     char *tp;
     BufGen *socketp;
-    char *methodp;
     char *urlp;
     char *versionp;
     std::string firstLine;
@@ -818,7 +817,6 @@ Rst::Request::init( CopyProc *sendProcp,
     }
 
     /* we have METHOD <SP> URI <SP> version */
-    methodp = tbuffer;
     tp = strchr(tbuffer, ' ');
     if (!tp) {
         printf("Rst: no method line\n");
@@ -919,13 +917,13 @@ Rst::Request::init( CopyProc *sendProcp,
         firstLine = "HTTP/1.1 200 OK\r\n";
     }
     else {
-        sprintf(tbuffer, "HTTP/1.1 %d NotOK\r\n", _httpError);
+        snprintf(tbuffer, sizeof(tbuffer), "HTTP/1.1 %d NotOK\r\n", _httpError);
         firstLine = tbuffer;
     }
 
     if (_sendContentLength != 0) {
         if (_sendContentLength != -1) {
-            sprintf(tbuffer, "Content-Length:%d\r\n", _sendContentLength);
+            snprintf(tbuffer, sizeof(tbuffer), "Content-Length:%d\r\n", _sendContentLength);
             firstLine += std::string(tbuffer);
         }
         else {

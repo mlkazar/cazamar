@@ -35,7 +35,8 @@ MfServer::translateLocation(uint32_t ipAddr, std::string *resultp)
     std::string countryCode;
 
     restp = new RestCall();
-    sprintf(tstring, "http://ip-api.com/xml/%d.%d.%d.%d",
+    snprintf(tstring, sizeof(tstring),
+             "http://ip-api.com/xml/%d.%d.%d.%d",
             (ipAddr>>24)&0xFF,
             (ipAddr>>16)&0xFF,
             (ipAddr>>8)&0xFF,
@@ -211,8 +212,9 @@ MfServer::MfAnnounceContext::serverMethod(RpcServer *serverp, Sdr *inDatap, Sdr 
     if (acl < 3)
         strcpy(decodedTime, "[old time]");
     else {
-        sprintf(decodedTime, "id=%08x (downloaded %d seconds ago)",
-                acl, (int)(osp_time_sec() - acl));
+        snprintf(decodedTime, sizeof(decodedTime),
+                 "id=%08x (downloaded %d seconds ago)",
+                 acl, (int)(osp_time_sec() - acl));
     }
     printf("%s: saw %s: %s/%s type=0x%x %s\n",
            date, userp, songp, artistp, songType, decodedTime);

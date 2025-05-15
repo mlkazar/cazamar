@@ -150,7 +150,6 @@ validateFile(Radio *radiop, char *fileNamep, long skipToLine)
     std::string urls[6];
     int goodUrls[6];
     long code;
-    int count;
     int goodCount;
     int initCount;
     int hasData;
@@ -184,7 +183,6 @@ validateFile(Radio *radiop, char *fileNamep, long skipToLine)
         if (skipToLine > currentLine)
             continue;
 
-        count = 0;
         goodCount = 0;
         initCount = 0;
         tp = tbuffer;

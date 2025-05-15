@@ -109,7 +109,6 @@ SApiLoginReq::AppleLoginKeyDataMethod()
     std::string response;
     SApi::Dict dict;
     Json json;
-    const char *urlp;
     SApiLoginCookie *cookiep = SApiLogin::getLoginCookie(this);
 
     printf("SApiLoginCookie=%p\n", cookiep);
@@ -142,8 +141,6 @@ SApiLoginReq::AppleLoginKeyDataMethod()
 
     response = std::string(tbuffer);
     
-    urlp = const_cast<char *>(_rstReqp->getRcvUrl()->c_str());
-    
     inputReceived();
 
     /* now that we've been notified that the authorization keys have been deposited with
@@ -156,7 +153,6 @@ SApiLoginReq::AppleLoginKeyDataMethod()
         XApi::ClientReq *reqp;
         CThreadPipe *inPipep;
         char tbuffer[16384];
-        char *urlp;
         const char *tp;
         Json::Node *authTokenNodep;
         Json::Node *jnodep;
@@ -171,7 +167,6 @@ SApiLoginReq::AppleLoginKeyDataMethod()
         bufGenp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7700);
         connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();
-        urlp = const_cast<char *>(_rstReqp->getRcvUrl()->c_str());
         reqp->setSendContentLength(0);
         reqp->startCall( connp,
                          callbackString.c_str(),
@@ -315,7 +310,7 @@ SApiLoginApple::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
         dict.add("final", _finalUrl);
         code = SApi::ServerConn::interpretFile((char *) loginPath.c_str(), &dict, outStringp);
         if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
             *outStringp = std::string(tbuffer);
         }
     }
@@ -340,7 +335,7 @@ SApiLoginMS::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl)
 #endif
 
     tval = tval & 0x7FFFFFFF;
-    sprintf(tbuffer, "%u", tval);
+    snprintf(tbuffer, sizeof(tbuffer), "%u", tval);
     _authId = std::string(tbuffer);
 
     _finalUrl = finalUrl;
@@ -397,7 +392,7 @@ SApiLoginMS::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
 
         code = SApi::ServerConn::interpretFile((char *) loginPath.c_str(), &dict, outStringp);
         if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
             *outStringp = std::string(tbuffer);
         }
     }
@@ -681,7 +676,6 @@ SApiLoginReq::AppleLoginScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
-    int32_t code;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -701,7 +695,7 @@ SApiLoginReq::AppleLoginScreenMethod()
             cookiep->_loginApplep = new SApiLoginApple();
             cookiep->_loginApplep->setAppParams("/database/1/iCloud.com.Cazamar.Login1/development/public/users/caller?ckAPIToken=4e2811fdef054c7cb02aca853299b50151f5b7c40e5cdbd9a7762c135af3e99a");
             cookiep->_loginApplep->init(_sapip, cookiep, "/");
-            code = cookiep->_loginApplep->getLoginPage(&response, cookiep);
+             cookiep->_loginApplep->getLoginPage(&response, cookiep);
             obufferp = const_cast<char *>(response.c_str());
         }
         else {
@@ -715,7 +709,7 @@ SApiLoginReq::AppleLoginScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+     outPipep->write(obufferp, strlen(obufferp));
     outPipep->eof();
     
     requestDone();
@@ -727,7 +721,6 @@ SApiLoginReq::MSLoginScreenMethod()
 {
     char tbuffer[16384];
     char *obufferp;
-    int32_t code;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -749,7 +742,7 @@ SApiLoginReq::MSLoginScreenMethod()
                                               "lznisJHEK|msZGD85941{@)");
 
             cookiep->_loginMSp->init(_sapip, cookiep, "/");
-            code = cookiep->_loginMSp->getLoginPage(&response, cookiep);
+            cookiep->_loginMSp->getLoginPage(&response, cookiep);
             obufferp = const_cast<char *>(response.c_str());
             printf("Using authId %s\n", cookiep->_loginMSp->_authId.c_str());
         }
@@ -764,7 +757,7 @@ SApiLoginReq::MSLoginScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->write(obufferp, strlen(obufferp));
     outPipep->eof();
     
     requestDone();
@@ -798,7 +791,7 @@ SApiLoginReq::LogoutScreenMethod()
     logoutPath = cookiep->getPathPrefix() + "login-logout.html";
     code = getConn()->interpretFile((char *) logoutPath.c_str(), &dict, &response);
     if (code != 0) {
-        sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+        snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
     }
     else {

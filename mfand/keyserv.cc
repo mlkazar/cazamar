@@ -297,7 +297,6 @@ AppleLoginReq::AppleLoginMethod()
     size_t endPos;
     KeyServ *keyServp = static_cast<KeyServ *>(_sapip->getContext());
     int isMS = 0;
-    int isApple = 0;
     Rst::Request *rstReqp;
     std::string *baseUrlp;
     Rst::Hdr *hdrp;
@@ -311,7 +310,7 @@ AppleLoginReq::AppleLoginMethod()
     if (strcmp(baseUrlp->c_str(), "/login4ms") == 0)
         isMS = 1;
     else if (strcmp(baseUrlp->c_str(), "/login") == 0)
-        isApple = 1;
+        /* isApple = 1*/;
 
     if (isMS) {
         /* search for state and code strings for table entries */
@@ -405,7 +404,7 @@ AppleLoginReq::AppleLoginMethod()
         }
 
         if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            snprintf(tbuffer, sizeof(tbuffer),"Oops, interpretFile code is %d\n", code);
             obufferp = tbuffer;
         }
         else {

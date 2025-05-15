@@ -192,7 +192,6 @@ XApi::ServerConn::HeadersProc( void *contextp,
     XApi::UserThread *userThreadp;
     XApi *xapip;
     Rst::Request *rstReqp = static_cast<Rst::Request *>(commonp);
-    int32_t code;
     std::string result;;
     XApi::ServerReq *reqp;
 
@@ -200,7 +199,7 @@ XApi::ServerConn::HeadersProc( void *contextp,
     xapip = serverConnp->_xapip;
     userThreadp = xapip->getUserThread();
 
-    code = parseOpFromUrl(rstReqp->getRcvUrl(), &result);
+    (void) parseOpFromUrl(rstReqp->getRcvUrl(), &result);
 
     /* use the registered factory to create a request, and then pass the request to the
      * helper thread to execute things.
@@ -612,7 +611,6 @@ XApi::ClientReq::allDoneProc( void *contextp,
 void
 XApi::ClientReq::startMethod()
 {
-    int32_t code;
     Rst::Call *callp;
 
     _callp = callp = new Rst::Call(_connp->_rstp);
@@ -629,7 +627,7 @@ XApi::ClientReq::startMethod()
     /* this call won't return until the entire request and response have
      * been processed.
      */
-    code = callp->init( _relativePath.c_str(),
+    (void) callp->init( _relativePath.c_str(),
                         callSendProc,
                         &_sendHeaders,
                         callRecvProc,

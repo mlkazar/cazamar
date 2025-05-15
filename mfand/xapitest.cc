@@ -172,7 +172,7 @@ public:
 
         _counter++;
 
-        sprintf(tbuffer, "counter=%d\n", _counter);
+        snprintf(tbuffer, sizeof(tbuffer), "counter=%d\n", _counter);
 
         setSendContentLength(strlen(tbuffer));
 

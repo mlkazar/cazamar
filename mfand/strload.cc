@@ -90,7 +90,7 @@ RivoSimpleRequest::returnNode(Json::Node *responseNodep, int32_t code)
     rootNodep->appendChild(nameNodep);
 
     tnodep = new Json::Node();
-    sprintf(tbuffer, "%u", code);
+    snprintf(tbuffer, sizeof(tbuffer), "%u", code);
     tnodep->initString(tbuffer, 1);
     nameNodep = new Json::Node();
     nameNodep->initNamed("code", tnodep);
@@ -167,7 +167,7 @@ RivoSimpleRequest::startMethod()
         code = -1;
     }
 
-    sprintf(tbuffer, "return code=%d", code);
+    snprintf(tbuffer, sizeof(tbuffer), "return code=%d", code);
 
     /* on error, we generate the response string */
     if (code != 0) {

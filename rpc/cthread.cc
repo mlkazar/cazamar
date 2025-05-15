@@ -5,13 +5,11 @@ CThreadMutex CThread::_libcMutex;
 void
 CThreadHandle::init(CThread::StartMethod startMethod, CThread *threadp, void *contextp)
 {
-    int code;
-
     _startMethod = startMethod;
     _threadp = threadp;
     _contextp = contextp;
 
-    code = pthread_create(&_pthreadId, NULL, &CThreadHandle::startWrapper, this);
+    (void) pthread_create(&_pthreadId, NULL, &CThreadHandle::startWrapper, this);
 }
 
 /* static */ void *

@@ -16,7 +16,7 @@ BufSocket::openLog()
 {
     if (!_logFilep) {
         char tbuffer[100];
-        sprintf(tbuffer, "log%d.log", getpid());
+        snprintf(tbuffer, sizeof(tbuffer), "log%d.log", getpid());
         _logFilep = fopen(tbuffer, "a");
         setlinebuf(_logFilep);
     }

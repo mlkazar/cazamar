@@ -465,7 +465,6 @@ RadioStream::init( BufGenFactory *factoryp,
     std::string hostName;
     std::string path;
     std::string url;
-    std::string *icyUrlp;
     int32_t loops;
 
     /* parse incoming string */
@@ -496,8 +495,6 @@ RadioStream::init( BufGenFactory *factoryp,
             code = -2;
             break;
         }
-
-        icyUrlp = NULL;
 
         _bufSocketp = factoryp->allocate(0);
         _bufSocketp->init((char *) hostNamep, _defaultPort);

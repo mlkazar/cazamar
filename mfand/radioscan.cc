@@ -844,7 +844,8 @@ RadioScanQuery::browseFile()
         if (skipping && lineNumber < lineNumbers[randIx])
             continue;
 
-        sprintf(lineBuffer, "On line %d of %d", lineNumber, _scanp->_fileLineCount);
+        snprintf(lineBuffer, sizeof(lineBuffer),
+                 "On line %d of %d", lineNumber, _scanp->_fileLineCount);
         _baseStatus = std::string(lineBuffer);
 
         /* no longer skipping, now we're searching for a match */
@@ -924,7 +925,6 @@ RadioScanQuery::searchRadioTime()
     Xgml::Attr *attrNodep;
     std::string textString;
     int foundBitrate;
-    int foundUrl;
     int foundText;
     std::string urlString;
     const char *qpos;
@@ -960,14 +960,12 @@ RadioScanQuery::searchRadioTime()
     childListp = xgmlNodep->searchForChild("outline");
     for(; childListp; childListp = childListp->_dqNextp) {
         foundBitrate = 0;
-        foundUrl = 0;
         foundText = 0;
         for(attrNodep = childListp->_attrs.head(); attrNodep; attrNodep = attrNodep->_dqNextp) {
             if (strcmp(attrNodep->_name.c_str(), "bitrate") == 0) {
                 foundBitrate = 1;
             }
             else if (strcmp(attrNodep->_name.c_str(), "URL") == 0) {
-                foundUrl = 1;
                 urlString = attrNodep->_value;
             }
             else if (strcmp(attrNodep->_name.c_str(), "text") == 0) {
@@ -1040,8 +1038,9 @@ RadioScanQuery::searchShoutcast()
     int tc;
     RadioScanStation *stationp;
 
-    sprintf(tbuffer, "http://api.shoutcast.com/legacy/stationsearch?k=%s&limit=100&search=",
-            keyStringp);
+    snprintf(tbuffer, sizeof(tbuffer),
+             "http://api.shoutcast.com/legacy/stationsearch?k=%s&limit=100&search=",
+             keyStringp);
 
     /* concatenate words from search string, with spaces turned into '+' characters */
     eatingSpaces = 1;
@@ -1110,7 +1109,8 @@ RadioScanQuery::searchShoutcast()
             } /* loop over all attrs */
 
             /* now make a call to get the station attributes, including the stream URL */
-            sprintf(tbuffer, "http://yp.shoutcast.com%s?id=%d", basep, stationId);
+            snprintf(tbuffer, sizeof(tbuffer),
+                     "http://yp.shoutcast.com%s?id=%d", basep, stationId);
 
             stationp = new RadioScanStation();
             stationp->init(this);
@@ -1145,7 +1145,7 @@ RadioScanQuery::searchDar()
     std::string stationShortDescr;
     std::string url;
 
-    sprintf(tbuffer,
+    snprintf(tbuffer, sizeof(tbuffer),
             "http://api.dar.fm/uberstationurl.php?callsign=%s&callback=json&partner_token=6670654103",
             _query.c_str());
     code = _scanp->retrieveContents(std::string(tbuffer), &data);
@@ -1164,7 +1164,7 @@ RadioScanQuery::searchDar()
         return -3;
     url = tnodep->_children.head()->_name;
 
-    sprintf(tbuffer, 
+    snprintf(tbuffer, sizeof(tbuffer),
             "http://api.dar.fm/playlist.php?callsign=%s&callback=json&partner_token=6670654103",
             _query.c_str());
     code = _scanp->retrieveContents(std::string(tbuffer), &data);
@@ -1224,7 +1224,8 @@ RadioScanQuery::searchStreamTheWorld()
     stationp->_stationName = RadioScanStation::upperCase(_query);
     stationp->_stationShortDescr = "FM Radio";
     stationp->_stationSource = std::string("StreamTheWorld FM");
-    sprintf(tbuffer, "http://playerservices.streamtheworld.com/pls/%sFMAAC.pls", _query.c_str());
+    snprintf(tbuffer, sizeof(tbuffer),
+             "http://playerservices.streamtheworld.com/pls/%sFMAAC.pls", _query.c_str());
     code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp);
     if (code || stationp->_entries.count() == 0) {
         delete stationp;
@@ -1239,7 +1240,8 @@ RadioScanQuery::searchStreamTheWorld()
     stationp->_stationName = RadioScanStation::upperCase(_query);
     stationp->_stationShortDescr = "AM Radio";
     stationp->_stationSource = std::string("StreamTheWorld AM");
-    sprintf(tbuffer, "http://playerservices.streamtheworld.com/pls/%sAMAAC.pls", _query.c_str());
+    snprintf(tbuffer, sizeof(tbuffer),
+             "http://playerservices.streamtheworld.com/pls/%sAMAAC.pls", _query.c_str());
     code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp);
     if (code || stationp->_entries.count() == 0) {
         delete stationp;
@@ -1271,7 +1273,7 @@ RadioScanQuery::getStatus()
     if (_stations.count() == 1)
         strcpy(tbuffer, " (1 station)");
     else
-        sprintf(tbuffer, " (%ld stations)", _stations.count());
+        snprintf(tbuffer, sizeof(tbuffer), " (%ld stations)", _stations.count());
 
     result = _baseStatus + std::string(tbuffer);
     return result;

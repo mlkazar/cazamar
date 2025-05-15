@@ -981,7 +981,8 @@ CnodeMs::sendData( std::string *sessionUrlp,
         reqp->setSendContentLength(actuallyReadCount);
         authHeader = "Bearer " + _cfsp->_loginCookiep->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
-        sprintf(tbuffer, "bytes %ld-%ld/%ld",
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "bytes %ld-%ld/%ld",
                 (long) byteOffset,
                 (long) byteOffset+actuallyReadCount-1,
                 (long) fileLength);
@@ -1171,7 +1172,6 @@ CnodeMs::release()
 /* if call this, must call check recycle once locks are done */
 void
 CnodeMs::releaseNL() {
-    int didAdd = 0;
     osp_assert(_refCount > 0);
     CfsMs *cfsp;
 
@@ -1180,7 +1180,6 @@ CnodeMs::releaseNL() {
     if (recyclable() && !_inLru) {
         _inLru = 1;
         cfsp->_lruQueue.append(this);
-        didAdd = 1;
     }
 }
 

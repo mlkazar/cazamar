@@ -190,7 +190,6 @@ SApi::ServerConn::HeadersProc( void *contextp,
     SApi::UserThread *userThreadp;
     SApi *sapip;
     Rst::Request *rstReqp = static_cast<Rst::Request *>(commonp);
-    int32_t code;
     std::string result;;
     SApi::ServerReq *reqp;
 
@@ -198,7 +197,7 @@ SApi::ServerConn::HeadersProc( void *contextp,
     sapip = serverConnp->_sapip;
     userThreadp = sapip->getUserThread();
 
-    code = parseOpFromUrl(rstReqp->getRcvUrl(), &result);
+    (void) parseOpFromUrl(rstReqp->getRcvUrl(), &result);
 
     /* use the registered factory to create a request, and then pass the request to the
      * helper thread to execute things.
@@ -476,10 +475,10 @@ SApi::ServerReq::setCookie()
     partB = random();
 #endif
 
-    sprintf(idBuffer, "%08x%08x", partA, partB);
+    snprintf(idBuffer, sizeof(idBuffer), "%08x%08x", partA, partB);
     _cookieId = idBuffer;
 
-    sprintf(cookieBuffer, "id=%s", idBuffer);
+    snprintf(cookieBuffer, sizeof(cookieBuffer), "id=%s", idBuffer);
 
     addHeader("Set-Cookie", cookieBuffer);
     entryp = _sapip->addCookieState(_cookieId);

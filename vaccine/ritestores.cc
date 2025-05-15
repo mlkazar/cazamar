@@ -107,7 +107,6 @@ client(uint32_t zipCode)
     XApi::ClientReq *reqp;
     char tbuffer[8192];
     CThreadPipe *inPipep;
-    CThreadPipe *outPipep;
     int32_t code;
     int useSecure = 1;
     std::string path;
@@ -117,7 +116,7 @@ client(uint32_t zipCode)
     xapip = new XApi();
 
     const char *hostNamep = "www.riteaid.com";
-    sprintf(tbuffer, "/locations/search.html?q=%05d", zipCode);
+    snprintf(tbuffer, sizeof(tbuffer),"/locations/search.html?q=%05d", zipCode);
     path = std::string(tbuffer);
 
     if (!useSecure) {
@@ -143,7 +142,7 @@ client(uint32_t zipCode)
     reqp->startCall(connp, path.c_str(), /* isPost */ XApi::reqGet);
 
     inPipep = reqp->getIncomingPipe();
-    outPipep = reqp->getOutgoingPipe();
+    (void) reqp->getOutgoingPipe();
 
     code = reqp->waitForHeadersDone();
 

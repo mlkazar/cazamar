@@ -197,7 +197,7 @@ SApiTestReq::AppleLoginMethod()
         dict.add("redir", tp);
         code = getConn()->interpretFile((char *) "sapi-apple.html", &dict, &response);
         if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
             obufferp = tbuffer;
         }
         else {
@@ -231,7 +231,7 @@ SApiTestReq::HomeScreenMethod()
     CThreadPipe *outPipep = getOutgoingPipe();
     code = getConn()->interpretFile((char *) "home-screen.html", &dict, &response);
     if (code != 0) {
-        sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+        snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
     }
     else {
@@ -351,7 +351,8 @@ SApiTestReq::WriteTestMethod()
         urlp = const_cast<char *>(_rstReqp->getRcvUrl()->c_str());
         printf("url=%s\n", urlp);
         reqp->setSendContentLength(jsonData.length());
-        sprintf(tbuffer, "/database/1/iCloud.com.Cazamar.Web/development/private/assets/upload?ckWebAuthToken=%s&ckAPIToken=ef0651510f74629ed41bf76d81df7c0be2f3e5bcd532291f8b8f3671e5d9310b", main_webAuthToken.c_str());
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "/database/1/iCloud.com.Cazamar.Web/development/private/assets/upload?ckWebAuthToken=%s&ckAPIToken=ef0651510f74629ed41bf76d81df7c0be2f3e5bcd532291f8b8f3671e5d9310b", main_webAuthToken.c_str());
         printf("Doing put call (upload)with '%s'\n", tbuffer);
         reqp->startCall( connp,
                          tbuffer,
@@ -535,8 +536,9 @@ SApiTestReq::WriteTestMethod()
         urlp = const_cast<char *>(_rstReqp->getRcvUrl()->c_str());
         printf("url=%s\n", urlp);
         reqp->setSendContentLength(jsonData.length());
-        sprintf(tbuffer, "/database/1/iCloud.com.Cazamar.Web/development/private/records/modify?ckWebAuthToken=%s&ckAPIToken=ef0651510f74629ed41bf76d81df7c0be2f3e5bcd532291f8b8f3671e5d9310b",
-                main_webAuthToken.c_str());
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "/database/1/iCloud.com.Cazamar.Web/development/private/records/modify?ckWebAuthToken=%s&ckAPIToken=ef0651510f74629ed41bf76d81df7c0be2f3e5bcd532291f8b8f3671e5d9310b",
+                 main_webAuthToken.c_str());
         printf("Doing put call (create)with '%s'\n", tbuffer);
         reqp->startCall( connp,
                          tbuffer,
@@ -568,7 +570,8 @@ SApiTestReq::WriteTestMethod()
     dict.add("redir", tp);
     code = getConn()->interpretFile((char *) "sapi-apple.html", &dict, &response);
     if (code != 0) {
-        sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
     }
     else {
@@ -681,8 +684,9 @@ SApiTestReq::ReadTestMethod()
         urlp = const_cast<char *>(_rstReqp->getRcvUrl()->c_str());
         printf("url=%s\n", urlp);
         reqp->setSendContentLength(jsonData.length());
-        sprintf(tbuffer, "/database/1/iCloud.com.Cazamar.Web/development/private/records/lookup?ckWebAuthToken=%s&ckAPIToken=ef0651510f74629ed41bf76d81df7c0be2f3e5bcd532291f8b8f3671e5d9310b",
-                main_webAuthToken.c_str());
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "/database/1/iCloud.com.Cazamar.Web/development/private/records/lookup?ckWebAuthToken=%s&ckAPIToken=ef0651510f74629ed41bf76d81df7c0be2f3e5bcd532291f8b8f3671e5d9310b",
+                 main_webAuthToken.c_str());
         printf("Doing put call (create)with '%s'\n", tbuffer);
         reqp->startCall( connp,
                          tbuffer,
@@ -774,7 +778,7 @@ SApiTestReq::ReadTestMethod()
     dict.add("redir", tp);
     code = getConn()->interpretFile((char *) "sapi-apple.html", &dict, &response);
     if (code != 0) {
-        sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+        snprintf(tbuffer, sizeof(tbuffer),"Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
     }
     else {
@@ -931,8 +935,9 @@ SApiTestReq::DeleteTestMethod()
         urlp = const_cast<char *>(_rstReqp->getRcvUrl()->c_str());
         printf("url=%s\n", urlp);
         reqp->setSendContentLength(jsonData.length());
-        sprintf(tbuffer, "/database/1/iCloud.com.Cazamar.Web/development/private/records/modify?ckWebAuthToken=%s&ckAPIToken=ef0651510f74629ed41bf76d81df7c0be2f3e5bcd532291f8b8f3671e5d9310b",
-                main_webAuthToken.c_str());
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "/database/1/iCloud.com.Cazamar.Web/development/private/records/modify?ckWebAuthToken=%s&ckAPIToken=ef0651510f74629ed41bf76d81df7c0be2f3e5bcd532291f8b8f3671e5d9310b",
+                 main_webAuthToken.c_str());
         printf("Doing put call (create)with '%s'\n", tbuffer);
         reqp->startCall( connp,
                          tbuffer,
@@ -964,7 +969,7 @@ SApiTestReq::DeleteTestMethod()
     dict.add("redir", tp);
     code = getConn()->interpretFile((char *) "sapi-apple.html", &dict, &response);
     if (code != 0) {
-        sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+        snprintf(tbuffer, sizeof(tbuffer),"Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
     }
     else {

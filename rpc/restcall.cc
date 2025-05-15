@@ -90,7 +90,7 @@ RestCall::getNonce()
     static uint64_t counter = 0;
     if (counter == 0)
         counter = ((uint64_t) time(0))<<32;
-    sprintf(tbuffer, "%16lx", counter++);
+    snprintf(tbuffer, sizeof(tbuffer), "%16llx", counter++);
     return tbuffer;
 }
 
@@ -98,7 +98,7 @@ RestCall::getNonce()
 RestCall::getTimeSecs()
 {
     static char tbuffer[64];
-    sprintf(tbuffer, "%d", (int) time(NULL));
+    snprintf(tbuffer, sizeof(tbuffer), "%d", (int) time(NULL));
     return tbuffer;
 }
 
@@ -108,9 +108,6 @@ RestCall::getTimeSecs()
 int32_t
 RestCall::makeCall( std::string *requestStringp, std::string *resultStringp)
 {
-    const char *datap;
-    uint32_t len;
-
     _requestBuffer.clear();
     _responseBufferp = resultStringp;
     _responseBufferp->clear();
@@ -124,8 +121,8 @@ RestCall::makeCall( std::string *requestStringp, std::string *resultStringp)
     _curlp = NULL;
 
     /* look for <OFX> in received data (i.e. skip OFX headers) */
-    datap = _responseBufferp->c_str();
-    len = _responseBufferp->length();
+    (void) _responseBufferp->c_str();
+    (void) _responseBufferp->length();
 
     return 0;
 }

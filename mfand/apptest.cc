@@ -226,7 +226,7 @@ HomeScreen::startMethod()
     dict.add("loginText", loginHtml);
     code = getConn()->interpretFile((char *) "login-home.html", &dict, &response);
     if (code != 0) {
-        sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+        snprintf(tbuffer, sizeof(tbuffer),"Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
     }
     else {

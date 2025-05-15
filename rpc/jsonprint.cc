@@ -227,13 +227,12 @@ Json::parseJsonComplex(InStream *streamp, std::string *firstTokenp, Node **nodep
     int isSingle;
     int tc;
     int isArray = 0;
-    int isStruct = 0;
 
     if (*firstTokenp == "[") {
         isArray = 1;
     }
     else if (*firstTokenp == "{") {
-        isStruct = 1;
+        // isStruct = 1;
     }
     else {
         parseFailed("json: bad token");

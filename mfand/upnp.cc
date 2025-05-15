@@ -117,9 +117,7 @@ UpnpProbe::init () {
     int code;
     int msgLen;
     socklen_t recvAddrLen;
-    int inIp;
     struct timeval rcvTimeval;
-    long now;
     int enable;
     std::string location;
     std::string host;
@@ -188,7 +186,6 @@ UpnpProbe::init () {
         return -1;
     }
 
-    now = time(0);
     while(1) {
         recvAddrLen = sizeof(recvAddr);
         code = (int32_t) recvfrom( s,
@@ -203,7 +200,6 @@ UpnpProbe::init () {
         }
         else {
             responseBuffer[code] = 0;
-            inIp = ntohl(recvAddr.sin_addr.s_addr);
             code = parseProbeResponse(responseBuffer, &location);
             
             if (code == 0) {
@@ -794,7 +790,8 @@ UpnpAv::browse(UpnpDBase *dbasep, const char *idp, int rlevel) {
         }
         
         service = _devp->_controlRelativePath;
-        sprintf(browseSendData, _browseTemplate.c_str(), idp, obIx, numAtOnce);
+        snprintf(browseSendData, sizeof(browseSendData),
+                 _browseTemplate.c_str(), idp, obIx, numAtOnce);
         browseSendCount = (int32_t) strlen(browseSendData);
         browseSendDatap = browseSendData;
         int32_t code;

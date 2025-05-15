@@ -122,7 +122,7 @@ UploadApp::showInterval(int32_t interval)
         divisor = 86400;
     }
     
-    sprintf(tbuffer, "%d %s", interval/divisor, unitsp);
+    snprintf(tbuffer, sizeof(tbuffer), "%d %s", interval/divisor, unitsp);
     return std::string(tbuffer);
 }
 
@@ -470,14 +470,16 @@ UploadReq::UploadHomeScreenMethod()
     else {
         loginHtml += "Logged in (" + authTokenName + ")<p><a href=\"/logoutScreen\">Logout</a>";
     }
-    sprintf(tbuffer, "<p><a href=\"/\" onclick=\"getBackupInt(); return false\">Set backup interval (%s)</a>", UploadApp::showInterval(uploadApp->_backupInterval).c_str());
+    snprintf(tbuffer, sizeof(tbuffer),
+             "<p><a href=\"/\" onclick=\"getBackupInt(); return false\">Set backup interval (%s)</a>",
+             UploadApp::showInterval(uploadApp->_backupInterval).c_str());
     loginHtml += tbuffer;
     loginHtml += "<p><a href=\"/info\">Look inside</a>";
     fileName = uploadApp->_pathPrefix + "upload-home.html";
     dict.add("loginText", loginHtml);
     code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
     if (code != 0) {
-        sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+        snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
         obufferp = tbuffer;
     }
     else {
@@ -757,7 +759,6 @@ void
 UploadReq::UploadStartAllScreenMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -800,7 +801,7 @@ UploadReq::UploadStartAllScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -811,7 +812,6 @@ void
 UploadReq::UploadStartSelScreenMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -855,7 +855,7 @@ UploadReq::UploadStartSelScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -865,7 +865,6 @@ void
 UploadReq::UploadDeleteSelScreenMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -909,7 +908,7 @@ UploadReq::UploadDeleteSelScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -919,7 +918,6 @@ void
 UploadReq::UploadPauseAllScreenMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -962,7 +960,7 @@ UploadReq::UploadPauseAllScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -973,7 +971,6 @@ void
 UploadReq::UploadPauseSelScreenMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1017,7 +1014,7 @@ UploadReq::UploadPauseSelScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -1027,7 +1024,6 @@ void
 UploadReq::UploadZapAuthTokenMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1065,7 +1061,7 @@ UploadReq::UploadZapAuthTokenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -1075,7 +1071,6 @@ void
 UploadReq::UploadZapBothTokensMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1113,7 +1108,7 @@ UploadReq::UploadZapBothTokensMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -1123,7 +1118,6 @@ void
 UploadReq::UploadStopAllScreenMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1166,7 +1160,7 @@ UploadReq::UploadStopAllScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -1177,7 +1171,6 @@ void
 UploadReq::UploadStopSelScreenMethod()
 {
     char tbuffer[16384];
-    int32_t code=0;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1221,7 +1214,7 @@ UploadReq::UploadStopSelScreenMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(tbuffer, strlen(tbuffer));
+    (void) outPipep->write(tbuffer, strlen(tbuffer));
     outPipep->eof();
     
     requestDone();
@@ -1252,7 +1245,7 @@ UploadReq::UploadInfoScreenMethod()
         code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
 
         if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
             obufferp = tbuffer;
         }
         else {
@@ -1296,7 +1289,7 @@ UploadReq::UploadHelpPicsMethod()
         code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
 
         if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
             obufferp = tbuffer;
         }
         else {
@@ -1323,7 +1316,6 @@ UploadReq::UploadStatusDataMethod()
 {
     char tbuffer[16384];
     char *obufferp;
-    int32_t code;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1363,20 +1355,26 @@ UploadReq::UploadStatusDataMethod()
             if (!ep)
                 continue;
             uploaderp = ep->_uploaderp;
-            sprintf(tbuffer, "%ld files", (long) (uploaderp? uploaderp->_filesCopied : 0));
+            snprintf(tbuffer, sizeof(tbuffer),
+                     "%ld files", (long) (uploaderp? uploaderp->_filesCopied : 0));
             filesString = std::string(tbuffer);
-            sprintf(tbuffer, "%ld skipped", (long) (uploaderp? uploaderp->_filesSkipped : 0));
+            snprintf(tbuffer, sizeof(tbuffer),
+                     "%ld skipped", (long) (uploaderp? uploaderp->_filesSkipped : 0));
             skippedString = std::string(tbuffer);
-            sprintf(tbuffer, "%ld MB", (long) (uploaderp? uploaderp->_bytesCopied/1000000: 0));
+            snprintf(tbuffer, sizeof(tbuffer),
+                     "%ld MB", (long) (uploaderp? uploaderp->_bytesCopied/1000000: 0));
             bytesString = std::string(tbuffer);
-            sprintf(tbuffer, "%ld failures", (long) (uploaderp? uploaderp->_fileCopiesFailed : 0));
+            snprintf(tbuffer, sizeof(tbuffer),
+                     "%ld failures", (long) (uploaderp? uploaderp->_fileCopiesFailed : 0));
             errorsString = std::string(tbuffer);
-            sprintf(tbuffer, "<a href=\"/\" onclick=\"setEnabled(%d); return false\">%s</a>",
-                    i, (ep->_enabled? "Enabled" : "Disabled"));
+            snprintf(tbuffer, sizeof(tbuffer),
+                     "<a href=\"/\" onclick=\"setEnabled(%d); return false\">%s</a>",
+                     i, (ep->_enabled? "Enabled" : "Disabled"));
             enabledString = std::string(tbuffer);
             finishedString = UploadApp::getDate(ep->_lastFinishedTime);
-            sprintf(tbuffer, "<a href=\"/\" onclick=\"setSelected(%d); return false\">%s</a>",
-                    i, (ep->_selected? "<i class=\"material-icons\">check_box</i>" : "<i class=\"material-icons\">check_box_outline_blank</i>"));
+            snprintf(tbuffer, sizeof(tbuffer),
+                     "<a href=\"/\" onclick=\"setSelected(%d); return false\">%s</a>",
+                     i, (ep->_selected? "<i class=\"material-icons\">check_box</i>" : "<i class=\"material-icons\">check_box_outline_blank</i>"));
             selectString = std::string(tbuffer);
             response += ("<tr><td>"+selectString+"</td><td>"+
                          ep->_fsRoot+"</td><td>" +
@@ -1398,7 +1396,7 @@ UploadReq::UploadStatusDataMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+    (void) outPipep->write(obufferp, strlen(obufferp));
     outPipep->eof();
     
     requestDone();
@@ -1409,7 +1407,6 @@ UploadReq::UploadInfoDataMethod()
 {
     char tbuffer[16384];
     char *obufferp;
-    int32_t code;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1447,11 +1444,12 @@ UploadReq::UploadInfoDataMethod()
         for( errorp = uploadApp->_errorEntries.head();
              errorp;
              errorp=errorp->_dqNextp) {
-            sprintf( tbuffer, "<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td></tr>\n",
-                     errorp->_op.c_str(),
-                     errorp->_httpError,
-                     errorp->_shortError.c_str(),
-                     errorp->_longError.c_str());
+            snprintf( tbuffer, sizeof(tbuffer),
+                      "<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td></tr>\n",
+                      errorp->_op.c_str(),
+                      errorp->_httpError,
+                      errorp->_shortError.c_str(),
+                      errorp->_longError.c_str());
             response += tbuffer;
         }
 
@@ -1464,32 +1462,41 @@ UploadReq::UploadInfoDataMethod()
         response += "<table style=\"width:50%\">\n";
         response += "<tr><th>Stat</th><th>Value</th></tr>\n";
 
-        sprintf(tbuffer, "<tr><td>Total REST calls</td><td>%llu</td></tr>\n",
-                (long long) sp->_totalCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Total REST calls</td><td>%llu</td></tr>\n",
+                 (long long) sp->_totalCalls);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>FillAttr calls</td><td>%llu</td></tr>\n",
-                (long long) sp->_fillAttrCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>FillAttr calls</td><td>%llu</td></tr>\n",
+                 (long long) sp->_fillAttrCalls);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>GetAttr calls</td><td>%llu</td></tr>\n",
-                (long long) sp->_getAttrCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>GetAttr calls</td><td>%llu</td></tr>\n",
+                 (long long) sp->_getAttrCalls);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>GetPath calls</td><td>%llu</td></tr>\n",
-                (long long) sp->_getPathCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>GetPath calls</td><td>%llu</td></tr>\n",
+                 (long long) sp->_getPathCalls);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Lookup calls</td><td>%llu</td></tr>\n",
-                (long long) sp->_lookupCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Lookup calls</td><td>%llu</td></tr>\n",
+                 (long long) sp->_lookupCalls);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>SendSmallFiles</td><td>%llu</td></tr>\n",
-                (long long) sp->_sendSmallFilesCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>SendSmallFiles</td><td>%llu</td></tr>\n",
+                 (long long) sp->_sendSmallFilesCalls);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>SendLargeFiles</td><td>%llu</td></tr>\n",
-                (long long) sp->_sendLargeFilesCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>SendLargeFiles</td><td>%llu</td></tr>\n",
+                 (long long) sp->_sendLargeFilesCalls);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>SendDataCalls</td><td>%llu</td></tr>\n",
-                (long long) sp->_sendDataCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>SendDataCalls</td><td>%llu</td></tr>\n",
+                 (long long) sp->_sendDataCalls);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Mkdir calls</td><td>%llu</td></tr>\n",
-                (long long) sp->_mkdirCalls);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Mkdir calls</td><td>%llu</td></tr>\n",
+                 (long long) sp->_mkdirCalls);
         response += tbuffer;
 
         response += "</table>\n";
@@ -1498,29 +1505,37 @@ UploadReq::UploadInfoDataMethod()
         response += "<table style=\"width:50%\">\n";
         response += "<tr><th>Stat</th><th>Value</th></tr>\n";
 
-        sprintf(tbuffer, "<tr><td>Auth required</td><td>%llu</td></tr>\n",
-                (long long) sp->_authRequired);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Auth required</td><td>%llu</td></tr>\n",
+                 (long long) sp->_authRequired);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Overloaded 5XX</td><td>%llu</td></tr>\n",
-                (long long) sp->_overloaded5xx);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Overloaded 5XX</td><td>%llu</td></tr>\n",
+                 (long long) sp->_overloaded5xx);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Busy 429</td><td>%llu</td></tr>\n",
-                (long long) sp->_busy429);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Busy 429</td><td>%llu</td></tr>\n",
+                 (long long) sp->_busy429);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Stalled 409</td><td>%llu</td></tr>\n",
-                (long long) sp->_busy409);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Stalled 409</td><td>%llu</td></tr>\n",
+                 (long long) sp->_busy409);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Duplicate seg received 416</td><td>%llu</td></tr>\n",
-                (long long) sp->_duplicateReceived416);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Duplicate seg received 416</td><td>%llu</td></tr>\n",
+                 (long long) sp->_duplicateReceived416);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Mkdir random 400</td><td>%llu</td></tr>\n",
-                (long long) sp->_bad400);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Mkdir random 400</td><td>%llu</td></tr>\n",
+                 (long long) sp->_bad400);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Unknown HTTP fail</td><td>%llu</td></tr>\n",
-                (long long) sp->_mysteryErrors);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Unknown HTTP fail</td><td>%llu</td></tr>\n",
+                 (long long) sp->_mysteryErrors);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>XApi fail</td><td>%llu</td></tr>\n",
-                (long long) sp->_xapiErrors);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>XApi fail</td><td>%llu</td></tr>\n",
+                 (long long) sp->_xapiErrors);
         response += tbuffer;
 
         response += "</table>\n";
@@ -1535,23 +1550,28 @@ UploadReq::UploadInfoDataMethod()
         response += "<table style=\"width:50%\">\n";
         response += "<tr><th>Stat</th><th>Value</th></tr>\n";
 
-        sprintf(tbuffer, "<tr><td>Active Helpers</td><td>%llu</td></tr>\n",
-                (long long) ds._activeHelpers);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Active Helpers</td><td>%llu</td></tr>\n",
+                 (long long) ds._activeHelpers);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Available Helpers</td><td>%llu</td></tr>\n",
-                (long long) ds._availableHelpers);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Available Helpers</td><td>%llu</td></tr>\n",
+                 (long long) ds._availableHelpers);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Active Tasks</td><td>%llu</td></tr>\n",
-                (long long) ds._activeTasks);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Active Tasks</td><td>%llu</td></tr>\n",
+                 (long long) ds._activeTasks);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Pending Tasks</td><td>%llu</td></tr>\n",
-                (long long) ds._pendingTasks);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Pending Tasks</td><td>%llu</td></tr>\n",
+                 (long long) ds._pendingTasks);
         response += tbuffer;
-        sprintf(tbuffer, "<tr><td>Avg/Max Busy time / # Healthy</td><td>%llu ms / %llu ms / %llu healthy / %llu total active</td></tr>\n",
-                (long long) poolStats._averageMs,
-                (long long) poolStats._longestMs,
-                (long long) poolStats._healthyCount,
-                (long long) poolStats._activeCount);
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "<tr><td>Avg/Max Busy time / # Healthy</td><td>%llu ms / %llu ms / %llu healthy / %llu total active</td></tr>\n",
+                 (long long) poolStats._averageMs,
+                 (long long) poolStats._longestMs,
+                 (long long) poolStats._healthyCount,
+                 (long long) poolStats._activeCount);
         response += tbuffer;
 
         response += "</table>\n";
@@ -1564,7 +1584,7 @@ UploadReq::UploadInfoDataMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+    (void) outPipep->write(obufferp, strlen(obufferp));
     outPipep->eof();
     
     requestDone();
@@ -1575,7 +1595,6 @@ UploadReq::UploadLoadConfigMethod()
 {
     char tbuffer[16384];
     char *obufferp;
-    int32_t code;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1599,7 +1618,7 @@ UploadReq::UploadLoadConfigMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+    (void) outPipep->write(obufferp, strlen(obufferp));
     outPipep->eof();
     
     requestDone();
@@ -1636,7 +1655,7 @@ UploadReq::UploadCreateConfigMethod()
         code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
 
         if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
             obufferp = tbuffer;
         }
         else {
@@ -1679,7 +1698,6 @@ UploadReq::UploadDeleteConfigMethod()
 {
     char tbuffer[16384];
     char *obufferp;
-    int32_t code;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1717,7 +1735,7 @@ UploadReq::UploadDeleteConfigMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+    (void) outPipep->write(obufferp, strlen(obufferp));
     outPipep->eof();
     
     requestDone();
@@ -1751,7 +1769,7 @@ UploadReq::UploadBackupIntervalMethod()
         code = getConn()->interpretFile(fileName.c_str(), &dict, &response);
 
         if (code != 0) {
-            sprintf(tbuffer, "Oops, interpretFile code is %d\n", code);
+            snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
             obufferp = tbuffer;
         }
         else {
@@ -1789,7 +1807,6 @@ UploadReq::UploadSetEnabledConfigMethod()
 {
     char tbuffer[16384];
     char *obufferp;
-    int32_t code;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1827,7 +1844,7 @@ UploadReq::UploadSetEnabledConfigMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+    (void) outPipep->write(obufferp, strlen(obufferp));
     outPipep->eof();
     
     requestDone();
@@ -1838,7 +1855,6 @@ UploadReq::UploadSetSelectedConfigMethod()
 {
     char tbuffer[16384];
     char *obufferp;
-    int32_t code;
     std::string response;
     SApi::Dict dict;
     Json json;
@@ -1878,7 +1894,7 @@ UploadReq::UploadSetSelectedConfigMethod()
     /* reverse the pipe -- must know length, or have set content length to -1 by now */
     inputReceived();
     
-    code = outPipep->write(obufferp, strlen(obufferp));
+    (void) outPipep->write(obufferp, strlen(obufferp));
     outPipep->eof();
     
     requestDone();

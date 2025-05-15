@@ -29,7 +29,6 @@ void
 BufGen::init(char *namep, uint32_t defaultPort)
 {
     struct hostent *hostp;
-    uint32_t hostAddr;
     uint16_t destPort;
     char *portp;
 
@@ -72,8 +71,6 @@ BufGen::init(char *namep, uint32_t defaultPort)
     _port = destPort;
 
     _destAddr.sin_port = htons(destPort);
-
-    hostAddr = htonl(_destAddr.sin_addr.s_addr);
 
     /* set some defaults; they may be changed */
     _listening = 0;
