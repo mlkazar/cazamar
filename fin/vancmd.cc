@@ -210,13 +210,32 @@ VanCmd::Gain(VanOfx::User &user, Selector &sel) {
     // Qualified divs are 20% + 3.8% NIIT worst case
     // Regular divs are 37% + 3.8% NIIT
     // Tax free are federally taxed at 0%
-    printf("Pre-tax dividends %.2f\n",
+    printf("\nPre-tax dividends %.2f\n",
            (grand_total._qualified_divs + grand_total._regular_divs +
             grand_total._tax_free_divs));
     printf("After tax dividend estimate %.2f\n",
            grand_total._qualified_divs * (1.0 - .238) +
            grand_total._regular_divs * (1.0 - .408) +
            grand_total._tax_free_divs);
+
+    VanOfx::Gain annualized_total;
+    annualized_total = grand_total;
+
+    // factor is percent of a year that the duration represents.  Divide by this
+    // to get annual expected dividends.
+    double factor = ((double)(VanOfx::DateStrToTime(sel._to_date) -
+                              VanOfx::DateStrToTime(sel._from_date)) /
+                     (365.25 * 24.0 * 3600.0));
+    annualized_total._qualified_divs /= factor;
+    annualized_total._regular_divs /= factor;
+    annualized_total._tax_free_divs /= factor;
+    printf("\nAnnualized pre-tax dividends %.2f\n",
+           (annualized_total._qualified_divs + annualized_total._regular_divs +
+            annualized_total._tax_free_divs));
+    printf("Annualized after tax dividend estimate %.2f\n",
+           annualized_total._qualified_divs * (1.0 - .238) +
+           annualized_total._regular_divs * (1.0 - .408) +
+           annualized_total._tax_free_divs);
 
     return 0;
 }
