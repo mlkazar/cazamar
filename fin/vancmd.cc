@@ -152,6 +152,85 @@ VanCmd::SetupProfile(VanOfx::User &user, Selector &sel) {
 }
     
 int32_t
+VanCmd::FutureDivs(VanOfx::User &user, Selector &sel) {
+    printf("\n**Project future divdends\n");
+    // Now compute the gain
+    VanOfx::Gain grand_total;
+
+    auto acct_lambda = [&sel, &grand_total](VanOfx::Account *acct) {
+        VanOfx::Gain acct_total;
+        ProfileAccount *prof_acct = nullptr;
+
+        auto fund_lambda = [&sel, &acct_total](VanOfx::Fund *fund) -> int32_t {
+            VanOfx::Gain fund_total;
+            printf("\nFund %s(%s) with balance %lf:\n",
+                   fund->_name.c_str(), fund->_symbol.c_str(),
+                   fund->_share_count * fund->_share_price);
+            fund->FutureDivs(sel._verbose, &fund_total);
+            VanOfx::PrintGain(&fund_total);
+            acct_total += fund_total;
+            return 0;
+        };
+
+        // Apply an account filter
+        Profile *prof = sel._profile;
+        if (prof != nullptr) {
+            prof_acct = prof->GetUser()->FindAccount(acct->_number);
+        }
+            
+        if (prof == nullptr || prof->ContainsAccount(prof_acct)) {
+            if (prof_acct != nullptr) {
+                printf("\n----------------Account %s (%s)----------------\n",
+                       prof_acct->_account_name.c_str(),
+                       acct->_number.c_str());
+            } else {
+                printf("\n----------------Account number %s----------------\n",
+                       acct->_number.c_str());
+            }
+            acct->ApplyToFunds(fund_lambda);
+            grand_total += acct_total;
+        }
+        return 0;
+    };
+
+    user.ApplyToAccounts(acct_lambda);
+
+    printf("\n***Grand Total***\n");
+    VanOfx::PrintGain(&grand_total);
+    // Qualified divs are 20% + 3.8% NIIT worst case
+    // Regular divs are 37% + 3.8% NIIT
+    // Tax free are federally taxed at 0%
+    printf("\nPre-tax dividends %.2f\n",
+           (grand_total._qualified_divs + grand_total._regular_divs +
+            grand_total._tax_free_divs));
+    printf("After tax dividend estimate %.2f\n",
+           grand_total._qualified_divs * (1.0 - .238) +
+           grand_total._regular_divs * (1.0 - .408) +
+           grand_total._tax_free_divs);
+
+    VanOfx::Gain annualized_total;
+    annualized_total = grand_total;
+
+    // factor is percent of a year that the duration represents.  Divide by this
+    // to get annual expected dividends.
+    double factor = ((double)(VanOfx::DateStrToTime(sel._to_date) -
+                              VanOfx::DateStrToTime(sel._from_date)) /
+                     (365.25 * 24.0 * 3600.0));
+    annualized_total._qualified_divs /= factor;
+    annualized_total._regular_divs /= factor;
+    annualized_total._tax_free_divs /= factor;
+    printf("\nAnnualized pre-tax dividends %.2f\n",
+           (annualized_total._qualified_divs + annualized_total._regular_divs +
+            annualized_total._tax_free_divs));
+    printf("Annualized after tax dividend estimate %.2f\n",
+           annualized_total._qualified_divs * (1.0 - .238) +
+           annualized_total._regular_divs * (1.0 - .408) +
+           annualized_total._tax_free_divs);
+
+    return 0;
+}
+
+int32_t
 VanCmd::Gain(VanOfx::User &user, Selector &sel) {
     printf("\n**Compute Gains from %s to %s**\n",
            sel._from_date.c_str(), sel._to_date.c_str());

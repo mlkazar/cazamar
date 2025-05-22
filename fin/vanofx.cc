@@ -136,6 +136,28 @@ User::ApplyToAccounts(std::function<int32_t(Account *)> func) {
 }
 
 int32_t
+Fund::FutureDivs(int verbose, Gain *gains) {
+    double yield;
+    int32_t code;
+
+    double balance = _share_price * _share_count;
+
+    code = _user->GetYF()->GetYield(_symbol, &yield);
+    if (code)
+        return code;
+
+    double div = balance * yield;
+    if (_is_tax_free)
+        gains->_tax_free_divs += div;
+    else if (_is_bond)
+        gains->_regular_divs += div;
+    else
+        gains->_qualified_divs += div;
+
+    return 0;
+}
+
+int32_t
 Fund::AvgBalance(std::string from_date, std::string to_date, int verbose, double *balance) {
     double from_price = 0.0;
     double to_price = 0.0;

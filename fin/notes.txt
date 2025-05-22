@@ -1,1 +1,6 @@
-Also build ~/yfinance
+Also build ~/yfinance as python application.
+
+Then do pyinstaller prices.py
+
+Note that we have a spare copy of prices.py in this directory but it
+is meant to work with the yfinance python library.

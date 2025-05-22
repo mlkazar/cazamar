@@ -11,6 +11,12 @@ class YFDriver {
  public:
     typedef std::map<std::string,double> PriceMap;
 
+    class CachedInfo {
+    public:
+        std::string _symbol;
+        double _yield;
+    };
+
     class CachedYear {
     public:
         PriceMap _prices;
@@ -36,6 +42,10 @@ class YFDriver {
 
     typedef std::list<CachedYear *> CacheList;
 
+    typedef std::map<std::string, CachedInfo *> InfoMap;
+
+    int32_t GetYield(std::string symbol, double *yfraction);
+
     int32_t GetPrice(std::string date, std::string symbol, double *price);
 
     int32_t GetPriceFromCache(CachedYear *cache, std::string date, double *price);
@@ -49,6 +59,7 @@ class YFDriver {
     int _verbose;
 
     CacheList _cache_list;
+    InfoMap _info_map;
 
     YFDriver() {
         _verbose = 0;

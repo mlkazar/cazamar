@@ -153,6 +153,8 @@ public:
         }
     }
 
+    int32_t FutureDivs(int verbose, Gain *gains);
+
     int32_t GetPrice(std::string date, std::string symbol, double *price);
 
     int32_t ApplyToTrans(std::function<int32_t(Transaction *)>func);

@@ -25,6 +25,8 @@ public:
 
     int32_t SetupProfile(VanOfx::User &user, Selector &sel);
 
+    int32_t FutureDivs(VanOfx::User &user, Selector &sel);
+
     int32_t SetProfs(VanOfx::User &user, Selector &sel) {
         return -1;
     }

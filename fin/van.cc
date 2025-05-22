@@ -19,7 +19,7 @@ main(int argc, char **argv) {
 
     if (argc < 2) {
         printf("usage: van <command> [args]\n");
-        printf("       commands are 'balance', 'gains', or 'setup'\n");
+        printf("       commands are 'balance', 'gains', 'future' or  'setup'\n");
         printf("       --prof <profile name>\n");
         printf("       --from <from date>\n");
         printf("       --to <to date>\n");
@@ -80,6 +80,8 @@ main(int argc, char **argv) {
         code = cmd.Gain(user, sel);
     } else if (strcasecmp(argv[1], "setup") == 0) {
         code = cmd.SetupProfile(user, sel);
+    } else if (strcasecmp(argv[1], "future") == 0) {
+        code = cmd.FutureDivs(user, sel);
     } else {
         printf("unrecognized command, try 'van' alone for help\n");
         return -1;

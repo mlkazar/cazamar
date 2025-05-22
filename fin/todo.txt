@@ -1,2 +1,15 @@
-Have 'gain' compute average balance for each fund over the course of
-the selected period.  Then use that to estimate annualized dividend return
+* Have 'gain' compute average balance for each fund over the course of
+the selected period.  Then use that to estimate annualized dividend
+return
+
+Lookup per-fund dividend rate, and use that for forward looking
+divident income estimates. ticker.info["yield"] or ["dividendYield"]
+The former is a fraction and the latter is a percentage.
+
+Doesn't seem to be treating IRA returns as IRA values.  Maybe just
+treating as regular dividends is sufficient?  But not for cap gains
+distributions or qualified divs, all of which will really be taxed as income.
+
+Figure out what to do about tax lot information.  Maybe new command
+that displays funds, the total amount of losses harvestable, and total
+gains under x%.

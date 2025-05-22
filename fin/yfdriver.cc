@@ -41,6 +41,18 @@ YFDriver::Reset() {
         _cache_list.pop_front();
         delete cache;
     }
+
+    InfoMap::iterator mit;
+    CachedInfo *info;
+    while(!_info_map.empty()) {
+        // get first element in list
+        mit = _info_map.begin();
+        info = mit->second;
+
+        // and remove it
+        _info_map.erase(mit);
+        delete info;
+    }
 }
 
 int32_t
@@ -104,7 +116,7 @@ YFDriver::GetPrice(std::string date, std::string symbol, double *price) {
     }
 
     snprintf(command_buffer, sizeof(command_buffer),
-             "prices %s-01-01 %s 2>/dev/null", year.c_str(), symbol.c_str());
+             "prices prices %s-01-01 %s 2>/dev/null", year.c_str(), symbol.c_str());
     if (_verbose)
         printf("Cache miss, loading data with cmd line '%s'\n", command_buffer);
     tfile = popen(command_buffer, "r");
@@ -144,4 +156,47 @@ YFDriver::GetPrice(std::string date, std::string symbol, double *price) {
         return 0;
     else
         return -1;
+}
+
+int32_t
+YFDriver::GetYield(std::string symbol, double *ayield) {
+    InfoMap::iterator it;
+
+    it = _info_map.find(symbol);
+    if (it != _info_map.end()) {
+        *ayield = it->second->_yield;
+        return 0;
+    }
+
+    if (symbol == "" || symbol == "None") {
+        *ayield = 0.0;
+        return 0;
+    }
+
+    char command_buffer[128];
+    char tbuffer[128];
+    strcpy(command_buffer, "prices yield ");
+    strcat(command_buffer, symbol.c_str());
+    strcat(command_buffer, " 2>/dev/null");
+    FILE *tfile = popen(command_buffer, "r");
+    double tyield;
+
+    fgets(tbuffer, sizeof(tbuffer), tfile);
+    if (strncasecmp(tbuffer, "None", 4) == 0) {
+        tyield = 0.0;
+    } else {
+        int32_t code = sscanf(tbuffer, "%lf", &tyield);
+        if (code != 1) {
+            printf("Syntax error on response from price command\n");
+            printf("Line is '%s'\n", tbuffer);
+            return -1;
+        }
+    }
+
+    CachedInfo *info = new CachedInfo();
+    info->_symbol = symbol;
+    info->_yield = tyield;
+    _info_map[symbol] = info;
+    *ayield = tyield;
+    return 0;
 }

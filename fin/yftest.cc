@@ -23,4 +23,25 @@ main(int argc, char **argv) {
         printf("Price for %s on %s is %f (%d)\n",
                argv[1], argv[2], price, code);
     }
+
+    printf("\nStarting yield tests\n");
+    double yield;
+    code = yf.GetYield("VWIUX", &yield);
+    printf("code is %d, yield is %lf for VWIUX\n", code, yield);
+
+    code = yf.GetYield("AAPL", &yield);
+    printf("code is %d, yield is %lf for AAPL\n", code, yield);
+
+    code = yf.GetYield("VEIRX", &yield);
+    printf("code is %d, yield is %lf for VEIRX\n", code, yield);
+
+    printf("\nNow a second run should find stuff in the info cache\n");
+    code = yf.GetYield("VWIUX", &yield);
+    printf("code is %d, yield is %lf for VWIUX\n", code, yield);
+
+    code = yf.GetYield("AAPL", &yield);
+    printf("code is %d, yield is %lf for AAPL\n", code, yield);
+
+    code = yf.GetYield("VEIRX", &yield);
+    printf("code is %d, yield is %lf for VEIRX\n", code, yield);
 }
