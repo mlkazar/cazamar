@@ -14,6 +14,7 @@
 #import "MFANSetList.h"
 #import "MFANIndicator.h"
 #import "MFANDownload.h"
+#import "MFANFileWriter.h"
 
 #include "xgml.h"
 #include "rpc.h"
@@ -745,7 +746,7 @@ static const int _maxFileSize = 1024*1024;
 {
     Xgml::Node *node;
     std::string cppString;
-    FILE *filep;
+    MFANFileWriter *writer;
     long code;
 
     while(1) {
@@ -765,18 +766,18 @@ static const int _maxFileSize = 1024*1024;
 	cppString.clear();
 	node->printToCPP(&cppString);
 
-	filep = fopen([_associatedFile cStringUsingEncoding: NSASCIIStringEncoding], "w");
-	if (!filep) {
+	writer = [[MFANFileWriter alloc] initWithFile: _associatedFile];
+	if ([writer failed]) {
 	    delete node;
 	    NSLog(@"!save failed to open file %@, skipping", _associatedFile);
 	    continue;
 	}
 
-	code = fwrite(cppString.c_str(), cppString.length(), 1, filep);
+	code = fwrite(cppString.c_str(), cppString.length(), 1, [writer fileOf]);
 	if (code != 1) {
 	    NSLog(@"!WRITE FAILED");
 	}
-	code = fclose(filep);
+	code = [writer flush];
 	if (code != 0) {
 	    NSLog(@"!FCLOSE FAILED");
 	}

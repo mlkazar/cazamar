@@ -16,6 +16,7 @@
 #import "MFANTopUpnp.h"
 #import "MFANDownload.h"
 #import "MFANSocket.h"
+#import "MFANFileWriter.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -1130,7 +1131,7 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
 
 - (BOOL) saveLocal
 {
-    FILE *filep;
+    MFANFileWriter *writer;
     uint32_t i;
     NSString *line;
     MFANMediaItem *radioItem;
@@ -1138,22 +1139,23 @@ parseRadioStation(char *inp, NSString **namep, NSString **detailsp, NSString **u
     NSString *path;
 
     path = fileNameForFile(@"localradio.txt");
-    filep = fopen([path cStringUsingEncoding: NSUTF8StringEncoding], "w");
-    if (!filep)
+    writer = [[MFANFileWriter alloc] initWithFile: path];
+    if ([writer failed])
 	return NO;
+
     for(i=0;i<_localCount;i++) {
 	radioItem = _radioArray[i];
 	line = unparseRadioStation( [radioItem title],
 				    @"Locally_added_radio",
 				    [radioItem localUrl]);
-	code = fputs([line cStringUsingEncoding: NSUTF8StringEncoding], filep);
+	code = fputs([line cStringUsingEncoding: NSUTF8StringEncoding], [writer fileOf]);
 	if (code <= 0) {
 	    /* something went wrong */
-	    fclose(filep);
+	    [writer cleanup];
 	    return NO;
 	}
     }
-    fclose(filep);
+    [writer flush];
     return YES;
 }
 

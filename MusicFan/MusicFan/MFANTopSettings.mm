@@ -16,6 +16,7 @@
 #import "MFANWarn.h"
 #import "MFANTopRStar.h"
 #import "MFANTopHistory.h"
+#import "MFANFileWriter.h"
 
 #include "xgml.h"
 #include "upnp.h"
@@ -948,7 +949,7 @@ MFANTopSettings *_globalSettings;
 - (void) saveSettings
 {
     char tbuffer[100];
-    FILE *filep;
+    MFANFileWriter *writer;
     std::string cppString;
     long code;
 
@@ -1001,19 +1002,19 @@ MFANTopSettings *_globalSettings;
     rootNodep->appendAttr(attrNodep);
     
     NSLog(@"- Saving settings to file %@", _associatedFile);
-    filep = fopen([_associatedFile cStringUsingEncoding: NSASCIIStringEncoding], "w");
-    if (!filep) {
+    writer = [[MFANFileWriter alloc] initWithFile: _associatedFile];
+    if ([writer failed]) {
 	delete rootNodep;
 	return;
     }
 
     cppString.clear();
     rootNodep->printToCPP(&cppString);
-    code = fwrite(cppString.c_str(), (int) cppString.length(), 1, filep);
+    code = fwrite(cppString.c_str(), (int) cppString.length(), 1, [writer fileOf]);
     if (code != 1) {
 	NSLog(@"!WRITE FAILED");
     }
-    code = fclose(filep);
+    code = [writer flush];
     if (code != 0) {
 	NSLog(@"!FCLOSE FAILED");
     }

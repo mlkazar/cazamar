@@ -17,6 +17,7 @@
 #import "MFANPopHelp.h"
 #import "MFANCGUtil.h"
 #import "MFANAqPlayer.h"
+#import "MFANFileWriter.h"
 
 #include <time.h>
 #include <stdlib.h>
@@ -530,7 +531,7 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 
 - (void) saveEdits
 {
-    FILE *outFilep;
+    MFANFileWriter *writer;
     MFANHistoryItem *item;
     Json::Node *rootNodep;
     Json::Node *structNodep;
@@ -550,8 +551,8 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 
     fileName = fileNameForFile(@"history.new");
     finalName = fileNameForFile(@"history.txt");
-    outFilep = fopen([fileName cStringUsingEncoding: NSUTF8StringEncoding], "w");
-    if (outFilep == NULL) {
+    writer = [[MFANFileWriter alloc] initWithFile: fileName];
+    if ([writer failed]) {
 	NSLog(@"MFANTopHistory: failed to open history.txt");
 	return;
     }
@@ -605,14 +606,14 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
     /* unparse to a string */
     rootNodep->unparse(&outString);
     nbytes = (uint32_t) outString.length();
-    code = (int32_t) fwrite(outString.c_str(), 1, nbytes, outFilep);
+    code = (int32_t) fwrite(outString.c_str(), 1, nbytes, [writer fileOf]);
     if (code != nbytes) {
 	NSLog(@"MFANTopHistory: failed to write all data %d should be %d", code, nbytes);
     }
 
     /* and clean up everything */
-    fclose(outFilep);
-    outFilep = NULL;
+    [writer flush];
+    writer = nil;
     delete rootNodep;
     rootNodep = NULL;
 
