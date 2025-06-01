@@ -38,6 +38,7 @@ ProfileUser::Init(std::string profile_path) {
         // anode is an array, so we have to walk through all the
         // elemets in the array.
         Json::Node *elt_node;
+        ProfileAccount *prof_acct;
         for(elt_node = anode->_children.head(); elt_node; elt_node=elt_node->_dqNextp) {
             tnode = elt_node->searchForChild("account_number");
             if (tnode == nullptr) {
@@ -52,7 +53,11 @@ ProfileUser::Init(std::string profile_path) {
                 continue;
             }
             acct_name = tnode->getString();
-            (void) AddAccount(acct_number, acct_name);
+            prof_acct = AddAccount(acct_number, acct_name);
+            tnode = elt_node->searchForChild("is_ira");
+            if (tnode != nullptr){
+                prof_acct->_is_ira = tnode->getInt();
+            }
         }
     }
 
@@ -100,6 +105,14 @@ ProfileUser::Init(std::string profile_path) {
                 profile->AddAccount(prof_account);
             }
         }
+    }
+
+    // And create _all profile containing everything
+    ProfileAccountMap::iterator it;
+
+    Profile *profile = GetProfile("_all");
+    for(it = _account_map.begin(); it != _account_map.end(); ++it) {
+        profile->AddAccount(it->second);
     }
 
     return 0;

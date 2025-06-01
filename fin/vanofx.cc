@@ -136,7 +136,7 @@ User::ApplyToAccounts(std::function<int32_t(Account *)> func) {
 }
 
 int32_t
-Fund::FutureDivs(int verbose, Gain *gains) {
+Fund::FutureDivs(int verbose, int is_ira, Gain *gains) {
     double yield;
     int32_t code;
 
@@ -147,7 +147,9 @@ Fund::FutureDivs(int verbose, Gain *gains) {
         return code;
 
     double div = balance * yield;
-    if (_is_tax_free)
+    if (is_ira) {
+        gains->_ira_divs += div;
+    } else if (_is_tax_free)
         gains->_tax_free_divs += div;
     else if (_is_bond)
         gains->_regular_divs += div;
@@ -158,7 +160,11 @@ Fund::FutureDivs(int verbose, Gain *gains) {
 }
 
 int32_t
-Fund::AvgBalance(std::string from_date, std::string to_date, int verbose, double *balance) {
+Fund::AvgBalance(std::string from_date,
+                 std::string to_date,
+                 int verbose,
+                 int is_ira,
+                 double *balance) {
     double from_price = 0.0;
     double to_price = 0.0;
     int can_get_prices = (_symbol.length() > 0);
@@ -251,7 +257,11 @@ Fund::GetPrice(std::string date, std::string symbol, double *price) {
 }
 
 int32_t
-Fund::GainDollars(std::string from_date, std::string to_date, int verbose, Gain *gain) {
+Fund::GainDollars(std::string from_date,
+                  std::string to_date,
+                  int verbose,
+                  int is_ira,
+                  Gain *gain) {
     double from_price = 0.0;
     double to_price = 0.0;
     int can_get_prices = (_symbol.length() > 0);
@@ -275,7 +285,9 @@ Fund::GainDollars(std::string from_date, std::string to_date, int verbose, Gain 
             // date is in range
             GetPrice(trans->_date, _symbol, &current_price);
             gain->_unrealized_cg += trans->_pre_share_count * (current_price - prev_price);
-            if (_is_tax_free) {
+            if (is_ira) {
+                gain->_ira_divs += trans->_ex_div;
+            } else if (_is_tax_free) {
                 gain->_tax_free_divs += trans->_ex_div;
             } else if (!_is_bond) {
                 // stock fund divs are qualified
@@ -283,8 +295,14 @@ Fund::GainDollars(std::string from_date, std::string to_date, int verbose, Gain 
             } else {
                 gain->_regular_divs += trans->_ex_div;
             }
-            gain->_short_term_dist += trans->_ex_st;
-            gain->_long_term_dist += trans->_ex_lt;
+
+            if (is_ira) {
+                gain->_ira_gains += trans->_ex_st + trans->_ex_lt;
+            } else {
+                gain->_short_term_dist += trans->_ex_st;
+                gain->_long_term_dist += trans->_ex_lt;
+            }
+
             if (verbose) {
                 printf("    adding trans date=%s type=%d pre_shares=%f "
                        "trans_shares=%f price=%f-%f ex_div=%f total_gain=%f\n",

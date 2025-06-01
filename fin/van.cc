@@ -32,18 +32,21 @@ main(int argc, char **argv) {
     setlocale(LC_NUMERIC, "");
 
     int32_t code = user.ParseOfx(cmd.GetOfxPath());
-
     if (code != 0) {
         printf("Parse failed with code=%d\n", code);
         return -1;
-    } else {
-        printf("Success loading profile.\n");
     }
 
     for(i=2; i < argc; i++) {
         if (strcmp(argv[i], "--prof") == 0) {
+            Profile *prof;
             std::string profile_name = std::string(argv[i+1]);
-            sel._profile = prof_user.FindProfile(profile_name);
+            prof = prof_user.FindProfile(profile_name);
+            if (prof == nullptr) {
+                printf("can't find profile '%s'\n", profile_name.c_str());
+                exit(1);
+            }
+            sel._profile = prof;
             ++i;
         } else if (strcmp(argv[i], "--from") == 0) {
             sel._from_date = std::string(argv[i+1]);
@@ -57,7 +60,15 @@ main(int argc, char **argv) {
             printf("unknown switch/operand '%s'\n", argv[i]);
             return -1;
         }
-   }
+    }
+
+    if (sel._profile == nullptr) {
+        sel._profile = prof_user.FindProfile("_all");
+        if (sel._profile == nullptr) {
+            printf("internal error -- no _all profile\n");
+            exit(1);
+        }
+    }
 
     if (sel._to_date.size() == 0) {
         // If we pick a date after which the market hasn't opened, we won't

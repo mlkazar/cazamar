@@ -153,18 +153,23 @@ public:
         }
     }
 
-    int32_t FutureDivs(int verbose, Gain *gains);
+    int32_t FutureDivs(int verbose, int is_ira, Gain *gains);
 
     int32_t GetPrice(std::string date, std::string symbol, double *price);
 
     int32_t ApplyToTrans(std::function<int32_t(Transaction *)>func);
 
-    int32_t GainDollars(std::string from_date, std::string to_date, int verbose, Gain *gain);
+    int32_t GainDollars(std::string from_date,
+                        std::string to_date,
+                        int verbose,
+                        int is_ira,
+                        Gain *gain);
 
     // Weighted by percent time a balance existed within a range.
     int32_t AvgBalance(std::string from_date,
                        std::string to_date,
                        int verbose,
+                       int is_ira,
                        double *balance);
 
 };

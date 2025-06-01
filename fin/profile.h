@@ -81,6 +81,10 @@ public:
         _is_ira = 0;
     }
 
+    int isIra() {
+        return _is_ira;
+    }
+
     ProfileUser *GetUser() {
         return _prof_user;
     }
