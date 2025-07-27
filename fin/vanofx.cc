@@ -475,7 +475,7 @@ User::ParseOfx(std::string file_name) {
                     // down, but this distribution is really a profit,
                     // so it needs to show up somewhere.
                     trans->_ex_lt = trans->_net_amount;
-                } else if (IsTranType(ttype, "Sell")) {
+                } else if (IsTranType(ttype, "Sell") || IsTranType(ttype, "Wire Out")) {
                     trans->_type = TRAN_SELL;
                 } else if (IsTranType(ttype, "Sweep out")) {
                     trans->_type = TRAN_SELL;
