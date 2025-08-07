@@ -89,7 +89,7 @@ class RpcContext : public CThread {
     RpcServer *_serverp;        /* back pointer to server */
     uint32_t _ageMs;            /* call age in milliseconds */
 
-    void getPeerAddr(uint32_t *ipAddrp);        /* in host order */
+    void getPeerAddr(uint32_t *ipAddrp, uint32_t *portp = 0);   /* in host order */
 
     RpcConn *getConn() {
         return _connp;
@@ -184,6 +184,10 @@ class RpcClientContext : public RpcContext {
         _failed = 0;
         _srLocked = 0;
         _counted = 0;
+    }
+
+    Rpc *getRpc() {
+        return _rpcp;
     }
 
     virtual ~RpcClientContext() {
@@ -505,7 +509,7 @@ class RpcConn : public CThread {
         _refCount++;
     }
 
-    void getPeerAddr(uint32_t *addrp);  /* in host order */
+    void getPeerAddr(uint32_t *addrp, uint32_t *port = 0);  /* in host order */
 
     int failedNL() {
         int connFailed;

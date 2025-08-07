@@ -640,19 +640,22 @@ RpcConn::checkShutdownNL() {
 }
 
 void
-RpcConn::getPeerAddr(uint32_t *ipAddrp)
+RpcConn::getPeerAddr(uint32_t *ipAddrp, uint32_t *portp)
 {
     uint32_t tempAddr;
     memcpy(&tempAddr, &_peerAddr.sin_addr.s_addr, sizeof(tempAddr));
     *ipAddrp = ntohl(tempAddr);
+    if (portp) {
+        *portp = ntohs(_peerAddr.sin_port);
+    }
 }
 
 /*================RpcContext================*/
 
 void
-RpcContext::getPeerAddr(uint32_t *ipAddrp)
+RpcContext::getPeerAddr(uint32_t *ipAddrp, uint32_t *portp)
 {
-    _connp->getPeerAddr(ipAddrp);
+    _connp->getPeerAddr(ipAddrp, portp);
 }
 
 /*================RpcSdr================*/
