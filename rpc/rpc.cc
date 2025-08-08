@@ -256,12 +256,16 @@ RpcConn::helper(void *contextp)
         _header.generateResponse(&_responseHeader);
 
         /* lookup the server involved */
-        _serverp = _rpcp->getServerById(&_header._serviceId);
-        if (!_serverp) {
-            releaseReceive();
-            _responseHeader._error = RpcHeader::_errBadService;
-            sendHeaderResponse(&_responseHeader);
-            continue;
+        if (!_isClient) {
+            _serverp = _rpcp->getServerById(&_header._serviceId);
+            if (!_serverp) {
+                releaseReceive();
+                _responseHeader._error = RpcHeader::_errBadService;
+                sendHeaderResponse(&_responseHeader);
+                continue;
+            }
+        } else {
+            osp_assert(_serverp != nullptr);
         }
 
         switch (_header._opcode) {
@@ -845,17 +849,22 @@ Rpc::addClientConn(struct sockaddr_in *destAddrp, RpcConn **connpp)
 }
 
 RpcServer *
-Rpc::addServer(RpcServer *serverp, uuid_t *serviceIdp)
+Rpc::addServer(RpcServer *aserverp, uuid_t *serviceIdp)
 {
+    RpcServer *serverp;
     _lock.take();
 
-    if (!serverp) {
+    if (!aserverp) {
         serverp = new RpcServer(this);
+    } else {
+        serverp = aserverp;
     }
 
     memcpy(&serverp->_serviceId, serviceIdp, sizeof(uuid_t));
 
-    _allServers.append(serverp);
+    if (aserverp != nullptr)
+        _allServers.append(serverp);
+
     _lock.release();
 
     return serverp;

@@ -190,7 +190,7 @@ class RpcClientContext : public RpcContext {
         return _rpcp;
     }
 
-    virtual ~RpcClientContext() {
+    ~RpcClientContext() {
         return;
     }
 
