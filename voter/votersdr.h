@@ -12,6 +12,69 @@ static const uint64_t VoterShortMs = 5000;
 // Give up on things with this period.
 static const uint64_t VoterLongMs = 20000;
 
+class VoterAddr {
+public:
+    uint32_t _ipAddr;   // in host order
+    uint32_t _port;     // in host order
+
+    VoterAddr() {
+        _ipAddr = 0;
+        _port = 0;
+    }
+
+    bool operator == (const VoterAddr &rhs) {
+        if (_ipAddr == rhs._ipAddr &&
+            _port == rhs._port)
+            return true;
+        else
+            return false;
+    }
+
+    bool operator < (const VoterAddr &rhs) {
+        if (_ipAddr < rhs._ipAddr)
+            return true;
+        else if (_ipAddr == rhs._ipAddr) {
+            if (_port < rhs._port)
+                return true;
+            else
+                return false;
+        } else {
+            return false;
+        }
+    }
+
+    bool operator > (const VoterAddr &rhs) {
+        if (_ipAddr > rhs._ipAddr)
+            return true;
+        else if (_ipAddr == rhs._ipAddr) {
+            if (_port > rhs._port)
+                return true;
+            else
+                return false;
+        } else {
+            return false;
+        }
+    }
+
+    bool operator != (const VoterAddr &rhs) {
+        return !((*this) == rhs);
+    }
+
+    bool operator <= (const VoterAddr &rhs) {
+        return (*this) == rhs || (*this) < rhs;
+    }
+
+    bool operator >= (const VoterAddr &rhs) {
+        return (*this) == rhs || (*this) > rhs;
+    }
+
+    int32_t marshal(Sdr *sdrp, int marshal) {
+        sdrp->copyLong(&_ipAddr, marshal);
+        sdrp->copyLong(&_port, marshal);
+        return 0;
+    }
+};
+
 // One for Proposed vote and one for Committed.
 class VoterData : public SdrSerialize{
 public:
@@ -97,6 +160,7 @@ class VoterPingCall : public SdrSerialize  {
  public:
     static const uint32_t _opcode = 1;
 
+    VoterAddr _callingAddr;
     VoterData _callData;
 
     VoterPingCall() {
@@ -104,6 +168,7 @@ class VoterPingCall : public SdrSerialize  {
     }
 
     int32_t marshal(Sdr *sdrp, int marshal) {
+        _callingAddr.marshal(sdrp, marshal);
         _callData.marshal(sdrp, marshal);
         return 0;
     }

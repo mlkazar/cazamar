@@ -11,63 +11,6 @@
 
 class Voter;
 
-class VoterAddr {
-public:
-    uint32_t _ipAddr;   // in host order
-    uint32_t _port;     // in host order
-
-    VoterAddr() {
-        _ipAddr = 0;
-        _port = 0;
-    }
-
-    bool operator == (const VoterAddr &rhs) {
-        if (_ipAddr == rhs._ipAddr &&
-            _port == rhs._port)
-            return true;
-        else
-            return false;
-    }
-
-    bool operator < (const VoterAddr &rhs) {
-        if (_ipAddr < rhs._ipAddr)
-            return true;
-        else if (_ipAddr == rhs._ipAddr) {
-            if (_port < rhs._port)
-                return true;
-            else
-                return false;
-        } else {
-            return false;
-        }
-    }
-
-    bool operator > (const VoterAddr &rhs) {
-        if (_ipAddr > rhs._ipAddr)
-            return true;
-        else if (_ipAddr == rhs._ipAddr) {
-            if (_port > rhs._port)
-                return true;
-            else
-                return false;
-        } else {
-            return false;
-        }
-    }
-
-    bool operator != (const VoterAddr &rhs) {
-        return !((*this) == rhs);
-    }
-
-    bool operator <= (const VoterAddr &rhs) {
-        return (*this) == rhs || (*this) < rhs;
-    }
-
-    bool operator >= (const VoterAddr &rhs) {
-        return (*this) == rhs || (*this) > rhs;
-    }
-};
-
 class VoterPeer {
 public:
     VoterAddr _addr;
@@ -99,11 +42,13 @@ class VoterServer : public RpcServer {
         VoterServerContext(Voter *voterp) {
             _voterp = voterp;
         }
+
     };
 
     RpcServerContext *getContext(uint32_t opcode) {
         VoterServerContext *sp;
 
+        printf("===in getservercontext opcode=%d\n", opcode);
         if (opcode != 1) {
             printf("RpcTest: bad opcode received, op=%d\n", opcode);
             return NULL;
@@ -131,6 +76,9 @@ public:
     VoterData _pushState;
     bool _elected;
 
+    // My own address for listening socket.
+    VoterAddr _localAddr;
+
     // State last received from a valid master, including ourselves
     // when we're collecting votes.
     VoterData _recvdState;
@@ -148,7 +96,7 @@ public:
 
     int32_t setPeers(VoterAddr *addrs, uint32_t addrCount, VoterAddr &localAddr);
 
-    void *collectVotes();
+    void collectVotes(void *cxp);
 
     void collectVotesWork();
 

@@ -51,22 +51,31 @@ Voter::getMyAddr() {
 
 int32_t
 Voter::init(int32_t port) {
-    VoterAddr localAddr;
     RpcConn *connp;
+    RpcServer *serverp;
 
-    localAddr._ipAddr = getMyAddr();
-    localAddr._port = port;
+    _localAddr._ipAddr = getMyAddr();
+    _localAddr._port = port;
 
     // _rpcp is set by constructor
 
     _peerCount = 0;
-    for(auto x : _peers) {
+    for(auto &x : _peers) {
+        uuid_t serviceId;
+        Rpc::uuidFromLongId(&serviceId, 7);
+        serverp = _rpcp->addServer(NULL, &serviceId);
+
         struct sockaddr_in destAddr;
 
         destAddr.sin_family = AF_INET;
         destAddr.sin_addr.s_addr = htonl(x._addr._ipAddr);
         destAddr.sin_port = htons(x._addr._port);
         (void) _rpcp->addClientConn(&destAddr, &connp);
+
+        // Associate the two; the server holds a queue of calls, and
+        // also provides the service ID for the connection.
+        connp->setServer(serverp);
+
         x._connp = connp;
         _peerCount++;
     }
@@ -89,20 +98,18 @@ Voter::init(int32_t port) {
 
     /* create an endpoint for the server */
     RpcListener *listenerp = new RpcListener();
-    listenerp->init(_rpcp, voterServerp, 7711);
+    listenerp->init(_rpcp, voterServerp, port);
 
     return 0;
 }
 
-void *
-Voter::collectVotes() {
+void
+Voter::collectVotes(void *contextp) {
     while(true) {
         collectVotesWork();
 
         sleep(VoterShortMs/1000);
     }
-
-    return nullptr;
 }
 
 void
@@ -111,19 +118,26 @@ Voter::collectVotesWork() {
     uint64_t now = osp_time_ms();
     if (now - _bestEpochMs < VoterLongMs) {
         // Best guy is still better than us.
+        printf("collectVotes skipping now=%lld bestEpochMs=%lld\n", now, _bestEpochMs);
         return;
     }
 
     for(auto &x : _peers) {
         VoterPingCall pingCall;
         VoterPingResp pingResp;
+
         pingCall._callData = _pushState;
+        pingCall._callingAddr = _localAddr;
 
         RpcSdr *sendSdrp;
         RpcSdr *recvSdrp;
         int32_t code;
 
+        printf("collectVotes calling with counter=%d committed=%d\n",
+               pingCall._callData._counter, pingCall._callData._committed);
+
         code = makeCall(x._connp, /* opcode */ VoterPingCall::_opcode, &sendSdrp, &recvSdrp);
+        printf("===client back from call with code=%d\n", code);
         if (code) {
             printf("call failed with code=%d\n", code);
             continue;
@@ -143,6 +157,10 @@ Voter::collectVotesWork() {
         x._lastRespMs = osp_time_ms();
 
         finishCall();
+
+        printf("rcvd pingResp error=%d counter=%d commited=%d\n",
+               pingResp._error, pingResp._responseData._counter,
+               pingResp._responseData._committed);
     }
 
     // First, if a majority of the responses indicate peers in the
@@ -200,7 +218,7 @@ int32_t
 Voter::handlePing(VoterAddr *remoteAddrp, VoterPingCall *callp, VoterPingResp *resp) {
     VoterList::iterator it;
     for(it = _peers.begin(); it != _peers.end(); ++it) {
-        if (it->_addr == *remoteAddrp) {
+        if (it->_addr == callp->_callingAddr) {
             break;
         }
     }
@@ -238,6 +256,8 @@ VoterServer::VoterServerContext::serverMethod(RpcServer *serverp, Sdr *inDatap, 
     VoterPingCall pingCall;
     VoterPingResp pingResp;
     int32_t code;
+
+    printf("== in server method\n");
 
     // Unmarshal the incoming data
     pingCall.marshal(inDatap, /* !marshal */ 0);

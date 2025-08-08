@@ -30,15 +30,16 @@ main(int argc, char **argv) {
     }
     port = atoi(argv[1]);
     
+    myAddr._ipAddr = Voter::getMyAddr();        // port will be filled in below.
+
     for(uint32_t i=0; i<portCount; i++) {
         if (i >= maxPorts)
             break;
-        voterAddrs[i]._ipAddr = 0x7f000001;
+        voterAddrs[i]._ipAddr = myAddr._ipAddr;
         voterAddrs[i]._port = port++;
     }
     printf("Starting %d voters\n", portCount);
 
-    myAddr._ipAddr = Voter::getMyAddr();
     for(uint32_t i=0;i<portCount;i++) {
         votersp[i] = tvp = new Voter();
         myAddr._port = voterAddrs[i]._port;

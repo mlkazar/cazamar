@@ -21,7 +21,9 @@ ifeq ($(OS),Linux)
 CXXFLAGS += -Wno-sign-compare -Wno-unused-but-set-variable
 endif
 
-INCLS=voter.h ../incl/rpc.h
+INCLS=voter.h ../include/rpc.h
+
+voter.o: ${INCLS} voter.cc
 
 libvoter.a: voter.o
 	ar cru libvoter.a voter.o
