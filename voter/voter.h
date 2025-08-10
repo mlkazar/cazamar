@@ -79,10 +79,6 @@ public:
     // My own address for listening socket.
     VoterAddr _localAddr;
 
-    // State last received from a valid master, including ourselves
-    // when we're collecting votes.
-    VoterData _recvdState;
-
     // Track when we hear someone better, and don't send Pings until
     // they've expired.
     uint64_t _bestEpochMs;      // latest time from this epoch
@@ -105,6 +101,7 @@ public:
     static uint32_t getMyAddr();
 
     Voter() : RpcClientContext(new Rpc()) {
+        _pushState.generate();
         _rpcp = getRpc();       // from subclass
         _rpcp->init();
 

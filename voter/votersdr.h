@@ -7,10 +7,10 @@
 #include "sdr.h"
 
 // Try things this frequently
-static const uint64_t VoterShortMs = 5000;
+static const uint64_t VoterShortMs = 2000;
 
 // Give up on things with this period.
-static const uint64_t VoterLongMs = 20000;
+static const uint64_t VoterLongMs = 6000;
 
 class VoterAddr {
 public:
@@ -83,7 +83,7 @@ public:
     uint8_t _committed;
 
     VoterData() {
-        memset(&_epochId, 0, sizeof(_epochId));
+        uuid_clear(_epochId);
         _counter = 0;
         _committed = 0;
     }
@@ -92,6 +92,15 @@ public:
         uuid_generate(_epochId);
         _counter = 8;
         _committed = 0;
+    }
+
+    void clear() {
+        uuid_clear(_epochId);
+        _counter = 0;
+    }
+
+    void setCommitted(bool value = true) {
+        _committed = value;
     }
 
     int32_t marshal(Sdr *sdrp, int marshal) {
@@ -184,6 +193,7 @@ class VoterPingResp : public SdrSerialize  {
     }
 
     int32_t marshal(Sdr *sdrp, int marshal) {
+        sdrp->copyLong((uint32_t *) &_error, marshal);
         _responseData.marshal(sdrp, marshal);
         return 0;
     }

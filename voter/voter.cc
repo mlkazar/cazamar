@@ -84,8 +84,8 @@ Voter::init(int32_t port) {
     // Values like 4 go to 3, values like 3 go to 2.
     _requiredCount = (_peerCount)/2 + 1;
 
-    _bestEpoch.generate();
-    _bestEpochMs = osp_time_ms();
+    _bestEpoch.clear();
+    _bestEpochMs = 0;
 
     _collectorThreadp = new CThreadHandle();
     _collectorThreadp->init((CThread::StartMethod) &Voter::collectVotes, this, NULL);
@@ -115,13 +115,23 @@ Voter::collectVotes(void *contextp) {
 void
 Voter::collectVotesWork() {
     // If someone else is ahead of us
+    printf("\nStarting a new ping collection\n");
     uint64_t now = osp_time_ms();
-    if (now - _bestEpochMs < VoterLongMs) {
-        // Best guy is still better than us.
-        printf("collectVotes skipping now=%lld bestEpochMs=%lld\n", now, _bestEpochMs);
+
+    {
+        char estr[64];
+        uuid_unparse(_bestEpoch._epochId, estr);
+        printf("port %d best value is %d.%s, %lld ms old\n",
+               _localAddr._port, _bestEpoch._counter, estr, osp_time_ms() - _bestEpochMs);
+    }
+
+    if (_bestEpoch > _pushState && now - _bestEpochMs < VoterLongMs) {
+        printf("port %d abandoning vote collection due to superior candidate\n",
+               _localAddr._port);
         return;
     }
 
+    // See if we're best by advertising ourselves.
     for(auto &x : _peers) {
         VoterPingCall pingCall;
         VoterPingResp pingResp;
@@ -158,59 +168,50 @@ Voter::collectVotesWork() {
 
         finishCall();
 
-        printf("rcvd pingResp error=%d counter=%d commited=%d\n",
-               pingResp._error, pingResp._responseData._counter,
-               pingResp._responseData._committed);
-    }
+        if (x._peerState > _bestEpoch) {
+            _bestEpoch = x._peerState;
+            _bestEpochMs = osp_time_ms();
+        }
 
-    // First, if a majority of the responses indicate peers in the
-    // committed state (possibly including our own state), all with the
-    // same paxosCounter, then we just adopt that consensus.
+        {
+            char uuidStr[64];
+            char uuidSelf[64];
+            uuid_unparse(_pushState._epochId, uuidSelf);
+            uuid_unparse(pingResp._responseData._epochId, uuidStr);
+            printf("= node %d->%d %s.%d rcvd pingResp error=%d id==%s.%d commited=%d\n",
+                   _localAddr._port,
+                   x._addr._port,
+                   uuidSelf,
+                   _pushState._counter,
+                   pingResp._error,
+                   uuidStr,
+                   pingResp._responseData._counter,
+                   pingResp._responseData._committed);
+        }
+    } // calls done.
+
+    // When we're collecting votes, we're really just looking to see if we
+    // can move to committed state.
     uint32_t preparedCount = 0;
     for(auto &x : _peers) {
         uint64_t now = osp_time_ms();
         if (now - x._lastRespMs > VoterLongMs) {
             // This peer isn't responding so skip counting it.
+            continue;
         }
 
-        // See if we should stop sending requests because someone proposing a
-        // better epoch responded recently.
-        if (x._peerState > _pushState) {
-            if (x._peerState > _bestEpoch) {
-                _bestEpoch = x._peerState;
-                _bestEpochMs = x._lastRespMs;
-            } else if (x._peerState == _bestEpoch) {
-                // Update _bestEpochMs
-                if (x._lastRespMs > _bestEpochMs) {
-                    _bestEpochMs = x._lastRespMs;
-                }
-            }
+        if (x._peerState == _pushState) {
+            preparedCount++;
         }
+    }  // scan of results
 
-        if (_pushState._committed) {
-            // We're trying to send commits to everyone
-            if (x._peerState  == _pushState) {
-                // This is a valid response
-                if (x._peerState._committed) {
-                    preparedCount++;
-                    x._inQuorum = true;
-                } else
-                    printf("got uncommitted response from a prepared node\n");
-            }
-        } else {
-            // We're sending prepares to everyone;
-            if (x._peerState  == _pushState) {
-                // This is a valid response
-                preparedCount++;
-            } else {
-                // We might be seeing someone who's already doing commits,
-                // in which case we check
-            }
-        }
-    }
-
-    if (preparedCount >= _requiredCount && _pushState._committed) {
-        _elected = true;
+    if (preparedCount >= _requiredCount ) {
+        // The elected state is set only if we pushed committed
+        // messages to everyone; this means that everyone knows we're
+        // the primary.
+        if (_pushState._committed)
+            _elected = true;
+        _pushState.setCommitted(true);
     }
 }
 
@@ -224,27 +225,44 @@ Voter::handlePing(VoterAddr *remoteAddrp, VoterPingCall *callp, VoterPingResp *r
     }
 
     if (it == _peers.end()) {
+        printf("Ping received by %d can't find peer\n", _localAddr._port);
         return -1;
+    }
+
+    {
+        char estr[64];
+        uuid_unparse(callp->_callData._epochId, estr);
+        printf("Ping received by %d %d.%s\n", _localAddr._port,
+               callp->_callData._counter, estr);
     }
 
     // we've found the peer calling us.  See if we can adopt the information
     // stored within
 
-    if (callp->_callData == it->_peerState) {
-        // Received a duplicate incoming call.  Update last contact time
-        // and record commit flag
-        it->_lastCallMs = osp_time_ms();
-        if (callp->_callData._committed)
-            it->_peerState._committed = true;
-    } else if (callp->_callData > it->_peerState) {
-        // New data
-        it->_lastCallMs = osp_time_ms();
-        it->_peerState = callp->_callData;
+    // Update the received status
+    it->_peerState = callp->_callData;
+    it->_lastCallMs = osp_time_ms();
+
+    // Figure out the response: we respond with the best epoch we
+    // found.  That's either the caller, or our own epoch.
+    if (it->_peerState >= _pushState) {
+        resp->_responseData = it->_peerState;
+    } else if (it->_peerState._committed && !_pushState._committed) {
+        // caller is committed, and we're not, so don't disturb the
+        // consensus.
+        resp->_responseData = it->_peerState;
     } else {
-        // We're going to reject this update.
+        resp->_responseData = _pushState;
     }
 
-    resp->_responseData = it->_peerState;
+    // If this is an advertisement of a better epoch, use it.
+    if (callp->_callData > _bestEpoch) {
+        _bestEpoch = callp->_callData;
+    }
+
+    // and keep track of how good old the bestEpoch is.
+    if (callp->_callData == _bestEpoch)
+        _bestEpochMs = osp_time_ms();
 
     return 0;
 }
