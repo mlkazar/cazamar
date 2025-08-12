@@ -419,6 +419,7 @@ class RpcConn : public CThread {
     uint8_t _connected;
     uint8_t _connecting;
     uint32_t _activeClientCalls;
+    uint32_t _hardTimeoutMs;
     CThreadCV _openCV;
 
     Rpc *_rpcp;
@@ -487,6 +488,7 @@ class RpcConn : public CThread {
         _connected = 0;
         _connecting = 0;
         _activeClientCalls = 0;
+        _hardTimeoutMs = 60000;
 
         rpcp->_lock.take();
         rpcp->_allConns.append(this);
@@ -532,6 +534,10 @@ class RpcConn : public CThread {
     }
 
     void checkShutdownNL();
+
+    void setHardTimeout(uint32_t ms) {
+        _hardTimeoutMs = ms;
+    }
 
     void releaseNL() {
         osp_assert(_refCount > 0);

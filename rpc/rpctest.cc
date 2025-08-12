@@ -10,13 +10,26 @@
 class TestServer : public RpcServer {
 
  public:
+    bool _testTimeout;
+    uint32_t _counter;
+
     class TestServerContext : public RpcServerContext {
+        bool _testTimeout;
+        uint32_t *_counterp;
+
         int32_t serverMethod(RpcServer *serverp, Sdr *inDatap, Sdr *outDatap) {
             uint32_t value;
 
             inDatap->copyLong(&value, 0);
 
             getConn()->reverseConn();
+
+            if (_testTimeout) {
+                if ((((*_counterp)++) & 3) == 2) {
+                    printf("Call stalling to test timeouts, count=%d\n", *_counterp);
+                    sleep(4);
+                }
+            }
 
             value++;
             outDatap->copyLong(&value, 1);
@@ -25,7 +38,10 @@ class TestServer : public RpcServer {
         }
 
     public:
-        TestServerContext() {}
+        TestServerContext(bool testTimeout, uint32_t *counterp) {
+            _testTimeout = testTimeout;
+            _counterp = counterp;
+        }
     };
 
     RpcServerContext *getContext(uint32_t opcode) {
@@ -35,12 +51,15 @@ class TestServer : public RpcServer {
             printf("RpcTest: bad opcode received, op=%d\n", opcode);
             return NULL;
         }
-        sp = new TestServerContext();
+        sp = new TestServerContext(_testTimeout, &_counter);
         return sp;
     }
 
 public:
-    TestServer(Rpc *rpcp) : RpcServer(rpcp) {}
+    TestServer(Rpc *rpcp, bool testTimeout) : RpcServer(rpcp) {
+        _testTimeout = testTimeout;
+        _counter = 0;
+    }
 };
 
 class TestClientContext : public RpcClientContext {
@@ -108,20 +127,27 @@ main(int argc, char **argv)
     Rpc *rpcp;
     RpcListener *listenerp;
     uuid_t serviceId;
+    bool testTimeout = false;
 
     rpcp = new Rpc();
 
     rpcp->init();
 
     if (argc < 2) {
-        printf("RpcTest: usage: rpctest <c|s>\n");
+        printf("RpcTest: usage: rpctest <c|s> [switches]\n");
+        printf("-t -- test timeout by having half the calls wait 5 seconds\n");
         return -1;
+    }
+
+    for(uint32_t i=2; i<argc; i++) {
+        if (strcmp(argv[i], "-t") == 0)
+            testTimeout = 1;
     }
 
     if (strcmp(argv[1], "s") == 0) {
         /* create a service */
         Rpc::uuidFromLongId(&serviceId, 7);
-        testServerp = new TestServer(rpcp);
+        testServerp = new TestServer(rpcp, testTimeout);
         rpcp->addServer(testServerp, &serviceId);
 
         /* create an endpoint for the server */
@@ -154,6 +180,9 @@ main(int argc, char **argv)
 
         /* bind conn to the server */
         connp->setServer(serverp);
+
+        // set hard timeout on calls to 2 seconds.
+        connp->setHardTimeout(2000);
 
         /* make a client call */
         cp = new TestClientContext(rpcp, connp, (char *) "a");

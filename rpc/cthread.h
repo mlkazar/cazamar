@@ -2,6 +2,7 @@
 #define __CTHREAD_H_ENV__ 1
 
 #include <pthread.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -120,6 +121,30 @@ class CThreadCV {
         _mutexp->_ownerId = me;
         if (code)
             printf("cond wait code=%d\n", code);
+    }
+
+    int timedWait(uint32_t ms) {
+        struct timeval tv;
+        struct timespec ts;
+        uint64_t me = CThread::self();
+
+        // compute abstime with nanosecond field for timedwait call.
+        // This is the expiration time for the wait.
+        gettimeofday(&tv, NULL);
+        ts.tv_sec = tv.tv_sec + ms/1000;
+        ts.tv_nsec = tv.tv_usec * 1000 + (ms % 1000) * 1000000;
+        if (ts.tv_nsec > 1000000000) {
+            ts.tv_sec++;
+            ts.tv_nsec -= 1000000000;
+        }
+
+        // Now do the wait
+        osp_assert(_mutexp->_ownerId == me);
+        _mutexp->_ownerId = 0;
+        int32_t code = pthread_cond_timedwait(&_pthreadCV, _mutexp->getPthreadMutex(), &ts);
+        _mutexp->_ownerId = me;
+
+        return code;
     }
 
     void broadcast();

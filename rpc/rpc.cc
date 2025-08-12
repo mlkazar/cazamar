@@ -1052,10 +1052,16 @@ RpcClientContext::getResponse()
     _connp->releaseSendNL();
     _srLocked = 0;
 
+    uint32_t callStartMs = osp_time_ms();
     while (!_haveResponse) {
+        int32_t remainingMs = osp_time_ms() + _connp->_hardTimeoutMs - callStartMs;
+        if (remainingMs <= 0) {
+            _failed = 1;
+            break;
+        }
         /* can't assert !_waitingForResponse, since we may get spurious wakeups */
         _waitingForResponse = 1;
-        _recvResponseCV.wait();
+        _recvResponseCV.timedWait(remainingMs);
     }
 
     /* once waitForResponse is off, the receive owner has been set to us.  If we succeed,
