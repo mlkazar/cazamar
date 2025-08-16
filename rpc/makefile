@@ -1,11 +1,11 @@
-all: librpc.a libext.a libcore.a rpctest jsontest xgmltest cdisptest timertest jsonprinter
+all: librpc.a libext.a libcore.a rpctest jsontest xgmltest cdisptest timertest jsonprinter rpcshutdowntest
 
 install: all
 	cp *.a ../lib
 	cp *.h ../include
 
 clean:
-	rm -f *.o *.a rpctest jsontest xgmltest cdisptest timertest jsonprinter
+	rm -f *.o *.a rpctest jsontest xgmltest cdisptest timertest jsonprinter rpcshutdowntest
 
 OS=$(shell uname -s)
 
@@ -53,6 +53,8 @@ restcall.o: restcall.cc $(INCLS)
 
 rpctest.o: rpctest.cc $(INCLS)
 
+rpcshutdowntest.o: rpcshutdowntest.cc $(INCLS)
+
 libext.a: sdr.o xgml.o json.o
 	ar cru libext.a sdr.o xgml.o json.o
 	ranlib libext.a
@@ -67,6 +69,9 @@ librpc.a: rpc.o restcall.o
 
 rpctest: rpctest.o librpc.a libext.a libcore.a
 	c++ $(OSXVERSION) -o rpctest rpctest.o librpc.a libext.a libcore.a -lpthread
+
+rpcshutdowntest: rpcshutdowntest.o librpc.a libext.a libcore.a
+	c++ $(OSXVERSION) -o rpcshutdowntest rpcshutdowntest.o librpc.a libext.a libcore.a -lpthread
 
 cdisptest: cdisptest.o libcore.a
 	c++ $(OSXVERSION) -o cdisptest cdisptest.o libcore.a -lpthread

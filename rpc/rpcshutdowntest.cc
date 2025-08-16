@@ -48,7 +48,7 @@ class TestServer : public RpcServer {
         TestServerContext *sp;
 
         if (opcode != 3) {
-            printf("RpcTest: bad opcode received, op=%d\n", opcode);
+            printf("RpcShutDownTest: bad opcode received, op=%d\n", opcode);
             return NULL;
         }
         sp = new TestServerContext(_testTimeout, &_counter);
@@ -80,11 +80,13 @@ class TestClientContext : public RpcClientContext {
         uint32_t newValue;
         uint32_t count=0;
 
+        printf("RpcShutDownTest: In client\n");
+        
         while(1) {
             /* make the call (makeCall / getResponse / finishCall) */
             code = makeCall(_connp, /* opcode */ 3, &sendSdrp, &recvSdrp);
             if (code) {
-                printf("RpcTest: makecall fail %d\n", code);
+                printf("RpcShutDownTest: makecall fail %d\n", code);
                 sleep(1);
                 continue;
             }
@@ -94,7 +96,7 @@ class TestClientContext : public RpcClientContext {
 
             code = getResponse();
             if (code) {
-                printf("RpcTest: call response=%d\n", code);
+                printf("RpcShutDownTest: call response=%d\n", code);
                 sleep(1);
                 continue;
             }
@@ -104,10 +106,10 @@ class TestClientContext : public RpcClientContext {
             finishCall();
 
             if (oldValue + 1 != newValue)
-                printf("RpcTest: call bad value code=%d oldValue=%d newValue=%d\n\n",
+                printf("RpcShutDownTest: call bad value code=%d oldValue=%d newValue=%d\n\n",
                        code, oldValue, newValue);
-            if ( (++count % 100) == 0)
-                printf("RpcTest: '%s' count=%d\n", _tagp, count);
+            if ( (++count % 4000) == 0)
+                printf("RpcShutDownTest: '%s' count=%d\n", _tagp, count);
         }
     }
 
@@ -122,40 +124,46 @@ int
 main(int argc, char **argv)
 {
     TestServer *testServerp;
-    Rpc *rpcp;
+    Rpc *rpcServerp;
+    Rpc *rpcClientp;
     RpcListener *listenerp;
     uuid_t serviceId;
     bool testTimeout = false;
+    uint32_t basePort;
 
-    rpcp = new Rpc();
-    rpcp->init();
+    rpcServerp = new Rpc();
+    rpcServerp->init();
+    printf("Server RPC %p\n", rpcServerp);
+
+    rpcClientp = new Rpc();
+    rpcClientp->init();
+    printf("Client RPC %p\n", rpcClientp);
 
     if (argc < 2) {
-        printf("RpcTest: usage: rpctest <c|s> [switches]\n");
+        printf("RpcShutDownTest: usage: rpcshutdowntest port\n");
         printf("-t -- test timeout by having half the calls wait 5 seconds\n");
         return -1;
     }
+
+    basePort = atoi(argv[1]);
 
     for(uint32_t i=2; i<argc; i++) {
         if (strcmp(argv[i], "-t") == 0)
             testTimeout = 1;
     }
 
-    if (strcmp(argv[1], "s") == 0) {
+    {
         /* create a service */
         Rpc::uuidFromLongId(&serviceId, 7);
-        testServerp = new TestServer(rpcp, testTimeout);
-        rpcp->addServer(testServerp, &serviceId);
+        testServerp = new TestServer(rpcServerp, testTimeout);
+        rpcServerp->addServer(testServerp, &serviceId);
 
         /* create an endpoint for the server */
         listenerp = new RpcListener();
-        listenerp->init(rpcp, testServerp, 7711);
-
-        while(1) {
-            sleep(1);
-        }
+        listenerp->init(rpcServerp, testServerp, basePort);
     }
-    else {
+
+    {
         TestClientContext *cp;
         RpcServer *serverp;
         struct sockaddr_in destAddr;
@@ -164,14 +172,14 @@ main(int argc, char **argv)
 
         /* create a server */
         Rpc::uuidFromLongId(&serviceId, 7);
-        serverp = rpcp->addServer(NULL, &serviceId);
+        serverp = rpcClientp->addServer(NULL, &serviceId);
 
         /* open a conn to the target */
         destAddr.sin_family = AF_INET;
         destAddr.sin_addr.s_addr = htonl(0x7f000001);
-        destAddr.sin_port = htons(7711);
-        code = rpcp->addClientConn(&destAddr, &connp);
-        printf("RpcTest: addclientconn code=%d\n", code);
+        destAddr.sin_port = htons(basePort);
+        code = rpcClientp->addClientConn(&destAddr, &connp);
+        printf("RpcShutdownTest: addclientconn code=%d\n", code);
         if (code)
             return code;
 
@@ -182,18 +190,21 @@ main(int argc, char **argv)
         connp->setHardTimeout(2000);
 
         /* make a client call */
-        cp = new TestClientContext(rpcp, connp, (char *) "a");
+        cp = new TestClientContext(rpcClientp, connp, (char *) "a");
         cp->init();
-        printf("RpcTest: Back from client call\n");
+        printf("RpcShutDownTest: Back from client call\n");
 
-        cp = new TestClientContext(rpcp, connp, (char *) "b");
+        cp = new TestClientContext(rpcClientp, connp, (char *) "b");
         cp->init();
-        printf("RpcTest: Back from client call\n");
-
-        while(1) {
-            sleep(1);
-        }
+        printf("RpcShutDownTest: Back from client call\n");
     }
+
+    printf("Running for 4 seconds before shutdown\n");
+    sleep(4);
+    printf("Shutting down server\n");
+
+    rpcServerp->shutdown();
+    printf("Back from server shutdown\n");
 
     return 0;
 }

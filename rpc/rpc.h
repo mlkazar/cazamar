@@ -113,6 +113,13 @@ class RpcContext : public CThread {
  * for each server that needs to receive requests..
  */
 class Rpc {
+    friend class RpcConn;
+
+    bool _shuttingDown;
+    bool _shutdown;
+    uint32_t _runningThreads;
+    CThreadCV _shutdownCV;
+
  public:
     CThreadMutex _lock;
 
@@ -134,6 +141,36 @@ class Rpc {
     int32_t addClientConn(struct sockaddr_in *destAddrp, RpcConn **conpp);
 
     RpcServer *getServerById(uuid_t *idp);
+
+    Rpc() : _shutdownCV(&_lock) {
+        _shuttingDown = false;
+        _shutdown = false;
+        _runningThreads = 0;
+    }
+
+    void newThreadCreated();
+
+    bool checkThreadMustExit() {
+        bool result;
+
+        _lock.take();
+        result = checkThreadMustExitNL();
+        _lock.release();
+
+        return result;
+    }
+
+    bool checkThreadMustExitNL();
+
+    void threadExiting(const char *whop) {
+        _lock.take();
+        threadExitingNL(whop);
+        _lock.release();
+    }
+
+    void threadExitingNL(const char *whop);
+
+    void shutdown();
 };
 
 /* this gets subclassed for every server method */
@@ -540,6 +577,7 @@ class RpcConn : public CThread {
     }
 
     void releaseNL() {
+        printf("conn %p release old refct=%d\n", this, _refCount);
         osp_assert(_refCount > 0);
 
         checkShutdownNL();
@@ -570,7 +608,7 @@ class RpcConn : public CThread {
 
     void waitForSendNL(RpcContext *contextp);
 
-    void waitForReceiveNL(RpcContext *contextp);
+    int32_t waitForReceiveNL(RpcContext *contextp);
 
     void releaseReceiveNL();
 
@@ -592,10 +630,13 @@ class RpcConn : public CThread {
 
     void terminate(const char *whyp);
 
-    void waitForReceive(RpcContext *contextp) {
+    int32_t waitForReceive(RpcContext *contextp) {
+        int32_t code;
         _rpcp->_lock.take();
-        waitForReceiveNL(contextp);
+        code = waitForReceiveNL(contextp);
         _rpcp->_lock.release();
+
+        return code;
     }
 
     void exchangeReceiveOwnerNL(RpcContext *serverContextp) {

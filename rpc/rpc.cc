@@ -13,6 +13,7 @@ RpcListener::init(Rpc *rpcp, RpcServer *serverp, uint16_t v4Port)
     _serverp = serverp;
     _v4Port = v4Port;
 
+    _rpcp->newThreadCreated();
     _listenerThreadp = new CThreadHandle();
     _listenerThreadp->init((CThread::StartMethod) &RpcListener::listen, this, NULL);
 }
@@ -62,6 +63,25 @@ RpcListener::listen(void *contextp)
         struct sockaddr taddr;
         socklen_t taddrLen;
 
+        struct pollfd pollFd;
+        pollFd.fd = _listenSocket;
+        pollFd.events = POLLIN;
+        pollFd.revents = 0;
+
+        code = ::poll(&pollFd, 1, /* wait for a second */ 1000);
+
+        if (_rpcp->checkThreadMustExit()) {
+            if (_listenSocket >= 0) {
+                ::close(_listenSocket);
+                _listenSocket = -1;
+            }
+            _rpcp->threadExiting("listener");
+            return;
+        }
+
+        if (code == 0)
+            continue;
+
         newFd = accept(_listenSocket, (struct sockaddr *) &taddr, &taddrLen);
         if (newFd < 0) {
             printf("Rpc: listener accept failed %d\n", errno);
@@ -95,6 +115,7 @@ RpcConn::initBase()
 void
 RpcConn::initServer(int fd) {
     initBase();
+    printf("server conn=%p\n", this);
     int32_t code;
     uint32_t peerNameSize;
     int opt;
@@ -118,10 +139,12 @@ RpcConn::initServer(int fd) {
      */
     _refCount = 2;
 
+    _rpcp->newThreadCreated();
     _listenerDone = 0;
     _listenerThreadp = new CThreadHandle();
     _listenerThreadp->init((CThread::StartMethod) &RpcConn::listenFd, this, NULL);
 
+    _rpcp->newThreadCreated();
     _helperDone = 0;
     _helperThreadp = new CThreadHandle();
     _helperThreadp->init((CThread::StartMethod) &RpcConn::helper, this, NULL);
@@ -129,6 +152,7 @@ RpcConn::initServer(int fd) {
 
 void
 RpcConn::initClient() {
+    printf("client conn=%p\n", this);
     initBase();
 
     _isClient = 1;
@@ -173,6 +197,7 @@ RpcConn::sendData(RpcSdr *sdrp, void *cxp)
 /* called with the RPC lock held */
 RpcConn::~RpcConn()
 {
+    printf("Conn deleted %p client=%d\n", this, _isClient);
     _rpcp->_allConns.remove(this);
 }
 
@@ -197,7 +222,7 @@ RpcConn::listenFd(void *contextp)
         pollFd.events = POLLIN;
         pollFd.revents = 0;
 
-        code = ::poll(&pollFd, 1, /* wait forever */ -1);
+        code = ::poll(&pollFd, 1, /* wait for a second */ 1000);
         if (code < 0) {
             /* failed */
             printf("poll terminate fd=%d\n", fd);
@@ -205,7 +230,14 @@ RpcConn::listenFd(void *contextp)
             return;
         }
 
-        osp_assert(code != 0);
+        if (_rpcp->checkThreadMustExit()) {
+            _rpcp->threadExiting("data listener");
+            return;
+        }
+
+        if (code == 0) {
+            continue;
+        }
 
         code = (int32_t) ::read(fd, &tbuffer, sizeof(tbuffer));
         if (code <= 0) {
@@ -233,15 +265,23 @@ RpcConn::helper(void *contextp)
     int32_t code;
     uint32_t opcode;
 
+    printf("helper thread starts for rpc=%p\n", _rpcp);
     while(1) {
         /* wait for lock allowing reading an entire packet from the socket */
-        waitForReceive(&_anonContext);
+        code = waitForReceive(&_anonContext);
+        if (code != 0) {
+            // we should exit
+            helperDone("aborted");
+            _rpcp->threadExitingNL("helper 1");
+            return;
+        }
 
         /* unmarshal a header's worth of data; terminate socket on failure */
         code = _header.marshal(&_receiveChain, /* unmarshal */ 0);
         if (code) {
             releaseReceive();
             helperDone("bad receive");
+            _rpcp->threadExitingNL("helper 2");
             return;
         }
 
@@ -249,6 +289,7 @@ RpcConn::helper(void *contextp)
         if (_header._version != RpcHeader::_currentVersion) {
             releaseReceive();
             helperDone("bad version");
+            _rpcp->threadExitingNL("helper 3");
             return;
         }
 
@@ -275,6 +316,7 @@ RpcConn::helper(void *contextp)
                 if (code) {
                     releaseReceive();
                     helperDone("no opcode");
+                    _rpcp->threadExitingNL("helper 4");
                     return;
                 }
 
@@ -285,6 +327,7 @@ RpcConn::helper(void *contextp)
                     reverseConn();
                     sendHeaderResponse(&_responseHeader);
                     releaseSend();
+                    _rpcp->threadExitingNL("helper 5");
                     return;
                 }
 
@@ -329,6 +372,7 @@ RpcConn::helper(void *contextp)
                     releaseReceiveNL();
                     _rpcp->_lock.release();
                     helperDone("No response");
+                    _rpcp->threadExitingNL("helper 6");
                     return;
                 }
 
@@ -396,6 +440,7 @@ RpcConn::helper(void *contextp)
             default:
                 releaseReceive();
                 helperDone("bad opcode");
+                _rpcp->threadExitingNL("helper 7");
                 return;
         } /* switch on opcode */
 
@@ -463,13 +508,18 @@ RpcConn::releaseSendNL()
     _sendCallCV.broadcast();
 }
 
-void
+int32_t
 RpcConn::waitForReceiveNL(RpcContext *ownerp)
 {
     while(_receiveCallActivep != NULL) {
         _receiveCallCV.wait();
+        if (_rpcp->checkThreadMustExitNL()) {
+            // caller drops thread count
+            return -1;
+        }
     }
     _receiveCallActivep = ownerp;
+    return 0;
 }
 
 void
@@ -594,6 +644,7 @@ RpcConn::setupConn()
         holdNL();       /* for reference from the helper thread */
         _rpcp->_lock.release();
 
+        _rpcp->newThreadCreated();
         _helperThreadp = new CThreadHandle();
         _helperThreadp->init((CThread::StartMethod) &RpcConn::helper, this, NULL);
     }
@@ -604,6 +655,7 @@ RpcConn::setupConn()
         holdNL();       /* for the reference from the listener thread */
         _rpcp->_lock.release();
 
+        _rpcp->newThreadCreated();
         _listenerThreadp = new CThreadHandle();
         _listenerThreadp->init((CThread::StartMethod) &RpcConn::listenFd, this, NULL);
     }
@@ -888,6 +940,62 @@ Rpc::getServerById(uuid_t *idp) {
     return serverp;
 }
 
+void
+Rpc::shutdown() {
+    _lock.take();
+    _shuttingDown = true;
+
+    // Iterate over all connections, waking up helper threads, so they notice
+    // they must exit.
+    RpcConn *connp;
+    for(connp = _allConns.head(); connp; connp=connp->_dqNextp) {
+        if (connp->_fd >= 0) {
+            ::close(connp->_fd);
+            connp->_fd = -1;
+        }
+        connp->_sendChain.abort();
+        connp->_receiveChain.abort();
+        connp->_receiveCallCV.broadcast();
+    }
+
+    while(_runningThreads > 0) {
+        _shutdownCV.wait();
+    }
+
+    _lock.release();
+}
+
+bool
+Rpc::checkThreadMustExitNL() {
+    bool rval = false;
+
+    osp_assert(_runningThreads > 0);
+
+    if (_shuttingDown) {
+        rval = true;
+    }
+
+    return rval;
+}
+
+void
+Rpc::threadExitingNL(const char *whop) {
+    printf("thread %lld exiting (%s) oldrunct=%d\n",
+           CThread::self(), whop, _runningThreads);
+    osp_assert(_runningThreads > 0);
+    --_runningThreads;
+    if (_runningThreads <= 0) {
+        _shutdownCV.broadcast();
+    }
+}
+
+void
+Rpc::newThreadCreated() {
+    _lock.take();
+    _runningThreads++;
+    _lock.release();
+}
+
 /*================RpcServer================*/
 /* called with rpc lock held */
 RpcClientContext *
@@ -943,8 +1051,10 @@ RpcClientContext::openServerNL()
         openHeader._opcode = RpcHeader::_opOpen;
 
         rpcp->_lock.release();
-        openHeader.marshal(&connp->_sendChain, /* doMarshal */ 1);
+        code = openHeader.marshal(&connp->_sendChain, /* doMarshal */ 1);
         rpcp->_lock.take();
+        if (code != 0)
+            return code;
 
         code = waitForOpenNL();
     }
@@ -1037,8 +1147,9 @@ RpcClientContext::getResponse()
     /* and tag ourselves with the requestId, so we can match up the response */
     _requestId = requestId;
 
-    header.marshal(&_connp->_sendChain, /* doMarshal */ 1);
-    code = _connp->_sendChain.copyLong(&_appOpcode, /* doMarshal */ 1);
+    code = header.marshal(&_connp->_sendChain, /* doMarshal */ 1);
+    if (code == 0)
+        code = _connp->_sendChain.copyLong(&_appOpcode, /* doMarshal */ 1);
     if (code) {
         _failed = 1;
         rpcp->_lock.release();
