@@ -12,6 +12,7 @@ class TestServer : public RpcServer {
  public:
     bool _testTimeout;
     uint32_t _counter;
+    Rpc *_rpcp;
 
     class TestServerContext : public RpcServerContext {
         bool _testTimeout;
@@ -44,6 +45,10 @@ class TestServer : public RpcServer {
         }
     };
 
+    Rpc *getRpc() {
+        return _rpcp;
+    }
+
     RpcServerContext *getContext(uint32_t opcode) {
         TestServerContext *sp;
 
@@ -57,6 +62,7 @@ class TestServer : public RpcServer {
 
 public:
     TestServer(Rpc *rpcp, bool testTimeout) : RpcServer(rpcp) {
+        _rpcp = rpcp;
         _testTimeout = testTimeout;
         _counter = 0;
     }
@@ -120,20 +126,38 @@ class TestClientContext : public RpcClientContext {
     }
 };
 
+TestServer *
+createServer( uint32_t basePort, bool testTimeout) {
+    uuid_t serviceId;
+    RpcListener *listenerp;
+    Rpc *rpcServerp;
+    TestServer *testServerp;
+
+    rpcServerp = new Rpc();
+    rpcServerp->init();
+    printf("Server RPC %p\n", rpcServerp);
+
+    /* create a service */
+    Rpc::uuidFromLongId(&serviceId, 7);
+    testServerp = new TestServer(rpcServerp, testTimeout);
+    rpcServerp->addServer(testServerp, &serviceId);
+
+    /* create an endpoint for the server */
+    listenerp = new RpcListener();
+    listenerp->init(rpcServerp, testServerp, basePort);
+
+    return testServerp;
+}
+
 int
 main(int argc, char **argv)
 {
     TestServer *testServerp;
     Rpc *rpcServerp;
     Rpc *rpcClientp;
-    RpcListener *listenerp;
     uuid_t serviceId;
     bool testTimeout = false;
     uint32_t basePort;
-
-    rpcServerp = new Rpc();
-    rpcServerp->init();
-    printf("Server RPC %p\n", rpcServerp);
 
     rpcClientp = new Rpc();
     rpcClientp->init();
@@ -153,14 +177,8 @@ main(int argc, char **argv)
     }
 
     {
-        /* create a service */
-        Rpc::uuidFromLongId(&serviceId, 7);
-        testServerp = new TestServer(rpcServerp, testTimeout);
-        rpcServerp->addServer(testServerp, &serviceId);
-
-        /* create an endpoint for the server */
-        listenerp = new RpcListener();
-        listenerp->init(rpcServerp, testServerp, basePort);
+        testServerp = createServer(basePort, testTimeout);
+        rpcServerp = testServerp->getRpc();
     }
 
     {
@@ -205,6 +223,14 @@ main(int argc, char **argv)
 
     rpcServerp->shutdown();
     printf("Back from server shutdown\n");
+    delete rpcServerp;
+
+    sleep(4);
+
+    testServerp = createServer(basePort, testTimeout);
+    rpcServerp = testServerp->getRpc();
+
+    sleep(10);
 
     return 0;
 }
