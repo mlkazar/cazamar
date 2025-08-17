@@ -149,19 +149,58 @@ createServer( uint32_t basePort, bool testTimeout) {
     return testServerp;
 }
 
+Rpc *
+createClient(uint32_t basePort, bool testTimeout) {
+    TestClientContext *cp;
+    RpcServer *serverp;
+    struct sockaddr_in destAddr;
+    int32_t code;
+    RpcConn *connp;
+    Rpc *rpcClientp;
+    uuid_t serviceId;
+
+    rpcClientp = new Rpc();
+    rpcClientp->init();
+    printf("Client RPC %p\n", rpcClientp);
+
+    /* create a server */
+    Rpc::uuidFromLongId(&serviceId, 7);
+    serverp = rpcClientp->addServer(NULL, &serviceId);
+
+    /* open a conn to the target */
+    destAddr.sin_family = AF_INET;
+    destAddr.sin_addr.s_addr = htonl(0x7f000001);
+    destAddr.sin_port = htons(basePort);
+    code = rpcClientp->addClientConn(&destAddr, &connp);
+    printf("RpcShutdownTest: addclientconn code=%d\n", code);
+    if (code)
+        return nullptr;
+
+    /* bind conn to the server */
+    connp->setServer(serverp);
+
+    // set hard timeout on calls to 2 seconds.
+    connp->setHardTimeout(2000);
+
+    /* make a client call */
+    cp = new TestClientContext(rpcClientp, connp, (char *) "a");
+    cp->init();
+    printf("RpcShutDownTest: Back from client call\n");
+
+    cp = new TestClientContext(rpcClientp, connp, (char *) "b");
+    cp->init();
+    printf("RpcShutDownTest: Back from client call\n");
+
+    return rpcClientp;
+}
+
 int
 main(int argc, char **argv)
 {
     TestServer *testServerp;
     Rpc *rpcServerp;
-    Rpc *rpcClientp;
-    uuid_t serviceId;
     bool testTimeout = false;
     uint32_t basePort;
-
-    rpcClientp = new Rpc();
-    rpcClientp->init();
-    printf("Client RPC %p\n", rpcClientp);
 
     if (argc < 2) {
         printf("RpcShutDownTest: usage: rpcshutdowntest port\n");
@@ -176,61 +215,27 @@ main(int argc, char **argv)
             testTimeout = 1;
     }
 
-    {
+    (void) createClient(basePort, testTimeout);
+
+    for(uint32_t i=0; i<8; i++) {
+        // loop creating and deleting servers
+        printf("\nStarting server up for iteration %d.\n", i+1);
         testServerp = createServer(basePort, testTimeout);
         rpcServerp = testServerp->getRpc();
+
+        printf("\nStarted; running for 8 seconds to give time to reconnect.\n");
+        sleep(8);
+        printf("\nShutting down server.\n");
+
+        rpcServerp->shutdown();
+        printf("\nBack from server shutdown, waiting a few seconds \n");
+        delete rpcServerp;
+
+        // give client time to rediscoer working server.
+        sleep(4);
     }
 
-    {
-        TestClientContext *cp;
-        RpcServer *serverp;
-        struct sockaddr_in destAddr;
-        int32_t code;
-        RpcConn *connp;
-
-        /* create a server */
-        Rpc::uuidFromLongId(&serviceId, 7);
-        serverp = rpcClientp->addServer(NULL, &serviceId);
-
-        /* open a conn to the target */
-        destAddr.sin_family = AF_INET;
-        destAddr.sin_addr.s_addr = htonl(0x7f000001);
-        destAddr.sin_port = htons(basePort);
-        code = rpcClientp->addClientConn(&destAddr, &connp);
-        printf("RpcShutdownTest: addclientconn code=%d\n", code);
-        if (code)
-            return code;
-
-        /* bind conn to the server */
-        connp->setServer(serverp);
-
-        // set hard timeout on calls to 2 seconds.
-        connp->setHardTimeout(2000);
-
-        /* make a client call */
-        cp = new TestClientContext(rpcClientp, connp, (char *) "a");
-        cp->init();
-        printf("RpcShutDownTest: Back from client call\n");
-
-        cp = new TestClientContext(rpcClientp, connp, (char *) "b");
-        cp->init();
-        printf("RpcShutDownTest: Back from client call\n");
-    }
-
-    printf("Running for 4 seconds before shutdown\n");
-    sleep(4);
-    printf("Shutting down server\n");
-
-    rpcServerp->shutdown();
-    printf("Back from server shutdown\n");
-    delete rpcServerp;
-
-    sleep(4);
-
-    testServerp = createServer(basePort, testTimeout);
-    rpcServerp = testServerp->getRpc();
-
-    sleep(10);
+    printf("All done!\n");
 
     return 0;
 }
