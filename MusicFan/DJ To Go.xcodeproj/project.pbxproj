@@ -81,6 +81,8 @@
 		7F49E52A1C1F1765006A1403 /* oapass.c in Sources */ = {isa = PBXBuildFile; fileRef = 7F49E5281C1F1759006A1403 /* oapass.c */; };
 		7F53C7731C790986006232FE /* radixtree.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F53C7711C790986006232FE /* radixtree.cc */; };
 		7F53C7741C79098B006232FE /* radixtree.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F53C7711C790986006232FE /* radixtree.cc */; };
+		7F58EC452E6D063C00096849 /* MFANFileWriter.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F58EC442E6D063C00096849 /* MFANFileWriter.mm */; };
+		7F58EC462E6D063C00096849 /* MFANFileWriter.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F58EC442E6D063C00096849 /* MFANFileWriter.mm */; };
 		7F5DB459193F3A8900948C97 /* record-152.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F5DB458193F3A8900948C97 /* record-152.png */; };
 		7F5E7B8E1C9836460050CBB3 /* help-list.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F5E7B8D1C9836460050CBB3 /* help-list.html */; };
 		7F5E7B8F1C98364C0050CBB3 /* help-list.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F5E7B8D1C9836460050CBB3 /* help-list.html */; };
@@ -263,6 +265,8 @@
 		7F49E5281C1F1759006A1403 /* oapass.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = oapass.c; path = ../../mfand/oapass.c; sourceTree = "<group>"; };
 		7F53C7711C790986006232FE /* radixtree.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = radixtree.cc; path = ../../mfand/radixtree.cc; sourceTree = "<group>"; };
 		7F53C7721C790986006232FE /* radixtree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = radixtree.h; path = ../../mfand/radixtree.h; sourceTree = "<group>"; };
+		7F58EC432E6D063C00096849 /* MFANFileWriter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MFANFileWriter.h; sourceTree = "<group>"; };
+		7F58EC442E6D063C00096849 /* MFANFileWriter.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MFANFileWriter.mm; sourceTree = "<group>"; };
 		7F5DB458193F3A8900948C97 /* record-152.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "record-152.png"; sourceTree = "<group>"; };
 		7F5E7B8D1C9836460050CBB3 /* help-list.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "help-list.html"; sourceTree = "<group>"; };
 		7F6151C6190C66C20079E728 /* MFANPlayerView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFANPlayerView.h; sourceTree = "<group>"; };
@@ -531,6 +535,8 @@
 		7FD8C75D19031F490089FF3C /* DJ To Go */ = {
 			isa = PBXGroup;
 			children = (
+				7F58EC432E6D063C00096849 /* MFANFileWriter.h */,
+				7F58EC442E6D063C00096849 /* MFANFileWriter.mm */,
 				7F775A381E71BF2F00173327 /* AudioGalaxy.entitlements */,
 				7F8EA92D194A8A0E00342FD1 /* help-edit.png */,
 				7F8EA92B194A524900342FD1 /* help-main.png */,
@@ -948,6 +954,7 @@
 				7F8D357D1C76A0D800281498 /* bufgen.cc in Sources */,
 				7F455C1119532D67006DAFE5 /* MFANIndicator.m in Sources */,
 				7F8D357F1C76A10C00281498 /* xapi.cc in Sources */,
+				7F58EC452E6D063C00096849 /* MFANFileWriter.mm in Sources */,
 				7F9BEDB5198BABD500BCB37D /* MFANRadioConsole.m in Sources */,
 				7F83BF1E23B70674001F2815 /* radioscan.cc in Sources */,
 				7F455C1319532D67006DAFE5 /* MFANPlayContext.mm in Sources */,
@@ -1011,6 +1018,7 @@
 				7FA9DDF31A30BAB7003319C9 /* mfclient.cc in Sources */,
 				7F68A44B191FB20B00D9B001 /* MFANIndicator.m in Sources */,
 				7F8D35721C769FBC00281498 /* bufgen.cc in Sources */,
+				7F58EC462E6D063C00096849 /* MFANFileWriter.mm in Sources */,
 				7F9BEDB4198BABD500BCB37D /* MFANRadioConsole.m in Sources */,
 				7F83BF1D23B70674001F2815 /* radioscan.cc in Sources */,
 				7FB96ECA190BF4AE00A2272A /* MFANPlayContext.mm in Sources */,
