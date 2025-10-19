@@ -16,15 +16,21 @@ int32_t
 VanCmd::Balance(VanOfx::User &user, Selector &sel) {
     printf("\n**Compute balances**\n");
     double grand_total = 0.0;
-    auto acct_lambda = [&sel, &grand_total](VanOfx::Account *acct) {
+    double stock_total = 0.0;
+    double bond_total = 0.0;
+    auto acct_lambda = [&sel, &grand_total, &stock_total, &bond_total](VanOfx::Account *acct) {
         double  acct_total = 0.0;
         ProfileAccount *prof_acct = nullptr;
-        auto fund_lambda = [&acct_total](VanOfx::Fund *fund) -> int32_t {
+        auto fund_lambda = [&acct_total, &stock_total, &bond_total](VanOfx::Fund *fund) -> int32_t {
             double fund_total = 0.0;
             fund_total += fund->_share_count * fund->_share_price;
             printf(" Fund %s(%s) total $%'.2f\n",
                    fund->_name.c_str(), fund->_symbol.c_str(), fund_total);
             acct_total += fund_total;
+            if (fund->_is_bond)
+                bond_total += fund_total;
+            else
+                stock_total += fund_total;
             return 0;
         };
 
@@ -43,6 +49,8 @@ VanCmd::Balance(VanOfx::User &user, Selector &sel) {
     };
     user.ApplyToAccounts(acct_lambda);
     printf("Total balance is %'.2f\n", grand_total);
+    printf("  Stocks %'.2f, bonds %'.2f, stock pct=%'2.1f\n",
+           stock_total, bond_total, 100 * stock_total / grand_total);
 
     return 0;
 }
