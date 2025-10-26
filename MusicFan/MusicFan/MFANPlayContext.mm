@@ -776,10 +776,12 @@ static const int _maxFileSize = 1024*1024;
 	code = fwrite(cppString.c_str(), cppString.length(), 1, [writer fileOf]);
 	if (code != 1) {
 	    NSLog(@"!WRITE FAILED");
-	}
-	code = [writer flush];
-	if (code != 0) {
-	    NSLog(@"!FCLOSE FAILED");
+	    [writer cleanup];
+	} else {
+	    code = [writer flush];
+	    if (code != 0) {
+		NSLog(@"!FCLOSE FAILED");
+	    }
 	}
 	delete node;
 	NSLog(@"-  save finished with close for file %@", _associatedFile);

@@ -1013,10 +1013,12 @@ MFANTopSettings *_globalSettings;
     code = fwrite(cppString.c_str(), (int) cppString.length(), 1, [writer fileOf]);
     if (code != 1) {
 	NSLog(@"!WRITE FAILED");
-    }
-    code = [writer flush];
-    if (code != 0) {
-	NSLog(@"!FCLOSE FAILED");
+	[writer cleanup];
+    } else {
+	code = [writer flush];
+	if (code != 0) {
+	    NSLog(@"!FCLOSE FAILED");
+	}
     }
     delete rootNodep;
     NSLog(@"- Done with async part of save");

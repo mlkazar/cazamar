@@ -609,11 +609,12 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
     code = (int32_t) fwrite(outString.c_str(), 1, nbytes, [writer fileOf]);
     if (code != nbytes) {
 	NSLog(@"MFANTopHistory: failed to write all data %d should be %d", code, nbytes);
+	[writer cleanup];
+    } else {
+	/* and clean up everything */
+	[writer flush];
+	writer = nil;
     }
-
-    /* and clean up everything */
-    [writer flush];
-    writer = nil;
     delete rootNodep;
     rootNodep = NULL;
 
