@@ -2140,8 +2140,8 @@ UploadApp::Log::logError( CfsLog::OpType type,
     UploadErrorEntry *ep;
     UploadErrorEntry *lastEp;
 
-    printf("Operation %d httpCode=%d '%s'\n",
-           type, httpError, errorString.c_str());
+    printf("Operation %d httpCode=%d '%s' '%s'\n",
+           type, httpError, errorString.c_str(), longErrorString.c_str());
  
     up->_lock.take();
 

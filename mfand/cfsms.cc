@@ -920,6 +920,9 @@ CnodeMs::startSession( std::string name,
     if (reqp)
         delete reqp;
 
+    if (_cfsp->_verbose) {
+        printf("startSession code=%d\n", code);
+    }
     return code;
     
 }
@@ -979,8 +982,10 @@ CnodeMs::sendData( std::string *sessionUrlp,
 
         reqp = new XApi::ClientReq();
         reqp->setSendContentLength(actuallyReadCount);
+#if 0
         authHeader = "Bearer " + _cfsp->_loginCookiep->getAuthToken();
         reqp->addHeader("Authorization", authHeader.c_str());
+#endif
         snprintf(tbuffer, sizeof(tbuffer),
                  "bytes %ld-%ld/%ld",
                 (long) byteOffset,

@@ -106,7 +106,7 @@ class TestClientContext : public RpcClientContext {
             if (oldValue + 1 != newValue)
                 printf("RpcTest: call bad value code=%d oldValue=%d newValue=%d\n\n",
                        code, oldValue, newValue);
-            if ( (++count % 100) == 0)
+            if ( (++count % 10000) == 0)
                 printf("RpcTest: '%s' count=%d\n", _tagp, count);
         }
     }
