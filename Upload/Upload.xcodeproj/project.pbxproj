@@ -14,8 +14,6 @@
 		7F5037BD20E4FE160046A2A3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7F5037BC20E4FE160046A2A3 /* Assets.xcassets */; };
 		7F5037C020E4FE160046A2A3 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 7F5037BE20E4FE160046A2A3 /* MainMenu.xib */; };
 		7F5037C320E4FE160046A2A3 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F5037C220E4FE160046A2A3 /* main.m */; };
-		7F5A3AAB20E50A78009A2FBC /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F5A3AA920E50A78009A2FBC /* libssl.a */; };
-		7F5A3AAC20E50A78009A2FBC /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F5A3AAA20E50A78009A2FBC /* libcrypto.a */; };
 		7F5A3AB120E50AF1009A2FBC /* libext.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F5A3AAD20E50AF1009A2FBC /* libext.a */; };
 		7F5A3AB220E50AF1009A2FBC /* libcfs.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F5A3AAE20E50AF1009A2FBC /* libcfs.a */; };
 		7F5A3AB320E50AF1009A2FBC /* librst.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F5A3AAF20E50AF1009A2FBC /* librst.a */; };
@@ -27,6 +25,8 @@
 		7F5AF95B20E502F6006291A3 /* login-logout.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F5AF95520E502F6006291A3 /* login-logout.html */; };
 		7F5AF96120E5032B006291A3 /* test_key.pem in Resources */ = {isa = PBXBuildFile; fileRef = 7F5AF95D20E5032B006291A3 /* test_key.pem */; };
 		7F5AF96220E5032B006291A3 /* test_cert.pem in Resources */ = {isa = PBXBuildFile; fileRef = 7F5AF95F20E5032B006291A3 /* test_cert.pem */; };
+		7F68A77D2EC13C90006D4740 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F68A77C2EC13C90006D4740 /* libssl.a */; };
+		7F68A77F2EC13CAD006D4740 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F68A77E2EC13CAD006D4740 /* libcrypto.a */; };
 		7FCE2AF3231E71FF00C73EC8 /* upload-pics.html in Resources */ = {isa = PBXBuildFile; fileRef = 7FCE2AF2231E71FF00C73EC8 /* upload-pics.html */; };
 		7FE759F320E504FA00C24546 /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7FE759F120E504FA00C24546 /* ViewController.mm */; };
 		7FFB5EC6211F3026001C7730 /* upload-home.html in Resources */ = {isa = PBXBuildFile; fileRef = 7FFB5EC1211F3025001C7730 /* upload-home.html */; };
@@ -52,8 +52,6 @@
 		7F5037C220E4FE160046A2A3 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		7F5037C420E4FE160046A2A3 /* Upload.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Upload.entitlements; sourceTree = "<group>"; };
 		7F54B4312144D6E60096FF11 /* osptimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osptimer.h; path = ../../rpc/osptimer.h; sourceTree = "<group>"; };
-		7F5A3AA920E50A78009A2FBC /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../../../../usr/local/ssl/lib/libssl.a; sourceTree = "<group>"; };
-		7F5A3AAA20E50A78009A2FBC /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../../../../usr/local/ssl/lib/libcrypto.a; sourceTree = "<group>"; };
 		7F5A3AAD20E50AF1009A2FBC /* libext.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libext.a; path = ../lib/libext.a; sourceTree = "<group>"; };
 		7F5A3AAE20E50AF1009A2FBC /* libcfs.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcfs.a; path = ../lib/libcfs.a; sourceTree = "<group>"; };
 		7F5A3AAF20E50AF1009A2FBC /* librst.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = librst.a; path = ../lib/librst.a; sourceTree = "<group>"; };
@@ -85,6 +83,8 @@
 		7F5AF95E20E5032B006291A3 /* sapilogin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sapilogin.h; path = ../../mfand/sapilogin.h; sourceTree = "<group>"; };
 		7F5AF95F20E5032B006291A3 /* test_cert.pem */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = test_cert.pem; path = ../../mfand/test_cert.pem; sourceTree = "<group>"; };
 		7F5AF96020E5032B006291A3 /* sapi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sapi.h; path = ../../mfand/sapi.h; sourceTree = "<group>"; };
+		7F68A77C2EC13C90006D4740 /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = "/opt/homebrew/Cellar/openssl@3/3.6.0/lib/libssl.a"; sourceTree = "<absolute>"; };
+		7F68A77E2EC13CAD006D4740 /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = "/opt/homebrew/Cellar/openssl@3/3.6.0/lib/libcrypto.a"; sourceTree = "<absolute>"; };
 		7FCE2AF2231E71FF00C73EC8 /* upload-pics.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "upload-pics.html"; path = "../../mfand/upload-pics.html"; sourceTree = "<group>"; };
 		7FE759F020E504FA00C24546 /* ViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
 		7FE759F120E504FA00C24546 /* ViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ViewController.mm; sourceTree = "<group>"; };
@@ -103,12 +103,12 @@
 			files = (
 				7F2F8CAF211F2D7A001B9C13 /* liblfs.a in Frameworks */,
 				7F16E456211EFEB3008B35D7 /* libupload.a in Frameworks */,
+				7F68A77F2EC13CAD006D4740 /* libcrypto.a in Frameworks */,
+				7F68A77D2EC13C90006D4740 /* libssl.a in Frameworks */,
 				7F5A3AB120E50AF1009A2FBC /* libext.a in Frameworks */,
 				7F5A3AB220E50AF1009A2FBC /* libcfs.a in Frameworks */,
 				7F5A3AB320E50AF1009A2FBC /* librst.a in Frameworks */,
 				7F5A3AB420E50AF1009A2FBC /* libcore.a in Frameworks */,
-				7F5A3AAB20E50A78009A2FBC /* libssl.a in Frameworks */,
-				7F5A3AAC20E50A78009A2FBC /* libcrypto.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -156,14 +156,14 @@
 		7F5A3AA820E50A78009A2FBC /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				7F68A77E2EC13CAD006D4740 /* libcrypto.a */,
+				7F68A77C2EC13C90006D4740 /* libssl.a */,
 				7F2F8CAE211F2D7A001B9C13 /* liblfs.a */,
 				7F16E455211EFEB2008B35D7 /* libupload.a */,
 				7F5A3AAE20E50AF1009A2FBC /* libcfs.a */,
 				7F5A3AB020E50AF1009A2FBC /* libcore.a */,
 				7F5A3AAD20E50AF1009A2FBC /* libext.a */,
 				7F5A3AAF20E50AF1009A2FBC /* librst.a */,
-				7F5A3AAA20E50A78009A2FBC /* libcrypto.a */,
-				7F5A3AA920E50A78009A2FBC /* libssl.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -439,13 +439,21 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = Upload/Upload.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				INFOPLIST_FILE = Upload/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -453,15 +461,23 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					/usr/local/ssl/lib,
+					/opt/homebrew/lib,
+					"/opt/homebrew/Cellar/openssl@3/3.6.0/lib",
 				);
 				"LIBRARY_SEARCH_PATHS[arch=*]" = (
 					"$(inherited)",
 					/Users/kazar/mac/lib,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.Upload;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
+				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
+				RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY = NO;
+				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
+				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
+				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES;
 			};
 			name = Debug;
 		};
@@ -469,13 +485,21 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				AUTOMATION_APPLE_EVENTS = NO;
 				CODE_SIGN_ENTITLEMENTS = Upload/Upload.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = NO;
 				INFOPLIST_FILE = Upload/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -483,15 +507,23 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					/usr/local/ssl/lib,
+					/opt/homebrew/lib,
+					"/opt/homebrew/Cellar/openssl@3/3.6.0/lib",
 				);
 				"LIBRARY_SEARCH_PATHS[arch=*]" = (
 					"$(inherited)",
 					/Users/kazar/mac/lib,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
 				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.Upload;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUNTIME_EXCEPTION_ALLOW_DYLD_ENVIRONMENT_VARIABLES = NO;
+				RUNTIME_EXCEPTION_ALLOW_JIT = NO;
+				RUNTIME_EXCEPTION_ALLOW_UNSIGNED_EXECUTABLE_MEMORY = NO;
+				RUNTIME_EXCEPTION_DEBUGGING_TOOL = NO;
+				RUNTIME_EXCEPTION_DISABLE_EXECUTABLE_PAGE_PROTECTION = NO;
+				RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES;
 			};
 			name = Release;
 		};
