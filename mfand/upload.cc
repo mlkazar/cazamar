@@ -1999,7 +1999,6 @@ UploadApp::schedule(void *cxp)
 
     while(1) {
         sleep(60);
-        printf("SCANNING\n");
         _entryLock.take();
         for(i=0;i<_maxUploaders;i++) {
             ep = _uploadEntryp[i];
@@ -2015,7 +2014,6 @@ UploadApp::schedule(void *cxp)
             }
         }
         _entryLock.release();
-        printf("SLEEPING\n");
     }
 }
 

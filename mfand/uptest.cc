@@ -34,6 +34,8 @@ main(int argc, char **argv)
             single = 1;
     }
 
+    printf("Listening on port localhost.%d\n", port);
+
     /* peel off command name and port */
     server(port, std::string(""), single);
 
