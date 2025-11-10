@@ -498,8 +498,8 @@
 			children = (
 				7F775A391E71BF5A00173327 /* AudioGalaxyL.entitlements */,
 				7FDB846B1AA909B300F35A7B /* silver.jpg */,
-				7FADE3891A44965600FE9F52 /* DJ To Go Lite.entitlements */,
 				7FD8C75D19031F490089FF3C /* DJ To Go */,
+				7FADE3891A44965600FE9F52 /* DJ To Go Lite.entitlements */,
 				7FD8C77619031F490089FF3C /* EasyPlayTests */,
 				7FD8C75619031F490089FF3C /* Frameworks */,
 				7FD8C75519031F490089FF3C /* Products */,
