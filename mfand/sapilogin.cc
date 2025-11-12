@@ -139,15 +139,6 @@ SApiLoginReq::AppleLoginKeyDataMethod()
      * the key server, pick them up using the request ID.
      */
     {
-        XApi *xapip;
-        XApi::ClientConn *connp;
-        BufGen *bufGenp;
-        XApi::ClientReq *reqp;
-        CThreadPipe *inPipep;
-        char tbuffer[16384];
-        const char *tp;
-        Json::Node *authTokenNodep;
-        Json::Node *jnodep;
         std::string callbackString;
         std::string authToken;
         
@@ -484,20 +475,12 @@ SApiLoginKeyReq::keyLoginMethod()
     std::string response;
     SApi::Dict dict;
     std::string tableKey;
-    size_t ampPos;
-    size_t tokenPos;
-    size_t endPos;
     SApiLoginMS *sapiLoginp = static_cast<SApiLoginMS *>(_sapip->getContext());
-    Rst::Request *rstReqp;
-    std::string *baseUrlp;
     Rst::Hdr *hdrp;
     dqueue<Rst::Hdr> *urlPairsp;
 
-    rstReqp = getRstReq();
     CThreadPipe *outPipep = getOutgoingPipe();
 
-    baseUrlp = rstReqp->getBaseUrl();
-    
     /* search for state and code strings for table entries */
     urlPairsp = _rstReqp->getUrlPairs();
     for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
