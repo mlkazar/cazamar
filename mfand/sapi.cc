@@ -84,7 +84,7 @@ SApi::listener(void *cxp)
                 }
                 continue;
             }
-            printf("Received incoming socket %p\n", socketp);
+            printf("Received incoming socket %p (%d)\n", socketp, _port);
             errorCount = 0;
             addNewConn(socketp);
             printf("sapi: spawning new listener for new socket\n");

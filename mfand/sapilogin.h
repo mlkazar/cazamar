@@ -136,6 +136,7 @@ public:
     std::string _refreshToken;  /* refresh token if auth token has limited lifetime */
     std::string _finalUrl;      /* URL to switch to when authentication done */
     std::string _authId;        /* ID used as key in key server */
+    std::string _code;          // We receive this code from logging in
     SApiLoginCookie *_cookiep;
     uint32_t _changeCounter;
     uint8_t _isJwt;
@@ -242,13 +243,17 @@ public:
     }
 
     void init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl);
+
     void initFromFile(SApiLoginCookie *cookiep, std::string authToken, std::string refreshToken);
+
     int32_t getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep);
 
     void setAppParams(std::string clientId, std::string clientSecret) {
         _clientId = clientId;
         _clientSecret = clientSecret;
     }
+
+    void keyServer(int port);
 
     int32_t refineAuthToken(std::string *tokenp, SApiLoginCookie *cookiep);
 
@@ -282,9 +287,6 @@ class SApiLogin {
     static SApiLoginCookie *_globalCookiep;
 
     static void initSApi (SApi *sapip) {
-        sapip->registerUrl( "/appleLoginScreen", 
-                            &SApiLoginReq::factory,
-                            (SApi::StartMethod) &SApiLoginReq::AppleLoginScreenMethod);
         sapip->registerUrl( "/msLoginScreen", 
                             &SApiLoginReq::factory,
                             (SApi::StartMethod) &SApiLoginReq::MSLoginScreenMethod);
@@ -302,6 +304,22 @@ class SApiLogin {
     virtual ~SApiLogin() {
         return;
     };
+};
+
+class SApiLoginKeyReq : public SApi::ServerReq {
+public:
+    static const uint32_t _bigStr = 4096;
+
+    static SApiLoginKeyReq *keyFactory(SApi *sapip) {
+        printf("in keyfactory\n");
+        return new SApiLoginKeyReq(sapip);
+    }
+
+    SApiLoginKeyReq(SApi *sapip) : SApi::ServerReq(sapip) {
+        return;
+    }
+
+    void keyLoginMethod();
 };
 
 /* state associated with SApiLogin and our web session cookie */

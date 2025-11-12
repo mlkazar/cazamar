@@ -38,68 +38,64 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* This file contains the basics for a toy test application, and the
  * login authentication framework used by any application that
- * performs user logins.  It assumes that there's a key server
- * (keyserv) running at djtogoapp.duckdns.org:7700 as well, and that
- * the key server is registered as the application server for the
- * oauth2 application.  It will be sent the web auth token by the
- * login web service you're using, whether apple, google or microsoft.
- * Fuck Amazon, and their closed API.
+ * performs user logins.  It no longer uses a key server; instead the
+ * browser is directed to deliver the tokens to localhost:7700.
  *
- * The basic control flow is pretty tricky.  An application begins by
- * using SApiLoginApple::getLoginPage to get the HTTP response
- * contents to start a login process, assuming we need to get tokens.
+ * A program put in a link to trigger a login, linking to
+ * /msLoginScreen.  When a user clicks on that button in the app's UI,
+ * the MSLoginScreenMethod will be invoked.
  *
- * The getLoginPage function will actually contact Apple's servers to
- * get a redirect URL which can be contacted to start the login
- * process with the Apple authentication servers.  It will
- * parameterize the login-apple.html file with that string, so that
- * the "Login to Apple iCloud" button will actually contact create a
- * new child window filled with the redirect URL (TBD: call this
- * function automatically).  Before creating this child window, the
- * application window's Javascript code establishes a listener for a
- * 'kazar1' message sent to the application; it will be send at the
- * end of the login popup window.
+ * The MSLoginScreenMethod calls SApiLoginMS::getLoginPage to get a
+ * page that pops up the canned login window created by Microsoft's
+ * authentication server to start the token creation process.  The
+ * page that drives this is in login-ms.html, and says not to pay
+ * attention to it since it will disappear when the login process is
+ * finished.
  *
- * The child popup window first visits the Apple login URL.  On
- * success, the Apple login servers redirect the child window to the
- * key server, at the URL registered with the application.  The URL
- * includes the authentication token, which is now delivered to the
- * key server.  The key server's response to the visit then fills the
- * login window.  The response has a "Save tokens" button, which when
- * pressed sends a 'kazar1' nmessage to its parent window, which is
- * the application's window.  This event tells the application window
- * that it is now safe to retrieve the web authentication tokens from
- * the key server.
+ * The app is registered with MSFT as Backup4Cloud in
+ * michael.kazar@verizon.net's account; all it does is provide a
+ * client ID and secret for our app.  The MSFT auth server will send
+ * the login code (the first token in a series of tokens required to
+ * be really authenticated) back to https://localhost:7700/login4ms by
+ * directing the browser to that page.  This eventually runs
+ * keyLoginMethod in this file.  We're passed the authentication code
+ * as an "&" parameter in the URL, which we save in the SApiLoginMs
+ * object.  The HTML that we return is displayed to the user, so we
+ * return the contents of login-ms-done.html; this basically tells the
+ * user that the login process is done.  The login-ms-done HTML also
+ * posts a message to the window that opened this one (login-ms.html)
+ * with the contents 'kazar1'.  This tells the login-ms window (the
+ * one that says not to pay attention to the man behind the curtain)
+ * to finish login processing.  The last thing the login-ms-done
+ * window does is close itself.
  *
- * Before creating and filling the Apple login window, the
- * application's login window sets up a Javascript message listener so
- * that when a message called 'kazar1' is sent to this application
- * login window, another Javascript function, haveToken, will be
- * invoked.  This function uses XMLHTttpRequest to post a dummy
- * message to the application's /keyData URL, telling it that the key
- * server now has the web authentication token required by the
- * application.  A listener for this /keyData URL was established by
- * the SApiLoginApple class.  At this point, our C++ code is now running,
- * and can contact the key server to obtain and store the web authentication
- * keys.
+ * To finish login processing, login-ms.html posts a message to
+ * /sapiKeyData.  This runs AppleLoginKeyDataMethod, which once upon a
+ * time, contacted a separate process that received the tokens.  Now
+ * that we're using a saner flow, this code just takes the
+ * authentication code returned above, and contacts the MSFT token
+ * server to get an authentication tokens from it and saves it in
+ * auth.js.  Once this is complete, the Javascript in the
+ * login-ms.html window redirects itself to the application's top page
+ * ("/"), and we're done.
  */
 
-class SApiLoginApple;
 class SApiLoginMS;
 
 SApiLoginCookie *SApiLogin::_globalCookiep = NULL;
 
-/* This is an internal class used by SApiAppleLogin to handle the callback
- * from Javascript once the login process has completed.  Basically, the
- * key server returns the contents of login-apple-done.html, which has a 
- * 'save tokens' button that triggers the reference to /keyData in the main
- * application, which invokes this startMethod.
+/* This is an internal class used by SApiAppleLogin to handle the
+ * callback from Javascript once the login process has completed.
  *
- * When this is invoked, it contacts the key server, passing in the
- * token ID, and obtaining the saved web auth token that was saved
- * there.
+ * When this is invoked, we should have the login code in the
+ * SApiLoginMs structure.  We ask MSFT to exchange the login code for
+ * an auth token, store it internally and save it to a file
+ * (saveCookieState).
  *
- * Once done, the SApiAppleLogin class has the auth token stored internally.
+ * Once done, the SApiAppleLogin class has the auth token stored
+ * internally, and the code in haveToken in login-ms.html redirects
+ * the window to the app's initial screen once we send a response to
+ * the HTTP request that triggered us.
  */
 void
 SApiLoginReq::AppleLoginKeyDataMethod()
@@ -110,8 +106,6 @@ SApiLoginReq::AppleLoginKeyDataMethod()
     SApi::Dict dict;
     Json json;
     SApiLoginCookie *cookiep = SApiLogin::getLoginCookie(this);
-
-    printf("SApiLoginCookie=%p\n", cookiep);
 
     if (!cookiep) {
         CThreadPipe *outPipep = getOutgoingPipe();
@@ -129,14 +123,12 @@ SApiLoginReq::AppleLoginKeyDataMethod()
 
     CThreadPipe *inPipep = getIncomingPipe();
     
-    {
-        code = inPipep->read(tbuffer, sizeof(tbuffer)-1);
-        if (code >= 0) {
-            if (code >= sizeof(tbuffer))
-                printf("apptest/keyData: bad count from pipe read\n");
-            else
-                tbuffer[code] = 0;
-        }
+    code = inPipep->read(tbuffer, sizeof(tbuffer)-1);
+    if (code >= 0) {
+        if (code >= sizeof(tbuffer))
+            printf("apptest/keyData: bad count from pipe read\n");
+        else
+            tbuffer[code] = 0;
     }
 
     response = std::string(tbuffer);
@@ -159,43 +151,8 @@ SApiLoginReq::AppleLoginKeyDataMethod()
         std::string callbackString;
         std::string authToken;
         
-        printf("apptest: retrieving key='%s'\n", genLoginp->getAuthId().c_str());
-        callbackString = "/keyData?id=" + genLoginp->getAuthId();
-
-        xapip = new XApi();
-        bufGenp = new BufTls(cookiep->getPathPrefix());
-        bufGenp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7700);
-        connp = xapip->addClientConn(bufGenp);
-        reqp = new XApi::ClientReq();
-        reqp->setSendContentLength(0);
-        reqp->startCall( connp,
-                         callbackString.c_str(),
-                         /* !isPost */ XApi::reqGet);
-        code = reqp->waitForHeadersDone();
-        inPipep = reqp->getIncomingPipe();
-        code = inPipep->read(tbuffer, sizeof(tbuffer));
-        if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
-            tbuffer[code] = 0;
-        }
-        
-        tp = tbuffer;
-        code = json.parseJsonChars((char **) &tp, &jnodep);
-        tp = (char *) "Default junk";
-        if (code == 0) {
-            authTokenNodep = jnodep->searchForChild("webAuthToken", 0);
-            if (authTokenNodep) {
-                genLoginp->setAuthToken(authTokenNodep->_children.head()->_name);
-            }
-        }
-
-        delete reqp;
-        delete jnodep;
-        reqp = NULL;
-
-        authToken = genLoginp->getAuthToken();
-
         /* this converts the once only token into a real authentication token */
-        genLoginp->refineAuthToken(&authToken, cookiep);
+        genLoginp->refineAuthToken(&genLoginp->_code, cookiep);
 
         /* save the updated authentication state, if enabled */
         cookiep->save();
@@ -210,133 +167,10 @@ SApiLoginReq::AppleLoginKeyDataMethod()
  * associated with the web server responding for the web site.
  */
 void
-SApiLoginApple::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl)
-{
-    _sapip = sapip;
-    cookiep->setActive(this);
-    _finalUrl = finalUrl;
-    sapip->registerUrl( "/sapiKeyData", 
-                        &SApiLoginReq::factory,
-                        (SApi::StartMethod) &SApiLoginReq::AppleLoginKeyDataMethod);
-}
-
-void
-SApiLoginApple::initFromFile(SApiLoginCookie *cookiep, std::string authToken)
-{
-    _authToken = authToken;
-    _sapip = NULL;
-    cookiep->setActive(this);
-}
-
-/* return a string representing the contents of a login web page for
- * this application.
- */
-int32_t
-SApiLoginApple::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
-{
-    int32_t code;
-    SApi::Dict dict;
-    const char *tp;
-    Json::Node *jnodep;
-    Json::Node *redirNodep;
-    Json json;
-    std::string loginPath;
-
-    /* make call to trigger retrieval of correct redirect URL from Apple */
-    {
-        XApi *xapip;
-        XApi::ClientConn *connp;
-        BufGen *bufGenp;
-        XApi::ClientReq *reqp;
-        CThreadPipe *inPipep;
-        char tbuffer[16384];
-        std::string redirectUrl;
-        size_t tokenPos;
-        size_t endPos;
-        std::string tableKey;
-        
-        xapip = new XApi();
-        bufGenp = new BufTls(cookiep->getPathPrefix());
-        bufGenp->init(const_cast<char *>("api.apple-cloudkit.com"), 443);
-        connp = xapip->addClientConn(bufGenp);
-        reqp = new XApi::ClientReq();
-        reqp->setSendContentLength(0);
-        reqp->startCall( connp,
-                         _apiUrl.c_str(),
-                         /* !isPost */ XApi::reqGet);
-        code = reqp->waitForHeadersDone();
-        inPipep = reqp->getIncomingPipe();
-        code = inPipep->read(tbuffer, sizeof(tbuffer));
-        if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
-            tbuffer[code] = 0;
-        }
-        
-        tp = tbuffer;
-        code = json.parseJsonChars((char **) &tp, &jnodep);
-        tp = (char *) "Default junk";
-        if (code == 0) {
-            redirNodep = jnodep->searchForChild("redirectURL", 0);
-            if (redirNodep) {
-                redirectUrl = redirNodep->_children.head()->_name.c_str();
-                tp = redirectUrl.c_str();
-            }
-        }
-
-        /* extract the id from the redirect URL; it's labeled oauth_token */
-        tokenPos = redirectUrl.find("oauth_token=");
-        if (tokenPos != std::string::npos) {
-            tokenPos += 12;     /* skip past '=' */
-            endPos = redirectUrl.find('&', tokenPos);
-            if (endPos == std::string::npos) {
-                /* use rest of token */
-                tableKey = redirectUrl.substr(tokenPos);
-            }
-            else {
-                /* go up to but not including the terminating '&' */
-                tableKey = redirectUrl.substr(tokenPos, endPos-tokenPos);
-            }
-        }
-        _authId = tableKey;
-
-        delete reqp;
-        reqp = NULL;
-        
-        if (cookiep) {
-            loginPath = cookiep->getPathPrefix();
-        }
-        loginPath +=  "login-apple.html";
-
-        dict.add("redir", tp);
-        dict.add("final", _finalUrl);
-        code = SApi::ServerConn::interpretFile((char *) loginPath.c_str(), &dict, outStringp);
-        if (code != 0) {
-            snprintf(tbuffer, sizeof(tbuffer), "Oops, interpretFile code is %d\n", code);
-            *outStringp = std::string(tbuffer);
-        }
-    }
-    return 0;
-}
-
-/* function to initialize an SApiLoginApple class; pass in the SApi object
- * associated with the web server responding for the web site.
- */
-void
 SApiLoginMS::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl)
 {
-    char tbuffer[128];
-    int32_t tval;
-    
-    _sapip = sapip;
-
-#ifdef __linux__
-    random_r(&_randomBuf, &tval);
-#else
-    tval = random();
-#endif
-
-    tval = tval & 0x7FFFFFFF;
-    snprintf(tbuffer, sizeof(tbuffer), "%u", tval);
-    _authId = std::string(tbuffer);
+    // initialize the server responding to delivery of keys.
+    keyServer(7700);
 
     _finalUrl = finalUrl;
     cookiep->setActive(this);
@@ -373,14 +207,16 @@ SApiLoginMS::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
         char tbuffer[4096];
         std::string redirectUrl;
         std::string tableKey;
-        
+
         redirectUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?";
         redirectUrl += "client_id=" + _clientId;
         redirectUrl += "&response_type=code";
-        redirectUrl += "&redirect_uri=https%3a%2f%2fdjtogoapp.duckdns.org:7700%2flogin4ms";
+        redirectUrl += "&redirect_uri=https%3a%2f%2flocalhost:7700%2flogin4ms";
         redirectUrl += "&response_mode=query";
         redirectUrl += "&scope=offline_access%20files.readwrite";
-        redirectUrl += "&prompt=login";
+        redirectUrl += "&prompt=login"; // still need?
+        redirectUrl += "&code_challenge=bosonbosonbosonbosonbosonbosonbosonboson1234";
+        redirectUrl += "&code_challenge_type=plain";
         redirectUrl += "&state=" + _authId;
         dict.add("redir", redirectUrl);
         dict.add("final", _finalUrl);
@@ -498,15 +334,20 @@ SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
         postData = "client_id=" + _clientId;
         postData += "&scope=files.readwrite";
         postData += "&code=" + (*atokenp);
-        postData += "&redirect_uri=https%3a%2f%2fdjtogoapp.duckdns.org:7700%2flogin4ms";
+        postData += "&redirect_uri=https%3a%2f%2flocalhost:7700%2flogin4ms";
         postData += "&grant_type=authorization_code";
+        postData += "&code_verifier=bosonbosonbosonbosonbosonbosonbosonboson1234";
+#if 0
+        // don't use when using localhost
         postData += "&client_secret=" + Rst::urlEncode(&_clientSecret);
+#endif
 
         xapip = new XApi();
         bufGenp = new BufTls(cookiep->getPathPrefix());
         bufGenp->init(const_cast<char *>("login.microsoftonline.com"), 443);
         connp = xapip->addClientConn(bufGenp);
         reqp = new XApi::ClientReq();
+        reqp->addHeader("Origin", "https://localhost");
         reqp->setSendContentLength(postData.length());
         reqp->startCall( connp,
                          callbackString.c_str(),
@@ -519,7 +360,6 @@ SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
         code = reqp->waitForHeadersDone();
         inPipep = reqp->getIncomingPipe();
         code = inPipep->read(tbuffer, sizeof(tbuffer));
-        printf("Refine code %d\n", code);
         if (code >= 0 && code < (signed) sizeof(tbuffer)-1) {
             tbuffer[code] = 0;
         }
@@ -573,15 +413,16 @@ SApiLoginMS::refresh()
     postData = "client_id=" + _clientId;
     postData += "&scope=files.readwrite";
     postData += "&refresh_token=" + _refreshToken;
-    postData += "&redirect_uri=https%3a%2f%2fdjtogoapp.duckdns.org:7700%2flogin4ms";
+    postData += "&redirect_uri=https%3a%2f%2flocalhost:7700%2flogin4ms";
     postData += "&grant_type=refresh_token";
-    postData += "&client_secret=" + Rst::urlEncode(&_clientSecret);
+//    postData += "&client_secret=" + Rst::urlEncode(&_clientSecret);
     
     xapip = new XApi();
     bufGenp = new BufTls(_cookiep->getPathPrefix());
     bufGenp->init(const_cast<char *>("login.microsoftonline.com"), 443);
     connp = xapip->addClientConn(bufGenp);
     reqp = new XApi::ClientReq();
+    reqp->addHeader("Origin", "https://localhost");
     reqp->setSendContentLength(postData.length());
     reqp->startCall( connp,
                      callbackString.c_str(),
@@ -634,6 +475,79 @@ SApiLoginMS::refresh()
     return code;
 }
 
+void
+SApiLoginKeyReq::keyLoginMethod()
+{
+    char tbuffer[_bigStr];
+    char *obufferp;
+    int32_t code;
+    std::string response;
+    SApi::Dict dict;
+    std::string tableKey;
+    size_t ampPos;
+    size_t tokenPos;
+    size_t endPos;
+    SApiLoginMS *sapiLoginp = static_cast<SApiLoginMS *>(_sapip->getContext());
+    Rst::Request *rstReqp;
+    std::string *baseUrlp;
+    Rst::Hdr *hdrp;
+    dqueue<Rst::Hdr> *urlPairsp;
+
+    rstReqp = getRstReq();
+    CThreadPipe *outPipep = getOutgoingPipe();
+
+    baseUrlp = rstReqp->getBaseUrl();
+    
+    /* search for state and code strings for table entries */
+    urlPairsp = _rstReqp->getUrlPairs();
+    for(hdrp = urlPairsp->head(); hdrp; hdrp=hdrp->_dqNextp) {
+        /* could also look for ckSession */
+        if (strcasecmp("code", hdrp->_key.c_str()) == 0) {
+            sapiLoginp->_code = hdrp->_value;
+        }
+    }
+
+    printf("\nReads (generic login) done\n");
+    
+    code = getConn()->interpretFile( (char *) "login-ms-done.html", 
+                                     &dict, 
+                                     &response);
+
+    if (code != 0) {
+        snprintf(tbuffer, sizeof(tbuffer),"Oops, interpretFile code is %d\n", code);
+        obufferp = tbuffer;
+    }
+    else {
+        obufferp = const_cast<char *>(response.c_str());
+    }
+    
+    setSendContentLength(strlen(obufferp));
+    
+    /* reverse the pipe -- must know length, or have set content length to -1 */
+    inputReceived();
+    
+    code = outPipep->write(obufferp, strlen(obufferp));
+    outPipep->eof();
+    
+    requestDone();
+}
+
+void
+SApiLoginMS::keyServer(int port)
+{
+    SApi *sapip;
+
+    sapip = new SApi();
+    sapip->setContext(this);
+    sapip->useTls();
+    
+    sapip->registerUrl("/login4ms",
+                       (SApi::RequestFactory *) &SApiLoginKeyReq::keyFactory,
+                       (SApi::StartMethod) &SApiLoginKeyReq::keyLoginMethod);
+    
+    sapip->initWithPort(port);
+}
+
 /* static */ SApiLoginCookie *
 SApiLogin::createGlobalCookie(std::string pathPrefix, std::string libPath)
 {
@@ -671,51 +585,9 @@ SApiLogin::createLoginCookie(SApi::ServerReq *reqp) {
     return cookiep;
 }
 
-void
-SApiLoginReq::AppleLoginScreenMethod()
-{
-    char tbuffer[16384];
-    char *obufferp;
-    std::string response;
-    SApi::Dict dict;
-    Json json;
-    CThreadPipe *outPipep = getOutgoingPipe();
-    SApiLoginCookie *cookiep;
-    std::string authToken;
-        
-    cookiep = SApiLogin::getLoginCookie(this);
-    if (cookiep == NULL) {
-        cookiep = new SApiLoginCookie();
-        setCookieKey("sapiLogin", cookiep);
-    }
-    else {
-        if (cookiep->getActive())
-            authToken = cookiep->getActive()->getAuthToken();
-        if (authToken.length() == 0) {
-            cookiep->_loginApplep = new SApiLoginApple();
-            cookiep->_loginApplep->setAppParams("/database/1/iCloud.com.Cazamar.Login1/development/public/users/caller?ckAPIToken=4e2811fdef054c7cb02aca853299b50151f5b7c40e5cdbd9a7762c135af3e99a");
-            cookiep->_loginApplep->init(_sapip, cookiep, "/");
-             cookiep->_loginApplep->getLoginPage(&response, cookiep);
-            obufferp = const_cast<char *>(response.c_str());
-        }
-        else {
-            obufferp = tbuffer;
-            strcpy(tbuffer, "Error -- in login screen with a token");
-        }
-    }
-    
-    setSendContentLength(strlen(obufferp));
-    
-    /* reverse the pipe -- must know length, or have set content length to -1 by now */
-    inputReceived();
-    
-     outPipep->write(obufferp, strlen(obufferp));
-    outPipep->eof();
-    
-    requestDone();
-}
-
-/* MS */
+// MS.  This is the first function invoked when the user clicks on the
+// "MS Login" button.  It's context is the SApiLogin structure.  It
+// creates a SApiLoginMS structure that will drive the login process.
 void
 SApiLoginReq::MSLoginScreenMethod()
 {
@@ -738,8 +610,8 @@ SApiLoginReq::MSLoginScreenMethod()
             authToken = cookiep->getActive()->getAuthToken();
         if (authToken.length() == 0) {
             cookiep->_loginMSp = new SApiLoginMS();
-            cookiep->_loginMSp->setAppParams( "cd97cce7-f4a3-40c2-acc7-66a7924c6341",
-                                              "lznisJHEK|msZGD85941{@)");
+            cookiep->_loginMSp->setAppParams( "adafdab2-9b78-4c4c-833f-826b0e9be124",
+                                              "~2q8Q~_vm1eR5oEb_QWFz1pmo6MVxihLClPn2bdH");
 
             cookiep->_loginMSp->init(_sapip, cookiep, "/");
             cookiep->_loginMSp->getLoginPage(&response, cookiep);
@@ -948,16 +820,12 @@ SApiLoginCookie::restore()
             if (!_loginMSp) {
                 _loginMSp = new SApiLoginMS();
             }
-            _loginMSp->setAppParams( "cd97cce7-f4a3-40c2-acc7-66a7924c6341",
-                                     "lznisJHEK|msZGD85941{@)");
+            _loginMSp->setAppParams( "adafdab2-9b78-4c4c-833f-826b0e9be124",
+                                     "~2q8Q~_vm1eR5oEb_QWFz1pmo6MVxihLClPn2bdH");
             _loginMSp->initFromFile(this, authToken, refreshToken);
         }
         else if (authType == "apple") {
-            if (!_loginApplep) {
-                _loginApplep = new SApiLoginApple();
-            }
-            _loginApplep->setAppParams("/database/1/iCloud.com.Cazamar.Login1/development/public/users/caller?ckAPIToken=4e2811fdef054c7cb02aca853299b50151f5b7c40e5cdbd9a7762c135af3e99a");
-            _loginApplep->initFromFile(this, authToken);
+            osp_assert(0);
         }
     }
 

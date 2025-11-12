@@ -1,15 +1,29 @@
-register with apps.dev.microsoft.com (not Azure Active Directory)
-
 Obsolete, but still present for mikazar@microsoft.com
 CloudMS
 Web app
-pw awqdimBY081)~-nXYMPD19:
-id 60a94129-6c64-493e-b91f-1bd6d0c09cd1
-https://djtogoapp.duckdns.org:7700/login4ms
-https://djtogoapp.duckdns.org:7700/logout4ms
-Files.ReadWrite Files.ReadWriteAll Files.ReadWrite.AppFolder Files.ReadWriteSelected User.Read
+#https://djtogoapp.duckdns.org:7700/login4ms
+#https://djtogoapp.duckdns.org:7700/logout4ms
+#Files.ReadWrite Files.ReadWriteAll Files.ReadWrite.AppFolder Files.ReadWriteSelected User.Read
+
+register with apps.dev.microsoft.com (not Azure Active Directory)
 
 Current app for michael.kazar@verizon.net:
 Kite4Cloud (Michael.Kazar@verizon.net)
 cd97cce7-f4a3-40c2-acc7-66a7924c6341
 pw lznisJHEK|msZGD85941{@)
+
+================================================================
+New type of apps registration:
+registered at portal.azure.com and then find app registrations
+  or https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
+
+Backup4Kite
+https://localhost:7700
+'spa' type
+client ID -- adafdab2-9b78-4c4c-833f-826b0e9be124
+client secret -- ~2q8Q~_vm1eR5oEb_QWFz1pmo6MVxihLClPn2bdH expires 11/10/2027
+
+Note that when you setup the URI for the SPA type, you can't just edit
+it if it had been associated with another type earlier.
+
+No longer requires or uses keyserv!
