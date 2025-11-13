@@ -571,18 +571,10 @@ BufTls::mainInit()
     SSL_load_error_strings();
 
     /* setup client side */
-#ifdef __linux__
     _sslClientMethodp = TLS_client_method();  /* use for client conns */
-#else
-    _sslClientMethodp = TLSv1_2_client_method();  /* use for client conns */
-#endif
 
     /* setup server side */
-#ifdef __linux__
     _sslServerMethodp = TLS_server_method();
-#else
-    _sslServerMethodp = TLSv1_2_server_method();
-#endif
     _sslServerContextp = SSL_CTX_new(_sslServerMethodp);
 
     if (SSL_CTX_load_verify_locations( _sslServerContextp,

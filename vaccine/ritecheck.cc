@@ -200,7 +200,7 @@ main(int argc, char **argv)
                 }
             }
 
-            // printf("Processed %d lines\n", counter);
+            printf("Processed %d lines\n", counter);
         }
         fclose(filep);
     }

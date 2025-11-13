@@ -12,7 +12,7 @@ clean:
 OS=$(shell uname -s)
 
 ifneq ($(OS),Linux)
-OSXVERSION=-mmacosx-version-min=15.0
+OSXVERSION=
 SSLI=-I/opt/homebrew/include
 else
 OSXVERSION=

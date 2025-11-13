@@ -63,7 +63,7 @@ main(int argc, char **argv)
                 continue;
         }
 
-        scanItems = sscanf(cmdBuffer, "%128s %128s %128s", cmd, arg0, arg1);
+        scanItems = sscanf(cmdBuffer, "%127s %127s %127s", cmd, arg0, arg1);
         if (scanItems <= 0)
             continue;
 
