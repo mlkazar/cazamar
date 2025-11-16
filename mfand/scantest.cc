@@ -105,11 +105,14 @@ main(int argc, char **argv)
     delete queryp;
     queryp = NULL;
 
+#if 0
     printf("Sleeping now\n");
 
     while(1) {
         sleep(1);
     }
-
+#else
+    printf("ScanTest done\n");
+#endif
     return 0;
 }

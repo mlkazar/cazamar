@@ -9,7 +9,7 @@ CFEX
 CDNX
 
 Ici Musique - Quebec
-----
+----No genre
 
 tunein
 
@@ -19,24 +19,7 @@ curl http://playerservices.streamtheworld.com/pls/WERSFMAAC.pls
 
 AM also works
 
-----
-
-iheartradio
-
-play station, go to "view source" in Mozilla, search for
-"shoutcast_stream" and next is the http address of the stream
-
-http://c11icyelb.prod.playlists.ihrhls.com/1097_icy
-
-is an example.  Note the 4 digit code.
-
-https://api.iheart.com/api/v2/content/liveStations/<number>
-
-gets you a json description of the station.
-
-need to write downloader
-
-----
+----radio-browser interface supports genre
 
 get stations.rsd for tunein:
 
@@ -45,7 +28,13 @@ unzip to ~/mac/mfand/stations.rsd
 
 http://radiosure.fr has documentation on all of this.
 
-----
+Actually, you can retrieve the whole database, or do queries, via
+https://fi1.api.radio-browser.info.  Read the doc to get all the
+possible host names for the server.  The doc is at
+api.radio-browser.info, though radio-browser.info gives things like
+apps that use it.
+
+----supports genre
 
 DAR.fm
 
@@ -59,17 +48,17 @@ http://api.dar.fm/playlist.php?callsign=wesa&callback=json&partner_token=6670654
 http://api.dar.fm/playlist.php?q=electronic&callback=json&partner_token=6670654103
 http://api.dar.fm/playlist.php?q=@city%20pittsburgh&callback=json&partner_token=6670654103
 other tags @artist @title @callsign @genre @city @state (2 letter) @country (2 letter) @language
-----
 
 dar.fm partner ID = 6670654103
 email michael.kazar@verizon.net
 
+---- doesn't seem to work for names reliably, though worked for genre
 http://api.shoutcast.com/legacy/stationsearch?k=HF3T2bjHaPcadpSG&limit=100&search=<string+with+spaces>
 shoutcast key=HF3T2bjHaPcadpSG
 email=michael.kazar@verizon.net
 search string has spaces turned into '+'
 
-----
+---- probably has genre, but not clear
 
 OPML
 

@@ -27,6 +27,8 @@ private:
 public:
     std::string _query;         /* for simple queries */
 
+    std::string _verifyingUrl;  // URL being checked, if any
+
     std::string _browseCountry;       /* for browsing */
     std::string _browseCity;
     std::string _browseGenre;
@@ -117,7 +119,10 @@ class RadioScanStation {
 
     void addEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb);
 
-    int32_t streamApply(std::string url, streamUrlProc *urlProcp, void *urlContextp);
+    int32_t streamApply(std::string url,
+                        streamUrlProc *urlProcp,
+                        void *urlContextp,
+                        RadioScanQuery *queryp);
 
     void updatedEntries();
 
@@ -133,9 +138,13 @@ class RadioScanStation {
 
     void del(); /* delete is a reserved word */
 
-    int parsePls(const char *resultp, streamUrlProc *urlProcp, void *urlContextp);
+    int parsePls(const char *resultp, streamUrlProc *urlProcp, void *urlContextp,
+                 RadioScanQuery *qp);
 
-    int parseUrl(const char *resultp, streamUrlProc *urlProcp, void *urlContextp);
+    int parseUrl(const char *resultp, streamUrlProc *urlProcp, void *urlContextp,
+                 RadioScanQuery *qp);
+
+    static std::string extractFields(std::string tags, int32_t fields);
 
     static int queryMatch(const char *a, const char *b);
 
