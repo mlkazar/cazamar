@@ -804,7 +804,6 @@ RadioScanQuery::searchFile() {
         if (urlNodep == nullptr)
             continue;
         url = urlNodep->_children.head()->_name;
-        printf("using URL=%s\n", url.c_str());
 
         std::string name;
         nameNodep = stationNodep->searchForChild("name");
@@ -858,6 +857,7 @@ RadioScan::scanSort(int32_t *datap, int32_t count)
     }
 }
 
+#if 0
 int32_t
 RadioScanQuery::browseFile()
 {
@@ -993,6 +993,86 @@ RadioScanQuery::browseFile()
 
     return 0;
 }
+#else
+int32_t
+RadioScanQuery::browseFile() {
+    std::string queryResults;
+    char *datap;
+    int32_t code;
+    Json::Node *rootNodep = nullptr;
+    Json::Node *stationNodep = nullptr;
+    Json::Node *urlNodep = nullptr;
+    Json::Node *nameNodep = nullptr;
+    Json::Node *tagNodep = nullptr;
+    Json jsonSys;
+    RadioScanStation *stationp;
+    char tbuffer[64];
+
+    std::string url = ("http://fi1.api.radio-browser.info/json/stations/search?");
+    if (_browseCountry.size() > 0) {
+        url.append(std::string("country=") + _browseCountry + "&");
+    }
+    if (_browseGenre.size() > 0) {
+        url.append(std::string("tag=") + _browseGenre + "&");
+    }
+    if (_browseState.size() > 0) {
+        url.append(std::string("state=") + _browseState + "&");
+    }
+    if (_browseMaxCount != 0) {
+        snprintf(tbuffer, sizeof(tbuffer), "limit=%d", _browseMaxCount);
+        url.append(tbuffer);
+    } else {
+        // use a default
+        url.append("limit=512");
+    }
+
+    code = _scanp->retrieveContents(url, &queryResults);
+    if (code)
+        return code;
+
+    datap = const_cast<char *>(queryResults.c_str());
+    code = jsonSys.parseJsonChars(&datap, &rootNodep);
+    if (!rootNodep) {
+        printf("json parse failed '%s'\n", datap);
+        return -1;
+    }
+
+    // queryResults in an array of station descriptors
+    for(stationNodep = rootNodep->_children.head();
+        stationNodep != nullptr;
+        stationNodep = stationNodep->_dqNextp) {
+        urlNodep = stationNodep->searchForChild("url");
+        if (urlNodep == nullptr)
+            continue;
+        url = urlNodep->_children.head()->_name;
+
+        std::string name;
+        nameNodep = stationNodep->searchForChild("name");
+        if (nameNodep != nullptr) {
+            name = nameNodep->_children.head()->_name;
+        } else {
+            name = RadioScanStation::upperCase(_query);
+        }
+
+        stationp = new RadioScanStation();
+        stationp->init(this);
+
+        tagNodep = stationNodep->searchForChild("tags");
+        if (tagNodep != nullptr) {
+            stationp->_stationShortDescr = std::string("Playing ") +
+                RadioScanStation::extractFields(tagNodep->_children.head()->_name, 2);
+        }
+
+        /* set these so that addEntry has some useful defaults */
+        stationp->_stationName = name;
+        stationp->_stationSource = std::string("radio-browser");
+
+        stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
+    }
+
+    return 0;
+}
+#endif
 
 int32_t
 RadioScanQuery::searchRadioTime()
@@ -1337,11 +1417,13 @@ void
 RadioScanQuery::initBrowse(RadioScan *scanp, 
                            int32_t maxCount,
                            std::string country,
+                           std::string state,
                            std::string city,
                            std::string genre)
 {
     _browseMaxCount = maxCount;
     _browseCountry = country;
+    _browseState = state;
     _browseCity = city;
     _browseGenre = genre;
     _scanp = scanp;
@@ -1372,6 +1454,7 @@ RadioScanQuery::getStatus()
 void
 RadioScan::browseStations( RadioScanQuery *resp)
 {
+    resp->_baseStatus = std::string("Browsing radio-browser.info");
     resp->browseFile();
 
     /* this is only useful if we add another source of random entries */

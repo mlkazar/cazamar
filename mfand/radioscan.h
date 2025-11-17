@@ -30,6 +30,7 @@ public:
     std::string _verifyingUrl;  // URL being checked, if any
 
     std::string _browseCountry;       /* for browsing */
+    std::string _browseState;
     std::string _browseCity;
     std::string _browseGenre;
     int32_t _browseMaxCount;
@@ -53,6 +54,7 @@ public:
     void initBrowse(RadioScan *scanp, 
                     int32_t maxCount,
                     std::string country,
+                    std::string state,
                     std::string city,
                     std::string genre);
 

@@ -844,19 +844,24 @@ wrapMediaItems(NSArray *mediaArray)
     if (strncasecmp("c:", searchStringp, 2) == 0) {
 	/* choose random set, matching country */
 	_queryp = new RadioScanQuery();
-	_queryp->initBrowse(_scanp, 10, std::string(searchStringp+2), "", "");
+	_queryp->initBrowse(_scanp, 20, std::string(searchStringp+2), "", "", "");
 	_scanp->browseStations(_queryp);
     }
     else if (strncasecmp("ct:", searchStringp, 3) == 0) {
 	/* choose random set, matching specific city */
 	_queryp = new RadioScanQuery();
-	_queryp->initBrowse(_scanp, 10, "", std::string(searchStringp+3), "");
+	_queryp->initBrowse(_scanp, 20, "", "", std::string(searchStringp+3), "");
+	_scanp->browseStations(_queryp);
+    }
+    else if (strncasecmp("s:", searchStringp, 2) == 0) {
+	_queryp = new RadioScanQuery();
+	_queryp->initBrowse(_scanp, 20, "", std::string(searchStringp+3), "", "");
 	_scanp->browseStations(_queryp);
     }
     else if (strncasecmp("g:", searchStringp, 2) == 0) {
 	/* choose random set, matching specific genre */
 	_queryp = new RadioScanQuery();
-	_queryp->initBrowse(_scanp, 10, "", "", std::string(searchStringp+2));
+	_queryp->initBrowse(_scanp, 20, "", "", "", std::string(searchStringp+2));
 	_scanp->browseStations(_queryp);
     }
     else {
