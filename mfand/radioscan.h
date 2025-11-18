@@ -72,6 +72,8 @@ public:
 
     std::string getStatus();
 
+    bool isPrefix(std::string prefix, std::string target);
+
     void abort() {
         _aborted = 1;
         _baseStatus = std::string("Aborting");
@@ -84,6 +86,10 @@ public:
 
 class RadioScanStation {
  public:
+
+    // for URLs that turn into playlists, max # of working entries we'll add,
+    // since some of these files have *lots* of streams.
+    static const uint32_t _maxStreamsPerUrl = 4;
 
     class Entry {
     public:

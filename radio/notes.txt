@@ -53,7 +53,7 @@ dar.fm partner ID = 6670654103
 email michael.kazar@verizon.net
 
 ---- doesn't seem to work for names reliably, though worked for genre
-http://api.shoutcast.com/legacy/stationsearch?k=HF3T2bjHaPcadpSG&limit=100&search=<string+with+spaces>
+http://api.shoutcast.com/legacy/stationsearch?k=HF3T2bjHaPcadpSG&limit=100&search=<string+with+spaces>ç
 shoutcast key=HF3T2bjHaPcadpSG
 email=michael.kazar@verizon.net
 search string has spaces turned into '+'
@@ -64,7 +64,7 @@ OPML
 
 http://opml.radiotime.com/Tune.ashx?id=s142111
 	gives real stations for tunein/radiotime station ID
-http://opml.radiotime.com/Search.ashx?&query=wyep&types=station&format=mp3,aac
+http://opml.radiotime.com/Search.ashx?&query=wyep&types=station&format=mp3,aac&partnerId=k2YHnXyS
 	gets radio info for query.
 http://opml.radiotime.com/Browse.ashx?id=s240000
 	describe station <id>

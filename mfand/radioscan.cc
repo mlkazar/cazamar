@@ -128,7 +128,12 @@ RadioScanStation::streamApply( std::string url,
         if (httpError >= 300 && httpError < 400) {
             /* redirect; location header has our new URL */
             code = reqp->findIncomingHeader("location", &url);
-            if (code || ++redirects >= RadioScan::_maxRedirects) {
+            if (code) {
+                delete reqp;
+                break;
+            }
+            if ( ++redirects >= RadioScan::_maxRedirects) {
+                code = -3;
                 delete reqp;
                 break;
             }
@@ -193,6 +198,7 @@ RadioScanStation::streamApply( std::string url,
             inPipep->eof();
 
             urlProcp(urlContextp, url.c_str());
+            code = 0;
             /* deleted below */
         }
         else {
@@ -209,6 +215,7 @@ RadioScanStation::streamApply( std::string url,
                     truncatedRead = 1;
                     printf("Content type %s sent us too much data, probably a stream\n",
                            contentType.c_str());
+                    code = -4;
                     break;
                 }
             };
@@ -390,11 +397,15 @@ RadioScanStation::parsePls( const char *resultp,
     int tc;
     const char *strp;
     int32_t code;
+    uint32_t workingStreams = 0;
 
     tlen = (int32_t) strlen(resultp);
     strp = resultp;
     found = 0;
     while(tlen > 0) {
+        if (workingStreams >= _maxStreamsPerUrl)
+            return false;       // !found
+
         if (strncasecmp(strp, "file", 4) == 0) {
             /* skip to after '=' */
             code = 0;
@@ -427,7 +438,10 @@ RadioScanStation::parsePls( const char *resultp,
              */
             skipPastEol(&strp, &tlen);
 
-            streamApply(std::string(urlBuffer), RadioScanStation::stwCallback, this, queryp);
+            code = streamApply(std::string(urlBuffer), RadioScanStation::stwCallback,
+                               this, queryp);
+            if (code == 0)
+                workingStreams++;
             found = 1;
         }
         else {
@@ -454,11 +468,15 @@ RadioScanStation::parseUrl( const char *resultp,
     int found;
     const char *strp;
     int32_t code;
+    uint32_t workingStreams = 0;
 
     tlen = (int32_t) strlen(resultp);
     strp = resultp;
     found = 0;
     while(tlen > 0) {
+        if (workingStreams >= _maxStreamsPerUrl)
+            return false;
+
         if (strncasecmp(strp, "http:", 5) == 0 || strncasecmp(strp, "https:", 6) == 0) {
             /* we've moved just past the '=' character; the rest of the line up to
              * the new line is the web address.  The strcspn function returns the
@@ -473,7 +491,11 @@ RadioScanStation::parseUrl( const char *resultp,
              */
             skipPastEol(&strp, &tlen);
 
-            streamApply(std::string(urlBuffer), RadioScanStation::stwCallback, this, queryp);
+            code = streamApply(std::string(urlBuffer), RadioScanStation::stwCallback,
+                               this, queryp);
+            if (code == 0)
+                workingStreams++;
+
             found = 1;
         }
         else {
@@ -813,6 +835,12 @@ RadioScanQuery::searchFile() {
             name = RadioScanStation::upperCase(_query);
         }
 
+        std::string urlResolved;
+        urlNodep = stationNodep->searchForChild("url_resolved");
+        if (urlNodep != nullptr)
+            urlResolved = urlNodep->_children.head()->_name;
+        
+
         stationp = new RadioScanStation();
         stationp->init(this);
 
@@ -826,7 +854,12 @@ RadioScanQuery::searchFile() {
         stationp->_stationName = name;
         stationp->_stationSource = std::string("radio-browser");
 
-        stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
+        code = stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
+        if (code != 0) {
+            // if we can't handle the url perhaps url_resolved will work
+            code = stationp->streamApply(urlResolved, RadioScanStation::stwCallback,
+                                         stationp, this);
+        }
     }
 
     return 0;
@@ -1074,6 +1107,23 @@ RadioScanQuery::browseFile() {
 }
 #endif
 
+bool
+RadioScanQuery::isPrefix(std::string prefix, std::string target) {
+    const char *prefixp = prefix.c_str();
+    const char *targetp = target.c_str();
+    uint32_t prefixLen = prefix.size();
+    uint32_t targetLen = target.size();
+    int32_t count = targetLen - prefixLen;
+
+    // slide prefix over i bytes and check if they match.
+    for(uint32_t i=0;i<count;i++) {
+        if (strncasecmp(prefixp, targetp+i, prefixLen) == 0)
+            return true;
+    }
+
+    return false;
+}
+
 int32_t
 RadioScanQuery::searchRadioTime()
 {
@@ -1120,7 +1170,8 @@ RadioScanQuery::searchRadioTime()
      * stream, or it isn't available in our nation.
      */
     childListp = xgmlNodep->searchForChild("outline");
-    for(; childListp; childListp = childListp->_dqNextp) {
+    bool first;
+    for(first=true; childListp; childListp = childListp->_dqNextp, first=false) {
         foundBitrate = 0;
         foundText = 0;
         for(attrNodep = childListp->_attrs.head(); attrNodep; attrNodep = attrNodep->_dqNextp) {
@@ -1139,6 +1190,11 @@ RadioScanQuery::searchRadioTime()
         if (!foundBitrate) {
             continue;
         }
+
+        // check if name is substr, skip if not, unless this is the first
+        // element.
+        if (!first && !isPrefix(_query, textString))
+            continue;
 
         /* here if we found both the URL and bitrate, we have a real radio station and the
          * URL's contents are actually another URl (barf).
@@ -1476,9 +1532,9 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     resp->init(this, query);
     *respp = resp;
 
-    /* if we have 4 character call letters like WESA, we use call
-     * letter lookup with streamtheworld.
-     */ 
+    // Most stations have no entries, but some have a whole bunch.
+    //
+    // TODO: Not clear if it is worth it, but perhaps limit to first 4 results
     if (query.size() <= 4) {
         resp->_baseStatus = std::string("Searching StreamTheWorld");
         resp->searchStreamTheWorld();
@@ -1486,29 +1542,38 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
             return;
     }
 
-    /* add entries from the service supplying data to the file */
+    // This one replaces the file download, which is now generated
+    // from this site.
     resp->_baseStatus = std::string("Searching radio-browser.info");
     resp->searchFile();
     if (resp->isAborted())
         return;
 
+    // TODO: this can return a whole bunch of things, so search for
+    // the query string in the name before doing more work.
+    resp->_baseStatus = std::string("Searching RadioTime");
+    resp->searchRadioTime();
+    if (resp->isAborted())
+        return;
 
+#if 0
+    // TODO: sometimes really slow; only use uberstation URL
+    // Get rid of this
     /* add entries from DAR.fm */
     resp->_baseStatus = std::string("Searching dar.fm");
     resp->searchDar();
     if (resp->isAborted())
         return;
+#endif
 
 
+#if 0
+    // doesn't seem to work for station names, just genres
     resp->_baseStatus = std::string("Searching Shoutcast");
     resp->searchShoutcast();
     if (resp->isAborted())
         return;
-
-    resp->_baseStatus = std::string("Searching RadioTime");
-    resp->searchRadioTime();
-    if (resp->isAborted())
-        return;
+#endif
 
     takeLock();
     

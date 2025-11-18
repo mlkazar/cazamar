@@ -88,7 +88,7 @@ main(int argc, char **argv)
 
         scanp->searchStation(std::string(argv[2]), &queryp);
 
-        printf("All done with query=%p for string='%s'\n", queryp, queryp->_query.c_str());
+        printf("\nAll done with query=%p for string='%s'\n", queryp, queryp->_query.c_str());
 
         displayStations(queryp);
 
