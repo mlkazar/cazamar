@@ -26,24 +26,10 @@ RadioScan::init(BufGenFactory *factoryp, std::string dirPrefix)
     _factoryp = factoryp;
     _xapip = new XApi();
 
-    _dirPrefix = dirPrefix;
-
-    _dirBufp = factoryp->allocate(0);
-    if (_dirBufp) {
-        _dirBufp->init(const_cast<char *>("djtogoapp.duckdns.org"), 7701);
-        _dirBufp->setTimeoutMs(15000);
-        _dirConnp = _xapip->addClientConn(_dirBufp);
-    }
-
     _stwBufp = factoryp->allocate(0);
     _stwBufp->init(const_cast<char *>("playerservices.streamtheworld.com"), 80);
     _stwBufp->setTimeoutMs(15000);
     _stwConnp = _xapip->addClientConn(_stwBufp);
-
-    /* for browsing, we maintain a count of the # of lines in the radiosure file, which
-     * we compute on demand.
-     */
-    _fileLineCount = -1;
 }
 
 /* start with the object at the URL, and resolve it until we get to an
@@ -615,30 +601,6 @@ RadioScanStation::queryMatch(const char *sp1, const char *sp2)
     return 1;
 }
 
-void
-RadioScan::countLines()
-{
-    std::string checkedFileName;
-    FILE *filep;
-    char lineBuffer[4096];
-    int32_t lineCount;
-    char *tp;
-
-    checkedFileName = _dirPrefix + "stations.checked";
-    filep = fopen(checkedFileName.c_str(), "r");
-    if (!filep)
-        return;
-    lineCount = 0;
-    while(1) {
-        tp = fgets(lineBuffer, sizeof(lineBuffer), filep);
-        if (!tp)
-            break;
-        lineCount++;
-    }
-    _fileLineCount = lineCount;
-    fclose(filep);
-}
-
 /* split line by \t characters; last may be terminated by \r, \n or
  * null; returns count of entries found.  This is used to parse the
  * stations.rsd file enumerating so many radio stations.
@@ -720,79 +682,6 @@ RadioScanStation::upperCase(std::string name)
     return result;
 }
 
-/* search a stations.rsd file, generating a series of stations, one for
- * each station matching the query string.
- */
-#if 0
-int32_t
-RadioScanQuery::searchFile()
-{
-    FILE *filep;
-    char *tp;
-    char lineBuffer[4096];
-    char addr[4096];
-    char stationName[4096];
-    char stationShortDescr[4096];
-    char stationGenre[128];
-    char stationCO[128];
-    char stationLang[128];
-    int matches;
-    uint32_t count;
-    char *parseArray[6];
-    RadioScanStation *stationp;
-    std::string checkedFileName;
-
-    checkedFileName = _scanp->_dirPrefix + "stations.checked";
-    filep = fopen(checkedFileName.c_str(), "r");
-    if (!filep)
-        return -1;
-
-    while(1) {
-        tp = fgets(lineBuffer, sizeof(lineBuffer), filep);
-        if (!tp)
-            break;
-        /* strings are separated by real tab characters */
-        parseArray[0] = stationName;
-        parseArray[1] = stationShortDescr;
-        parseArray[2] = stationGenre;
-        parseArray[3] = stationCO;      /* country */
-        parseArray[4] = stationLang;    /* language */
-        parseArray[5] = addr;
-        count = RadioScanStation::splitLine(lineBuffer, 6, parseArray);
-        if (count != 6)
-            continue;
-
-        /* now see if we match the station name, or short description */
-        matches = 0;
-        if (RadioScanStation::queryMatch(_query.c_str(), stationName))
-            matches = 1;
-        else if (RadioScanStation::queryMatch(_query.c_str(), stationShortDescr))
-            matches = 1;
-        if (matches) {
-            stationp = new RadioScanStation();
-            stationp->init(this);
-
-            /* set these so that addEntry has some useful defaults */
-            stationp->_stationName = std::string(stationName);
-            stationp->_stationShortDescr = std::string(stationShortDescr);
-            stationp->_stationSource = std::string("tunein file");
-
-            {
-                if (addr[0] != '-') {
-                    stationp->streamApply(addr, RadioScanStation::stwCallback, stationp, nullptr);
-                    if (stationp->_entries.count() == 0) {
-                        delete stationp;
-                    }
-                }
-            } /* used to loop over all addresses */
-        }
-        if (isAborted())
-            return -1;
-    }
-
-    return 0;
-}
-#else
 int32_t
 RadioScanQuery::searchFile() {
     std::string queryResults;
@@ -864,7 +753,6 @@ RadioScanQuery::searchFile() {
 
     return 0;
 }
-#endif
 
 /* static */ void
 RadioScan::scanSort(int32_t *datap, int32_t count)
@@ -890,143 +778,6 @@ RadioScan::scanSort(int32_t *datap, int32_t count)
     }
 }
 
-#if 0
-int32_t
-RadioScanQuery::browseFile()
-{
-    static const int32_t maxEntries = 20;
-    FILE *filep;
-    char *tp;
-    char lineBuffer[4096];
-    char addr[6][4096];
-    char stationName[4096];
-    char stationShortDescr[4096];
-    char stationGenre[128];
-    char stationCO[128];
-    char stationLang[128];
-    int matches;
-    uint32_t count;
-    char *parseArray[12];
-    RadioScanStation *stationp;
-    std::string checkedFileName;
-    int32_t lineNumbers[maxEntries];
-    int32_t i;
-    int32_t lineNumber;
-    int32_t randIx;
-    int skipping;
-    int checkedSome;
-
-    _baseStatus = std::string("Starting browse");
-
-    srandom((unsigned int) time(0));
-    for(i=0;i<maxEntries;i++) {
-        lineNumbers[i] = random() % _scanp->_fileLineCount;
-    }
-
-    RadioScan::scanSort(lineNumbers, maxEntries);
-
-    checkedFileName = _scanp->_dirPrefix + "stations.checked";
-    filep = fopen(checkedFileName.c_str(), "r");
-    if (!filep)
-        return -1;
-
-    lineNumber = -1;    /* so that first increment goes to 0 */
-    skipping = 1;       /* means we're skipping lines until we hit the next line number */
-    randIx = 0;
-    while(1) {
-        /* move to the next line number */
-        lineNumber++;
-
-        tp = fgets(lineBuffer, sizeof(lineBuffer), filep);
-        if (!tp)
-            break;
-        /* strings are separated by real tab characters */
-        parseArray[0] = stationName;
-        parseArray[1] = stationShortDescr;
-        parseArray[2] = stationGenre;
-        parseArray[3] = stationCO;      /* country */
-        parseArray[4] = stationLang;    /* language */
-        parseArray[5] = addr[0];
-        parseArray[6] = addr[1];
-        parseArray[7] = addr[2];
-        parseArray[8] = addr[3];
-        parseArray[9] = addr[4];
-        parseArray[10] = addr[5];
-        count = RadioScanStation::splitLine(lineBuffer, 11, parseArray);
-        if (count != 11)
-            continue;
-
-        if (skipping && lineNumber < lineNumbers[randIx])
-            continue;
-
-        snprintf(lineBuffer, sizeof(lineBuffer),
-                 "On line %d of %d", lineNumber, _scanp->_fileLineCount);
-        _baseStatus = std::string(lineBuffer);
-
-        /* no longer skipping, now we're searching for a match */
-        skipping = 0;
-
-        /* now see if we match the city (within the name), the country, or the genre,
-         * for each non-null thing we're trying to match.  If we're not matching on
-         * anything, then treat every line as matching.
-         */
-        matches = 0;
-        checkedSome = 0;
-        if ( _browseCity.length() > 0) {
-            /* city or county name could show up in the name or the short description */
-            checkedSome = 1;
-            if ( RadioScanStation::queryMatch(_browseCity.c_str(), stationName) ||
-                 RadioScanStation::queryMatch(_browseCity.c_str(), stationShortDescr)) {
-                matches = 1;
-            }
-        }
-        if ( _browseCountry.length() > 0) {
-            checkedSome = 1;
-            if ( RadioScanStation::queryMatch(_browseCountry.c_str(), stationCO))
-                matches = 1;
-        }
-        if ( _browseGenre.length() > 0) {
-            checkedSome = 1;
-            if (RadioScanStation::queryMatch(_browseGenre.c_str(), stationGenre))
-                matches = 1;
-        }
-        if (!checkedSome)
-            matches = 1;
-
-        if (matches) {
-            stationp = new RadioScanStation();
-            stationp->init(this);
-
-            /* set these so that addEntry has some useful defaults */
-            stationp->_stationName = std::string(stationName);
-            stationp->_stationShortDescr = std::string(stationShortDescr);
-            stationp->_stationSource = std::string("tunein file");
-
-            for(i=0;i<6;i++) {
-                if (addr[i][0] != '-') {
-                    stationp->streamApply(addr[i], RadioScanStation::stwCallback, stationp, this);
-                }
-            } /* loop over all addresses */
-
-            /* if we didn't find any streams, delete the station */
-            if (stationp->_entries.count() == 0) {
-                delete stationp;
-                stationp = NULL;
-            }
-
-            /* now move to the next target line number */
-            skipping = 1;
-            randIx++;
-            if (randIx >= maxEntries)
-                break;
-        }
-        if (isAborted())
-            return -1;
-    }
-
-    return 0;
-}
-#else
 int32_t
 RadioScanQuery::browseFile() {
     std::string queryResults;
@@ -1043,7 +794,7 @@ RadioScanQuery::browseFile() {
 
     std::string url = ("http://fi1.api.radio-browser.info/json/stations/search?");
     if (_browseCountry.size() > 0) {
-        url.append(std::string("country=") + _browseCountry + "&");
+        url.append(std::string("countrycode=") + _browseCountry + "&");
     }
     if (_browseGenre.size() > 0) {
         url.append(std::string("tag=") + _browseGenre + "&");
@@ -1105,7 +856,6 @@ RadioScanQuery::browseFile() {
 
     return 0;
 }
-#endif
 
 bool
 RadioScanQuery::isPrefix(std::string prefix, std::string target) {
@@ -1578,99 +1328,6 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     takeLock();
     
     releaseLock();
-}
-
-void
-RadioScanLoadTask::start(void *argp)
-{
-    FILE *newFilep;
-    char tbuffer[4096];
-    XApi::ClientReq *reqp;
-    CThreadPipe *inPipep;
-    int32_t code;
-    int32_t nbytes;
-    int32_t totalBytes;
-    struct stat tstat;
-    uint32_t myTime;
-    uint32_t fileMTime;
-    uint32_t httpError;
-    int failed = 0;
-    std::string checkedFileName;
-    std::string newFileName;
-    
-    /* generate required names of final file and temp file name for download */
-    checkedFileName = _dirPrefix + "stations.checked";
-    newFileName = _dirPrefix + "stations.new";
-
-    code = stat(checkedFileName.c_str(), &tstat);
-    myTime = (uint32_t) time(0);
-#ifdef __linux__
-    fileMTime = tstat.st_mtim.tv_sec;
-#else
-    fileMTime = (uint32_t) tstat.st_mtimespec.tv_sec;
-#endif
-    if (code == 0 && fileMTime + 7*24*3600 > myTime) {
-        _scanp->countLines();
-        printf("No download -- stations.checked is recent (%d lines)\n", _scanp->_fileLineCount);
-        return;
-    }
-
-    printf("Starting download\n");
-    newFilep = fopen(newFileName.c_str(), "w");
-    if (!newFilep) {
-        printf("failed to create stations.new\n");
-        return;
-    }
-    reqp = new XApi::ClientReq();
-    reqp->startCall(_scanp->_dirConnp, "/get?id=stations.rsd", /* isGet */ XApi::reqGet);
-    
-    code = reqp->waitForHeadersDone();
-    if (code == 0) {
-        httpError=reqp->getHttpError();
-    }
-    else
-        httpError = 999;
-
-    inPipep = reqp->getIncomingPipe();
-
-    totalBytes = 0;
-    if (httpError < 200 || httpError >= 300) {
-        delete reqp;
-        reqp = NULL;
-        failed = 1;
-    }
-    else {
-        while(1) {
-            nbytes = inPipep->read(tbuffer, sizeof(tbuffer));
-            if (nbytes > 0) {
-                code = (int32_t) fwrite(tbuffer, 1, nbytes, newFilep);
-                totalBytes += code;
-                if (code <= 0)
-                    break;
-            }
-            else {
-                if (nbytes < 0)
-                    failed = 1;
-                break;
-            }
-        } /* loop over all */
-    }
-
-    if (reqp)
-        delete reqp;
-    fclose(newFilep);
-    newFilep = NULL;
-    if (failed)
-        unlink(newFileName.c_str());
-    else {
-        /* new file name is the rename source and ends '.new' */
-        rename(newFileName.c_str(), checkedFileName.c_str());
-    }
-
-    /* count the lines in the newly loaded file */
-    _scanp->countLines();
-    
-    printf("Received %d bytes, %d lines\n", totalBytes, _scanp->_fileLineCount);
 }
 
 RadioScanStation::Entry *

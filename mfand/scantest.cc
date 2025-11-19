@@ -104,7 +104,24 @@ main(int argc, char **argv)
         // monitor this query
         chp->init((CThread::StartMethod) &QueryMonitor::start, monitorp, queryp);
 
-        queryp->initBrowse(scanp, 10, "France", "", "", "");
+        const char *countryp = "US";
+        const char *genrep = "";
+        if (argc > 2) {
+            if (strcasecmp(argv[2], "all") == 0)
+                countryp = "";
+            else
+                countryp = argv[2];
+        }
+        if (argc > 3) {
+            if (strcasecmp(argv[3], "all") == 0)
+                genrep = "";
+            else
+                genrep = argv[3];
+        }
+
+        // ignore state and city for now
+        queryp->initBrowse(scanp, 5, countryp, "", "", genrep);
+
         monitorp->updateQuery(queryp);
 
         scanp->browseStations(queryp);

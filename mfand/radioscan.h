@@ -18,7 +18,6 @@
 class RadioScan;
 class RadioScanQuery;
 class RadioScanStation;
-class RadioScanLoadTask;
 
 class RadioScanQuery {
     friend class RadioScan;
@@ -180,13 +179,9 @@ class RadioScan {
     static const uint32_t _maxRedirects = 4;
 
     XApi *_xapip;
-    BufGen *_dirBufp;
-    XApi::ClientConn *_dirConnp;
     BufGen *_stwBufp;
     XApi::ClientConn *_stwConnp;
     BufGenFactory *_factoryp;
-    std::string _dirPrefix;
-    int32_t _fileLineCount;
 
     void init(BufGenFactory *factoryp, std::string dirPrefix);
 
@@ -207,17 +202,4 @@ class RadioScan {
     static void scanSort(int32_t *datap, int32_t count);
 
     int32_t retrieveContents(std::string url , std::string *strp);
-};
-
-class RadioScanLoadTask : public CThread {
-    RadioScan *_scanp;
-    std::string _dirPrefix;
-
-public:
-    void start(void *argp);
-
-    void init(RadioScan *scanp, std::string dirPrefix) {
-        _scanp = scanp;
-        _dirPrefix = dirPrefix;
-    }
 };

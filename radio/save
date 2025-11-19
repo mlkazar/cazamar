@@ -1,3 +1,0 @@
-make clean
-cp -r ~/mac/radio ~/safe
-echo saved
