@@ -1,3 +1,5 @@
+#include <vector>
+
 #include <sys/types.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -785,12 +787,10 @@ RadioScanQuery::browseFile() {
     int32_t code;
     Json::Node *rootNodep = nullptr;
     Json::Node *stationNodep = nullptr;
-    Json::Node *urlNodep = nullptr;
-    Json::Node *nameNodep = nullptr;
-    Json::Node *tagNodep = nullptr;
+    Json::Node *childNodep = nullptr;
     Json jsonSys;
     RadioScanStation *stationp;
-    char tbuffer[64];
+    uint32_t i;
 
     std::string url = ("http://fi1.api.radio-browser.info/json/stations/search?");
     if (_browseCountry.size() > 0) {
@@ -800,15 +800,10 @@ RadioScanQuery::browseFile() {
         url.append(std::string("tag=") + _browseGenre + "&");
     }
     if (_browseState.size() > 0) {
-        url.append(std::string("state=") + _browseState + "&");
+        url.append(std::string("state=") + _browseState + "?");
     }
-    if (_browseMaxCount != 0) {
-        snprintf(tbuffer, sizeof(tbuffer), "limit=%d", _browseMaxCount);
-        url.append(tbuffer);
-    } else {
-        // use a default
-        url.append("limit=512");
-    }
+    // easy way to have a standard termination
+    url.append("limit=100000");
 
     code = _scanp->retrieveContents(url, &queryResults);
     if (code)
@@ -822,36 +817,111 @@ RadioScanQuery::browseFile() {
     }
 
     // queryResults in an array of station descriptors
+    std::vector<RadioScanStation *> stations;
     for(stationNodep = rootNodep->_children.head();
         stationNodep != nullptr;
         stationNodep = stationNodep->_dqNextp) {
-        urlNodep = stationNodep->searchForChild("url");
-        if (urlNodep == nullptr)
+
+        childNodep = stationNodep->searchForChild("url");
+        if (childNodep == nullptr)
             continue;
-        url = urlNodep->_children.head()->_name;
+        url = childNodep->_children.head()->_name;
 
         std::string name;
-        nameNodep = stationNodep->searchForChild("name");
-        if (nameNodep != nullptr) {
-            name = nameNodep->_children.head()->_name;
+        childNodep = stationNodep->searchForChild("name");
+        if (childNodep != nullptr) {
+            name = childNodep->_children.head()->_name;
         } else {
             name = RadioScanStation::upperCase(_query);
         }
 
+        std::string codec;
+        childNodep = stationNodep->searchForChild("codec");
+        if (childNodep != nullptr) {
+            codec = childNodep->_children.head()->_name;
+        } else {
+            codec = "UNK";
+        }
+
+        uint32_t bitRate;
+        childNodep = stationNodep->searchForChild("bitrate");
+        if (childNodep != nullptr) {
+            bitRate = atoi(childNodep->_children.head()->_name.c_str());
+        } else {
+            bitRate = 0;
+        }
+
         stationp = new RadioScanStation();
         stationp->init(this);
+        stations.push_back(stationp);
 
-        tagNodep = stationNodep->searchForChild("tags");
-        if (tagNodep != nullptr) {
+        childNodep = stationNodep->searchForChild("tags");
+        if (childNodep != nullptr) {
             stationp->_stationShortDescr = std::string("Playing ") +
-                RadioScanStation::extractFields(tagNodep->_children.head()->_name, 2);
+                RadioScanStation::extractFields(childNodep->_children.head()->_name, 2);
         }
 
         /* set these so that addEntry has some useful defaults */
         stationp->_stationName = name;
         stationp->_stationSource = std::string("radio-browser");
+        stationp->_sourceUrl = url;
+        // these are defaults if the stream doesn't have a header
+        stationp->_streamRateKb = bitRate;
+        stationp->_streamType = codec;
+    }
 
-        stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
+    uint32_t arraySize;
+    uint32_t maxReturned;
+    uint32_t returnedCount;
+    uint32_t randomIx;
+    uint32_t randomizeLimit;
+
+    // don't try to return more than are available
+    arraySize = stations.size();
+    if (arraySize < _browseMaxCount)
+        maxReturned = arraySize;
+    else
+        maxReturned = _browseMaxCount;
+
+    // randomly exchange elements in the area we'll be returning
+    // stations from.  But since we may end up with some dead
+    // stations, we'll bail on our randomizing a little later than
+    // maxReturned (that's where the multiplier on maxReturned comes
+    // from).
+    randomizeLimit = 3 * maxReturned / 2;
+    if (randomizeLimit > arraySize)
+        randomizeLimit = arraySize;
+    for(i=0;i<randomizeLimit;i++) {
+        randomIx = random() % arraySize;
+        stationp = stations[randomIx];
+        stations[randomIx] = stations[i];
+        stations[i] = stationp;
+    }
+
+    returnedCount = 0;
+    for(i=0;i<arraySize;i++) {
+        stationp = stations[i];
+        code = stationp->streamApply(stationp->_sourceUrl,
+                                     RadioScanStation::stwCallback,
+                                     stationp,
+                                     this);
+        if (code == 0) {
+            if (stationp->_entries.head() != nullptr) {
+                returnedCount++;
+                _stations.append(stationp);
+                stationp->_inQueryList = true;
+            }
+        }
+        if (returnedCount > maxReturned)
+            break;
+    }
+
+    // and clean up allocated storage.
+    for(i=0; i<arraySize; i++) {
+        if (!stations[i]->_inQueryList) {
+            delete stations[i];
+            stations[i] = nullptr;
+        }
     }
 
     return 0;
@@ -1449,4 +1519,23 @@ RadioScanStation::hasISubstr(const char *keyp, std::string target)
             return 1;
     }
     return 0;
+}
+
+RadioScanQuery::~RadioScanQuery() {
+    RadioScanStation *nextp;
+    RadioScanStation *stationp;
+    for(stationp = _stations.head(); stationp != nullptr; stationp = nextp) {
+        osp_assert(stationp->_inQueryList);
+        nextp = stationp->_dqNextp;
+        delete stationp;
+    }
+}
+
+RadioScanStation::~RadioScanStation() {
+    RadioScanStation::Entry *entryp;
+    RadioScanStation::Entry *nextp;
+    for(entryp = _entries.head(); entryp != nullptr; entryp = nextp) {
+        nextp = entryp->_dqNextp;
+        delete entryp;
+    }
 }

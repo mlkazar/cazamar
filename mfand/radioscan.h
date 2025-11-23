@@ -81,6 +81,8 @@ public:
     int isAborted() {
         return _aborted;
     }
+
+    ~RadioScanQuery();
 };
 
 class RadioScanStation {
@@ -98,6 +100,10 @@ class RadioScanStation {
         std::string _streamUrl;
         std::string _streamType;
         int8_t _alive;  /* -1 means unknown, 0 is no, 1 is yes */
+
+        Entry() {
+            _alive = -1;
+        }
     };
 
     typedef int32_t (streamUrlProc)(void *urlContextp, const char *urlStringp);
@@ -111,17 +117,17 @@ class RadioScanStation {
     RadioScanStation *_dqNextp;
     RadioScanStation *_dqPrevp;
     std::string _stationSource;
+    bool _inQueryList;
+
+    // These fields come from the radio directory, but
+    // the url may expand into multiple stream URLs
+    std::string _sourceUrl;
     uint32_t _streamRateKb;    /* station stream rate in kbits/second */
     std::string _streamType;
 
     void init(RadioScanQuery *queryp) {
         _queryp = queryp;
         _scanp = queryp->_scanp;
-        _queryp->_stations.append(this);
-    }
-
-    ~RadioScanStation() {
-        _queryp->_stations.remove(this);
     }
 
     void addEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb);
@@ -151,6 +157,8 @@ class RadioScanStation {
     int parseUrl(const char *resultp, streamUrlProc *urlProcp, void *urlContextp,
                  RadioScanQuery *qp);
 
+    ~RadioScanStation();
+
     static std::string extractFields(std::string tags, int32_t fields);
 
     static int queryMatch(const char *a, const char *b);
@@ -164,6 +172,10 @@ class RadioScanStation {
     static int32_t splitLine(const char *bufferp, uint32_t count, char **targetsp);
 
     static std::string upperCase(std::string name);
+
+    RadioScanStation() {
+        _inQueryList = false;
+    }
 };
 
 /* instantiate a radioscan object once, and then perform multiple search operations.

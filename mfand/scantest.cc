@@ -69,7 +69,7 @@ main(int argc, char **argv)
     CThreadHandle *chp;
 
     if (argc < 2) {
-        printf("usage: scantest name <name>\n  or scantest browse\n");
+        printf("usage: scantest name <name>\n  or scantest browse [country code=us] [genre]\n");
         return -1;
     }
 
@@ -104,8 +104,8 @@ main(int argc, char **argv)
         // monitor this query
         chp->init((CThread::StartMethod) &QueryMonitor::start, monitorp, queryp);
 
-        const char *countryp = "US";
-        const char *genrep = "";
+        const char *countryp = "us";    // international country code
+        const char *genrep = "";        // whatever the station is tagged with
         if (argc > 2) {
             if (strcasecmp(argv[2], "all") == 0)
                 countryp = "";
@@ -126,7 +126,7 @@ main(int argc, char **argv)
 
         scanp->browseStations(queryp);
 
-        printf("Back from browsing\n");
+        printf("Back from browsing\n\n");
 
         monitorp->stop();
 
