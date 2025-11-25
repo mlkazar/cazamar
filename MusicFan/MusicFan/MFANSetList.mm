@@ -863,12 +863,11 @@ wrapMediaItems(NSArray *mediaArray)
 	    else if (strncasecmp("g:", searchStringp, 2) == 0) {
 		genre = std::string(searchStringp + 2);
 	    }
-
-	    _queryp = new RadioScanQuery();
-	    _queryp->initBrowse(_scanp, 16, country, state, city, genre);
-	    _scanp->browseStations(_queryp);
-
 	}
+
+	_queryp = new RadioScanQuery();
+	_queryp->initBrowse(_scanp, 16, country, state, city, genre);
+	_scanp->browseStations(_queryp);
     } else {
 	_queryp = NULL;	/* searchStation will allocate it */
 	_scanp->searchStation(std::string(searchStringp), &_queryp);

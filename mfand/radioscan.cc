@@ -120,6 +120,9 @@ RadioScanStation::streamApply( std::string url,
                 delete reqp;
                 break;
             }
+            if (queryp->isAborted()) {
+                return -1;
+            }
             if ( ++redirects >= RadioScan::_maxRedirects) {
                 code = -3;
                 delete reqp;
@@ -391,6 +394,9 @@ RadioScanStation::parsePls( const char *resultp,
     strp = resultp;
     found = 0;
     while(tlen > 0) {
+        if (queryp->isAborted()) {
+            return false;
+        }
         if (workingStreams >= _maxStreamsPerUrl)
             return false;       // !found
 
@@ -462,6 +468,10 @@ RadioScanStation::parseUrl( const char *resultp,
     strp = resultp;
     found = 0;
     while(tlen > 0) {
+        if (queryp->isAborted()) {
+            return false;
+        }
+
         if (workingStreams >= _maxStreamsPerUrl)
             return false;
 
@@ -714,6 +724,10 @@ RadioScanQuery::searchFile() {
         stationNodep != nullptr;
         stationNodep = stationNodep->_dqNextp) {
         urlNodep = stationNodep->searchForChild("url");
+        if (isAborted()) {
+            printf("searchFile aborted\n");
+            return -1;
+        }
         if (urlNodep == nullptr)
             continue;
         url = urlNodep->_children.head()->_name;
@@ -747,6 +761,9 @@ RadioScanQuery::searchFile() {
 
         code = stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
         if (code != 0) {
+            if (isAborted()) {
+                return -1;
+            }
             // if we can't handle the url perhaps url_resolved will work
             code = stationp->streamApply(urlResolved, RadioScanStation::stwCallback,
                                          stationp, this);
@@ -821,6 +838,10 @@ RadioScanQuery::browseFile() {
     for(stationNodep = rootNodep->_children.head();
         stationNodep != nullptr;
         stationNodep = stationNodep->_dqNextp) {
+
+        if (isAborted()) {
+            return -1;
+        }
 
         childNodep = stationNodep->searchForChild("url");
         if (childNodep == nullptr)
@@ -900,6 +921,10 @@ RadioScanQuery::browseFile() {
 
     returnedCount = 0;
     for(i=0;i<arraySize;i++) {
+        if (isAborted()) {
+            break;
+        }
+
         stationp = stations[i];
         code = stationp->streamApply(stationp->_sourceUrl,
                                      RadioScanStation::stwCallback,
@@ -1256,6 +1281,9 @@ RadioScanQuery::searchStreamTheWorld()
     int32_t code;
     std::string result;
     RadioScanStation *stationp;
+
+    if (isAborted())
+        return -1;
 
     /* try FM */
     stationp = new RadioScanStation();

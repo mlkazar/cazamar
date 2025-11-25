@@ -75,7 +75,7 @@ public:
 
     void abort() {
         _aborted = 1;
-        _baseStatus = std::string("Aborting");
+        // _baseStatus = std::string("Aborting");
     }
 
     int isAborted() {
