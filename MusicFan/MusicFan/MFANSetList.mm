@@ -841,30 +841,35 @@ wrapMediaItems(NSArray *mediaArray)
     searchStringp = [_searchString cStringUsingEncoding: NSUTF8StringEncoding];
     NSLog(@"search is %s", searchStringp);
 
-    if (strncasecmp("c:", searchStringp, 2) == 0) {
-	/* choose random set, matching country */
-	_queryp = new RadioScanQuery();
-	_queryp->initBrowse(_scanp, 20, std::string(searchStringp+2), "", "", "");
-	_scanp->browseStations(_queryp);
-    }
-    else if (strncasecmp("ct:", searchStringp, 3) == 0) {
-	/* choose random set, matching specific city */
-	_queryp = new RadioScanQuery();
-	_queryp->initBrowse(_scanp, 20, "", "", std::string(searchStringp+3), "");
-	_scanp->browseStations(_queryp);
-    }
-    else if (strncasecmp("s:", searchStringp, 2) == 0) {
-	_queryp = new RadioScanQuery();
-	_queryp->initBrowse(_scanp, 20, "", std::string(searchStringp+3), "", "");
-	_scanp->browseStations(_queryp);
-    }
-    else if (strncasecmp("g:", searchStringp, 2) == 0) {
-	/* choose random set, matching specific genre */
-	_queryp = new RadioScanQuery();
-	_queryp->initBrowse(_scanp, 20, "", "", "", std::string(searchStringp+2));
-	_scanp->browseStations(_queryp);
-    }
-    else {
+    if (strchr(searchStringp, ':') != nullptr) {
+	NSArray *browseTokens = [_searchString componentsSeparatedByCharactersInSet:
+						   [NSCharacterSet whitespaceCharacterSet]];
+	std::string country;
+	std::string city;
+	std::string state;
+	std::string genre;
+	for(NSString *token in browseTokens) {
+	    searchStringp = [token cStringUsingEncoding: NSUTF8StringEncoding];
+	    if (strncasecmp("c:", searchStringp, 2) == 0) {
+		/* choose random set, matching country */
+		country = std::string(searchStringp+2);
+	    }
+	    else if (strncasecmp("ct:", searchStringp, 3) == 0) {
+		city = std::string(searchStringp + 3);
+	    }
+	    else if (strncasecmp("s:", searchStringp, 2) == 0) {
+		state = std::string(searchStringp + 2);
+	    }
+	    else if (strncasecmp("g:", searchStringp, 2) == 0) {
+		genre = std::string(searchStringp + 2);
+	    }
+
+	    _queryp = new RadioScanQuery();
+	    _queryp->initBrowse(_scanp, 16, country, state, city, genre);
+	    _scanp->browseStations(_queryp);
+
+	}
+    } else {
 	_queryp = NULL;	/* searchStation will allocate it */
 	_scanp->searchStation(std::string(searchStringp), &_queryp);
     }
