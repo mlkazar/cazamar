@@ -707,6 +707,9 @@ RadioScanQuery::searchFile() {
     Json jsonSys;
     RadioScanStation *stationp;
 
+    if (isAborted())
+        return -1;
+
     std::string url = ("http://fi1.api.radio-browser.info/json/stations/byname/" + _query);
     code = _scanp->retrieveContents(url, &queryResults);
     if (code)
@@ -755,19 +758,26 @@ RadioScanQuery::searchFile() {
                 RadioScanStation::extractFields(tagNodep->_children.head()->_name, 2);
         }
 
-        /* set these so that addEntry has some useful defaults */
+        /* set these so that addStreamEntry has some useful defaults */
         stationp->_stationName = name;
         stationp->_stationSource = std::string("radio-browser");
 
         code = stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
-        if (code != 0) {
-            if (isAborted()) {
-                return -1;
-            }
-            // if we can't handle the url perhaps url_resolved will work
-            code = stationp->streamApply(urlResolved, RadioScanStation::stwCallback,
-                                         stationp, this);
+        if (code == 0) {
+            returnStation(stationp);
+            continue;
         }
+
+       // if we can't handle the url perhaps url_resolved will work
+        code = stationp->streamApply(urlResolved, RadioScanStation::stwCallback,
+                                     stationp, this);
+        if (code == 0) {
+            returnStation(stationp);
+            continue;
+        }
+
+        // delete it
+        delete stationp;
     }
 
     return 0;
@@ -795,6 +805,24 @@ RadioScan::scanSort(int32_t *datap, int32_t count)
         if (!changed)
             break;
     }
+}
+
+void
+RadioScanQuery::freeUnusedStations(std::vector<RadioScanStation *> *stationsp) {
+    uint32_t tsize = stationsp->size();
+    RadioScanStation *stationp;
+    for(uint32_t i = 0;i<tsize;i++) {
+        stationp = (*stationsp)[i];
+        if (stationp->_inQueryList)
+            continue;
+        delete stationp;
+    }
+}
+
+void
+RadioScanQuery::returnStation(RadioScanStation *stationp) {
+    stationp->_inQueryList = true;
+    _stations.append(stationp);
 }
 
 int32_t
@@ -840,6 +868,8 @@ RadioScanQuery::browseFile() {
         stationNodep = stationNodep->_dqNextp) {
 
         if (isAborted()) {
+            delete rootNodep;
+            freeUnusedStations(&stations);
             return -1;
         }
 
@@ -882,7 +912,7 @@ RadioScanQuery::browseFile() {
                 RadioScanStation::extractFields(childNodep->_children.head()->_name, 2);
         }
 
-        /* set these so that addEntry has some useful defaults */
+        /* set these so that addStreamEntry has some useful defaults */
         stationp->_stationName = name;
         stationp->_stationSource = std::string("radio-browser");
         stationp->_sourceUrl = url;
@@ -890,6 +920,9 @@ RadioScanQuery::browseFile() {
         stationp->_streamRateKb = bitRate;
         stationp->_streamType = codec;
     }
+
+    delete rootNodep;
+    rootNodep = nullptr;
 
     uint32_t arraySize;
     uint32_t maxReturned;
@@ -922,7 +955,8 @@ RadioScanQuery::browseFile() {
     returnedCount = 0;
     for(i=0;i<arraySize;i++) {
         if (isAborted()) {
-            break;
+            freeUnusedStations(&stations);
+            return -1;
         }
 
         stationp = stations[i];
@@ -933,21 +967,14 @@ RadioScanQuery::browseFile() {
         if (code == 0) {
             if (stationp->_entries.head() != nullptr) {
                 returnedCount++;
-                _stations.append(stationp);
-                stationp->_inQueryList = true;
+                returnStation(stationp);
             }
         }
         if (returnedCount > maxReturned)
             break;
     }
 
-    // and clean up allocated storage.
-    for(i=0; i<arraySize; i++) {
-        if (!stations[i]->_inQueryList) {
-            delete stations[i];
-            stations[i] = nullptr;
-        }
-    }
+    freeUnusedStations(&stations);
 
     return 0;
 }
@@ -1017,6 +1044,10 @@ RadioScanQuery::searchRadioTime()
     childListp = xgmlNodep->searchForChild("outline");
     bool first;
     for(first=true; childListp; childListp = childListp->_dqNextp, first=false) {
+        if (isAborted()) {
+            delete xgmlNodep;
+            return -1;
+        }
         foundBitrate = 0;
         foundText = 0;
         for(attrNodep = childListp->_attrs.head(); attrNodep; attrNodep = attrNodep->_dqNextp) {
@@ -1073,6 +1104,8 @@ RadioScanQuery::searchRadioTime()
         code = stationp->streamApply(data.c_str(), RadioScanStation::stwCallback, stationp, this);
         if (code || stationp->_entries.count() == 0) {
             delete stationp;
+        } else {
+            returnStation(stationp);
         }
     }
 
@@ -1156,6 +1189,11 @@ RadioScanQuery::searchShoutcast()
     }
 
     for(childListp = xgmlNodep->_children.head(); childListp; childListp=childListp->_dqNextp) {
+        if (isAborted()) {
+            delete xgmlNodep;
+            return -1;
+        }
+
         if (strcmp(childListp->_name.c_str(), "station") == 0) {
             for( attrNodep = childListp->_attrs.head(); 
                  attrNodep; 
@@ -1178,16 +1216,18 @@ RadioScanQuery::searchShoutcast()
             stationp = new RadioScanStation();
             stationp->init(this);
 
-            /* set these so that addEntry has some useful defaults */
+            /* set these so that addStreamEntry has some useful defaults */
             stationp->_stationName = std::string(stationNamep);
             stationp->_stationShortDescr = std::string(stationGenrep);
             stationp->_stationSource = std::string("shoutcast");
 
-            stationp->streamApply(std::string(tbuffer), RadioScanStation::stwCallback,
-                                  stationp, this);
-
-            if (isAborted())
-                return -1;
+            code = stationp->streamApply(std::string(tbuffer), RadioScanStation::stwCallback,
+                                         stationp, this);
+            if (code == 0) {
+                returnStation(stationp);
+            } else {
+                delete stationp;
+            }
             /* tbuffer names the playlist file, so add the stream */
         } /* this is a station record */
     } /* loop over all stations */
@@ -1242,15 +1282,22 @@ RadioScanQuery::searchDar()
         }
     }
 
+    delete rootNodep;
+
     stationp = new RadioScanStation();
     stationp->init(this);
 
-    /* set these so that addEntry has some useful defaults */
+    /* set these so that addStreamEntry has some useful defaults */
     stationp->_stationName = RadioScanStation::upperCase(_query);
     stationp->_stationShortDescr = stationShortDescr;
     stationp->_stationSource = std::string("dar.fm");
 
-    stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
+    code = stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
+    if (code == 0) {
+        returnStation(stationp);
+    }
+    else
+        delete stationp;
 
     return 0;
 }
@@ -1269,7 +1316,7 @@ RadioScanStation::stwCallback(void *contextp, const char *urlp)
     else
         streamTypep = stationp->_streamType.c_str();
 
-    stationp->addEntry(urlp, streamTypep, stationp->_streamRateKb);
+    stationp->addStreamEntry(urlp, streamTypep, stationp->_streamRateKb);
     
     return 0;
 }
@@ -1296,6 +1343,8 @@ RadioScanQuery::searchStreamTheWorld()
     code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp, this);
     if (code || stationp->_entries.count() == 0) {
         delete stationp;
+    } else {
+        returnStation(stationp);
     }
 
     if (isAborted())
@@ -1312,6 +1361,8 @@ RadioScanQuery::searchStreamTheWorld()
     code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp, this);
     if (code || stationp->_entries.count() == 0) {
         delete stationp;
+    } else {
+        returnStation(stationp);
     }
     
     return 0;
@@ -1360,10 +1411,6 @@ RadioScan::browseStations( RadioScanQuery *resp)
 {
     resp->_baseStatus = std::string("Browsing radio-browser.info");
     resp->browseFile();
-
-    /* this is only useful if we add another source of random entries */
-    if (resp->isAborted())
-        return;
 }
 
 /* external function to do a specific search */
@@ -1484,7 +1531,7 @@ RadioScanStation::del()
  * 'http://foo.com/bar.pls'
  */
 void
-RadioScanStation::addEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb)
+RadioScanStation::addStreamEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb)
 {
     Entry *ep;
 

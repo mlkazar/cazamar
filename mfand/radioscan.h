@@ -1,8 +1,8 @@
 #include <string>
+#include <vector>
+
 #include "dqueue.h"
-
 #include "xapi.h"
-
 #include "bufgen.h"
 #include "cthread.h"
 
@@ -56,6 +56,10 @@ public:
                     std::string state,
                     std::string city,
                     std::string genre);
+
+    void freeUnusedStations(std::vector<RadioScanStation *> *stations);
+
+    void returnStation(RadioScanStation *stationp);
 
     int32_t searchStreamTheWorld();
 
@@ -130,7 +134,7 @@ class RadioScanStation {
         _scanp = queryp->_scanp;
     }
 
-    void addEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb);
+    void addStreamEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb);
 
     int32_t streamApply(std::string url,
                         streamUrlProc *urlProcp,
@@ -200,8 +204,6 @@ class RadioScan {
     void searchStation(std::string query, RadioScanQuery **respp);
 
     void browseStations( RadioScanQuery *resp);
-
-    void countLines();
 
     static void takeLock() {
         _lock.take();
