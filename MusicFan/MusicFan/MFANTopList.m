@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Mike Kazar. All rights reserved.
 //
 
+#import "MFANAlert.h"
 #import "MFANTopList.h"
 #import "MFANTopLevel.h"
 #import "MFANTopEdit.h"
@@ -688,12 +689,10 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
     mfanItem = [_itemArray objectAtIndex: row];
 
     if (mfanItem.details != nil) {
-	UIAlertView *alert = [[UIAlertView alloc]
+	MFANAlert *alert = [[MFANAlert alloc]
 				 initWithTitle: @"Details"
-				 message: mfanItem.details
-				 delegate: self
-				 cancelButtonTitle: @"OK"
-				 otherButtonTitles: nil];
+				       message: mfanItem.details
+				   buttonTitle: @"OK"];
 	[alert show];
     }
     else {
@@ -709,29 +708,12 @@ moveRowAtIndexPath:(NSIndexPath *) fromPath
 	if (mfanItem.albumTitle != nil) {
 	    [summary appendString: mfanItem.albumTitle];
 	}
-	UIAlertView *alert = [[UIAlertView alloc]
+	MFANAlert *alert = [[MFANAlert alloc]
 				 initWithTitle: @"Details"
-				 message: summary
-				 delegate: self
-				 cancelButtonTitle: @"OK"
-				 otherButtonTitles: nil];
+				       message: summary
+				   buttonTitle: @"OK"];
 	[alert show];
     }
-}
-
-- (void) alertView: (UIAlertView *) av
-didDismissWithButtonIndex: (NSInteger) buttonIndex
-{
-    if (_refreshRss) {
-	_refreshRss = NO;
-	if (buttonIndex == 0)
-	    return;
-	[self refreshRss: buttonIndex];
-	return;
-    }
-
-    _detailIndex = -1;
-    [_tableView reloadData];
 }
 
 - (void) deleteRow: (id) j1 withData: (id) j2
@@ -986,14 +968,29 @@ didDismissWithButtonIndex: (NSInteger) buttonIndex
 /* check if full or update refresh */
 - (void) checkRefreshRss
 {
-    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"Reload  / Update"
-					      message: @"Reload all items / Update with newest items"
-					      delegate: nil
-					      cancelButtonTitle: @"Cancel"
-					      otherButtonTitles: @"Reload all", @"Update new", nil];
-    _refreshRss = YES;
-    [alert setDelegate: self];
-    [alert show];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle: @"Reload  / Update"
+								   message: @"Reload all items / Update with newest items"
+							    preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Reload all"
+						     style: UIAlertActionStyleDefault
+						   handler:^(UIAlertAction *) {
+	    [self refreshRss: 1];
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Update new items"
+				      style: UIAlertActionStyleDefault
+				    handler:^(UIAlertAction *) {
+	    [self refreshRss: 2];
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Cancel"
+				      style: UIAlertActionStyleCancel
+				    handler:^(UIAlertAction *) {}];
+    [alert addAction: action];
+
+    [currentViewController() presentViewController: alert animated:YES completion: nil];
 }
 
 - (void) refreshRss: (NSInteger) ix

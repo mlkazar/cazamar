@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Mike Kazar. All rights reserved.
 //
 
+#import "MFANAlert.h"
 #import "MFANTopEdit.h"
 #import "MFANTopLevel.h"
 #import "MFANIconButton.h"
@@ -382,7 +383,6 @@ shouldIndentWhileEditingRowAtIndexPath:(NSIndexPath *)indexPath {
     MFANRadioConsole *_radioConsole;
     MFANPlayContext *_playContext;
     NSMutableSet *_subviews;
-    int _alertIndex;
     int _keepFilter;
     id _bridgeObj;
     SEL _bridgeSel;
@@ -933,38 +933,25 @@ shouldIndentWhileEditingRowAtIndexPath:(NSIndexPath *)indexPath {
 
 - (void) clearPressed: (id) sender withData: (NSNumber *) number
 {
-    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Clear all entries?"
-					      message:@"Are you sure you want to clear all entries in this playlist?"
-					      delegate:nil 
-					      cancelButtonTitle:@"Cancel"
-					      otherButtonTitles:nil];
-
-    [alert addButtonWithTitle: @"OK"];
-    [alert setDelegate: self];
+    MFANAlert *alert = [[MFANAlert alloc]
+			   initWithTitleEx:@"Clear all entries?"
+				 messageEx:@"Are you sure you want to clear all entries in this playlist?"
+			     buttonTitleEx:@"Clear"
+				 handlerEx:^(UIAlertAction *act) {
+	    [self clearAfterAlert];
+	}];
     [alert show];
-    return;
 }
 
 - (void) clearAfterAlert
 {
-    if (_alertIndex == 0) {
-	/* did a cancel */
-	return;
-    }
-
-    /* otherwise, clear all entries */
+    // clear all entries after user approved.
     [_scanItems removeAllObjects];
 
     _changesMade = YES;
 
     [_listEdit reloadData];
 } 
-
-- (void) alertView: (UIAlertView *)aview didDismissWithButtonIndex: (NSInteger) ix
-{
-    _alertIndex = (int) ix;
-    [self clearAfterAlert];
-}
 
 - (void) pruneScanItems: (int) preserveType
 {

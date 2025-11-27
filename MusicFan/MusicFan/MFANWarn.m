@@ -7,10 +7,11 @@
 //
 
 #import "MFANWarn.h"
+#import "MFANCGutil.h"
 
 @implementation MFANWarn {
     NSTimer *_timer;
-    UIAlertView *_alertView;
+    UIAlertController *_alert;
 }
 
 - (MFANWarn *) initWithTitle: (NSString *) title
@@ -19,12 +20,15 @@
 {
     self = [super init];
     if (self != nil) {
-	_alertView = [[UIAlertView alloc]
-			 initWithTitle: title
-			 message: message
-			 delegate:nil 
-			 cancelButtonTitle:nil
-			 otherButtonTitles:nil];
+	_alert = [UIAlertController
+			 alertControllerWithTitle: title
+					  message: message
+				   preferredStyle:UIAlertControllerStyleAlert];
+	UIAlertAction* defaultAction =
+	    [UIAlertAction actionWithTitle:@"OK"
+				     style:UIAlertActionStyleDefault
+				   handler:^(UIAlertAction * action) {}];
+	// [_alert addAction: defaultAction];
 
 	_timer = [NSTimer scheduledTimerWithTimeInterval: secs
 			  target:self
@@ -32,7 +36,7 @@
 			  userInfo:nil
 			  repeats: NO];
 
-	[_alertView show];
+	[currentViewController() presentViewController:_alert animated:YES completion:nil];
     }
 
     return self;
@@ -40,8 +44,8 @@
 
 - (void) warnPart2: (id) junk
 {
-    [_alertView dismissWithClickedButtonIndex: 0 animated: YES];
-    _alertView = nil;
+    [_alert dismissViewControllerAnimated: YES completion:nil];
+    _alert = nil;
     _timer = nil;
 }
 

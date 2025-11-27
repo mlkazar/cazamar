@@ -10,6 +10,7 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import <AVFoundation/AVFoundation.h>
 
+#import "MFANAlert.h"
 #import "MFANPlayerView.h"
 #import "MFANPlayContext.h"
 #import "MFANCoreButton.h"
@@ -2597,7 +2598,7 @@ static const float _hijackDelay = 4.0;
 	MFANWarn *warn;
 	warn = [[MFANWarn alloc] initWithTitle:@"Can't Record"
 				 message: @"Only radio stations can be recorded"
-				 secs: 1.5];
+				 secs: 2.0];
 	return -1;
     }
 
@@ -2697,14 +2698,11 @@ artPressed: (id) button withEvent: (UIEvent *)event
 	else if (channelType == MFANChannelPodcast) {
 	    MFANMediaItem *mfanItem = [self currentMFANItem];
 	    if (mfanItem != nil) {
-		UIAlertView *alert = [[UIAlertView alloc]
+		MFANAlert *alert = [[MFANAlert alloc]
 					 initWithTitle: @"Details"
 					       message: mfanItem.details
-					      delegate: self
-					 cancelButtonTitle: @"OK"
-					 otherButtonTitles: nil];
+					   buttonTitle: @"OK"];
 		[alert show];
-
 		_artTextVisible = NO;
 	    }
 	}

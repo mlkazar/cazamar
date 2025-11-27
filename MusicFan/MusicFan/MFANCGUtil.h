@@ -13,6 +13,9 @@
 extern "C" {
 #endif
 
+UIViewController *
+currentViewController();
+
 uint64_t
 primeLE(uint64_t maxPrime);
 

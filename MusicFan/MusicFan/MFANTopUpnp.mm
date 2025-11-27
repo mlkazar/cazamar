@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Mike Kazar. All rights reserved.
 //
 
+#import "MFANAlert.h"
 #import "MFANTopUpnp.h"
 #import "MFANIconButton.h"
 #import "MFANViewController.h"
@@ -186,7 +187,7 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
     UpnpProbe _probe;
     UpnpDBase _dbase;
     UpnpAv _av;
-    UIAlertView *_alert;
+    MFANAlert *_alert;
     BOOL _changesMade;
     NSMutableArray *_tagArray;		/* array of NSNumbers of tags */
     MFANPopHelp *_popHelp;
@@ -425,12 +426,10 @@ MFANTopUpnp *_globalUpnp;
 
 - (void) findPressed: (id) sender withData: (NSNumber *) number
 {
-    _alert = [[UIAlertView alloc]
+    _alert = [[MFANAlert alloc]
 		 initWithTitle:@"Searching"
-		 message:@"Searching for UPNP Music Servers"
-		 delegate:nil 
-		 cancelButtonTitle:nil
-		 otherButtonTitles: nil];
+		       message:@"Searching for UPNP Music Servers"
+		   buttonTitle:nil];
     [_alert show];
 
     [NSTimer scheduledTimerWithTimeInterval: 0.1
@@ -461,7 +460,7 @@ MFANTopUpnp *_globalUpnp;
 
     [_listTableView reloadData];
 
-    [_alert dismissWithClickedButtonIndex: 0 animated: YES];
+    [_alert dismiss];
     _alert = nil;
 
     [self saveStateWithDBase: 0];

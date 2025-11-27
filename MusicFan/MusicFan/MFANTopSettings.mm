@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Mike Kazar. All rights reserved.
 //
 
+#import "MFANAlert.h"
 #import "MFANTopSettings.h"
 #import "MFANMetalButton.h"
 #import "MFANViewController.h"
@@ -558,155 +559,127 @@ MFANTopSettings *_globalSettings;
 
 - (void) helpRandomizeMusic: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Randomize Music"
 			     message:@"Music channels are randomized when created."
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+			     buttonTitle: @"OK"];
     [alert show];
 }
 
 - (void) helpHistory: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"View History"
-			     message:@"Visit history viewer"
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Visit history viewer"
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpUseCloudDefault: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Use cloud items by default"
 			     message:@"When defining channels, by default cloud resident\nitems are included.\nThis choice can be changed when defining a channel."
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpResyncLibrary: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Resynchronize Library"
-			     message:@"Force application to use latest version of iTunes library.\nThe library will include latest version of cloud-resident items.\nThis is normally not required, as iTunes library will be checked each time a channel is defined.\nChecking library doesn't force immediate changes to existing channels."
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Force application to use latest version of iTunes library.\nThe library will include latest version of cloud-resident items.\nThis is normally not required, as iTunes library will be checked each time a channel is defined.\nChecking library doesn't force immediate changes to existing channels."
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpSendUsage: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Send Usage"
-			     message:@"Send anonymous media info to help developers prioritize feature development.  Only type of media (podcast, radio station, music) being played is sent.  No user identification information is sent.\n"
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Send anonymous media info to help developers prioritize feature development.  Only type of media (podcast, radio station, music) being played is sent.  No user identification information is sent.\n"
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpNeverUseCellData: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Never use cell data"
-			     message:@"Never use cellular data, even for downloading cloud music, or playing podcasts that aren't downloaded.  Items will be silently skipped."
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Never use cellular data, even for downloading cloud music, or playing podcasts that aren't downloaded.  Items will be silently skipped."
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpResetWarnings: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Reset Warnings"
-			     message:@"Reset warnings -- per-screen help will show up again"
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Reset warnings -- per-screen help will show up again"
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpUpnp: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Configure UPNP"
-			     message:@"Search for / Configure UPNP Media Servers"
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Search for / Configure UPNP Media Servers"
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpAutoDim: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Automatic Dim"
-			     message:@"Dim screen (don't lock) after 60 seconds"
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Dim screen (don't lock) after 60 seconds"
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpUseCellForDownloads: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Use Cell Data for Downloads"
-			     message:@"Use cell data for background downloads of podcasts.  Even if disabled, if you play an unloaded podcast, app will stream it over cell data."
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Use cell data for background downloads of podcasts.  Even if disabled, if you play an unloaded podcast, app will stream it over cell data."
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpAutoDownload: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Auto download podcasts"
-			     message:@"Automatically download podcasts mentioned in your channels."
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Automatically download podcasts mentioned in your channels."
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpUnloadAllPodcasts: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Unload all podcasts"
-			     message:@"Delete all downloaded contents, freeing storage.\nPlaylists stay the same, but content must be downloaded again."
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+				   message:@"Delete all downloaded contents, freeing storage.\nPlaylists stay the same, but content must be downloaded again."
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpUnloadPlayed: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Unload podcasts when finished"
 			     message:@"Unload downloaded podcast when finished playing."
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+			       buttonTitle:@"OK"];
     [alert show];
 }
 
 - (void) helpHelp: (id) junk withData: (id) junk2
 {
-    UIAlertView *alert = [[UIAlertView alloc]
+    MFANAlert *alert = [[MFANAlert alloc]
 			     initWithTitle:@"Help with Application"
 			     message:@"Get help with application"
-			     delegate:nil 
-			     cancelButtonTitle:@"OK"
-			     otherButtonTitles: nil];
+			       buttonTitle:@"OK"];
     [alert show];
 }
 

@@ -68,6 +68,12 @@ parseRssDate(char *datep)
     return total;
 }
 
+UIViewController *
+currentViewController() {
+    UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+    return window.rootViewController;
+}
+
 /* try using CC_SHA1 */
 uint64_t
 signature(NSString *str)

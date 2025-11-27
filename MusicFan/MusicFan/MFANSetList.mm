@@ -7,6 +7,7 @@
 
 #import <MediaPlayer/MediaPlayer.h>
 #import <Foundation/Foundation.h>
+#import "MFANAlert.h"
 #import "MFANSetList.h"
 #import "MFANQueryResults.h"
 #import "MFANIndicator.h"
@@ -3418,7 +3419,7 @@ BOOL _didNotificationInit;
 /* time library last updated */
 BOOL _libraryChanged;
 
-UIAlertView *_alertView;
+MFANAlert *_alertView;
 
 /* sort an array of mfanItems, based on MPMediaItem's album order
  * field (or 0 if none present), Perform the same permutation on the
@@ -4066,12 +4067,10 @@ UIAlertView *_alertView;
     NSTimer *timer;
 
     if (_libraryChanged) {
-	_alertView = [[UIAlertView alloc]
+	_alertView = [[MFANAlert alloc]
 			 initWithTitle:@"Resyncing Library"
-			 message:@"iPod Library has changed -- reprocessing"
-			 delegate:nil 
-			 cancelButtonTitle:nil
-			 otherButtonTitles:nil];
+			       message:@"iPod Library has changed -- reprocessing"
+			   buttonTitle: nil];
 
 	timer = [NSTimer scheduledTimerWithTimeInterval: 0.2
 			 target:self
@@ -4088,8 +4087,7 @@ UIAlertView *_alertView;
     /* doSetup turns off _libraryChanged */
     [MFANSetList doSetup: nil force: YES];
 
-    [_alertView dismissWithClickedButtonIndex: 0 animated: YES];
-
+    [_alertView dismiss];
     _alertView = nil;
 }
 

@@ -6,6 +6,7 @@
 //  Copyright (c) 2014 Mike Kazar. All rights reserved.
 //
 
+#import "MFANAlert.h"
 #import "MFANTopHistory.h"
 #import "MFANIconButton.h"
 #import "MFANViewController.h"
@@ -270,7 +271,6 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
     CGFloat _buttonHeight;
     CGFloat _buttonWidth;
     CGFloat _buttonMargin;
-    uint32_t _alertIndex;
     uint32_t _maxEntries;
 }
 
@@ -420,16 +420,15 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 
 - (void) clearPressed: (id) sender withData: (NSNumber *) number
 {
-    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"Clear all entries?"
-					      message:@"Are you sure you want to clear all entries in this playlist?"
-					      delegate:nil 
-					      cancelButtonTitle:@"Cancel"
-					      otherButtonTitles:nil];
-
-    [alert addButtonWithTitle: @"OK"];
-    [alert setDelegate: self];
+    MFANAlert *alert =
+	[[MFANAlert alloc]
+	    initWithTitleEx:@"Clear all entries?"
+		  messageEx:@"Are you sure you want to clear all entries in this playlist?"
+	      buttonTitleEx:@"Clear"
+		  handlerEx:^(UIAlertAction *dummy) {
+		[self clearAfterAlert];
+	    }];
     [alert show];
-    return;
 }
 
 - (void) clearAfterAlert
@@ -437,11 +436,6 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
     uint32_t ix;
     uint32_t count;
     MFANHistoryItem *hist;
-
-    if (_alertIndex == 0) {
-	/* did a cancel */
-	return;
-    }
 
     // Otherwise prune all unhighlighted entries
     ix = 0;
@@ -460,15 +454,6 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 
     [_listTableView reloadData];
 } 
-
-/* add code here to dispatch on aview if we have more than one alert in this
- * class.
- */
-- (void) alertView: (UIAlertView *)aview didDismissWithButtonIndex: (NSInteger) ix
-{
-    _alertIndex = (int) ix;
-    [self clearAfterAlert];
-}
 
 /* called at initialization to read saved history */
 - (void) restoreEdits
