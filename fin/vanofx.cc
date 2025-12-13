@@ -482,7 +482,7 @@ User::ParseOfx(std::string file_name) {
                     // the value is positive in the record even though
                     // this is a sale.
                     trans->_share_count = - trans->_share_count;
-                } else if (IsTranType(ttype, "Buy")) {
+                } else if (IsTranType(ttype, "Buy") || IsTranType(ttype, "Wire In")) {
                     trans->_type = TRAN_BUY;
                 } else if (IsTranType(ttype, "Exchange To")) {
                     trans->_type = TRAN_BUY;
