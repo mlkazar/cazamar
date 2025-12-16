@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLCommandQueue> _comQueue;
     id<MTLBuffer> _vertexBuffer;
     id<MTLBuffer> _rotationBuffer;
+    id<MTLBuffer> _indexBuffer;
     id<MTLFunction> _vertexProc;
     id<MTLFunction> _fragmentProc;
     id<MTLRenderPipelineState> _pipeline;
@@ -28,7 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
     float _rotationRadians;
 }
 
-static matrix_float4x4 rotationMatrix(float radians, float aspect) {
+static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspect) {
     float sinValue = sinf(radians);
     float cosValue = cosf(radians);
 
@@ -38,12 +39,12 @@ static matrix_float4x4 rotationMatrix(float radians, float aspect) {
 	.columns[0] = {cosValue, sinValue * aspect, 0, 0},
 	.columns[1] = {-sinValue, cosValue * aspect, 0, 0},
 	.columns[2] = {0, 0, 1, 0},
-	.columns[3] = {0.4, 0.2, 0, 1}};	// x and y translation
+	.columns[3] = {origin.x, origin.y, 0, 1}};	// x and y translation
 
     return rval;
 }
 
-- (void) setupTriangleBuffer {
+- (void) setupVertexBuffer {
     static const GraphVertex vertices[] = {
 	{._position = {0, 0.24, 0, 1}, ._color = {1, 0, 0, 0.5} },
 	{._position = {-0.12, 0, 0, 1}, ._color = { 0, 1, 0, 0.5} },
@@ -54,12 +55,22 @@ static matrix_float4x4 rotationMatrix(float radians, float aspect) {
 					options: MTLResourceCPUCacheModeDefaultCache];
 }
 
-- (void) getRotationBuffer: (id<MTLBuffer>) buffer radians:(float) radians aspect:(float) aspect {
+- (void) setupIndexBuffer {
+    static const GraphIndex indices[] = {0, 1, 2};
+    _indexBuffer = [_device newBufferWithBytes: indices
+					length: sizeof(indices)
+				       options: MTLResourceCPUCacheModeDefaultCache];
+};
+
+- (void) getRotationBuffer: (id<MTLBuffer>) buffer
+		   radians:(float) radians
+		    origin: (CGPoint) origin
+		    aspect: (float) aspect {
     void *data;
     matrix_float4x4 rotation;
 
     data = [buffer contents];
-    rotation = rotationMatrix(radians, aspect);
+    rotation = rotationMatrix(radians, origin, aspect);
     memcpy(data, &rotation, sizeof(RotationMatrix));
 }
 
@@ -68,7 +79,11 @@ static matrix_float4x4 rotationMatrix(float radians, float aspect) {
     _rotationBuffer = [_device newBufferWithLength:sizeof(RotationMatrix)
 					   options:MTLResourceCPUCacheModeDefaultCache];
     // Not worth computing aspect just for the very first 60th of a second
-    [self getRotationBuffer:_rotationBuffer radians:_rotationRadians aspect: 1.0];
+    CGPoint base = {.4, .2};
+    [self getRotationBuffer:_rotationBuffer
+		    radians:_rotationRadians
+		     origin:base
+		     aspect: 1.0];
 };
 
 - (void) setupPipeline {
@@ -98,7 +113,10 @@ static matrix_float4x4 rotationMatrix(float radians, float aspect) {
 	// compute factor to multiply Y coordinate by
 	float aspect = drawableSize.width / drawableSize.height;
 
-	[self getRotationBuffer:_rotationBuffer radians:_rotationRadians aspect: aspect];
+	CGPoint origin = {0.2, 0.4};
+	[self getRotationBuffer:_rotationBuffer
+			radians:_rotationRadians origin: origin
+			 aspect: aspect];
 	_rotationRadians += 0.03;
 
 	// if we're visible, get the frame buffer (called a texture for some
@@ -119,13 +137,19 @@ static matrix_float4x4 rotationMatrix(float radians, float aspect) {
 	    [comBuffer renderCommandEncoderWithDescriptor:descr];
 	[encoder setRenderPipelineState: _pipeline];
 
-	// offset is byte offset into vertex buffer's data.  Not sure
-	// what atIndex is.
+	// offset is byte offset into vertex buffer's data.  atIndex
+	// is used to find the buffer (they're assigned indices at
+	// allocation time).
 	[encoder setVertexBuffer: _vertexBuffer offset:0 atIndex: 0];
 	[encoder setVertexBuffer: _rotationBuffer offset:0 atIndex: 1];
 
 	// tell it to draw trianges
-	[encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: 3];
+	// [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: 3];
+	[encoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
+			    indexCount:[_indexBuffer length] / sizeof(GraphIndex)
+			     indexType: MTLIndexTypeUInt16
+			   indexBuffer: _indexBuffer
+		     indexBufferOffset: 0];
 
 	// all done encoding command
         [encoder endEncoding];
@@ -179,7 +203,9 @@ static matrix_float4x4 rotationMatrix(float radians, float aspect) {
 
 	NSLog(@"vproc %p fproc %p", _vertexProc, _fragmentProc);
 
-	[self setupTriangleBuffer];
+	[self setupVertexBuffer];
+
+	[self setupIndexBuffer];
 
 	[self setupRotationBuffer];
 

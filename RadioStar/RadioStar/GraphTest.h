@@ -20,6 +20,8 @@ typedef struct _RotationMatrix {
     matrix_float4x4 _data;
 } RotationMatrix;
 
+typedef uint16_t GraphIndex;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface GraphTest : UIView
