@@ -28,13 +28,13 @@ NS_ASSUME_NONNULL_BEGIN
     float _rotationRadians;
 }
 
-static matrix_float4x4 rotationMatrix(float radians) {
+static matrix_float4x4 rotationMatrix(float radians, float aspect) {
     float sinValue = sinf(radians);
     float cosValue = cosf(radians);
 
     matrix_float4x4 rval = {
-	.columns[0] = {cosValue, sinValue, 0, 0},
-	.columns[1] = {-sinValue, cosValue, 0, 0},
+	.columns[0] = {cosValue, sinValue * aspect, 0, 0},
+	.columns[1] = {-sinValue, cosValue * aspect, 0, 0},
 	.columns[2] = {0, 0, 1, 0},
 	.columns[3] = {0, 0, 0, 1}};
 
@@ -52,12 +52,12 @@ static matrix_float4x4 rotationMatrix(float radians) {
 					options: MTLResourceCPUCacheModeDefaultCache];
 }
 
-- (void) getRotationBuffer: (id<MTLBuffer>) buffer radians:(float) radians {
+- (void) getRotationBuffer: (id<MTLBuffer>) buffer radians:(float) radians aspect:(float) aspect {
     void *data;
     matrix_float4x4 rotation;
 
     data = [buffer contents];
-    rotation = rotationMatrix(radians);
+    rotation = rotationMatrix(radians, aspect);
     memcpy(data, &rotation, sizeof(RotationMatrix));
 }
 
@@ -65,7 +65,8 @@ static matrix_float4x4 rotationMatrix(float radians) {
     _rotationRadians = 0.0;
     _rotationBuffer = [_device newBufferWithLength:sizeof(RotationMatrix)
 					   options:MTLResourceCPUCacheModeDefaultCache];
-    [self getRotationBuffer:_rotationBuffer radians:_rotationRadians];
+    // Not worth computing aspect just for the very first 60th of a second
+    [self getRotationBuffer:_rotationBuffer radians:_rotationRadians aspect: 1.0];
 };
 
 - (void) setupPipeline {
@@ -90,8 +91,13 @@ static matrix_float4x4 rotationMatrix(float radians) {
     id<MTLTexture> texture;
 
     if (drawable != nil) {
-	[self getRotationBuffer:_rotationBuffer radians:_rotationRadians];
-	_rotationRadians += 0.01;
+	CGSize drawableSize = _metalLayer.drawableSize;
+
+	// compute factor to multiply Y coordinate by
+	float aspect = drawableSize.width / drawableSize.height;
+
+	[self getRotationBuffer:_rotationBuffer radians:_rotationRadians aspect: aspect];
+	_rotationRadians += 0.03;
 
 	// if we're visible, get the frame buffer (called a texture for some
 	// reason).
