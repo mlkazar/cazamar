@@ -154,20 +154,26 @@ SApiLoginReq::AppleLoginKeyDataMethod()
     genLoginp->printAuthState();
 }
 
-/* function to initialize an SApiLoginApple class; pass in the SApi object
- * associated with the web server responding for the web site.
+/* function to initialize an SApiLoginApple class; pass in the SApi
+ * object associated with the web server responding for the web site.
+ * You can do multiple of these, and they're all noops after the
+ * first.
  */
 void
 SApiLoginMS::init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl)
 {
-    // initialize the server responding to delivery of keys.
-    keyServer(7700);
+    // initFromFile may have occurred.
+    if (!_didNetworkInit) {
+        _didNetworkInit = true;
+        // initialize the server responding to delivery of keys.
+        keyServer(7700);
 
-    _finalUrl = finalUrl;
-    cookiep->setActive(this);
-    sapip->registerUrl("/sapiKeyData", 
-                       &SApiLoginReq::factory,
-                       (SApi::StartMethod) &SApiLoginReq::AppleLoginKeyDataMethod);
+        _finalUrl = finalUrl;
+        cookiep->setActive(this);
+        sapip->registerUrl("/sapiKeyData",
+                           &SApiLoginReq::factory,
+                           (SApi::StartMethod) &SApiLoginReq::AppleLoginKeyDataMethod);
+    }
 }
 
 void
@@ -592,11 +598,14 @@ SApiLoginReq::MSLoginScreenMethod()
         if (cookiep->getActive())
             authToken = cookiep->getActive()->getAuthToken();
         if (authToken.length() == 0) {
-            cookiep->_loginMSp = new SApiLoginMS();
-            cookiep->_loginMSp->setAppParams( "adafdab2-9b78-4c4c-833f-826b0e9be124",
-                                              "~2q8Q~_vm1eR5oEb_QWFz1pmo6MVxihLClPn2bdH");
+            if (!cookiep->_loginMSp) {
+                cookiep->_loginMSp = new SApiLoginMS();
+                cookiep->_loginMSp->setAppParams( "adafdab2-9b78-4c4c-833f-826b0e9be124",
+                                                  "~2q8Q~_vm1eR5oEb_QWFz1pmo6MVxihLClPn2bdH");
+            }
 
             cookiep->_loginMSp->init(_sapip, cookiep, "/");
+
             cookiep->_loginMSp->getLoginPage(&response, cookiep);
             obufferp = const_cast<char *>(response.c_str());
             printf("Using authId %s\n", cookiep->_loginMSp->_authId.c_str());

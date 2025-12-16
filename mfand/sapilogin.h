@@ -232,6 +232,7 @@ class SApiLoginMS : public SApiLoginGeneric {
     // CThreadPipe *outPipe;
     std::string _clientId;
     std::string _clientSecret;
+    bool _didNetworkInit;
 
 public: 
     virtual ~SApiLoginMS() {
@@ -240,6 +241,7 @@ public:
 
     SApiLoginMS() {
         _sapip = NULL;
+        _didNetworkInit = false;
     }
 
     void init(SApi *sapip, SApiLoginCookie *cookiep, std::string finalUrl);
