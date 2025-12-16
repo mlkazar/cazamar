@@ -16,7 +16,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "63"
             endingLineNumber = "63"
-            landmarkName = "-setupRotationBuffer"
+            landmarkName = "-getRotationBuffer:radians:aspect:"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

@@ -32,20 +32,22 @@ static matrix_float4x4 rotationMatrix(float radians, float aspect) {
     float sinValue = sinf(radians);
     float cosValue = cosf(radians);
 
+    // col 0 is multiplied by x coord, col 1 by y, col 2 by z and col 3 by w
+    // summation is by row, giving x, y, z and w
     matrix_float4x4 rval = {
 	.columns[0] = {cosValue, sinValue * aspect, 0, 0},
 	.columns[1] = {-sinValue, cosValue * aspect, 0, 0},
 	.columns[2] = {0, 0, 1, 0},
-	.columns[3] = {0, 0, 0, 1}};
+	.columns[3] = {0.4, 0.2, 0, 1}};	// x and y translation
 
     return rval;
 }
 
 - (void) setupTriangleBuffer {
     static const GraphVertex vertices[] = {
-	{._position = {0, 0.8, 0, 1}, ._color = {1, 0, 0, 1} },
-	{._position = {-0.4, 0, 0, 1}, ._color = { 0, 1, 0, 1} },
-	{._position = {0.4, 0, 0, 1}, ._color = {0, 0, 1, 1} } };
+	{._position = {0, 0.24, 0, 1}, ._color = {1, 0, 0, 0.5} },
+	{._position = {-0.12, 0, 0, 1}, ._color = { 0, 1, 0, 0.5} },
+	{._position = {0.12, 0, 0, 1}, ._color = {0, 0, 1, 0.5} } };
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
 					 length: sizeof(vertices)
