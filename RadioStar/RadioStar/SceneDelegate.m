@@ -22,7 +22,7 @@
     // initialized and attached to the scene.  This delegate does not
     // imply the connecting scene or session are new (see
     // `application:configurationForConnectingSceneSession` instead).
-    self.window = [[UIWindow alloc] initWithWindowScene: (UIWindow *) scene];
+    self.window = [[UIWindow alloc] initWithWindowScene: (UIWindowScene *) scene];
     [self.window setRootViewController: [[ViewController alloc] init]];
     [self.window makeKeyAndVisible];
 }
