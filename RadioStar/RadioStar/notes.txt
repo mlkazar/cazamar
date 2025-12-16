@@ -1,0 +1,9 @@
+Ideas for Radio app
+
+1 record multiple streams
+
+2 record based on schedule (like alarm setting code)
+
+3 back and skip buttons
+
+4 save recordings.  some UI to select true start and end of song.

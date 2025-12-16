@@ -40,10 +40,11 @@ struct Rotations
 
 vertex Vertex vertex_proc(const device Vertex *vertices [[buffer(0)]],
        constant Rotations *rotations [[buffer(1)]],
-       uint vid [[vertex_id]])
+       uint vid [[vertex_id]],
+       uint instanceId [[instance_id]])
 {
     Vertex vertexOut;
-    vertexOut.position = rotations->rotationMatrix * vertices[vid].position;
+    vertexOut.position = rotations[instanceId].rotationMatrix * vertices[vid].position;
     vertexOut.color = vertices[vid].color;
 
     return vertexOut;

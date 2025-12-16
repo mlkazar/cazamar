@@ -63,13 +63,14 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 };
 
 - (void) getRotationBuffer: (id<MTLBuffer>) buffer
+		     index: (uint32_t) ix
 		   radians:(float) radians
 		    origin: (CGPoint) origin
 		    aspect: (float) aspect {
     void *data;
     matrix_float4x4 rotation;
 
-    data = [buffer contents];
+    data = ((char *) [buffer contents]) + (ix * sizeof(RotationMatrix));
     rotation = rotationMatrix(radians, origin, aspect);
     memcpy(data, &rotation, sizeof(RotationMatrix));
 }
@@ -78,12 +79,15 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
     _rotationRadians = 0.0;
     _rotationBuffer = [_device newBufferWithLength:sizeof(RotationMatrix)
 					   options:MTLResourceCPUCacheModeDefaultCache];
+#if 0
     // Not worth computing aspect just for the very first 60th of a second
     CGPoint base = {.4, .2};
     [self getRotationBuffer:_rotationBuffer
+		      index: 0
 		    radians:_rotationRadians
 		     origin:base
 		     aspect: 1.0];
+#endif
 };
 
 - (void) setupPipeline {
@@ -113,11 +117,24 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 	// compute factor to multiply Y coordinate by
 	float aspect = drawableSize.width / drawableSize.height;
 
-	CGPoint origin = {0.2, 0.4};
-	[self getRotationBuffer:_rotationBuffer
-			radians:_rotationRadians origin: origin
-			 aspect: aspect];
 	_rotationRadians += 0.03;
+
+	CGPoint origin;
+	origin.x = 0.2;
+	origin.y = 0.4;
+	[self getRotationBuffer:_rotationBuffer
+			  index: 0
+			radians:_rotationRadians
+			 origin: origin
+			 aspect: aspect];
+
+	origin.x = 0.2;
+	origin.y = -0.4;
+	[self getRotationBuffer:_rotationBuffer
+			  index: 1
+			radians:4*_rotationRadians
+			 origin: origin
+			 aspect: aspect];
 
 	// if we're visible, get the frame buffer (called a texture for some
 	// reason).
@@ -141,6 +158,7 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 	// is used to find the buffer (they're assigned indices at
 	// allocation time).
 	[encoder setVertexBuffer: _vertexBuffer offset:0 atIndex: 0];
+
 	[encoder setVertexBuffer: _rotationBuffer offset:0 atIndex: 1];
 
 	// tell it to draw trianges
@@ -149,7 +167,8 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 			    indexCount:[_indexBuffer length] / sizeof(GraphIndex)
 			     indexType: MTLIndexTypeUInt16
 			   indexBuffer: _indexBuffer
-		     indexBufferOffset: 0];
+		     indexBufferOffset: 0
+			 instanceCount: 2];
 
 	// all done encoding command
         [encoder endEncoding];
