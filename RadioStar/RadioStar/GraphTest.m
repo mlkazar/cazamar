@@ -35,20 +35,39 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 
     // col 0 is multiplied by x coord, col 1 by y, col 2 by z and col 3 by w
     // summation is by row, giving x, y, z and w
+#if 0
     matrix_float4x4 rval = {
 	.columns[0] = {cosValue, sinValue * aspect, 0, 0},
 	.columns[1] = {-sinValue, cosValue * aspect, 0, 0},
 	.columns[2] = {0, 0, 1, 0},
 	.columns[3] = {origin.x, origin.y, 0, 1}};	// x and y translation
+#endif
+
+    // rotate around (1, 0, 1, 0) (normalized)
+    matrix_float4x4 rotation = {
+	.columns[0] = {cosValue / 2 + 0.5, .7071*sinValue, 0.5 - 0.5*cosValue},
+	.columns[1] = {-.7071*sinValue, cosValue, .7071*sinValue},
+	.columns[2] = {0.5 - cosValue/2.0, -.7071*sinValue, cosValue/2.0 + 0.5},
+	.columns[3] = {0, 0, 0, 1}};
+
+    matrix_float4x4 shrinkY = {
+	.columns[0] = {1, 0, 0, 0},
+	.columns[1] = {0, aspect, 0, 0},
+	.columns[2] = {0, 0, 1, 0},
+	.columns[3] = {origin.x, origin.y, 0, 1}};
+
+    matrix_float4x4 rval = simd_mul(shrinkY, rotation);
 
     return rval;
 }
 
+
 - (void) setupVertexBuffer {
     static const GraphVertex vertices[] = {
-	{._position = {0, 0.24, 0, 1}, ._color = {1, 0, 0, 0.5} },
-	{._position = {-0.12, 0, 0, 1}, ._color = { 0, 1, 0, 0.5} },
-	{._position = {0.12, 0, 0, 1}, ._color = {0, 0, 1, 0.5} } };
+	{._position = {0, 0.5, 0, 1}, ._color = {1, 1, 0, 1.0} },
+	{._position = {0, 0, 0.3, 1}, ._color = { 1, 0, 0, 1.0} },
+	{._position = {-0.26, -0.15, 0, 1}, ._color = {1, 0, 0, 1.0} },
+	{._position = {0.26, -0.15, 0, 1}, ._color = {1, 0, 0, 1.0} } };
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
 					 length: sizeof(vertices)
@@ -56,7 +75,7 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 }
 
 - (void) setupIndexBuffer {
-    static const GraphIndex indices[] = {0, 1, 2};
+    static const GraphIndex indices[] = {0, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3};
     _indexBuffer = [_device newBufferWithBytes: indices
 					length: sizeof(indices)
 				       options: MTLResourceCPUCacheModeDefaultCache];
@@ -121,7 +140,7 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 
 	CGPoint origin;
 	origin.x = 0.2;
-	origin.y = 0.4;
+	origin.y = 0.3;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 0
 			radians:_rotationRadians
@@ -129,10 +148,10 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 			 aspect: aspect];
 
 	origin.x = 0.2;
-	origin.y = -0.4;
+	origin.y = -0.3;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 1
-			radians:4*_rotationRadians
+			radians:3*_rotationRadians
 			 origin: origin
 			 aspect: aspect];
 
