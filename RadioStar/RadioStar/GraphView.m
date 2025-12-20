@@ -86,10 +86,10 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin, f
 
 - (void) setupVertexBuffer {
     static const GraphVertex vertices[] = {
-	{._position = {0, 0.6, 0, 1}, ._color = {1, 1, 0, 1.0} },
-	{._position = {0, 0, 0.6, 1}, ._color = { 1, 0, 0, 1.0} },
-	{._position = {-0.52, -0.30, 0, 1}, ._color = {1, 0, 0, 1.0} },
-	{._position = {0.52, -0.30, 0, 1}, ._color = {1, 0, 0, 1.0} } };
+	{._position = {0, 0.6, 0, 1}, ._color = {1, 1, 0, 1.0} },	// top
+	{._position = {0, 0, 0.6, 1}, ._color = { 1, 0, 0, 1.0} },	// close central
+	{._position = {-0.52, -0.30, 0, 1}, ._color = {1, 0, 0, 1.0} },	// left back
+	{._position = {0.52, -0.30, 0, 1}, ._color = {1, 0, 0, 1.0} } };// right back;
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
 					 length: sizeof(vertices)
@@ -97,7 +97,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin, f
 }
 
 - (void) setupIndexBuffer {
-    static const GraphIndex indices[] = {0, 2, 1, 0, 1, 3, 0, 3, 2, 1, 2, 3};
+    static const GraphIndex indices[] = {0, 1, 2, 0, 3, 1, 0, 2, 3, 2, 1, 3};
     _indexBuffer = [_device newBufferWithBytes: indices
 					length: sizeof(indices)
 				       options: MTLResourceCPUCacheModeDefaultCache];
