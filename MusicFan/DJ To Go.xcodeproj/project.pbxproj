@@ -30,6 +30,8 @@
 		7F12DF6A1DE5CCD8009C3AF7 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F12DF691DE5CCD8009C3AF7 /* AudioToolbox.framework */; };
 		7F12DF6C1DE5CCE8009C3AF7 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F12DF6B1DE5CCE8009C3AF7 /* CoreAudio.framework */; };
 		7F12DF6E1DE5CDAD009C3AF7 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F12DF6D1DE5CDAD009C3AF7 /* CoreFoundation.framework */; };
+		7F1D1D492ED78CEA007732E6 /* MFANSceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F1D1D482ED78CEA007732E6 /* MFANSceneDelegate.m */; };
+		7F1D1D4A2ED78CEA007732E6 /* MFANSceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F1D1D482ED78CEA007732E6 /* MFANSceneDelegate.m */; };
 		7F1DA2141E043FEF0029749F /* help-hist.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F1DA2131E043FEF0029749F /* help-hist.html */; };
 		7F1DA2151E04405E0029749F /* help-hist.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F1DA2131E043FEF0029749F /* help-hist.html */; };
 		7F23D6651C98B0FF00DF978E /* MFANPopStatus.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F23D6641C98B0FF00DF978E /* MFANPopStatus.m */; };
@@ -41,6 +43,8 @@
 		7F2DF8C7194DB0F700B4007D /* MFANTopSettings.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7F2DF8C6194DB0F700B4007D /* MFANTopSettings.mm */; };
 		7F31F3C81E81FCA500DCF1A5 /* MarqueeLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F31F3C71E81FCA500DCF1A5 /* MarqueeLabel.m */; };
 		7F31F3C91E81FCDD00DCF1A5 /* MarqueeLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F31F3C71E81FCA500DCF1A5 /* MarqueeLabel.m */; };
+		7F3271242ED8619100EB4298 /* MFANAlert.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F3271232ED8619100EB4298 /* MFANAlert.m */; };
+		7F3271252ED8619100EB4298 /* MFANAlert.m in Sources */ = {isa = PBXBuildFile; fileRef = 7F3271232ED8619100EB4298 /* MFANAlert.m */; };
 		7F44674119D5E653001D3A9B /* button.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F44674019D5E653001D3A9B /* button.png */; };
 		7F44674219D5E653001D3A9B /* button.png in Resources */ = {isa = PBXBuildFile; fileRef = 7F44674019D5E653001D3A9B /* button.png */; };
 		7F455C0119532D67006DAFE5 /* MFANRButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FF7782D1908A0D4003B64CB /* MFANRButton.m */; };
@@ -241,6 +245,8 @@
 		7F12DF6B1DE5CCE8009C3AF7 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		7F12DF6D1DE5CDAD009C3AF7 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		7F199A9D21828AEB0067ED34 /* osptimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = osptimer.h; path = ../../rpc/osptimer.h; sourceTree = "<group>"; };
+		7F1D1D472ED78CEA007732E6 /* MFANSceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MFANSceneDelegate.h; sourceTree = "<group>"; };
+		7F1D1D482ED78CEA007732E6 /* MFANSceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MFANSceneDelegate.m; sourceTree = "<group>"; };
 		7F1DA2131E043FEF0029749F /* help-hist.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "help-hist.html"; sourceTree = "<group>"; };
 		7F23D6631C98B0FF00DF978E /* MFANPopStatus.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFANPopStatus.h; sourceTree = "<group>"; };
 		7F23D6641C98B0FF00DF978E /* MFANPopStatus.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MFANPopStatus.m; sourceTree = "<group>"; };
@@ -252,6 +258,8 @@
 		7F2DF8C6194DB0F700B4007D /* MFANTopSettings.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MFANTopSettings.mm; sourceTree = "<group>"; };
 		7F31F3C61E81FCA500DCF1A5 /* MarqueeLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MarqueeLabel.h; sourceTree = "<group>"; };
 		7F31F3C71E81FCA500DCF1A5 /* MarqueeLabel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MarqueeLabel.m; sourceTree = "<group>"; };
+		7F3271222ED8619100EB4298 /* MFANAlert.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MFANAlert.h; sourceTree = "<group>"; };
+		7F3271232ED8619100EB4298 /* MFANAlert.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MFANAlert.m; sourceTree = "<group>"; };
 		7F4449C4190F23B40057234E /* MFANSetList.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFANSetList.h; sourceTree = "<group>"; };
 		7F44674019D5E653001D3A9B /* button.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = button.png; sourceTree = "<group>"; };
 		7F455C2919532D67006DAFE5 /* AudioGalaxyL.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioGalaxyL.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -535,6 +543,8 @@
 		7FD8C75D19031F490089FF3C /* DJ To Go */ = {
 			isa = PBXGroup;
 			children = (
+				7F1D1D472ED78CEA007732E6 /* MFANSceneDelegate.h */,
+				7F1D1D482ED78CEA007732E6 /* MFANSceneDelegate.m */,
 				7F58EC432E6D063C00096849 /* MFANFileWriter.h */,
 				7F58EC442E6D063C00096849 /* MFANFileWriter.mm */,
 				7F775A381E71BF2F00173327 /* AudioGalaxy.entitlements */,
@@ -553,6 +563,8 @@
 				7F31F3C71E81FCA500DCF1A5 /* MarqueeLabel.m */,
 				7FF8363A199CD278007EC5D4 /* MFANAddChoice.h */,
 				7FF8363B199CD278007EC5D4 /* MFANAddChoice.m */,
+				7F3271222ED8619100EB4298 /* MFANAlert.h */,
+				7F3271232ED8619100EB4298 /* MFANAlert.m */,
 				7FD8C76619031F490089FF3C /* MFANAppDelegate.h */,
 				7FD8C76719031F490089FF3C /* MFANAppDelegate.m */,
 				7F12DF651DE5C5FA009C3AF7 /* MFANAqPlayer.h */,
@@ -910,6 +922,7 @@
 				7F49126B1E006A18006CD7AE /* MFANSocket.cc in Sources */,
 				7F53C7741C79098B006232FE /* radixtree.cc in Sources */,
 				7FA9DDE61A30BA5D003319C9 /* osp.cc in Sources */,
+				7F3271252ED8619100EB4298 /* MFANAlert.m in Sources */,
 				7F8D357C1C76A0CC00281498 /* upnp.cc in Sources */,
 				7F455C0119532D67006DAFE5 /* MFANRButton.m in Sources */,
 				7F2D80EA1A86B21C00398FFF /* MFANWarn.m in Sources */,
@@ -942,6 +955,7 @@
 				7FB4CEE219D58A4D00A848FF /* MFANMetalButton.m in Sources */,
 				7FA9DDEC1A30BA74003319C9 /* rpc.cc in Sources */,
 				7F455C0B19532D67006DAFE5 /* MFANAppDelegate.m in Sources */,
+				7F1D1D4A2ED78CEA007732E6 /* MFANSceneDelegate.m in Sources */,
 				7F1183F31C138EFE002EE4ED /* oaxmalloc.c in Sources */,
 				7F1183EA1C138E7E002EE4ED /* oahash.c in Sources */,
 				7F455C0C19532D67006DAFE5 /* main.m in Sources */,
@@ -974,6 +988,7 @@
 				7F49126A1E006A11006CD7AE /* MFANSocket.cc in Sources */,
 				7F53C7731C790986006232FE /* radixtree.cc in Sources */,
 				7FA9DDE51A30BA5D003319C9 /* osp.cc in Sources */,
+				7F3271242ED8619100EB4298 /* MFANAlert.m in Sources */,
 				7FF7782E1908A0D4003B64CB /* MFANRButton.m in Sources */,
 				7F2D80E91A86B21C00398FFF /* MFANWarn.m in Sources */,
 				7F7D290D1A79C54500E775E4 /* MFANDownload.m in Sources */,
@@ -1006,6 +1021,7 @@
 				7FB4CEE119D58A4D00A848FF /* MFANMetalButton.m in Sources */,
 				7FA9DDEB1A30BA74003319C9 /* rpc.cc in Sources */,
 				7FD8C76819031F490089FF3C /* MFANAppDelegate.m in Sources */,
+				7F1D1D492ED78CEA007732E6 /* MFANSceneDelegate.m in Sources */,
 				7F1183E91C138E64002EE4ED /* oahash.c in Sources */,
 				7FD8C76419031F490089FF3C /* main.m in Sources */,
 				7F1183F81C1391B3002EE4ED /* json.cc in Sources */,
