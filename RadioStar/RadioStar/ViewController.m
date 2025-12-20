@@ -6,7 +6,7 @@
 //
 
 #import "ViewController.h"
-#import "GraphTest.h"
+#import "GraphView.h"
 
 @interface ViewController ()
 
@@ -15,7 +15,7 @@
 @implementation ViewController
 
 - (void)viewDidLoad {
-    GraphTest *graph;
+    GraphView *graph;
     CGRect rect = self.view.frame;
 
     NSLog(@"In viewDidLoad");
@@ -23,7 +23,7 @@
     // Do any additional setup after loading the view.
     self.view.backgroundColor = UIColor.yellowColor;
 
-    graph = [[GraphTest alloc] initWithFrame: rect ViewCont: self];
+    graph = [[GraphView alloc] initWithFrame: rect ViewCont: self];
 
     self.view = graph;
 }

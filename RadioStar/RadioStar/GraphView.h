@@ -1,5 +1,5 @@
 //
-//  GraphTest.h
+//  GraphView.h
 //  RadioStar
 //
 //  Created by Michael Kazar on 11/29/25.
@@ -16,17 +16,13 @@ typedef struct _GraphVertex {
     vector_float4 _color;	// RGBA
 } GraphVertex;
 
-typedef struct _RotationMatrix {
-    matrix_float4x4 _data;
-} RotationMatrix;
-
 typedef uint16_t GraphIndex;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface GraphTest : UIView
+@interface GraphView : UIView
 
-- (GraphTest *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc;
+- (GraphView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc;
 
 @end
 

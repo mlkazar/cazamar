@@ -1,5 +1,5 @@
 //
-//  GraphTest.m
+//  GraphView.m
 //  RadioStar
 //
 //  Created by Michael Kazar on 11/29/25.
@@ -7,12 +7,14 @@
 
 @import Metal;
 @import QuartzCore.CAMetalLayer;
+@import simd;
 
-#import "GraphTest.h"
+#import "GraphMath.h"
+#import "GraphView.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@implementation GraphTest {
+@implementation GraphView {
     id<MTLDevice> _device;
     CAMetalLayer *_metalLayer;
     id<MTLLibrary> _library;
@@ -27,9 +29,12 @@ NS_ASSUME_NONNULL_BEGIN
     CADisplayLink *_displayLink;
 
     float _rotationRadians;
+
+    id<MTLTexture> _depthTexture;
+    id<MTLDepthStencilState> _depthStencil;
 }
 
-static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspect) {
+static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin, float aspect) {
     float sinValue = sinf(radians);
     float cosValue = cosf(radians);
 
@@ -61,13 +66,30 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
     return rval;
 }
 
+- (void)setupDepthTexture
+{
+    CGSize drawableSize = _metalLayer.drawableSize;
+
+    if ( _depthTexture == nil || ([_depthTexture width] != drawableSize.width ||
+				  [_depthTexture height] != drawableSize.height)) {
+        MTLTextureDescriptor *desc =
+	    [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+							       width:drawableSize.width
+							      height:drawableSize.height
+							   mipmapped:NO];
+        desc.usage = MTLTextureUsageRenderTarget;
+        desc.storageMode = MTLStorageModePrivate;
+        
+        _depthTexture = [_device newTextureWithDescriptor:desc];
+    }
+}
 
 - (void) setupVertexBuffer {
     static const GraphVertex vertices[] = {
-	{._position = {0, 0.5, 0, 1}, ._color = {1, 1, 0, 1.0} },
-	{._position = {0, 0, 0.3, 1}, ._color = { 1, 0, 0, 1.0} },
-	{._position = {-0.26, -0.15, 0, 1}, ._color = {1, 0, 0, 1.0} },
-	{._position = {0.26, -0.15, 0, 1}, ._color = {1, 0, 0, 1.0} } };
+	{._position = {0, 0.6, 0, 1}, ._color = {1, 1, 0, 1.0} },
+	{._position = {0, 0, 0.6, 1}, ._color = { 1, 0, 0, 1.0} },
+	{._position = {-0.52, -0.30, 0, 1}, ._color = {1, 0, 0, 1.0} },
+	{._position = {0.52, -0.30, 0, 1}, ._color = {1, 0, 0, 1.0} } };
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
 					 length: sizeof(vertices)
@@ -89,14 +111,24 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
     void *data;
     matrix_float4x4 rotation;
 
-    data = ((char *) [buffer contents]) + (ix * sizeof(RotationMatrix));
-    rotation = rotationMatrix(radians, origin, aspect);
-    memcpy(data, &rotation, sizeof(RotationMatrix));
+    data = ((char *) [buffer contents]) + (ix * sizeof(matrix_float4x4));
+    rotation = matrixRotateAndTranslate(radians, origin, 1.0);
+
+    vector_float3 cameraPosition = {0,0,-3};
+    matrix_float4x4 cameraMatrix = matrix_float4x4_translation(cameraPosition);
+
+    matrix_float4x4 perspectiveMatrix =
+	matrix_float4x4_perspective(aspect, M_PI/2, 1, 64);
+
+    matrix_float4x4 finalMatrix = matrix_multiply(perspectiveMatrix,
+				     matrix_multiply(cameraMatrix, rotation));
+
+    memcpy(data, &finalMatrix, sizeof(finalMatrix));
 }
 
 - (void) setupRotationBuffer {
     _rotationRadians = 0.0;
-    _rotationBuffer = [_device newBufferWithLength:sizeof(RotationMatrix)
+    _rotationBuffer = [_device newBufferWithLength:sizeof(matrix_float4x4)
 					   options:MTLResourceCPUCacheModeDefaultCache];
 #if 0
     // Not worth computing aspect just for the very first 60th of a second
@@ -114,6 +146,12 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
     descr.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
     descr.vertexFunction = _vertexProc;
     descr.fragmentFunction = _fragmentProc;
+    descr.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+
+    MTLDepthStencilDescriptor *stencilDescr = [MTLDepthStencilDescriptor new];
+    stencilDescr.depthCompareFunction = MTLCompareFunctionLess;
+    stencilDescr.depthWriteEnabled = YES;
+    _depthStencil = [_device newDepthStencilStateWithDescriptor:stencilDescr];
 
     NSError *error = nil;
     _pipeline = [_device newRenderPipelineStateWithDescriptor: descr
@@ -126,6 +164,39 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
     }
  }
 
+- (void)setFrame:(CGRect)frame
+{
+    [super setFrame:frame];
+    
+    // setup device here, which is called from 'super initWithFrame' init
+    // our initWithFrame function.
+    if (_device == nil)
+	_device = MTLCreateSystemDefaultDevice();
+
+    // During the first layout pass, we will not be in a view
+    // hierarchy, so we guess our scale
+    CGFloat scale = [UIScreen mainScreen].scale;
+    
+    // If we've moved to a window by the time our frame is being set,
+    // we can take its scale as our own
+    if (self.window) {
+        scale = self.window.screen.scale;
+    }
+    
+    CGSize drawableSize = self.bounds.size;
+    
+    // Since drawable size is in pixels, we need to multiply by the
+    // scale to move from points to pixels
+    drawableSize.width *= scale;
+    drawableSize.height *= scale;
+
+    if (_metalLayer == nil)
+	_metalLayer = [CAMetalLayer layer];
+    _metalLayer.drawableSize = drawableSize;
+
+    [self setupDepthTexture];
+}
+
 - (void) redraw {
     id<CAMetalDrawable> drawable = [_metalLayer nextDrawable];
     id<MTLTexture> texture;
@@ -136,19 +207,19 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 	// compute factor to multiply Y coordinate by
 	float aspect = drawableSize.width / drawableSize.height;
 
-	_rotationRadians += 0.03;
+	_rotationRadians += 0.01;
 
 	CGPoint origin;
-	origin.x = 0.2;
-	origin.y = 0.3;
+	origin.x = 0.6;
+	origin.y = 0.6;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 0
 			radians:_rotationRadians
 			 origin: origin
 			 aspect: aspect];
 
-	origin.x = 0.2;
-	origin.y = -0.3;
+	origin.x = -0.6;
+	origin.y = -0.6;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 1
 			radians:3*_rotationRadians
@@ -165,6 +236,12 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 	descr.colorAttachments[0].storeAction = MTLStoreActionStore;
 	descr.colorAttachments[0].loadAction = MTLLoadActionClear;
 
+	descr.depthAttachment.texture = _depthTexture;
+	descr.depthAttachment.clearDepth = 1.0;
+	descr.depthAttachment.loadAction = MTLLoadActionClear;
+	descr.depthAttachment.storeAction = MTLStoreActionDontCare;
+
+
 	// a buffer for sending commands into a queue for the device
 	id<MTLCommandBuffer> comBuffer = [_comQueue commandBuffer];
 
@@ -179,6 +256,9 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 	[encoder setVertexBuffer: _vertexBuffer offset:0 atIndex: 0];
 
 	[encoder setVertexBuffer: _rotationBuffer offset:0 atIndex: 1];
+
+	[encoder setCullMode:MTLCullModeBack];
+	[encoder setDepthStencilState: _depthStencil];
 
 	// tell it to draw trianges
 	// [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: 3];
@@ -220,15 +300,16 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
     }
 }
 
-- (GraphTest *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {
+- (GraphView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {
     self = [super initWithFrame: frame];
     if (self != nil) {
 	self.backgroundColor = [UIColor redColor];
 	self.frame = frame;
 
 	// Create the device and a metal CA layer
-	_device = MTLCreateSystemDefaultDevice();
-	_metalLayer = [CAMetalLayer layer];
+	assert(_device != nil);
+	if (_metalLayer == nil)
+	    _metalLayer = [CAMetalLayer layer];
 	_metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 	_metalLayer.frame = self.frame;
 
@@ -239,7 +320,7 @@ static matrix_float4x4 rotationMatrix(float radians, CGPoint origin, float aspec
 	_vertexProc = [_library newFunctionWithName: @"vertex_proc"];
 	_fragmentProc = [_library newFunctionWithName: @"fragment_proc"];
 
-	NSLog(@"vproc %p fproc %p", _vertexProc, _fragmentProc);
+	[self setupDepthTexture];
 
 	[self setupVertexBuffer];
 
