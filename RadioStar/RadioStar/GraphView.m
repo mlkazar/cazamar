@@ -38,15 +38,6 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin, f
     float sinValue = sinf(radians);
     float cosValue = cosf(radians);
 
-    // col 0 is multiplied by x coord, col 1 by y, col 2 by z and col 3 by w
-    // summation is by row, giving x, y, z and w
-#if 0
-    matrix_float4x4 rval = {
-	.columns[0] = {cosValue, sinValue * aspect, 0, 0},
-	.columns[1] = {-sinValue, cosValue * aspect, 0, 0},
-	.columns[2] = {0, 0, 1, 0},
-	.columns[3] = {origin.x, origin.y, 0, 1}};	// x and y translation
-#endif
 
     // rotate around (1, 0, 1, 0) (normalized)
     matrix_float4x4 rotation = {
@@ -130,15 +121,6 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin, f
     _rotationRadians = 0.0;
     _rotationBuffer = [_device newBufferWithLength:sizeof(matrix_float4x4)
 					   options:MTLResourceCPUCacheModeDefaultCache];
-#if 0
-    // Not worth computing aspect just for the very first 60th of a second
-    CGPoint base = {.4, .2};
-    [self getRotationBuffer:_rotationBuffer
-		      index: 0
-		    radians:_rotationRadians
-		     origin:base
-		     aspect: 1.0];
-#endif
 };
 
 - (void) setupPipeline {
