@@ -1,0 +1,30 @@
+Login flow.
+
+upload-home.html has a link to /msLoginScreen if there are no tokens
+ this executes sapilogin:MSLoginScreenMethod.
+MSLoginScreenMethod calls getLoginPage
+ which reads login-ms.html with redir set to the Microsoft login
+ page and final set to "/".  This is all returned as the response
+ from /msLoginScreen.
+The file login-ms.html puts up the green 'Pay No Attention..." banner
+  and upon load (window.onload) adds an event listener waiting
+  for a response of 'kazar1' from the window.open of the real MS login
+  page.  Once the MS login page finishes, it actually triggers /login4ms
+  as registered with MSFT.
+The /login4ms runs sapiloginkeyreq::KeyLoginMethod, which
+  pulls the 'code=' field from the request header and saves it in
+  the login cookie.  KeyLoginMethod responds by sending back the contents of
+  login-ms-done.html is the blueish screen that says MS Login Done.  At
+  this point, the cookie should be set in sapilogin's cookie.  The onload function
+  for the blue screen posts 'kazar1' to the window that
+  opened this, which is the 'Pay No Attention...' window.  The blue window then
+  closes itself.  Note that when we see problems, this window sticks around, which
+  doesn't make a lot of sense, since it's onload function does a post and then a close,
+  and if the close doesn't happen, well, how does that happen?
+Upon posting the 'kazar1' message to the green 'Pay No Attention..." window,
+  the PNA window runs it's haveToken method, which posts 'DONE' to /sapiKeyData,
+  and when the POST completes, replaces its own window with "/".
+When /sapiKeyData is hit, sapi calls SapiLogin:AppleLoginKeyDataMethod
+  it calls refineAuthToken, which calls an MS auth service to turn the code into tokens
+  This triggers PNA ready state transition, which replaces its wimdow with "/"
+
