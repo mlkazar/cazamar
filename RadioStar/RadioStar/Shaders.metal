@@ -34,7 +34,15 @@ struct Vertex
 
 struct Rotations
 {
-    float4x4 rotationMatrix;
+    // Basic MVP matrix
+    float4x4 mvpRotationMatrix;
+
+    // same as above, without the projection at the end.
+    float4x4 mvRotationMatrix;
+
+    // rotation for normal doesn't include translation phase,
+    // since normal doesn't change under translation
+    float3x3 normalRotationlMatrix;
 };
 
 
@@ -44,7 +52,7 @@ vertex Vertex vertex_proc(const device Vertex *vertices [[buffer(0)]],
        uint instanceId [[instance_id]])
 {
     Vertex vertexOut;
-    vertexOut.position = rotations[instanceId].rotationMatrix * vertices[vid].position;
+    vertexOut.position = rotations[instanceId].mvpRotationMatrix * vertices[vid].position;
     vertexOut.color = vertices[vid].color;
 
     return vertexOut;

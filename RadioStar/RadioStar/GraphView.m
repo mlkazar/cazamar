@@ -34,21 +34,26 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLDepthStencilState> _depthStencil;
 }
 
-static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin, float aspect) {
+static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
+    vector_float3 axis = {.7071, 0, .7071};
+
+    // rotate around (1, 0, 1, 0) (normalized)
+#if 1
+    matrix_float4x4 rotation = matrix_float4x4_rotation(axis, radians);
+#else
     float sinValue = sinf(radians);
     float cosValue = cosf(radians);
 
-
-    // rotate around (1, 0, 1, 0) (normalized)
     matrix_float4x4 rotation = {
 	.columns[0] = {cosValue / 2 + 0.5, .7071*sinValue, 0.5 - 0.5*cosValue},
 	.columns[1] = {-.7071*sinValue, cosValue, .7071*sinValue},
 	.columns[2] = {0.5 - cosValue/2.0, -.7071*sinValue, cosValue/2.0 + 0.5},
 	.columns[3] = {0, 0, 0, 1}};
+#endif
 
     matrix_float4x4 shrinkY = {
 	.columns[0] = {1, 0, 0, 0},
-	.columns[1] = {0, aspect, 0, 0},
+	.columns[1] = {0, 1, 0, 0},
 	.columns[2] = {0, 0, 1, 0},
 	.columns[3] = {origin.x, origin.y, 0, 1}};
 
@@ -77,18 +82,28 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin, f
 
 - (void) setupVertexBuffer {
     static const GraphVertex vertices[] = {
-	{._position = {0, 0.6, 0, 1}, ._color = {1, 1, 0, 1.0} },	// top
-	{._position = {0, 0, 0.6, 1}, ._color = { 1, 0, 0, 1.0} },	// close central
-	{._position = {-0.52, -0.30, 0, 1}, ._color = {1, 0, 0, 1.0} },	// left back
-	{._position = {0.52, -0.30, 0, 1}, ._color = {1, 0, 0, 1.0} } };// right back;
+	{._position = {0, 0.8, 0, 1}, ._color = {1, 1, 0, 1.0} },	// 0: top
+	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 0, 1.0} },	// 1: close closest
+	{._position = {0.6, 0, 0, 1},. _color = { 0, 1, 0, 1.0} },	// 2: right bottom
+	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 1, 1.0} },	// 3: back
+	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 0, 1, 1.0} } };	// 4: left bottom
 
-    _vertexBuffer = [_device newBufferWithBytes: vertices
-					 length: sizeof(vertices)
-					options: MTLResourceCPUCacheModeDefaultCache];
+	_vertexBuffer = [_device newBufferWithBytes: vertices
+					     length: sizeof(vertices)
+					    options: MTLResourceCPUCacheModeDefaultCache];
 }
 
+// A triangle with a square base.  One corner facing us, one facing
+// away, one to the left and one to the right.
 - (void) setupIndexBuffer {
-    static const GraphIndex indices[] = {0, 1, 2, 0, 3, 1, 0, 2, 3, 2, 1, 3};
+    static const GraphIndex indices[] =
+	{0, 1, 4,	// front left triangle
+	 0, 4, 3,	// back left triangle
+	 0, 3, 2,	// back right triangle
+	 0, 2, 1,	// front right triangle
+	 3, 4, 1,	// left base triangle
+	 1, 2, 3,	// right base triangle
+	};
     _indexBuffer = [_device newBufferWithBytes: indices
 					length: sizeof(indices)
 				       options: MTLResourceCPUCacheModeDefaultCache];
@@ -101,25 +116,28 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin, f
 		    aspect: (float) aspect {
     void *data;
     matrix_float4x4 rotation;
+    ShaderRotations shaderRotations;
 
-    data = ((char *) [buffer contents]) + (ix * sizeof(matrix_float4x4));
-    rotation = matrixRotateAndTranslate(radians, origin, 1.0);
+    data = ((char *) [buffer contents]) + (ix * sizeof(ShaderRotations));
+    rotation = matrixRotateAndTranslate(radians, origin);
 
     vector_float3 cameraPosition = {0,0,-3};
     matrix_float4x4 cameraMatrix = matrix_float4x4_translation(cameraPosition);
 
+    shaderRotations._mvRotation = matrix_multiply(cameraMatrix, rotation);
+
     matrix_float4x4 perspectiveMatrix =
 	matrix_float4x4_perspective(aspect, M_PI/2, 1, 64);
 
-    matrix_float4x4 finalMatrix = matrix_multiply(perspectiveMatrix,
-				     matrix_multiply(cameraMatrix, rotation));
+    shaderRotations._mvpRotation = matrix_multiply(perspectiveMatrix,
+						   shaderRotations._mvRotation);
 
-    memcpy(data, &finalMatrix, sizeof(finalMatrix));
+    memcpy(data, &shaderRotations, sizeof(shaderRotations));
 }
 
 - (void) setupRotationBuffer {
     _rotationRadians = 0.0;
-    _rotationBuffer = [_device newBufferWithLength:sizeof(matrix_float4x4)
+    _rotationBuffer = [_device newBufferWithLength:sizeof(ShaderRotations)
 					   options:MTLResourceCPUCacheModeDefaultCache];
 };
 

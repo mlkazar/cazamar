@@ -18,6 +18,12 @@ typedef struct _GraphVertex {
 
 typedef uint16_t GraphIndex;
 
+typedef struct _ShaderRotations {
+    matrix_float4x4 _mvpRotation;
+    matrix_float4x4 _mvRotation;
+    matrix_float3x3 _normalRotation;
+} ShaderRotations;
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface GraphView : UIView
