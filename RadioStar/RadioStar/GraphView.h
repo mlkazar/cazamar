@@ -14,6 +14,7 @@
 typedef struct _GraphVertex {
     vector_float4 _position;	// XYZW
     vector_float4 _color;	// RGBA
+    vector_float3 _normal;	// XYZ
 } GraphVertex;
 
 typedef uint16_t GraphIndex;

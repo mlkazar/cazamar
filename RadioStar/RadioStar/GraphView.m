@@ -80,29 +80,73 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     }
 }
 
+// Replicate vertices for each face, so we can pass per-face normals
+// through the vertex structure.  The bottom is a square positioned so
+// that one corner is closest to us, one is furthest, one is on the
+// left and one is on the right.  Each triangle's vertices are
+// enumerated clockwise as seen from outside the object.
 - (void) setupVertexBuffer {
+/*
+  // This structure shows what vertices are used and gives them short names
+  // They're expanded below.
     static const GraphVertex vertices[] = {
 	{._position = {0, 0.8, 0, 1}, ._color = {1, 1, 0, 1.0} },	// 0: top
-	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 0, 1.0} },	// 1: close closest
+	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 0, 1.0} },	// 1: front (closest)
 	{._position = {0.6, 0, 0, 1},. _color = { 0, 1, 0, 1.0} },	// 2: right bottom
 	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 1, 1.0} },	// 3: back
 	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 0, 1, 1.0} } };	// 4: left bottom
+*/
+    static const float D = 0.57735; // (sqrt(3)/3)
+    static const GraphVertex vertices[] = {
+	// front left triangle
+	{._position = {0, 0.8, 0, 1}, ._color = {1, 1, 0, 1}, ._normal = {-D,D,D} }, // 0
+	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 0, 1}, ._normal={-D,D,D} }, // 1
+	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 1, 0, 1}, ._normal={-D,D,D} }, //4
 
-	_vertexBuffer = [_device newBufferWithBytes: vertices
-					     length: sizeof(vertices)
-					    options: MTLResourceCPUCacheModeDefaultCache];
+	// back left triangle
+	{._position = {0, 0.8, 0, 1}, ._color = {0, 1, 0, 1}, ._normal={-D,D,-D} } , // 0
+	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 0, 1, 1}, ._normal={-D,D,-D} }, // 4
+	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 1, 1}, ._normal={-D,D,-D} }, // 3
+
+	// back right
+	{._position = {0, 0.8, 0, 1}, ._color = {1, 0, 0, 1}, ._normal={D,D,-D} }, // 0
+	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 0, 1}, ._normal={D,D,-D} }, // 3
+	{._position = {0.6, 0, 0, 1}, ._color = { 0, 0, 0, 1}, ._normal={D,D,-D} },	// 2
+
+	// front right
+	{._position = {0, 0.8, 0, 1}, ._color = {0, 1, 1, 1}, ._normal={D,D,D} }, // 0
+	{._position = {0.6, 0, 0, 1},. _color = { 0, 0, 1, 1}, ._normal={D,D,D} }, // 2
+	{._position = {0, 0, 0.6, 1}, ._color = { 0, 0, 1, 1}, ._normal={D,D,D} }, // 1
+
+	// left base
+	{._position = {0, 0, -0.6, 1}, ._color = { 0, 1, 1, .3}, ._normal={0,-1,0} }, // 3
+	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 0, 0, .3}, ._normal={0,-1,0} }, // 4
+	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 1, .3}, ._normal={0,-1,0} }, // 1
+
+	// right base
+	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 1, .3}, ._normal={0, -1, 0} }, // 1
+	{._position = {0.6, 0, 0, 1},. _color = { 0, 0, 0, .3}, ._normal={0, -1, 0} }, // 2
+	{._position = {0, 0, -0.6, 1}, ._color = { 0, 1, 1, .3}, ._normal={0,-1,0} }, // 3
+    };
+
+    _vertexBuffer = [_device newBufferWithBytes: vertices
+					 length: sizeof(vertices)
+					options: MTLResourceCPUCacheModeDefaultCache];
 }
 
 // A triangle with a square base.  One corner facing us, one facing
-// away, one to the left and one to the right.
+// away, one to the left and one to the right.  Since each face has a
+// different normal, and we can't pass in a normal through the index
+// structure (it's just an integer index), we just replicate the vertices, once for
+// each triangle it's part of.
 - (void) setupIndexBuffer {
     static const GraphIndex indices[] =
-	{0, 1, 4,	// front left triangle
-	 0, 4, 3,	// back left triangle
-	 0, 3, 2,	// back right triangle
-	 0, 2, 1,	// front right triangle
-	 3, 4, 1,	// left base triangle
-	 1, 2, 3,	// right base triangle
+	{0, 1, 2,
+	 3, 4, 5,
+	 6, 7, 8,
+	 9, 10, 11,
+	 12, 13, 14,
+	 15,16, 17,
 	};
     _indexBuffer = [_device newBufferWithBytes: indices
 					length: sizeof(indices)
@@ -131,6 +175,9 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
     shaderRotations._mvpRotation = matrix_multiply(perspectiveMatrix,
 						   shaderRotations._mvRotation);
+
+    shaderRotations._normalRotation = matrix_float4x4_extract_linear
+	(shaderRotations._mvRotation);
 
     memcpy(data, &shaderRotations, sizeof(shaderRotations));
 }

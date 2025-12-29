@@ -30,6 +30,7 @@ struct Vertex
 {
     float4 position [[position]];
     float4 color;
+    float3 normal;
 };
 
 struct Rotations
@@ -42,7 +43,7 @@ struct Rotations
 
     // rotation for normal doesn't include translation phase,
     // since normal doesn't change under translation
-    float3x3 normalRotationlMatrix;
+    float3x3 normalRotationMatrix;
 };
 
 
@@ -53,6 +54,7 @@ vertex Vertex vertex_proc(const device Vertex *vertices [[buffer(0)]],
 {
     Vertex vertexOut;
     vertexOut.position = rotations[instanceId].mvpRotationMatrix * vertices[vid].position;
+    vertexOut.normal = rotations[instanceId].normalRotationMatrix * vertices[vid].normal;
     vertexOut.color = vertices[vid].color;
 
     return vertexOut;
@@ -60,5 +62,11 @@ vertex Vertex vertex_proc(const device Vertex *vertices [[buffer(0)]],
 
 fragment half4 fragment_proc(Vertex vertexIn [[stage_in]])
 {
-    return half4(vertexIn.color);
+    float4 color;
+    float3 lightPosition = {0,1,0};
+    float3 lightColor = {2, 2, 0};
+    float3 diffuseIntensity = saturate(dot(normalize(vertexIn.normal), lightPosition));
+    color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz, 0);
+
+    return half4(color);
 }
