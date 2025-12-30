@@ -109,9 +109,9 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 1, 1}, ._normal={-D,D,-D} }, // 3
 
 	// back right
-	{._position = {0, 0.8, 0, 1}, ._color = {1, 0, 0, 1}, ._normal={D,D,-D} }, // 0
-	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 0, 1}, ._normal={D,D,-D} }, // 3
-	{._position = {0.6, 0, 0, 1}, ._color = { 0, 0, 0, 1}, ._normal={D,D,-D} },	// 2
+	{._position = {0, 0.8, 0, 1}, ._color = {1, 0, 0, .2}, ._normal={D,D,-D} }, // 0
+	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 0, .2}, ._normal={D,D,-D} }, // 3
+	{._position = {0.6, 0, 0, 1}, ._color = { 0, 0, 0, .2}, ._normal={D,D,-D} },	// 2
 
 	// front right
 	{._position = {0, 0.8, 0, 1}, ._color = {0, 1, 1, 1}, ._normal={D,D,D} }, // 0
@@ -119,14 +119,14 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	{._position = {0, 0, 0.6, 1}, ._color = { 0, 0, 1, 1}, ._normal={D,D,D} }, // 1
 
 	// left base
-	{._position = {0, 0, -0.6, 1}, ._color = { 0, 1, 1, .3}, ._normal={0,-1,0} }, // 3
-	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 0, 0, .3}, ._normal={0,-1,0} }, // 4
-	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 1, .3}, ._normal={0,-1,0} }, // 1
+	{._position = {0, 0, -0.6, 1}, ._color = { .1, .1, .8, 1}, ._normal={0,-1,0} }, // 3
+	{._position = {-0.60, 0, 0, 1}, ._color = { .1, .1, .8, 1}, ._normal={0,-1,0} }, // 4
+	{._position = {0, 0, 0.6, 1}, ._color = { .1, .1, .8, 1}, ._normal={0,-1,0} }, // 1
 
 	// right base
-	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 1, .3}, ._normal={0, -1, 0} }, // 1
-	{._position = {0.6, 0, 0, 1},. _color = { 0, 0, 0, .3}, ._normal={0, -1, 0} }, // 2
-	{._position = {0, 0, -0.6, 1}, ._color = { 0, 1, 1, .3}, ._normal={0,-1,0} }, // 3
+	{._position = {0, 0, 0.6, 1}, ._color = { .1, .1, .8, 1}, ._normal={0, -1, 0} }, // 1
+	{._position = {0.6, 0, 0, 1},. _color = { .1, .1, .8, 1}, ._normal={0, -1, 0} }, // 2
+	{._position = {0, 0, -0.6, 1}, ._color = { .1, .1, .8, 1}, ._normal={0,-1,0} }, // 3
     };
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
@@ -279,7 +279,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
 	MTLRenderPassDescriptor *descr = [MTLRenderPassDescriptor renderPassDescriptor];
 	descr.colorAttachments[0].texture = texture;
-	descr.colorAttachments[0].clearColor = MTLClearColorMake(.9, .9, 1, 1);
+	descr.colorAttachments[0].clearColor = MTLClearColorMake(.1, .1, .2, 1);
 	descr.colorAttachments[0].storeAction = MTLStoreActionStore;
 	descr.colorAttachments[0].loadAction = MTLLoadActionClear;
 

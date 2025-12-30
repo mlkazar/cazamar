@@ -64,9 +64,9 @@ fragment half4 fragment_proc(Vertex vertexIn [[stage_in]])
 {
     float4 color;
     float3 lightPosition = {0,1,0};
-    float3 lightColor = {2, 2, 0};
+    float3 lightColor = {1, 1, 1};
     float3 diffuseIntensity = saturate(dot(normalize(vertexIn.normal), lightPosition));
-    color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz, 0);
+    color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz, 1);
 
     return half4(color);
 }
