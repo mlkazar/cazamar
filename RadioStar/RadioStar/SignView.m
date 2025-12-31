@@ -1,8 +1,8 @@
 //
-//  GraphView.m
+//  SignView.m
 //  RadioStar
 //
-//  Created by Michael Kazar on 11/29/25.
+//  Created by Michael Kazar on 12/31/25.
 //
 
 @import Metal;
@@ -10,11 +10,11 @@
 @import simd;
 
 #import "GraphMath.h"
-#import "GraphView.h"
+#import "SignView.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@implementation GraphView {
+@implementation SignView {
     id<MTLDevice> _device;
     CAMetalLayer *_metalLayer;
     id<MTLLibrary> _library;
@@ -29,13 +29,15 @@ NS_ASSUME_NONNULL_BEGIN
     CADisplayLink *_displayLink;
 
     float _rotationRadians;
+    bool _rotationDir;
 
     id<MTLTexture> _depthTexture;
     id<MTLDepthStencilState> _depthStencil;
 }
 
 static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
-    vector_float3 axis = {.7071, 0, .7071};
+    //    vector_float3 axis = {.7071, 0, .7071};
+    vector_float3 axis={0, 1, 0};
 
     // rotate around (1, 0, 1, 0) (normalized)
     matrix_float4x4 rotation = matrix_float4x4_rotation(axis, radians);
@@ -76,46 +78,89 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 // enumerated clockwise as seen from outside the object.
 - (void) setupVertexBuffer {
 /*
-  // This structure shows what vertices are used and gives them short names
-  // They're expanded below.
-    static const GraphVertex vertices[] = {
-	{._position = {0, 0.8, 0, 1}, ._color = {1, 1, 0, 1.0} },	// 0: top
-	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 0, 1.0} },	// 1: front (closest)
-	{._position = {0.6, 0, 0, 1},. _color = { 0, 1, 0, 1.0} },	// 2: right bottom
-	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 1, 1.0} },	// 3: back
-	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 0, 1, 1.0} } };	// 4: left bottom
+  // Rectangle positions, 1/6 as deep as wide, .6 as high as wide.
+  // Total of 6 sides or 12 triangles.
+  //
+  // Front/back planes at z=.0833 and z=-.0833, x=.5 thru -.5, y=.3 thru -.3
+  //
+  // Top/bottom at y=.3 & -.3, z and x ranges above.
+  //
+  // Left/right at x=.5 & -.5, y and z ranges above.
 */
-    static const float D = 0.57735; // (sqrt(3)/3)
-    static const GraphVertex vertices[] = {
-	// front left triangle
-	{._position = {0, 0.8, 0, 1}, ._color = {1, 1, 0, 1}, ._normal = {-D,D,D} }, // 0
-	{._position = {0, 0, 0.6, 1}, ._color = { 0, 1, 0, 1}, ._normal={-D,D,D} }, // 1
-	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 1, 0, 1}, ._normal={-D,D,D} }, //4
+    static const float FZ=.08;		//front z
+    static const float BZ=-.08;		//back z
+    static const float LX = -0.5;	// left x
+    static const float RX = 0.5;	//right x
+    static const float TY = 0.3;	// top y
+    static const float BY = -0.3;	// bottom y
 
-	// back left triangle
-	{._position = {0, 0.8, 0, 1}, ._color = {0, 1, 0, 1}, ._normal={-D,D,-D} } , // 0
-	{._position = {-0.60, 0, 0, 1}, ._color = { 0, 0, 1, 1}, ._normal={-D,D,-D} }, // 4
-	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 1, 1}, ._normal={-D,D,-D} }, // 3
+    // 6 sides, 12 triangles, 36 vertices
+    static const SignVertex vertices[] = {
+	// left side, top back triangle
+	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
 
-	// back right
-	{._position = {0, 0.8, 0, 1}, ._color = {1, 0, 0, .2}, ._normal={D,D,-D} }, // 0
-	{._position = {0, 0, -0.6, 1}, ._color = { 0, 0, 0, .2}, ._normal={D,D,-D} }, // 3
-	{._position = {0.6, 0, 0, 1}, ._color = { 0, 0, 0, .2}, ._normal={D,D,-D} },	// 2
+	// left side, bottom front triangle
+	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
 
-	// front right
-	{._position = {0, 0.8, 0, 1}, ._color = {0, 1, 1, 1}, ._normal={D,D,D} }, // 0
-	{._position = {0.6, 0, 0, 1},. _color = { 0, 0, 1, 1}, ._normal={D,D,D} }, // 2
-	{._position = {0, 0, 0.6, 1}, ._color = { 0, 0, 1, 1}, ._normal={D,D,D} }, // 1
+	// right side, top back triangle (same as left, but diff x,
+	// winding and normal)
+	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
 
-	// left base
-	{._position = {0, 0, -0.6, 1}, ._color = { .1, .1, .8, 1}, ._normal={0,-1,0} }, // 3
-	{._position = {-0.60, 0, 0, 1}, ._color = { .1, .1, .8, 1}, ._normal={0,-1,0} }, // 4
-	{._position = {0, 0, 0.6, 1}, ._color = { .1, .1, .8, 1}, ._normal={0,-1,0} }, // 1
+	// right side, bottom front triangle
+	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
 
-	// right base
-	{._position = {0, 0, 0.6, 1}, ._color = { .1, .1, .8, 1}, ._normal={0, -1, 0} }, // 1
-	{._position = {0.6, 0, 0, 1},. _color = { .1, .1, .8, 1}, ._normal={0, -1, 0} }, // 2
-	{._position = {0, 0, -0.6, 1}, ._color = { .1, .1, .8, 1}, ._normal={0,-1,0} }, // 3
+	// top side, front right triangle
+	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
+
+	// top side, back left triangle
+	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
+
+	// bottom side, front right triangle (same but for winding, Y
+	// and normal)
+	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
+
+	// bottom side, back left triangle
+	{._position = {RX, BY, BZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
+
+	// back side, top left triangle (same as above, only
+	// different Z, winding order and normal
+	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {LX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {RX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+
+	// back side, bottom right triangle
+	{._position = {RX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+
+#if 1
+	// front side, top left triangle
+	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
+	{._position = {LX, TY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
+	{._position = {RX, TY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
+
+	// front side, bottom right triangle
+	{._position = {RX, TY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
+	{._position = {RX, BY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
+	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
+#endif
+
     };
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
@@ -129,14 +174,24 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 // structure (it's just an integer index), we just replicate the vertices, once for
 // each triangle it's part of.
 - (void) setupIndexBuffer {
-    static const GraphIndex indices[] =
-	{0, 1, 2,
-	 3, 4, 5,
-	 6, 7, 8,
-	 9, 10, 11,
-	 12, 13, 14,
-	 15,16, 17,
+    static const SignIndex indices[] =
+	{
+	    0, 1, 2,
+	    3, 4, 5,
+	    6, 7, 8,
+	    9, 10, 11,
+	    12, 13, 14,
+	    15,16, 17,
+	    18, 19, 20,
+	    21, 22, 23,
+	    24, 25, 26,
+	    27, 28, 29,
+#if 1
+	    30, 31, 32,
+	    33, 34, 35,
+#endif
 	};
+
     _indexBuffer = [_device newBufferWithBytes: indices
 					length: sizeof(indices)
 				       options: MTLResourceCPUCacheModeDefaultCache];
@@ -149,12 +204,12 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 		    aspect: (float) aspect {
     void *data;
     matrix_float4x4 rotation;
-    GraphRotations shaderRotations;
+    SignRotations shaderRotations;
 
-    data = ((char *) [buffer contents]) + (ix * sizeof(GraphRotations));
+    data = ((char *) [buffer contents]) + (ix * sizeof(SignRotations));
     rotation = matrixRotateAndTranslate(radians, origin);
 
-    vector_float3 cameraPosition = {0,0,-3};
+    vector_float3 cameraPosition = {0,0,-4};
     matrix_float4x4 cameraMatrix = matrix_float4x4_translation(cameraPosition);
 
     shaderRotations._mvRotation = matrix_multiply(cameraMatrix, rotation);
@@ -172,21 +227,30 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 }
 
 - (void) setupRotationBuffer {
-    _rotationRadians = 0.0;
-    _rotationBuffer = [_device newBufferWithLength:sizeof(GraphRotations)
+    _rotationRadians = -1.0;
+    _rotationDir = YES;	// add with time
+    _rotationBuffer = [_device newBufferWithLength:sizeof(SignRotations)
 					   options:MTLResourceCPUCacheModeDefaultCache];
 };
 
 - (void) setupPipeline {
     MTLRenderPipelineDescriptor *descr = [MTLRenderPipelineDescriptor new];
+    MTLRenderPipelineColorAttachmentDescriptor *cdescr = descr.colorAttachments[0];
     descr.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
     descr.vertexFunction = _vertexProc;
     descr.fragmentFunction = _fragmentProc;
     descr.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+    cdescr.blendingEnabled = YES;
+    cdescr.rgbBlendOperation = MTLBlendOperationAdd;
+    cdescr.alphaBlendOperation = MTLBlendOperationAdd;
+    cdescr.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+    cdescr.sourceAlphaBlendFactor = MTLBlendFactorSourceAlpha;
+    cdescr.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    cdescr.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
 
     MTLDepthStencilDescriptor *stencilDescr = [MTLDepthStencilDescriptor new];
     stencilDescr.depthCompareFunction = MTLCompareFunctionLess;
-    stencilDescr.depthWriteEnabled = YES;
+    stencilDescr.depthWriteEnabled = NO;
     _depthStencil = [_device newDepthStencilStateWithDescriptor:stencilDescr];
 
     NSError *error = nil;
@@ -242,11 +306,19 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	// compute factor to multiply Y coordinate by
 	float aspect = drawableSize.width / drawableSize.height;
 
-	_rotationRadians += 0.01;
+	if (_rotationDir) {
+	    _rotationRadians += 0.012;
+	    if (_rotationRadians > 1.0)
+		_rotationDir = NO;
+	} else {
+	    _rotationRadians -= 0.012;
+	    if (_rotationRadians < -1.0)
+		_rotationDir = YES;
+	}
 
 	CGPoint origin;
-	origin.x = 0.6;
-	origin.y = 0.6;
+	origin.x = 0.3;
+	origin.y = 1.0;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 0
 			radians:_rotationRadians
@@ -298,11 +370,11 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	// tell it to draw trianges
 	// [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: 3];
 	[encoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
-			    indexCount:[_indexBuffer length] / sizeof(GraphIndex)
+			    indexCount:[_indexBuffer length] / sizeof(SignIndex)
 			     indexType: MTLIndexTypeUInt16
 			   indexBuffer: _indexBuffer
 		     indexBufferOffset: 0
-			 instanceCount: 2];
+			 instanceCount: 1];
 
 	// all done encoding command
         [encoder endEncoding];
@@ -335,7 +407,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     }
 }
 
-- (GraphView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {
+- (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {
     self = [super initWithFrame: frame];
     if (self != nil) {
 	self.backgroundColor = [UIColor redColor];
@@ -352,8 +424,8 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
 	_library = [_device newDefaultLibrary];
 
-	_vertexProc = [_library newFunctionWithName: @"vertex_graph_proc"];
-	_fragmentProc = [_library newFunctionWithName: @"fragment_graph_proc"];
+	_vertexProc = [_library newFunctionWithName: @"vertex_sign_proc"];
+	_fragmentProc = [_library newFunctionWithName: @"fragment_sign_proc"];
 
 	[self setupDepthTexture];
 

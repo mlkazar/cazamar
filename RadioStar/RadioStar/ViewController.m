@@ -7,6 +7,7 @@
 
 #import "ViewController.h"
 #import "GraphView.h"
+#import "SignView.h"
 
 @interface ViewController ()
 
@@ -14,18 +15,34 @@
 
 @implementation ViewController
 
-- (void)viewDidLoad {
-    GraphView *graph;
+- (UIView *) setupSignView {
+    SignView *view;
     CGRect rect = self.view.frame;
+
+    view = [[SignView alloc] initWithFrame: rect ViewCont: self];
+
+    return view;
+}
+
+- (UIView *) setupGraphView {
+    GraphView *view;
+    CGRect rect = self.view.frame;
+
+    view = [[GraphView alloc] initWithFrame: rect ViewCont: self];
+
+    return view;
+}
+
+- (void)viewDidLoad {
+    UIView *view;
 
     NSLog(@"In viewDidLoad");
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     self.view.backgroundColor = UIColor.yellowColor;
 
-    graph = [[GraphView alloc] initWithFrame: rect ViewCont: self];
-
-    self.view = graph;
+    view = [self setupSignView];
+    self.view = view;
 }
 
 

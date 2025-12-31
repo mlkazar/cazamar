@@ -47,7 +47,7 @@ struct Rotations
 };
 
 
-vertex Vertex vertex_proc(const device Vertex *vertices [[buffer(0)]],
+vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
        constant Rotations *rotations [[buffer(1)]],
        uint vid [[vertex_id]],
        uint instanceId [[instance_id]])
@@ -60,13 +60,13 @@ vertex Vertex vertex_proc(const device Vertex *vertices [[buffer(0)]],
     return vertexOut;
 }
 
-fragment half4 fragment_proc(Vertex vertexIn [[stage_in]])
+fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]])
 {
     float4 color;
     float3 lightPosition = {0,1,0};
     float3 lightColor = {1, 1, 1};
     float3 diffuseIntensity = saturate(dot(normalize(vertexIn.normal), lightPosition));
-    color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz, 1);
+    color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz, vertexIn.color.w);
 
     return half4(color);
 }
