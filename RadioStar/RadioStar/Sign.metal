@@ -31,6 +31,7 @@ struct Vertex
     float4 position [[position]];
     float4 color;
     float3 normal;
+    float2 texturePos;
 };
 
 struct Rotations
@@ -56,17 +57,34 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
     vertexOut.position = rotations[instanceId].mvpRotationMatrix * vertices[vid].position;
     vertexOut.normal = rotations[instanceId].normalRotationMatrix * vertices[vid].normal;
     vertexOut.color = vertices[vid].color;
+    // x goes from -.5 to .5, and y goes from -.3 to .3, and we neeed to map
+    // to 0 to 1 in both dimensions.
+    vertexOut.texturePos = float2(vertices[vid].position.x + .5,
+    			          (vertices[vid].position.y + .3) / .6);
 
     return vertexOut;
 }
 
-fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]])
+fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]],
+	 texture2d<float> diffuseTexture [[texture(0)]]
+)
 {
     float4 color;
     float3 lightPosition = {0,1,0};
     float3 lightColor = {1, 1, 1};
+    float3 sampleColor;
     float3 diffuseIntensity = saturate(dot(normalize(vertexIn.normal), lightPosition));
-    color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz, vertexIn.color.w);
+
+    constexpr sampler textureSampler (mag_filter::linear,
+                                      min_filter::linear);
+
+    if (vertexIn.color.y == 0.5 && vertexIn.color.x == 1) {
+        sampleColor = diffuseTexture.sample(textureSampler, vertexIn.texturePos.xy).rgb;
+        color = float4(sampleColor, vertexIn.color.w);
+    } else {
+        color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz,
+	    vertexIn.color.w);
+    }
 
     return half4(color);
 }

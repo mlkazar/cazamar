@@ -4,6 +4,8 @@
 //
 //  Created by Michael Kazar on 12/31/25.
 //
+//  Includes licensed material from Wayne Moore.  See license file.
+//
 
 @import Metal;
 @import QuartzCore.CAMetalLayer;
@@ -17,7 +19,9 @@ NS_ASSUME_NONNULL_BEGIN
 @implementation SignView {
     id<MTLDevice> _device;
     CAMetalLayer *_metalLayer;
+    uint8_t *_imageData;
     id<MTLLibrary> _library;
+    id<MTLTexture> _wyepTexture;
     id<MTLCommandQueue> _comQueue;
     id<MTLBuffer> _vertexBuffer;
     id<MTLBuffer> _rotationBuffer;
@@ -25,7 +29,6 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLFunction> _vertexProc;
     id<MTLFunction> _fragmentProc;
     id<MTLRenderPipelineState> _pipeline;
-
     CADisplayLink *_displayLink;
 
     float _rotationRadians;
@@ -96,6 +99,17 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
     // 6 sides, 12 triangles, 36 vertices
     static const SignVertex vertices[] = {
+	// back side, top left triangle (same as above, only
+	// different Z, winding order and normal
+	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {LX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {RX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+
+	// back side, bottom right triangle
+	{._position = {RX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+
 	// left side, top back triangle
 	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
 	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
@@ -138,29 +152,15 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
 	{._position = {LX, BY, BZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
 
-	// back side, top left triangle (same as above, only
-	// different Z, winding order and normal
-	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-	{._position = {LX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-	{._position = {RX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-
-	// back side, bottom right triangle
-	{._position = {RX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-	{._position = {RX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-
-#if 1
 	// front side, top left triangle
-	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
-	{._position = {LX, TY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
-	{._position = {RX, TY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
+	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
+	{._position = {LX, TY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
+	{._position = {RX, TY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
 
 	// front side, bottom right triangle
-	{._position = {RX, TY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
-	{._position = {RX, BY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
-	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 0, .3}, ._normal = {0, 0, 1} },
-#endif
-
+	{._position = {RX, TY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
+	{._position = {RX, BY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
+	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
     };
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
@@ -186,10 +186,8 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	    21, 22, 23,
 	    24, 25, 26,
 	    27, 28, 29,
-#if 1
 	    30, 31, 32,
 	    33, 34, 35,
-#endif
 	};
 
     _indexBuffer = [_device newBufferWithBytes: indices
@@ -352,32 +350,41 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	// a buffer for sending commands into a queue for the device
 	id<MTLCommandBuffer> comBuffer = [_comQueue commandBuffer];
 
-	// encoder knows how to marshal commands into the comBuffer.
-	id<MTLRenderCommandEncoder> encoder =
+	// backEncoder knows how to marshal commands into the comBuffer.
+	id<MTLRenderCommandEncoder> backEncoder =
 	    [comBuffer renderCommandEncoderWithDescriptor:descr];
-	[encoder setRenderPipelineState: _pipeline];
+	[backEncoder setRenderPipelineState: _pipeline];
 
 	// offset is byte offset into vertex buffer's data.  atIndex
 	// is used to find the buffer (they're assigned indices at
 	// allocation time).
-	[encoder setVertexBuffer: _vertexBuffer offset:0 atIndex: 0];
+	[backEncoder setVertexBuffer: _vertexBuffer offset:0 atIndex: 0];
 
-	[encoder setVertexBuffer: _rotationBuffer offset:0 atIndex: 1];
+	[backEncoder setVertexBuffer: _rotationBuffer offset:0 atIndex: 1];
 
-	[encoder setCullMode:MTLCullModeBack];
-	[encoder setDepthStencilState: _depthStencil];
+	[backEncoder setCullMode:MTLCullModeBack];
+	[backEncoder setDepthStencilState: _depthStencil];
 
-	// tell it to draw trianges
-	// [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: 3];
-	[encoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
-			    indexCount:[_indexBuffer length] / sizeof(SignIndex)
-			     indexType: MTLIndexTypeUInt16
-			   indexBuffer: _indexBuffer
-		     indexBufferOffset: 0
-			 instanceCount: 1];
+	// start drawing back surface
+	[backEncoder setFragmentTexture:_wyepTexture atIndex: 0];
+
+	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
+				indexCount: 6
+				 indexType: MTLIndexTypeUInt16
+			       indexBuffer: _indexBuffer
+			 indexBufferOffset: 0
+			     instanceCount: 1];
+
+	// now draw the rest of the box
+	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
+				indexCount:[_indexBuffer length] / sizeof(SignIndex) - 6
+				 indexType: MTLIndexTypeUInt16
+			       indexBuffer: _indexBuffer
+			 indexBufferOffset: 6 * sizeof(SignIndex)
+			     instanceCount: 1];
 
 	// all done encoding command
-        [encoder endEncoding];
+        [backEncoder endEncoding];
 
 	// now execute the buffer
         [comBuffer presentDrawable:drawable];
@@ -407,6 +414,49 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     }
 }
 
+- (id<MTLTexture>) setupTextureFromImage:(UIImage *)image {
+    // prepare CG reference
+    CGImageRef cgRef = [image CGImage];
+    CGColorSpaceRef colorRef = CGColorSpaceCreateDeviceRGB();
+    long height = CGImageGetHeight(cgRef);
+    long width = CGImageGetWidth(cgRef);
+    NSLog(@"cgref=%@ h=%ld w=%ld", cgRef, height, width);
+
+    uint8_t *rawData = (uint8_t *)malloc(height * width * 4);
+    long bytesPerPixel = 4;
+    long bytesPerRow = bytesPerPixel * width;
+    long bitsPerComponent = 8;
+
+    // prepare to draw into bitmap memory
+    CGContextRef context = CGBitmapContextCreate
+	(rawData, width, height,
+	 bitsPerComponent, bytesPerRow, colorRef,
+	 kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    CGColorSpaceRelease(colorRef);
+
+    // Flip the context so the positive Y axis points down
+    CGContextTranslateCTM(context, 0, height);
+    CGContextScaleCTM(context, 1, -1);
+
+    // Draw into the bitmap
+    CGContextDrawImage(context, CGRectMake(0, 0, width, height), cgRef);
+    CGContextRelease(context);
+
+    MTLTextureDescriptor *tdesc = [MTLTextureDescriptor
+				      texture2DDescriptorWithPixelFormat:
+					  MTLPixelFormatRGBA8Unorm
+								   width:width
+								  height:height
+							       mipmapped:YES];
+
+    id<MTLTexture> texture = [_device newTextureWithDescriptor: tdesc];
+    MTLRegion tregion = MTLRegionMake2D(0, 0, width, height);
+    [texture replaceRegion: tregion mipmapLevel:0 withBytes: rawData
+	       bytesPerRow: bytesPerRow];
+
+    return texture;
+}
+
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {
     self = [super initWithFrame: frame];
     if (self != nil) {
@@ -426,6 +476,10 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
 	_vertexProc = [_library newFunctionWithName: @"vertex_sign_proc"];
 	_fragmentProc = [_library newFunctionWithName: @"fragment_sign_proc"];
+
+	// load image from resource
+	UIImage *image = [UIImage imageNamed: @"wyep.jpeg"];
+	_wyepTexture = [self setupTextureFromImage: image];;
 
 	[self setupDepthTexture];
 
