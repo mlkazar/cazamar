@@ -90,70 +90,114 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
   //
   // Left/right at x=.5 & -.5, y and z ranges above.
 */
-    static const float FZ=.08;		//front z
-    static const float BZ=-.08;		//back z
+    static const float FZ=.21;		//front z
+    static const float BZ=-.21;		//back z
     static const float LX = -0.5;	// left x
     static const float RX = 0.5;	//right x
     static const float TY = 0.3;	// top y
     static const float BY = -0.3;	// bottom y
 
     static const float SA = .2;		// side alpha
-    static const float FA = .1;		// front alpha
+    static const float FA = 0.0;	// front alpha
 
-    // 6 sides, 12 triangles, 36 vertices
+    // Should be 6 sides, 12 triangles, 36 vertices,
+    // but we want the side panels to look the same no matter
+    // which side they're viewed on, so we end up adding a
+    // second winding to be visible from the other side.
     static const SignVertex vertices[] = {
-	// back side, top left triangle (same as above, only
-	// different Z, winding order and normal
-	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-	{._position = {LX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-	{._position = {RX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	// back side, top left triangle (same as above, only different
+	// Z, winding order and normal.  Color is green screen, so
+	// must match .metal file.
+	{._position = {LX, BY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {LX, TY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {RX, TY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
 
 	// back side, bottom right triangle
-	{._position = {RX, TY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-	{._position = {RX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
-	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {RX, TY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {RX, BY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
+	{._position = {LX, BY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
 
 	// left side, top back triangle
-	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {LX, TY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
 
 	// left side, bottom front triangle
-	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+
+	// left side, top back triangle / alt winding
 	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+
+	// left side, bottom front triangle / alt winding
+	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
 	{._position = {LX, BY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
 
 	// right side, top back triangle (same as left, but diff x,
 	// winding and normal)
-	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
-	{._position = {RX, TY, BZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
-	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
 
 	// right side, bottom front triangle
-	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
-	{._position = {RX, BY, FZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
-	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+
+	// right side, top back triangle (same as left, but diff x,
+	// winding and normal) / alt winding
+	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+
+	// right side, bottom front triangle / alt winding
+	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {1, 0, 0} },
 
 	// top side, front right triangle
-	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
-	{._position = {RX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
-	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
 
 	// top side, back left triangle
-	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
-	{._position = {LX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
-	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
 
-	// bottom side, front right triangle (same but for winding, Y
-	// and normal)
-	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
-	{._position = {RX, BY, BZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
-	{._position = {RX, BY, FZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
+	// top side, front right triangle / alt winding
+	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+
+	// top side, back left triangle / alt winding
+	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+
+	// bottom side, front right triangle
+	{._position = {LX, BY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
 
 	// bottom side, back left triangle
-	{._position = {RX, BY, BZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
-	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
-	{._position = {LX, BY, BZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+
+	// bottom side, front right triangle / alt winding
+	{._position = {LX, BY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+
+	// bottom side, back left triangle / alt winding
+	{._position = {RX, BY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, -1, 0} },
 
 	// front side, top left triangle
 	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
@@ -184,13 +228,21 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	    6, 7, 8,
 	    9, 10, 11,
 	    12, 13, 14,
-	    15,16, 17,
+	    15, 16, 17,
 	    18, 19, 20,
 	    21, 22, 23,
 	    24, 25, 26,
 	    27, 28, 29,
 	    30, 31, 32,
 	    33, 34, 35,
+	    36, 37, 38,
+	    39, 40, 41,
+	    42, 43, 44,
+	    45, 46, 47,
+	    48, 49, 50,
+	    51, 52, 53,
+	    54, 55, 56,
+	    57, 58, 59
 	};
 
     _indexBuffer = [_device newBufferWithBytes: indices
@@ -210,7 +262,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     data = ((char *) [buffer contents]) + (ix * sizeof(SignRotations));
     rotation = matrixRotateAndTranslate(radians, origin);
 
-    vector_float3 cameraPosition = {0,0,-4};
+    vector_float3 cameraPosition = {0,0,-5};
     matrix_float4x4 cameraMatrix = matrix_float4x4_translation(cameraPosition);
 
     shaderRotations._mvRotation = matrix_multiply(cameraMatrix, rotation);
@@ -309,28 +361,28 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
 	if (_rotationDir) {
 	    _rotationRadians += 0.012;
-	    if (_rotationRadians > 1.0)
+	    if (_rotationRadians > 0.4)
 		_rotationDir = NO;
 	} else {
 	    _rotationRadians -= 0.012;
-	    if (_rotationRadians < -1.0)
+	    if (_rotationRadians < -0.4)
 		_rotationDir = YES;
 	}
 
 	CGPoint origin;
-	origin.x = 0.3;
-	origin.y = 1.0;
+	origin.x = 1.0;
+	origin.y = 2.0;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 0
-			radians:_rotationRadians
+			radians: 0
 			 origin: origin
 			 aspect: aspect];
 
-	origin.x = -0.6;
-	origin.y = -0.6;
+	origin.x = -1.0;
+	origin.y = -1.0;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 1
-			radians:3*_rotationRadians
+			radians: 0
 			 origin: origin
 			 aspect: aspect];
 
@@ -371,6 +423,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	// start drawing back surface
 	[backEncoder setFragmentTexture:_wyepTexture atIndex: 0];
 
+#if 0
 	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
 				indexCount: 6
 				 indexType: MTLIndexTypeUInt16
@@ -385,6 +438,16 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 			       indexBuffer: _indexBuffer
 			 indexBufferOffset: 6 * sizeof(SignIndex)
 			     instanceCount: 1];
+#else
+	// draw the whole box; encoder may do the triangles in order
+	// listed.
+	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
+				indexCount:[_indexBuffer length] / sizeof(SignIndex)
+				 indexType: MTLIndexTypeUInt16
+			       indexBuffer: _indexBuffer
+			 indexBufferOffset: 0
+			     instanceCount: 2];
+#endif
 
 	// all done encoding command
         [backEncoder endEncoding];
