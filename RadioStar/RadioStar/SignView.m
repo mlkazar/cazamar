@@ -97,6 +97,9 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     static const float TY = 0.3;	// top y
     static const float BY = -0.3;	// bottom y
 
+    static const float SA = .2;		// side alpha
+    static const float FA = .1;		// front alpha
+
     // 6 sides, 12 triangles, 36 vertices
     static const SignVertex vertices[] = {
 	// back side, top left triangle (same as above, only
@@ -111,56 +114,56 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	{._position = {LX, BY, BZ, 1}, ._color={1, .5, 0, 1}, ._normal = {0, 0, -1} },
 
 	// left side, top back triangle
-	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
-	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
-	{._position = {LX, TY, BZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
 
 	// left side, bottom front triangle
-	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
-	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
-	{._position = {LX, BY, FZ, 1}, ._color={1, 1, 0, 1}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={1, 1, 0, SA}, ._normal = {-1, 0, 0} },
 
 	// right side, top back triangle (same as left, but diff x,
 	// winding and normal)
-	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
-	{._position = {RX, TY, BZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
-	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
 
 	// right side, bottom front triangle
-	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
-	{._position = {RX, BY, FZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
-	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 1, 1}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 1, 1, SA}, ._normal = {1, 0, 0} },
 
 	// top side, front right triangle
-	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
-	{._position = {RX, TY, FZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
-	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
 
 	// top side, back left triangle
-	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
-	{._position = {LX, TY, BZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
-	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, 1}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={0, 1, 1, SA}, ._normal = {0, 1, 0} },
 
 	// bottom side, front right triangle (same but for winding, Y
 	// and normal)
-	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
-	{._position = {RX, BY, BZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
-	{._position = {RX, BY, FZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
 
 	// bottom side, back left triangle
-	{._position = {RX, BY, BZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
-	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
-	{._position = {LX, BY, BZ, 1}, ._color={1, 0, 1, 1}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={1, 0, 1, SA}, ._normal = {0, -1, 0} },
 
 	// front side, top left triangle
-	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
-	{._position = {LX, TY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
-	{._position = {RX, TY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
+	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
+	{._position = {LX, TY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
+	{._position = {RX, TY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
 
 	// front side, bottom right triangle
-	{._position = {RX, TY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
-	{._position = {RX, BY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
-	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, .1}, ._normal = {0, 0, 1} },
+	{._position = {RX, TY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
+	{._position = {RX, BY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
+	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
     };
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
