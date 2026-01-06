@@ -83,7 +83,7 @@ fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]],
         // This is green screen to get image, based on a disgusting version of green
 	// that won't be used elsewhere.
         sampleColor = diffuseTexture.sample(textureSampler, vertexIn.texturePos.xy).rgb;
-        color = float4(sampleColor, 0.5);
+        color = float4(sampleColor, 0.75);
     } else {
         color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz,
 	    vertexIn.color.w);
