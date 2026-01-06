@@ -97,8 +97,8 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     static const float TY = 0.3;	// top y
     static const float BY = -0.3;	// bottom y
 
-    static const float SA = .35;	// side alpha
-    static const float FA = 0.00;	// front alpha
+    static const float SA = .40;	// side alpha
+    static const float FA = 0.10;	// front alpha
 
     static const float GLev = 0.6;	// green level for border
 
@@ -363,11 +363,11 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
 	if (_rotationDir) {
 	    _rotationRadians += 0.012;
-	    if (_rotationRadians > 0.4)
+	    if (_rotationRadians > .8)
 		_rotationDir = NO;
 	} else {
 	    _rotationRadians -= 0.012;
-	    if (_rotationRadians < -0.4)
+	    if (_rotationRadians < -0.8)
 		_rotationDir = YES;
 	}
 
@@ -394,7 +394,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
 	MTLRenderPassDescriptor *descr = [MTLRenderPassDescriptor renderPassDescriptor];
 	descr.colorAttachments[0].texture = texture;
-	descr.colorAttachments[0].clearColor = MTLClearColorMake(.1, .1, .2, 1);
+	descr.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, .2, 1);
 	descr.colorAttachments[0].storeAction = MTLStoreActionStore;
 	descr.colorAttachments[0].loadAction = MTLLoadActionClear;
 

@@ -70,8 +70,8 @@ fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]],
 )
 {
     float4 color;
-    float3 lightPosition = {0,1,0};
-    float3 lightColor = {1, 1, 1};
+    float3 lightPosition = {.10, 0, .995};
+    float3 lightColor = {0, 1, 0};
     float3 sampleColor;
     float3 diffuseIntensity = saturate(dot(normalize(vertexIn.normal), lightPosition));
 
@@ -83,10 +83,16 @@ fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]],
         // This is green screen to get image, based on a disgusting version of green
 	// that won't be used elsewhere.
         sampleColor = diffuseTexture.sample(textureSampler, vertexIn.texturePos.xy).rgb;
-        color = float4(sampleColor, 0.75);
+        color = float4(sampleColor, 1.5);
     } else {
-        color = vertexIn.color + float4(diffuseIntensity * lightColor * vertexIn.color.xyz,
-	    vertexIn.color.w);
+        // point halfway between light source and view direction (Z axis).
+        float3 hf = 0.5 *(lightPosition + float3(0, 0, 1));
+	float specularFactor = pow(saturate(dot(hf, vertexIn.normal)), 10);
+	float3 specular = specularFactor * float3(0, 1, 0);
+
+        color = vertexIn.color +
+            float4(diffuseIntensity * lightColor * vertexIn.color.xyz + specular,
+                   vertexIn.color.w);
     }
 
     return half4(color);
