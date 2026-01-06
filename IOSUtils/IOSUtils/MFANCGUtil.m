@@ -7,12 +7,14 @@
 //
 
 #import "MFANCGUtil.h"
-#import "MFANTopSettings.h"
 #include <CommonCrypto/CommonDigest.h>
 #include <stdlib.h>
 
 static char *months[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
 			   "Oct", "Nov", "Dec"};
+
+bool MFANCGUtils_forceNoArt = NO;
+
 uint32_t
 parseRssDate(char *datep)
 {
@@ -205,7 +207,7 @@ mediaImageWithSize(MPMediaItem *item, CGSize newSize, UIImage *defaultImage)
     UIImage *image;
 
     art = [item valueForProperty: MPMediaItemPropertyArtwork];
-    if (art == nil || MFANTopSettings_forceNoArt) {
+    if (art == nil || MFANCGUtils_forceNoArt) {
 	return defaultImage;
     }
     else {
