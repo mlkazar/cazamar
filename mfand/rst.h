@@ -32,11 +32,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "osptimer.h"
 #include "dqueue.h"
 #include "bufgen.h"
-
-#define RST_ERR_IO                      (-1)
-#define RST_ERR_EOF                     (-2)
-#define RST_ERR_HEADER_FORMAT           (-3)
-#define RST_ERR_RESET                   (-4)
+#include "rsterror.h"
 
 class Rst {
  public:
