@@ -223,6 +223,13 @@
 			remoteGlobalIDString = 7FD8C75319031F490089FF3C;
 			remoteInfo = MusicFan;
 		};
+		7FEFF4BC2F0DFA4D0096A58A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 7FEFF4952F0DFA4D0096A58A /* RadioStar.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 7F1E14C12ED6A80D00D08908;
+			remoteInfo = RadioStar;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -273,6 +280,7 @@
 		7F49E5281C1F1759006A1403 /* oapass.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = oapass.c; path = ../../mfand/oapass.c; sourceTree = "<group>"; };
 		7F53C7711C790986006232FE /* radixtree.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = radixtree.cc; path = ../../mfand/radixtree.cc; sourceTree = "<group>"; };
 		7F53C7721C790986006232FE /* radixtree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = radixtree.h; path = ../../mfand/radixtree.h; sourceTree = "<group>"; };
+		7F54EFC02F0E6F3F00CBB4C7 /* rsterror.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = rsterror.h; path = ../mfand/rsterror.h; sourceTree = SOURCE_ROOT; };
 		7F58EC432E6D063C00096849 /* MFANFileWriter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MFANFileWriter.h; sourceTree = "<group>"; };
 		7F58EC442E6D063C00096849 /* MFANFileWriter.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MFANFileWriter.mm; sourceTree = "<group>"; };
 		7F5DB458193F3A8900948C97 /* record-152.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "record-152.png"; sourceTree = "<group>"; };
@@ -394,6 +402,7 @@
 		7FEEEAC1194083D300EE5C05 /* MFANMediaSel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFANMediaSel.h; sourceTree = "<group>"; };
 		7FEEEAC21940844B00EE5C05 /* MFANPopEdit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MFANPopEdit.h; sourceTree = "<group>"; };
 		7FEEEAC31940844B00EE5C05 /* MFANPopEdit.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MFANPopEdit.m; sourceTree = "<group>"; };
+		7FEFF4952F0DFA4D0096A58A /* RadioStar.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = RadioStar.xcodeproj; path = ../RadioStar/RadioStar.xcodeproj; sourceTree = "<group>"; };
 		7FF2D3301A392BC800D73CAB /* xgml.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xgml.cc; path = ../../rpc/xgml.cc; sourceTree = "<group>"; };
 		7FF2D3311A392BC800D73CAB /* xgml.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xgml.h; path = ../../rpc/xgml.h; sourceTree = "<group>"; };
 		7FF67E851C76C46F00CAD4B2 /* rst.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = rst.cc; path = ../../mfand/rst.cc; sourceTree = "<group>"; };
@@ -488,6 +497,7 @@
 				7FA9DDEA1A30BA74003319C9 /* rpc.h */,
 				7FF67E851C76C46F00CAD4B2 /* rst.cc */,
 				7FF67E861C76C46F00CAD4B2 /* rst.h */,
+				7F54EFC02F0E6F3F00CBB4C7 /* rsterror.h */,
 				7F8D35791C76A08700281498 /* upnp.cc */,
 				7F8D357B1C76A0BD00281498 /* upnp.h */,
 				7F8D35761C76A05100281498 /* xapi.cc */,
@@ -527,6 +537,7 @@
 		7FD8C75619031F490089FF3C /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				7FEFF4952F0DFA4D0096A58A /* RadioStar.xcodeproj */,
 				7F12DF6D1DE5CDAD009C3AF7 /* CoreFoundation.framework */,
 				7F12DF6B1DE5CCE8009C3AF7 /* CoreAudio.framework */,
 				7F12DF691DE5CCD8009C3AF7 /* AudioToolbox.framework */,
@@ -694,6 +705,14 @@
 			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
+		7FEFF4962F0DFA4D0096A58A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7FEFF4BD2F0DFA4D0096A58A /* RadioStar.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -806,6 +825,12 @@
 			mainGroup = 7FD8C74B19031F490089FF3C;
 			productRefGroup = 7FD8C75519031F490089FF3C /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 7FEFF4962F0DFA4D0096A58A /* Products */;
+					ProjectRef = 7FEFF4952F0DFA4D0096A58A /* RadioStar.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				7FD8C75319031F490089FF3C /* DJ To Go */,
@@ -814,6 +839,16 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		7FEFF4BD2F0DFA4D0096A58A /* RadioStar.app */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.application;
+			path = RadioStar.app;
+			remoteRef = 7FEFF4BC2F0DFA4D0096A58A /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		7F455C1A19532D67006DAFE5 /* Resources */ = {
