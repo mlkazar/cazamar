@@ -536,12 +536,12 @@ static const int _maxFileSize = 1024*1024;
     rootNodep = new Xgml::Node();
     rootNodep->init("playlist", /* needsEnd */ 1, /* !isLeaf */ 0);
 
-    sprintf(tbuffer, "%6lu", (long) [_myPlayerView currentIndex]);
+    snprintf(tbuffer, sizeof(tbuffer), "%6lu", (long) [_myPlayerView currentIndex]);
     attrNodep = new Xgml::Attr();
     attrNodep->init("playIndex", tbuffer);
     rootNodep->appendAttr(attrNodep);
 
-    sprintf(tbuffer, "%10f", [_myPlayerView currentPlaybackTime]);
+    snprintf(tbuffer, sizeof(tbuffer), "%10f", [_myPlayerView currentPlaybackTime]);
     attrNodep = new Xgml::Attr();
     attrNodep->init("playTime", tbuffer);
     rootNodep->appendAttr(attrNodep);
@@ -593,7 +593,7 @@ static const int _maxFileSize = 1024*1024;
 
 	scanFlags = [scanItem scanFlags];
 
-	sprintf(tbuffer, "%d", scanFlags);
+	snprintf(tbuffer, sizeof(tbuffer), "%d", scanFlags);
 	attrNodep = new Xgml::Attr();
 	attrNodep->init("scanFlags", tbuffer);
 	tempNodep->appendAttr(attrNodep);

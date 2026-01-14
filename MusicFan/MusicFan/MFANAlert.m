@@ -18,7 +18,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (MFANAlert *) initWithTitle: (NSString *) title
 		      message:(NSString *) message
 		  buttonTitle:(NSString *) buttonTitle {
-    UIAlertController *alert;
 
     self = [super init];
     if (self != nil) {
@@ -42,8 +41,6 @@ NS_ASSUME_NONNULL_BEGIN
 		  buttonTitleEx:(NSString *) buttonTitle
 		      handlerEx: (void(^)(UIAlertAction *))  handler
 {
-    UIAlertController *alert;
-
     self = [super init];
     if (self != nil) {
 	_alert = [UIAlertController

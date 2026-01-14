@@ -18,8 +18,8 @@
 - (MFANFileWriter *) initWithFile: (NSString *) file
 {
     NSString *tempName = [NSString stringWithFormat: @"/temp-%d", getpid()];
-    int i;
-    int end;
+    long i = -1;
+    long end;
 
     self = [super init];
     if (self) {

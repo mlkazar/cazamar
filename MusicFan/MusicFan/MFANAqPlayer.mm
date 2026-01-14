@@ -429,7 +429,8 @@ MFANAqPlayer_handleOutput( void *acontextp,
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[_stateCallbackObj performSelector: _stateCallbackSel withObject: nil];
+		[self->_stateCallbackObj performSelector: self->_stateCallbackSel
+					      withObject: nil];
 	    });
 #pragma clang diagnostic pop
 	return;
