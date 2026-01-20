@@ -83,6 +83,7 @@
 static pthread_mutex_t _streamMutex;
 
 - (void) shutdown {
+    NSLog(@"in shutdown");
     pthread_mutex_lock(&_streamMutex);
     /* check if we've started a shutdown procedure */
     if (_shuttingDown) {
@@ -168,6 +169,11 @@ MFANAqStream_PropertyProc( void *contextp,
  *
  * This is called back from the rsDataProc, so it is rsDataProc that
  * gets the streamMutex
+ *
+ * NB: if we need to do upcalls after releasing the stream mutex, we
+ * should do a retain / release on the NSObject under the lock and
+ * around the upcall, so that the object can't be freed during the
+ * upcall.
  */
 void
 MFANAqStream_PacketsProc( void *contextp,
@@ -206,6 +212,7 @@ MFANAqStream_PacketsProc( void *contextp,
     }
 #endif
 
+    NSLog(@"in packetsProc with %d packets aqp=%p rsp=%p", numPackets, aqp, aqp->_radioStreamp);
     packetsCopied = 0;
     bytesCopied = 0;
     for(uint32_t i=0;i<numPackets;i++) {
@@ -224,7 +231,8 @@ MFANAqStream_PacketsProc( void *contextp,
     // the streamMutex at this point, so our notify callback has to be
     // careful not to do anything directly, but instead fire off a
     // timer or something to pop off stack frames.
-    [aqp->_target notify: aqp];
+    if (aqp->_target != nil)
+	[aqp->_target notify: aqp];
 }
 
 // Called by radiostream with unparsed data.  Add it in and send it to the parser.
@@ -247,7 +255,9 @@ MFANAqStream_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int3
     // This adds a reference to the stream.  Do this after the
     // isClosed check, to ensure that we don't add an ARC reference to
     // a freed block of memory.
-    MFANAqStream *aqp = (__bridge_transfer MFANAqStream *) contextp;
+    MFANAqStream *aqp = (__bridge MFANAqStream *) contextp;
+
+    NSLog(@"in dataproc aqp=%p rsp=%p arsp=%p", aqp, aqp->_radioStreamp, radiop);
 
     if (aqp->_shuttingDown) {
 	pthread_mutex_unlock(&_streamMutex);
@@ -355,7 +365,7 @@ MFANAqStream_rsControlProc( void *contextp,
     // and this is a spurious upcall from a closed radiostream, so
     // don't do arc-related operations on the pointer until we've
     // passed the test above.
-    aqp = (__bridge_transfer MFANAqStream *) contextp;
+    aqp = (__bridge MFANAqStream *) contextp;
 
     if (event == RadioStream::eventSongChanged) {
 	RadioStream::EvSongChangedData *songp = (RadioStream::EvSongChangedData *) evDatap;
@@ -413,10 +423,19 @@ MFANAqStream_rsControlProc( void *contextp,
     return rstr;
 }
 
+// TODO: get rid of this
+- (void) dealloc {
+    NSLog(@"in dealloc");
+}
+
 - (MFANAqStream *) initWithUrl: (NSString *) url {
     self = [super init];
     if (self) {
 	NSLog(@"- AqStream init starts for %p", self);
+
+	_shuttingDown = NO;
+	_audioStreamHandle = 0;
+	_radioStreamp = nullptr;
 
 	pthread_mutex_init(&_streamMutex, NULL);
 	pthread_cond_init(&_pthreadIdleCv, NULL);
@@ -439,6 +458,10 @@ MFANAqStream_rsControlProc( void *contextp,
 	_maxBufferSize = 0x4000;
 	_maxPacketCount = 512;
 
+	_streamAttachCounter = 0;
+
+	_pthreadWaiters = 0;
+
 	_radioStreamThread = [[NSThread alloc] initWithTarget: self
 					       selector: @selector(playAsync:)
 					       object: nil];
@@ -455,6 +478,7 @@ MFANAqStream_rsControlProc( void *contextp,
     MFANSocketFactory socketFactory;
     MFANAqStream *threadReference = self;
 
+    NSLog(@"in playAsync");
     // Just keep restarting the radiostream until we're told to shut
     // it down.
     while(1) {

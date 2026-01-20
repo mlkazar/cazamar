@@ -710,7 +710,8 @@ RadioScanQuery::searchFile() {
     if (isAborted())
         return -1;
 
-    std::string url = ("http://fi1.api.radio-browser.info/json/stations/byname/" + _query);
+    // other options replace 'all' with fi1, de1, de2
+    std::string url = ("http://all.api.radio-browser.info/json/stations/byname/" + _query);
     code = _scanp->retrieveContents(url, &queryResults);
     if (code)
         return code;
@@ -837,7 +838,7 @@ RadioScanQuery::browseFile() {
     RadioScanStation *stationp;
     uint32_t i;
 
-    std::string url = ("http://fi1.api.radio-browser.info/json/stations/search?");
+    std::string url = ("http://all.api.radio-browser.info/json/stations/search?");
     if (_browseCountry.size() > 0) {
         url.append(std::string("countrycode=") + _browseCountry + "&");
     }

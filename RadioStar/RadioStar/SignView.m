@@ -12,6 +12,7 @@
 @import simd;
 
 #import "GraphMath.h"
+#import "MFANAqStream.h"
 #import "SignView.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -36,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 
     id<MTLTexture> _depthTexture;
     id<MTLDepthStencilState> _depthStencil;
+
+    MFANAqStream *_streamp;
 }
 
 static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
@@ -562,10 +565,40 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	[self setupRotationBuffer];
 
 	[self setupPipeline];
+
+	UIGestureRecognizer *recog;
+	recog = [[UILongPressGestureRecognizer alloc]
+		    initWithTarget: self action:@selector(longPressed:)];
+	[self addGestureRecognizer: recog];
+
+	recog = [[UITapGestureRecognizer alloc]
+		    initWithTarget: self action:@selector(tapPressed:)];
+	[self addGestureRecognizer: recog];
     }
 
     return self;
 }
+
+- (void) longPressed: (UILongPressGestureRecognizer *) sender {
+    CGPoint point = [sender locationInView:self];
+    if (sender.state == UIGestureRecognizerStateEnded) {
+	NSLog(@"long pressed at (%f,%f)", point.x, point.y);
+    } else {
+	NSLog(@"ignoring begin long press");
+    }
+}
+
+- (void) tapPressed: (UILongPressGestureRecognizer *) sender {
+    CGPoint point = [sender locationInView:self];
+    if (sender.state == UIGestureRecognizerStateEnded) {
+	NSLog(@"tap pressed at (%f,%f)", point.x, point.y);
+	_streamp = [[MFANAqStream alloc] initWithUrl:@"http://new-webstream.wmfo.org/"];
+	NSLog(@"created stream at %p", _streamp);
+    } else {
+	NSLog(@"ignoring begin tap");
+    }
+}
+
 @end
 
 NS_ASSUME_NONNULL_END
