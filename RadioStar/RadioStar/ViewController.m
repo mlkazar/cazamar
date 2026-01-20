@@ -18,7 +18,7 @@
 - (UIView *) setupSignView {
     SignView *view;
     CGRect rect = self.view.frame;
-
+    rect.size.height *= 0.85;
     view = [[SignView alloc] initWithFrame: rect ViewCont: self];
 
     return view;

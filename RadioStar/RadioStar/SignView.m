@@ -92,12 +92,12 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 */
     static const float FZ=.1;		//front z
     static const float BZ=-.1;		//back z
-    static const float LX = -0.5;	// left x
-    static const float RX = 0.5;	//right x
-    static const float TY = 0.3;	// top y
-    static const float BY = -0.3;	// bottom y
+    static const float LX = -0.7;	// left x
+    static const float RX = 0.7;	//right x
+    static const float TY = 0.42;	// top y
+    static const float BY = -0.42;	// bottom y
 
-    static const float SA = .40;	// side alpha
+    static const float SA = .25;	// side alpha
     static const float FA = 0.10;	// front alpha
 
     static const float GLev = 0.6;	// green level for border
@@ -361,6 +361,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	// compute factor to multiply Y coordinate by
 	float aspect = drawableSize.width / drawableSize.height;
 
+#if 0
 	if (_rotationDir) {
 	    _rotationRadians += 0.012;
 	    if (_rotationRadians > .8)
@@ -370,10 +371,13 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	    if (_rotationRadians < -0.8)
 		_rotationDir = YES;
 	}
+#else
+	_rotationRadians = 0.0;
+#endif
 
 	CGPoint origin;
-	origin.x = 1.0;
-	origin.y = 2.0;
+	origin.x = 1.8;
+	origin.y = 4.0;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 0
 			radians: _rotationRadians
@@ -381,7 +385,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 			 aspect: aspect];
 
 	origin.x = -1.0;
-	origin.y = -1.0;
+	origin.y = -4.0;
 	[self getRotationBuffer:_rotationBuffer
 			  index: 1
 			radians: _rotationRadians
