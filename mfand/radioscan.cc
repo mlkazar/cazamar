@@ -1452,7 +1452,7 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     if (resp->isAborted())
         return;
 
-#if 0
+#if 1
     // TODO: sometimes really slow; only use uberstation URL
     // Get rid of this
     /* add entries from DAR.fm */
@@ -1463,7 +1463,7 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
 #endif
 
 
-#if 0
+#if 1
     // doesn't seem to work for station names, just genres
     resp->_baseStatus = std::string("Searching Shoutcast");
     resp->searchShoutcast();
