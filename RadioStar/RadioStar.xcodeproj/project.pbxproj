@@ -6,8 +6,44 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7F40AC9F2F1EF70D001B1EE8 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F40AC9E2F1EF70D001B1EE8 /* AudioToolbox.framework */; };
+		7F40ACA12F1EF716001B1EE8 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F40ACA02F1EF716001B1EE8 /* CoreAudio.framework */; };
+		7F8417F62F1EF3BD00B497E8 /* MFANSocket.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8417F52F1EF3BD00B497E8 /* MFANSocket.cc */; };
+		7F8417FB2F1EF40E00B497E8 /* bufsocket.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8417FA2F1EF40E00B497E8 /* bufsocket.cc */; };
+		7F8417FC2F1EF40E00B497E8 /* bufgen.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8417F82F1EF40E00B497E8 /* bufgen.cc */; };
+		7F8418002F1EF42E00B497E8 /* rst.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8417FE2F1EF42E00B497E8 /* rst.cc */; };
+		7F8418092F1EF49500B497E8 /* osp.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8418042F1EF49500B497E8 /* osp.cc */; };
+		7F84180A2F1EF49500B497E8 /* osptimer.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8418072F1EF49500B497E8 /* osptimer.cc */; };
+		7F84180D2F1EF4F000B497E8 /* radiostream.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F84180C2F1EF4F000B497E8 /* radiostream.cc */; };
+		7FD578002F1EF853002187FA /* cthread.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FD577FF2F1EF853002187FA /* cthread.cc */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		7F1E14C12ED6A80D00D08908 /* RadioStar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RadioStar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F40AC9E2F1EF70D001B1EE8 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
+		7F40ACA02F1EF716001B1EE8 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
+		7F8417F32F1EF39200B497E8 /* MFANCGUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANCGUtil.h; path = ../MusicFan/MusicFan/MFANCGUtil.h; sourceTree = SOURCE_ROOT; };
+		7F8417F42F1EF3BD00B497E8 /* MFANSocket.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANSocket.h; path = ../MusicFan/MusicFan/MFANSocket.h; sourceTree = SOURCE_ROOT; };
+		7F8417F52F1EF3BD00B497E8 /* MFANSocket.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MFANSocket.cc; path = ../MusicFan/MusicFan/MFANSocket.cc; sourceTree = SOURCE_ROOT; };
+		7F8417F72F1EF40E00B497E8 /* bufgen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = bufgen.h; path = ../mfand/bufgen.h; sourceTree = SOURCE_ROOT; };
+		7F8417F82F1EF40E00B497E8 /* bufgen.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = bufgen.cc; path = ../mfand/bufgen.cc; sourceTree = SOURCE_ROOT; };
+		7F8417F92F1EF40E00B497E8 /* bufsocket.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = bufsocket.h; path = ../mfand/bufsocket.h; sourceTree = SOURCE_ROOT; };
+		7F8417FA2F1EF40E00B497E8 /* bufsocket.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = bufsocket.cc; path = ../mfand/bufsocket.cc; sourceTree = SOURCE_ROOT; };
+		7F8417FD2F1EF42E00B497E8 /* rst.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = rst.h; path = ../mfand/rst.h; sourceTree = SOURCE_ROOT; };
+		7F8417FE2F1EF42E00B497E8 /* rst.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = rst.cc; path = ../mfand/rst.cc; sourceTree = SOURCE_ROOT; };
+		7F8417FF2F1EF42E00B497E8 /* rsterror.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = rsterror.h; path = ../mfand/rsterror.h; sourceTree = SOURCE_ROOT; };
+		7F8418012F1EF46800B497E8 /* cthread.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = cthread.h; path = ../rpc/cthread.h; sourceTree = SOURCE_ROOT; };
+		7F8418022F1EF46800B497E8 /* dqueue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = dqueue.h; path = ../rpc/dqueue.h; sourceTree = SOURCE_ROOT; };
+		7F8418032F1EF49500B497E8 /* osp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = osp.h; path = ../rpc/osp.h; sourceTree = SOURCE_ROOT; };
+		7F8418042F1EF49500B497E8 /* osp.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = osp.cc; path = ../rpc/osp.cc; sourceTree = SOURCE_ROOT; };
+		7F8418052F1EF49500B497E8 /* ospmbuf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ospmbuf.h; path = ../rpc/ospmbuf.h; sourceTree = SOURCE_ROOT; };
+		7F8418062F1EF49500B497E8 /* osptimer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = osptimer.h; path = ../rpc/osptimer.h; sourceTree = SOURCE_ROOT; };
+		7F8418072F1EF49500B497E8 /* osptimer.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = osptimer.cc; path = ../rpc/osptimer.cc; sourceTree = SOURCE_ROOT; };
+		7F8418082F1EF49500B497E8 /* osptypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = osptypes.h; path = ../rpc/osptypes.h; sourceTree = SOURCE_ROOT; };
+		7F84180B2F1EF4F000B497E8 /* radiostream.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = radiostream.h; path = ../mfand/radiostream.h; sourceTree = SOURCE_ROOT; };
+		7F84180C2F1EF4F000B497E8 /* radiostream.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = radiostream.cc; path = ../mfand/radiostream.cc; sourceTree = SOURCE_ROOT; };
+		7FD577FF2F1EF853002187FA /* cthread.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = cthread.cc; path = ../rpc/cthread.cc; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,6 +72,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7F40ACA12F1EF716001B1EE8 /* CoreAudio.framework in Frameworks */,
+				7F40AC9F2F1EF70D001B1EE8 /* AudioToolbox.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,7 +83,29 @@
 		7F1E14B82ED6A80D00D08908 = {
 			isa = PBXGroup;
 			children = (
+				7FD577FF2F1EF853002187FA /* cthread.cc */,
+				7F84180B2F1EF4F000B497E8 /* radiostream.h */,
+				7F84180C2F1EF4F000B497E8 /* radiostream.cc */,
+				7F8418032F1EF49500B497E8 /* osp.h */,
+				7F8418042F1EF49500B497E8 /* osp.cc */,
+				7F8418052F1EF49500B497E8 /* ospmbuf.h */,
+				7F8418062F1EF49500B497E8 /* osptimer.h */,
+				7F8418072F1EF49500B497E8 /* osptimer.cc */,
+				7F8418082F1EF49500B497E8 /* osptypes.h */,
+				7F8418012F1EF46800B497E8 /* cthread.h */,
+				7F8418022F1EF46800B497E8 /* dqueue.h */,
+				7F8417FD2F1EF42E00B497E8 /* rst.h */,
+				7F8417FE2F1EF42E00B497E8 /* rst.cc */,
+				7F8417FF2F1EF42E00B497E8 /* rsterror.h */,
+				7F8417F72F1EF40E00B497E8 /* bufgen.h */,
+				7F8417F82F1EF40E00B497E8 /* bufgen.cc */,
+				7F8417F92F1EF40E00B497E8 /* bufsocket.h */,
+				7F8417FA2F1EF40E00B497E8 /* bufsocket.cc */,
+				7F8417F32F1EF39200B497E8 /* MFANCGUtil.h */,
+				7F8417F42F1EF3BD00B497E8 /* MFANSocket.h */,
+				7F8417F52F1EF3BD00B497E8 /* MFANSocket.cc */,
 				7F1E14C32ED6A80D00D08908 /* RadioStar */,
+				7F40AC9D2F1EF70D001B1EE8 /* Frameworks */,
 				7F1E14C22ED6A80D00D08908 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -56,6 +116,15 @@
 				7F1E14C12ED6A80D00D08908 /* RadioStar.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		7F40AC9D2F1EF70D001B1EE8 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7F40ACA02F1EF716001B1EE8 /* CoreAudio.framework */,
+				7F40AC9E2F1EF70D001B1EE8 /* AudioToolbox.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -131,6 +200,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7F8417FB2F1EF40E00B497E8 /* bufsocket.cc in Sources */,
+				7F8417FC2F1EF40E00B497E8 /* bufgen.cc in Sources */,
+				7F84180D2F1EF4F000B497E8 /* radiostream.cc in Sources */,
+				7FD578002F1EF853002187FA /* cthread.cc in Sources */,
+				7F8417F62F1EF3BD00B497E8 /* MFANSocket.cc in Sources */,
+				7F8418002F1EF42E00B497E8 /* rst.cc in Sources */,
+				7F8418092F1EF49500B497E8 /* osp.cc in Sources */,
+				7F84180A2F1EF49500B497E8 /* osptimer.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
