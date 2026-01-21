@@ -464,11 +464,36 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	// now execute the buffer
         [comBuffer presentDrawable:drawable];
         [comBuffer commit];
+
+	// NB: you need to call animationOn to update the
+	// metal-controlled layer or to enable real animation, since
+	// it burns ~12% of the CPU to just keep running the display
+	// link / GPU to keep a fixed image on the screen.
+	//
+	// Perhaps a better approach is to use a 3D graphics API
+	// instead, but using metal allows us to do animation if we
+	// want.
+	[self animationOff];
     }
 }
 
 - (void) displayLinkFired: (CADisplayLink *) displayLink {
     [self redraw];
+}
+
+- (void) animationOn {
+    if (_displayLink == nil) {
+	_displayLink = [CADisplayLink displayLinkWithTarget:self
+						   selector:@selector(displayLinkFired:)];
+	[_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    }
+}
+
+- (void) animationOff {
+    if (_displayLink != nil) {
+	[_displayLink invalidate];
+	_displayLink = nil;
+    }
 }
 
 // start the drawing pipeline here
@@ -478,14 +503,11 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
     NSLog(@"in didMoveToSuperview");
     if (self.superview) {
-        _displayLink = [CADisplayLink displayLinkWithTarget:self
-						   selector:@selector(displayLinkFired:)];
-        [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+	[self animationOn];
 	NSLog(@"in didMoveToSuperview link=%p", _displayLink);
     } else {
 	NSLog(@"didmovetosuperview shutdown");
-        [_displayLink invalidate];
-        _displayLink = nil;
+	[self animationOff];
     }
 }
 
