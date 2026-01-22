@@ -1292,7 +1292,7 @@ static const float _hijackDelay = 4.0;
     MPMusicPlaybackState playbackState;
     uint64_t now;
     long newIndex;
-    uint32_t msSinceChanged;
+    uint64_t msSinceChanged;
 
     /* record our currently best known state */
     playbackState = [_playerStatus state];
@@ -1866,7 +1866,7 @@ static const float _hijackDelay = 4.0;
 {
     float currentTime;
     float songLength;
-    int remainingSecs;
+    uint64_t remainingSecs;
     BOOL durationValid;
 
     currentTime = [self currentPlaybackTime];
@@ -1890,7 +1890,7 @@ static const float _hijackDelay = 4.0;
     }
     else {
 	[_slider setValue: (currentTime / songLength)];
-	remainingSecs = (int) (songLength - currentTime);
+	remainingSecs = (songLength - currentTime);
 	[_timeLabel setText: [NSString stringWithFormat:
 					   @"%d:%02d", remainingSecs/60, remainingSecs%60]];
     }

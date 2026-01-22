@@ -78,8 +78,8 @@
     NSCondition *_pbtCond;	/* wakeup pbt async thread */
     uint64_t _pbtCounter;	/* increases each time we lookup the current playback time */
     float _pbtLastTime;		/* last valid currentPlaybackTime */
-    uint32_t _pbtStartMs;	/* time last currentPlaybackTime started */
-    uint32_t _pbtEndMs;		/* time last currentPlaybackTime started */
+    uint64_t _pbtStartMs;	/* time last currentPlaybackTime started */
+    uint64_t _pbtEndMs;		/* time last currentPlaybackTime started */
     BOOL _pbtActive;		/* bkg thread is active */
 }
 
@@ -198,7 +198,7 @@ static const int _maxState = 4;
 	if (_pbtCounter > lastCounter) {
 	    break;
 	}
-	else if (osp_time_ms() - lastTime > (int) (delay * 800)) {
+	else if (osp_time_ms() - lastTime > (uint64_t) (delay * 800)) {
 	    /* we make timeout condition a little shorter to avoid
 	     * going around an extra time if we wake up a little
 	     * early.  800 --> 80% of delay.
@@ -241,7 +241,7 @@ static const int _maxState = 4;
 - (void) pbtInit: (id) junk
 {
     float newTime;
-    uint32_t endMs;
+    uint64_t endMs;
 
     /* wait until someone needs the currentPlaybackTime, and then get it, along with
      * an indication of how long getting the time took.  Also, maintain _pbtActive
