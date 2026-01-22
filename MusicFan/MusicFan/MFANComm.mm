@@ -9,13 +9,13 @@
 #include "mfclient.h"
 #include "osp.h"
 
-uint32_t
+uint64_t
 osp_get_ms()
 {
     return osp_time_ms();
 }
 
-uint32_t
+uint64_t
 osp_get_sec()
 {
     return osp_time_sec();

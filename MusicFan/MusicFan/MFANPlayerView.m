@@ -325,10 +325,10 @@ UIImage *_defaultImage;
     BOOL _forceSetQueue;	/* force setQueueWithItemCollection */ 
     NSData *_silentData;
     NSMutableDictionary *_nowPlayingInfo;
-    uint32_t _lastChangeMs;	/* last time song changed */
-    uint32_t _lastStateChangeMs; /* last time isPlaying changed */
+    uint64_t _lastChangeMs;	/* last time song changed */
+    uint64_t _lastStateChangeMs; /* last time isPlaying changed */
     MFANViewController *_viewCon;
-    uint32_t _lastHijackSecs;	/* seconds since last hijack */
+    uint64_t _lastHijackSecs;	/* seconds since last hijack */
     uint32_t _lastHijackCount;	/* count since last time we had a 20 second gap in hijackings */
     UIColor *_radioBackground;
 
@@ -848,7 +848,7 @@ static const float _hijackDelay = 4.0;
     MPMediaItem *tempMediaItem;
     MFANMediaItem *mfanItem;
     float newPlaybackTime;
-    uint32_t waitStartMs;
+    uint64_t waitStartMs;
     MPMediaItemCollection *mediaCollection;
 
 #ifdef MFAN_TESTHIJACK
@@ -1290,7 +1290,7 @@ static const float _hijackDelay = 4.0;
 - (void) mpMusicChanged: (id) junk
 {
     MPMusicPlaybackState playbackState;
-    uint32_t now;
+    uint64_t now;
     long newIndex;
     uint32_t msSinceChanged;
 

@@ -15,7 +15,7 @@
 #include "radiostream.h"
 
 @implementation MFANAqStreamPacket {
-    uint32_t _ms;
+    uint64_t _ms;
     NSMutableData *_data;
 }
 
@@ -69,7 +69,7 @@
     uint32_t _streamAttachCounter;
 
     uint64_t _lastDataBytes;
-    uint32_t _lastDataMs;
+    uint64_t _lastDataMs;
 
     NSString *_urlString;
 
@@ -243,7 +243,7 @@ MFANAqStream_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int3
     OSStatus osStatus;
     std::string *contentTypep;
     AudioFileTypeID fileType;
-    uint32_t now;
+    uint64_t now;
     float updateRate;
     uint32_t delta;
 

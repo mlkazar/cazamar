@@ -165,8 +165,8 @@ MFANStreamPlayer_getUnknownString()
 
     // tracking playing; the stupid AudioQueue property listener
     // doesn't notice if you actually pause playing.
-    uint32_t _lastReturnedMs;	/* time an audio packet was last returned to us */
-    uint32_t _lastDataMs;	/* last time data was received */
+    uint64_t _lastReturnedMs;	/* time an audio packet was last returned to us */
+    uint64_t _lastDataMs;	/* last time data was received */
     uint32_t _lastDataBytes;	/* bytes since lastDataMs */
     uint32_t _formatId;		/* audio format ID */
     float _dataRate;		/* estimated data rate */
@@ -356,7 +356,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
  */
 - (void) spyMonitor: (id) junk
 {
-    uint32_t now;
+    uint64_t now;
 
     pthread_mutex_lock(&_aqMutex);
 
@@ -847,7 +847,7 @@ MFANStreamPlayer_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, 
     OSStatus osStatus;
     std::string *contentTypep;
     AudioFileTypeID fileType;
-    uint32_t now;
+    uint64_t now;
     float updateRate;
     uint32_t delta;
 

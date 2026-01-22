@@ -171,7 +171,7 @@ static const int _maxState = 4;
 {
     NSTimeInterval rval;
     uint64_t lastCounter;
-    uint32_t lastTime;
+    uint64_t lastTime;
     BOOL timedOut;
     float delay;
 

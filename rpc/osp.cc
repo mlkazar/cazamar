@@ -37,31 +37,24 @@ OspMBuf::alloc(uint32_t asize)
     return mbp;
 }
 
-uint32_t
+uint64_t
 osp_time_ms()
 {
     struct timeval tv;
-    static int initDone = 0;
-    static uint32_t baseSecs;
 
     gettimeofday(&tv, NULL);
 
-    if (!initDone) {
-        baseSecs = (uint32_t) tv.tv_sec;
-        initDone = 1;
-    }
-
-    return (uint32_t) (tv.tv_sec - baseSecs) * 1000 + tv.tv_usec/1000;
+    return (uint64_t) tv.tv_sec * 1000 + tv.tv_usec/1000;
 }
 
-uint32_t
+uint64_t
 osp_time_sec()
 {
     struct timeval tv;
 
     gettimeofday(&tv, NULL);
 
-    return (uint32_t) tv.tv_sec;
+    return (uint64_t) tv.tv_sec;
 }
 
 /* static */ void *

@@ -14,12 +14,12 @@ subTimer(OspTimer *timerp, void *contextp)
 {
     _mutex.take();
     if (_subTimerp->canceled()) {
-        printf("subtimer lost race now=%d\n", osp_time_ms());
+        printf("subtimer lost race now=%lld\n", osp_time_ms());
         _mutex.release();
         return;
     }
 
-    printf("subtimer fired %d\n", osp_time_ms());
+    printf("subtimer fired %lld\n", osp_time_ms());
     _subTimerp = new OspTimer();
     _subTimerp->init(1000, &subTimer, NULL);
     _mutex.release();
@@ -28,14 +28,14 @@ subTimer(OspTimer *timerp, void *contextp)
 void
 mainTimer(OspTimer *timerp, void *contextp)
 {
-    uint32_t ms;
+    uint64_t ms;
 
     _mutex.take();
 
     ms = osp_time_ms();
 
     if (!timerp->canceled()) {
-        printf("Timer fired for us %d\n", ms);
+        printf("Timer fired for us %lld\n", ms);
         _mainTimerp = NULL;
 
         _mainTimerp = new OspTimer();
@@ -48,12 +48,12 @@ mainTimer(OspTimer *timerp, void *contextp)
     if (ms - _lastToggle > 6000) {
         _lastToggle = ms;
         if (_subTimerp) {
-            printf("\ncanceled subtimer now=%d\n", ms);
+            printf("\ncanceled subtimer now=%lld\n", ms);
             _subTimerp->cancel();
             _subTimerp = NULL;
         }
         else {
-            printf("\nstarted subtimer now=%d\n", ms);
+            printf("\nstarted subtimer now=%lld\n", ms);
             _subTimerp = new OspTimer();
             _subTimerp->init(1000, &subTimer, NULL);
         } 

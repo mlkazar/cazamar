@@ -6,9 +6,9 @@
 extern "C" {
 #endif
 
-uint32_t osp_get_ms(void);
+uint64_t osp_get_ms(void);
 
-uint32_t osp_get_sec(void);
+uint64_t osp_get_sec(void);
 
 #ifdef __cplusplus
 }

@@ -66,9 +66,9 @@ class AllocCommonHeader {
 
 extern void osp_panic(char *why, char *filep, int line);
 
-extern uint32_t osp_time_ms();
+extern uint64_t osp_time_ms();
 
-extern uint32_t osp_time_sec(); /* time since 1970 */
+extern uint64_t osp_time_sec(); /* time since 1970 */
 
 #include "ospmbuf.h"
 
