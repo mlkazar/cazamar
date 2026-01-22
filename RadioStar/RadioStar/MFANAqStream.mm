@@ -81,6 +81,7 @@
 }
 
 static pthread_mutex_t _streamMutex;
+static int _staticSetup = 0;
 
 - (void) shutdown {
     NSLog(@"in shutdown");
@@ -437,7 +438,10 @@ MFANAqStream_rsControlProc( void *contextp,
 	_audioStreamHandle = 0;
 	_radioStreamp = nullptr;
 
-	pthread_mutex_init(&_streamMutex, NULL);
+	if (!_staticSetup) {
+	    _staticSetup = YES;
+	    pthread_mutex_init(&_streamMutex, NULL);
+	}
 	pthread_cond_init(&_pthreadIdleCv, NULL);
 	_urlString = url;
 
