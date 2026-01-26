@@ -62,14 +62,45 @@
 - (int32_t) addData: (char *) data length: (uint64_t) length;
 
 - (char *) getData;
+
+- (uint64_t) getLength;
+
+- (uint64_t) getMs;
+@end
+
+@interface MFANAqStreamReader : NSObject
+@property MFANAqStream *aqStream;
+
+- (MFANAqStreamPacket *) read;
+
+- (bool) hasData;
+
+// returns absolute seek position.  If whence is 0, it is an
+// absolute time.
+- (uint64_t) seek:(uint64_t) ms whence: (int) whence;
+
+// create new reader, position it at current end
+- (MFANAqStreamReader *) initWithStream: (MFANAqStream *) stream;
+
+- (void) close;
 @end
 
 @interface MFANAqStream : NSObject
 
+@property NSMutableArray *packetArray;
+@property uint64_t packetStreamVersion;
+
++ (pthread_mutex_t *) streamMutex;
+
+- (pthread_cond_t *) packetArrayCv;
+
 - (MFANAqStream *) initWithUrl: (NSString *) url;
 
-- (NSString *) getDataFormat;
+- (NSString *) getDataFormatString;
 
+- (NSString *) getUrl;
+
+- (void) getDataFormat: (AudioStreamBasicDescription *) format;
 
 // We can only have one target at a time, but we can attach and detach
 // it without affecting the actual stream receiver.

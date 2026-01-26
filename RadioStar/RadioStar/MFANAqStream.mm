@@ -31,6 +31,123 @@
     return (char *) _data.mutableBytes;
 }
 
+- (uint64_t) getLength {
+    return _data.length;
+}
+
+- (uint64_t) getMs {
+    return _ms;
+}
+    
+@end
+
+@implementation MFANAqStreamReader {
+    MFANAqStream *_aqStream;
+    uint64_t _packetStreamVersion;	// increment whenever index of existing packet changes.
+    uint64_t _recordMs;			// current position in the stream
+    uint64_t _ix;			// if version matches, the index of the next packet to read
+    bool _closed;
+}
+
+- (MFANAqStreamReader *) initWithStream: (MFANAqStream *) stream {
+    self = [super init];
+    if (self != nil) {
+	_aqStream = stream;
+	uint64_t recordCount = [stream.packetArray count];
+
+	if (recordCount > 0)
+	    _recordMs = [stream.packetArray[recordCount - 1] getMs] + 1;
+	else
+	    _recordMs = 0;
+
+	_ix = recordCount;
+	_packetStreamVersion = stream.packetStreamVersion;
+	_closed = NO;
+    }
+
+    return self;
+}
+
+// Called with aq mutex held.
+- ( bool) checkIndexValidity {
+    return (_packetStreamVersion >= _aqStream.packetStreamVersion);
+}
+
+// Called with aq mutex held
+- (uint64_t) findPacketIx: (uint64_t) ms {
+    // TODO: replace with binary search.
+    //
+    // Find first packet with a
+    // time stamp >= the input parameter.
+    uint64_t ix;
+
+    for(ix = 0; ix < [_aqStream.packetArray count]; ix++) {
+	if ([_aqStream.packetArray[ix] getMs] >= ms)
+	    break;
+    }
+    return ix;
+}
+
+- (uint64_t) seek: (uint64_t) ms whence: (int) how {
+    pthread_mutex_lock([MFANAqStream streamMutex]);
+    _ix = [self findPacketIx: ms];
+    pthread_mutex_unlock([MFANAqStream streamMutex]);
+    return _ix;
+}
+
+- (bool) hasData {
+    bool rval;
+    pthread_mutex_lock([MFANAqStream streamMutex]);
+    if (!self.checkIndexValidity) {
+	_ix = [self findPacketIx: _recordMs];
+	_packetStreamVersion = _aqStream.packetStreamVersion;
+    }
+
+    if (_ix >= [_aqStream.packetArray count])
+	rval = NO;
+    else
+	rval = YES;
+    pthread_mutex_unlock([MFANAqStream streamMutex]);
+
+    return rval;
+}
+
+- (void) close {
+    pthread_mutex_lock([MFANAqStream streamMutex]);
+    _closed = YES;
+    pthread_cond_broadcast([_aqStream packetArrayCv]);
+    pthread_mutex_unlock([MFANAqStream streamMutex]);
+}
+
+- (MFANAqStreamPacket *) read {
+    MFANAqStreamPacket *packet = nil;
+
+    pthread_mutex_lock([MFANAqStream streamMutex]);
+    while(true) {
+	if (_closed) {
+	    pthread_mutex_unlock([MFANAqStream streamMutex]);
+	    return nil;
+	}
+
+	if (!self.checkIndexValidity) {
+	    _ix = [self findPacketIx: _recordMs];
+	    _packetStreamVersion = _aqStream.packetStreamVersion;
+	}
+
+	if (_ix >= [_aqStream.packetArray count]) {
+	    pthread_cond_wait([_aqStream packetArrayCv], [MFANAqStream streamMutex]);
+	    continue;
+	}
+
+	packet = _aqStream.packetArray[_ix];
+	_recordMs = [packet getMs] + 1;
+	_ix++;
+	break;
+    }
+    pthread_mutex_unlock([MFANAqStream streamMutex]);
+    return packet;
+}
+
 @end
 
 @implementation MFANAqStream {
@@ -73,15 +190,20 @@
 
     NSString *_urlString;
 
+    uint64_t _packetStreamVersion;
+
     // TODO: get rid of this, or modify getDataFormat to use it
-    NSString *_dataFormat;
+    AudioStreamBasicDescription _dataFormat;
 
     // an array of MFANAqStreamPacket objects.
+    // can't use a dictionary, because there's no way to search for
+    // next entry GE than a search key.
     NSMutableArray *_packetArray;
+    pthread_cond_t _packetArrayCv;
 }
 
-static pthread_mutex_t _streamMutex;
 static int _staticSetup = 0;
+static pthread_mutex_t _streamMutex;
 
 - (void) shutdown {
     NSLog(@"in shutdown");
@@ -245,7 +367,7 @@ MFANAqStream_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int3
     AudioFileTypeID fileType;
     uint64_t now;
     float updateRate;
-    uint32_t delta;
+    uint64_t delta;
 
     pthread_mutex_lock(&_streamMutex);
     if (radiop->isClosed()) {
@@ -393,35 +515,29 @@ MFANAqStream_rsControlProc( void *contextp,
 
 // This data stream format information should be available before the
 // first upcall of data records.
-- (NSString *) getDataFormat {
-    uint32_t dataFormatSize;
-    OSStatus osStatus;
-    AudioStreamBasicDescription dataFormat;
-
-    dataFormatSize = sizeof(dataFormat);
-    osStatus = AudioFileStreamGetProperty ( _audioStreamHandle,
-					    kAudioFilePropertyDataFormat,
-					    (UInt32 *) &dataFormatSize,
-					    &dataFormat);
-    if (osStatus != 0)
-	return @"";
-
-
+- (NSString *) getDataFormatString {
     NSString *rstr;
 
-    if (dataFormat.mFormatID == 'aac ')
+    if (_dataFormat.mFormatID == 'aac ')
 	rstr = @"AAC";
-    else if (dataFormat.mFormatID == '.mp3')
+    else if (_dataFormat.mFormatID == '.mp3')
 	rstr = @"MP3";
     else {
 	/* unknown, just use the raw encoding as characters */
 	rstr = [NSString stringWithFormat: @"%c%c%c%c",
-			 (int) (dataFormat.mFormatID>>24) & 0xFF,
-			 (int) (dataFormat.mFormatID>>16) & 0xFF,
-			 (int) (dataFormat.mFormatID>>8) & 0xFF,
-			 (int) dataFormat.mFormatID & 0xFF];
+			 (int) (_dataFormat.mFormatID>>24) & 0xFF,
+			 (int) (_dataFormat.mFormatID>>16) & 0xFF,
+			 (int) (_dataFormat.mFormatID>>8) & 0xFF,
+			 (int) _dataFormat.mFormatID & 0xFF];
     }
     return rstr;
+}
+
+// Caller should have already read a packet from a reader before using
+// this, since the data format is only known after we've received the
+// first bytes of data from the HTTP stream.
+- (void) getDataFormat: (AudioStreamBasicDescription *) format {
+    *format = _dataFormat;
 }
 
 // TODO: get rid of this
@@ -443,6 +559,7 @@ MFANAqStream_rsControlProc( void *contextp,
 	    pthread_mutex_init(&_streamMutex, NULL);
 	}
 	pthread_cond_init(&_pthreadIdleCv, NULL);
+	pthread_cond_init(&_packetArrayCv, NULL);
 	_urlString = url;
 
 	_packetArray = [[NSMutableArray alloc] init];
@@ -463,6 +580,8 @@ MFANAqStream_rsControlProc( void *contextp,
 	_maxPacketCount = 512;
 
 	_streamAttachCounter = 0;
+
+	_packetStreamVersion = 1;
 
 	_pthreadWaiters = 0;
 
@@ -540,4 +659,17 @@ MFANAqStream_rsControlProc( void *contextp,
     _target = nil;
     pthread_mutex_unlock(&_streamMutex);
 }
+
++ (pthread_mutex_t *) streamMutex {
+    return &_streamMutex;
+}
+
+- (pthread_cond_t *) packetArrayCv {
+    return &_packetArrayCv;
+}
+
+- (NSString *) getUrl {
+    return _urlString;
+}
+
 @end
