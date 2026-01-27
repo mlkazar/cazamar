@@ -22,6 +22,8 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 - (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel;
 
+- (void) shutdown;
+
 - (bool) isShutdown;
 
 - (NSString *) getEncodingType;

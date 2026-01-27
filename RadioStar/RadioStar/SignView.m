@@ -39,6 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLTexture> _depthTexture;
     id<MTLDepthStencilState> _depthStencil;
 
+    bool _startedRadio;
     MFANAqStream *_stream;
     MFANStreamPlayer *_player;
 }
@@ -590,6 +591,8 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
 	[self setupPipeline];
 
+	_startedRadio = NO;
+
 	UIGestureRecognizer *recog;
 	recog = [[UILongPressGestureRecognizer alloc]
 		    initWithTarget: self action:@selector(longPressed:)];
@@ -616,12 +619,29 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateEnded) {
 	NSLog(@"tap pressed at (%f,%f)", point.x, point.y);
-	_stream = [[MFANAqStream alloc] initWithUrl:@"http://new-webstream.wmfo.org/"];
-	NSLog(@"created stream at %p", _stream);
-	_player = [[MFANStreamPlayer alloc] initWithStream: _stream];
+
+	if (!_startedRadio) {
+	    _stream = [[MFANAqStream alloc] initWithUrl:@"http://new-webstream.wmfo.org/"];
+	    _player = [[MFANStreamPlayer alloc] initWithStream: _stream];
+
+	    [NSTimer scheduledTimerWithTimeInterval: 10.0
+					     target:self
+					   selector:@selector(restartRadio:)
+					   userInfo:nil
+					    repeats: NO];
+	    _startedRadio = YES;
+	}
     } else {
 	NSLog(@"ignoring begin tap");
     }
+}
+
+- (void) restartRadio: (id) junk {
+    NSLog(@"in restartradio");
+    [_player shutdown];
+    [_stream shutdown];
+    _startedRadio = NO;
+    NSLog(@"shutdown of radio done");
 }
 
 @end
