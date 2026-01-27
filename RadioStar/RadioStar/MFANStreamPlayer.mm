@@ -145,7 +145,7 @@ MFANStreamPlayer_getUnknownString()
 }
 
 @implementation MFANStreamPlayer {
-    AudioQueueRef _audioQueuep;
+    AudioQueueRef _audioQueue;
     AudioStreamBasicDescription _dataFormat;	/* detailed data format info from parser */
     MFANAqStream *_aqStream;
 
@@ -306,6 +306,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_currentPlaying = MFANStreamPlayer_getUnknownString();
 	_songCount++;
 
+        _packetsp = ((AudioStreamPacketDescription *)
+		     malloc(_maxPacketCount *
+			    sizeof(AudioStreamPacketDescription)));
+
 	NSLog(@"- streamplayer init2 starts for %p cplaying=%p", self, _currentPlaying);
 
 	_spyTimer = [NSTimer scheduledTimerWithTimeInterval: 1.0
@@ -322,7 +326,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 					       selector: @selector(playAsync:)
 					       object: nil];
 	[_readerThread start];
-
     }
     return self;
 }
@@ -344,6 +347,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_isPlaying = YES;
     }
 
+#if 0
     if (now - _lastReturnedMs > 5000) {
 	[self shutdown];
 
@@ -355,6 +359,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    _lastUpcalledIsPlaying = !_isPlaying;
 	}
     }
+#endif
 
     if (_stateCallbackObj != nil && _lastUpcalledIsPlaying != _isPlaying) {
 	_lastUpcalledIsPlaying = _isPlaying;
@@ -381,8 +386,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     NSLog(@"- in shutdown audio for aqp=%p", self);
 
     /* check if we've started a shutdown procedure */
+    pthread_mutex_lock(&_playerMutex);
     if (_shutdown) {
 	NSLog(@"- shutdownAudio for stopped player %p", self);
+	pthread_mutex_unlock(&_playerMutex);
 	return;
     }
 
@@ -394,10 +401,15 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[self shutdown];
 	    });
+	pthread_mutex_unlock(&_playerMutex);
 	return;
     }
 
     _shutdown = YES;
+
+    // drop the lock in case something we do during shutdown triggers a synchronous
+    // callback.
+    pthread_mutex_unlock(&_playerMutex);
 
     /* we're shutting down the audio queue, thus it won't be paused afterwards */
     _paused = NO;
@@ -405,17 +417,22 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     /* stop the audio queue and dispose of it; can't set "immediate" to true,
      * since the AudioQueue system deadlocks if you do.
      */
-    if (_audioQueuep) {
-	AudioQueueStop(_audioQueuep, /* immediate */ 0);
-	AudioQueueDispose(_audioQueuep, /* immediate */ 0);
+    if (_audioQueue) {
+	AudioQueueStop(_audioQueue, /* immediate */ 0);
+	AudioQueueDispose(_audioQueue, /* immediate */ 0);
     }
+
+    // this, plus the shutdown flag beimg set, will cause the playAsync
+    // thread's read to fail and the thread will exit.  The thread's
+    // exiting will drop the thread's reference to the StreamPlayer
+    [_streamReader close];
 
     if (_aqStream) {
 	[_aqStream detachTarget];
     }
 
-    /* leave _audioQueuep pointer set in case we need it during parse call shutdown */
-    _audioQueuep = NULL;
+    /* leave _audioQueue pointer set in case we need it during parse call shutdown */
+    _audioQueue = NULL;
 
     _shutdownTimer = [NSTimer scheduledTimerWithTimeInterval: 10.0
 			      target:self
@@ -443,7 +460,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     /* free buffers */
     for(i=0;i<MFANStreamPlayer_nBuffers;i++) {
 	if (_buffersp[i]) {
-	    AudioQueueFreeBuffer(_audioQueuep, _buffersp[i]);
+	    AudioQueueFreeBuffer(_audioQueue, _buffersp[i]);
 	    _buffersp[i] = NULL;
 	}
     }
@@ -473,8 +490,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	return;
     }
 
-    if (_audioQueuep) {
-	AudioQueuePause(_audioQueuep);
+    if (_audioQueue) {
+	AudioQueuePause(_audioQueue);
     }
     _paused = YES;
     pthread_mutex_unlock(&_playerMutex);
@@ -489,8 +506,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	return;
     }
 
-    if (_audioQueuep) {
-	AudioQueueStart(_audioQueuep, NULL);
+    if (_audioQueue) {
+	AudioQueueStart(_audioQueue, NULL);
     }
     _paused = NO;
     pthread_mutex_unlock(&_playerMutex);
@@ -521,27 +538,59 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return _isPlaying;
 }
 
+- (AudioQueueRef) setupAudioQueue {
+    AudioQueueRef audioQueue;
+    OSStatus osStatus;
+
+    [_aqStream getDataFormat: &_dataFormat];
+    osStatus = AudioQueueNewOutput ( &_dataFormat,
+				     MFANStreamPlayer_handleOutput,
+				     (__bridge void *) self,
+				     /* runloop */ NULL,
+				     /* ioop mode */ kCFRunLoopCommonModes,
+				     /* flags */ 0,
+				     &audioQueue);
+    if (osStatus != 0) {
+	NSError *error = [NSError errorWithDomain: NSOSStatusErrorDomain
+					     code: osStatus
+					 userInfo: nil];
+	NSLog(@"! AudioQueue error %@", [error description]);
+	return nil;
+    }
+
+    for(uint32_t i=0;i<MFANStreamPlayer_nBuffers;i++) {
+	AudioQueueAllocateBuffer( audioQueue,
+				  _maxBufferSize,
+				  &_buffersp[i]);
+	[self pushBuffer: _buffersp[i]];
+    }
+
+    /* turn up the volume; it is nice that this poorly documented
+     * interface defaults to playing silently, so that if you forget
+     * this step, you won't hear anything, or have a clue why.
+     * Thanks, Apple.
+     */
+    Float32 gain = 1.0;
+    osStatus = AudioQueueSetParameter ( audioQueue,
+					kAudioQueueParam_Volume,
+					gain);
+
+    osStatus = AudioQueueStart( audioQueue, NULL);
+    return audioQueue;
+}
+
 - (void) playAsync: (id) junk
 {
     MFANAqStreamPacket *packet;
-    AudioQueueRef audioQueue = nil;
     AudioQueueBufferRef bufRefp = nil;
     uint32_t bytesCopied = 0;
     uint32_t packetsCopied = 0;
     OSStatus osStatus;
 
     while(!_shutdown) {
-	pthread_mutex_lock(&_playerMutex);
 	if (_streamReader == nil) {
 	    // Create a reader
 	    _streamReader = [[MFANAqStreamReader alloc] initWithStream: _aqStream];
-	}
-
-	// make sure we have a buffer to hold the data we're reading
-	if (bufRefp == nil) {
-	    bufRefp = [self popBuffer];
-	    bytesCopied = 0;
-	    packetsCopied = 0;
 	}
 
 	// if we have data to flush and no more data queued for us,
@@ -550,20 +599,30 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    // flush pending data if we're going to block waiting for
 	    // more data.  Note that once we have processed any
 	    // packets, we should have created the AudioQueue.
-	    osp_assert(audioQueue != nil);
+	    osp_assert(_audioQueue != nil);
 	    bufRefp->mAudioDataByteSize = bytesCopied;
-	    osStatus = AudioQueueEnqueueBuffer ( audioQueue,
+#if 0
+	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 						 bufRefp,
 						 packetsCopied,
 						 _packetsp);
 	    if (osStatus != 0) {
 		/* buffer didn't get queued so we have to avoid losing it */
 		NSLog(@"! streamplayer enqueue failed, repushing");
+		pthread_mutex_lock(&_playerMutex);
 		[self pushBuffer: bufRefp];
+		pthread_mutex_unlock(&_playerMutex);
 	    }
+#else
+		pthread_mutex_lock(&_playerMutex);
+		[self pushBuffer: bufRefp];
+		pthread_mutex_unlock(&_playerMutex);
+#endif
 	    bufRefp = NULL;
 
+	    pthread_mutex_lock(&_playerMutex);
 	    bufRefp = [self popBuffer];
+	    pthread_mutex_unlock(&_playerMutex);
 	    bytesCopied = 0;
 	    packetsCopied = 0;
 	}
@@ -577,22 +636,19 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 	// once we have a packet, we can find out the stream type,
 	// which is required for creating the queue.
-	if (audioQueue == nil) {
-	    [_aqStream getDataFormat: &_dataFormat];
-	    osStatus = AudioQueueNewOutput ( &_dataFormat,
-					     MFANStreamPlayer_handleOutput,
-					     (__bridge void *) self,
-					     /* runloop */ NULL,
-					     /* ioop mode */ kCFRunLoopCommonModes,
-					     /* flags */ 0,
-					     &audioQueue);
-	    if (osStatus != 0) {
-		NSError *error = [NSError errorWithDomain: NSOSStatusErrorDomain
-						     code: osStatus
-						 userInfo: nil];
-		NSLog(@"! AudioQueue error %@", [error description]);
-		break;
-	    }
+	if (_audioQueue == nil) {
+	    _audioQueue = [self setupAudioQueue];
+	}
+
+	// make sure we have a buffer to hold the data we're reading.
+	// this must be done after creating the audio queue, or we
+	// won't have setup the buffers.
+	if (bufRefp == nil) {
+	    pthread_mutex_lock(&_playerMutex);
+	    bufRefp = [self popBuffer];
+	    pthread_mutex_unlock(&_playerMutex);
+	    bytesCopied = 0;
+	    packetsCopied = 0;
 	}
 
 	// Now that we have a packet, a queue and a buffer, do we have
@@ -601,10 +657,16 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	if (bytesCopied + packetSize <= _maxBufferSize &&
 	    packetsCopied + 1 <= _maxPacketCount) {
 
-	    // and do the copy
+	    // and do the copy: copy the data and the descriptor, and
+	    // then adjust the mStartOffset field to point to the
+	    // record's position in the new buffer.
 	    memcpy( (char *)bufRefp->mAudioData+bytesCopied,
 		    [packet getData],
 		    (size_t) packetSize);
+
+	    [packet getDescr: &_packetsp[packetsCopied]];
+	    _packetsp[packetsCopied].mStartOffset = bytesCopied;
+
 	    bytesCopied += packetSize;
 	    packetsCopied++;
 	    continue;
@@ -612,18 +674,29 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 	// packet doesn't fit, so queue the buffer
 	bufRefp->mAudioDataByteSize = bytesCopied;
-	osStatus = AudioQueueEnqueueBuffer ( _audioQueuep,
+#if 0
+	osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 					     bufRefp,
 					     packetsCopied,
 					     _packetsp);
+	NSLog(@"enqueued %d bytes %d packets", bytesCopied, packetsCopied);
 	if (osStatus != 0) {
 	    /* buffer didn't get queued so we have to avoid losing it */
 	    NSLog(@"! streamplayer enqueue failed, repushing");
+	    pthread_mutex_lock(&_playerMutex);
 	    [self pushBuffer: bufRefp];
+	    pthread_mutex_unlock(&_playerMutex);
 	}
+#else
+	pthread_mutex_lock(&_playerMutex);
+	[self pushBuffer: bufRefp];
+	pthread_mutex_unlock(&_playerMutex);
+
+#endif
 	bufRefp = NULL;
     }
 
+    NSLog(@"StreamPlayer async thread exited");
     if (!_shutdown) {
 	// Thread exited but no one did a shutdown, so do it now
 	[self shutdown];

@@ -9,6 +9,8 @@
 #import "MFANCGUtil.h"
 #import "MFANSocket.h"
 
+#include <string>
+
 #include <stdio.h>
 #include <pthread.h>
 #include "bufsocket.h"
@@ -16,23 +18,29 @@
 
 @implementation MFANAqStreamPacket {
     uint64_t _ms;
-    NSMutableData *_data;
+    std::string _data;
+    AudioStreamPacketDescription _descr;
 }
 
-- (int32_t) addData: (char *) data length: (uint64_t) length {
-    [_data appendBytes: data
-		length: length];
+- (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr {
+    _data.append(data, descr->mDataByteSize);
+    _descr = *descr;
     _ms = osp_time_ms();
 
     return 0;
 }
 
+// *not* null terminated
 - (char *) getData {
-    return (char *) _data.mutableBytes;
+    return (char *) _data.data();
 }
 
 - (uint64_t) getLength {
-    return _data.length;
+    return _data.length();
+}
+
+- (void) getDescr: (AudioStreamPacketDescription *) descr {
+    *descr = _descr;
 }
 
 - (uint64_t) getMs {
@@ -206,7 +214,7 @@ static int _staticSetup = 0;
 static pthread_mutex_t _streamMutex;
 
 - (void) shutdown {
-    NSLog(@"in shutdown");
+    NSLog(@"in MFAqStream shutdown");
     pthread_mutex_lock(&_streamMutex);
     /* check if we've started a shutdown procedure */
     if (_shuttingDown) {
@@ -270,6 +278,8 @@ MFANAqStream_PropertyProc( void *contextp,
     OSStatus osStatus;
     uint32_t dataFormatSize;
 
+    NSLog(@"in AqStream property proc");
+
     /* this callback is made as soon as the parser has figured out the encoding
      * parameters of the stream.  Until this time, it is really too early to create
      * a lot of the player data structures, since they depend upon the type of
@@ -282,6 +292,7 @@ MFANAqStream_PropertyProc( void *contextp,
 						(UInt32 *) &dataFormatSize,
 						&aqp->_dataFormat);
 
+	NSLog(@"PropertyProc has properties");
 	aqp->_haveProperties = YES;
     }
 }
@@ -343,7 +354,7 @@ MFANAqStream_PacketsProc( void *contextp,
 	int64_t packetSize = packetsp[i].mDataByteSize;
 
 	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
-	[packet addData: ((char *)inDatap) + packetOffset length: packetSize];
+	[packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
 	[aqp->_packetArray addObject: packet];
 
 	packetsCopied++;
@@ -356,6 +367,9 @@ MFANAqStream_PacketsProc( void *contextp,
     // timer or something to pop off stack frames.
     if (aqp->_target != nil)
 	[aqp->_target notify: aqp];
+
+    // and wakeup any readers
+    pthread_cond_broadcast(&aqp->_packetArrayCv);
 }
 
 // Called by radiostream with unparsed data.  Add it in and send it to the parser.

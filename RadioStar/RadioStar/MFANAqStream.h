@@ -59,9 +59,11 @@
 @end
 
 @interface MFANAqStreamPacket : NSObject
-- (int32_t) addData: (char *) data length: (uint64_t) length;
+- (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr;
 
 - (char *) getData;
+
+- (void) getDescr: (AudioStreamPacketDescription *) descr;
 
 - (uint64_t) getLength;
 
