@@ -346,7 +346,6 @@ MFANAqStream_PacketsProc( void *contextp,
     }
 #endif
 
-    NSLog(@"in packetsProc with %d packets aqp=%p rsp=%p", numPackets, aqp, aqp->_radioStreamp);
     packetsCopied = 0;
     bytesCopied = 0;
     for(uint32_t i=0;i<numPackets;i++) {
@@ -393,8 +392,6 @@ MFANAqStream_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int3
     // isClosed check, to ensure that we don't add an ARC reference to
     // a freed block of memory.
     MFANAqStream *aqp = (__bridge MFANAqStream *) contextp;
-
-    NSLog(@"in dataproc aqp=%p rsp=%p arsp=%p", aqp, aqp->_radioStreamp, radiop);
 
     if (aqp->_shuttingDown) {
 	pthread_mutex_unlock(&_streamMutex);

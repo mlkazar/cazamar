@@ -306,6 +306,9 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_currentPlaying = MFANStreamPlayer_getUnknownString();
 	_songCount++;
 
+	_maxBufferSize = 0x4000;
+	_maxPacketCount = 512;
+
         _packetsp = ((AudioStreamPacketDescription *)
 		     malloc(_maxPacketCount *
 			    sizeof(AudioStreamPacketDescription)));
@@ -317,9 +320,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 			     selector:@selector(spyMonitor:)
 			     userInfo:nil
 			     repeats: YES];
-
-	_maxBufferSize = 0x4000;
-	_maxPacketCount = 512;
 
 	_pthreadDone = NO;
 	_readerThread = [[NSThread alloc] initWithTarget: self
@@ -454,8 +454,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     /* free packets array; these are all recreated when PropertyProc is called when 
      * the stream is recreated.
      */
-    free(_packetsp);
-    _packetsp = NULL;
+    if (_packetsp != NULL) {
+	free(_packetsp);
+	_packetsp = NULL;
+    }
 
     /* free buffers */
     for(i=0;i<MFANStreamPlayer_nBuffers;i++) {
@@ -601,7 +603,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    // packets, we should have created the AudioQueue.
 	    osp_assert(_audioQueue != nil);
 	    bufRefp->mAudioDataByteSize = bytesCopied;
-#if 0
+
 	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 						 bufRefp,
 						 packetsCopied,
@@ -613,11 +615,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 		[self pushBuffer: bufRefp];
 		pthread_mutex_unlock(&_playerMutex);
 	    }
-#else
-		pthread_mutex_lock(&_playerMutex);
-		[self pushBuffer: bufRefp];
-		pthread_mutex_unlock(&_playerMutex);
-#endif
 	    bufRefp = NULL;
 
 	    pthread_mutex_lock(&_playerMutex);
@@ -674,7 +671,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 	// packet doesn't fit, so queue the buffer
 	bufRefp->mAudioDataByteSize = bytesCopied;
-#if 0
+
 	osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 					     bufRefp,
 					     packetsCopied,
@@ -687,12 +684,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    [self pushBuffer: bufRefp];
 	    pthread_mutex_unlock(&_playerMutex);
 	}
-#else
-	pthread_mutex_lock(&_playerMutex);
-	[self pushBuffer: bufRefp];
-	pthread_mutex_unlock(&_playerMutex);
-
-#endif
 	bufRefp = NULL;
     }
 
