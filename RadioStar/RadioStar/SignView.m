@@ -33,13 +33,15 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLRenderPipelineState> _pipeline;
     CADisplayLink *_displayLink;
 
+    ViewController *_vc;
+
     float _rotationRadians;
     bool _rotationDir;
 
     id<MTLTexture> _depthTexture;
     id<MTLDepthStencilState> _depthStencil;
 
-    bool _startedRadio;
+    bool _radioPlaying;
     MFANAqStream *_stream;
     MFANStreamPlayer *_player;
 }
@@ -67,12 +69,12 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     CGSize drawableSize = _metalLayer.drawableSize;
 
     if ( _depthTexture == nil || ([_depthTexture width] != drawableSize.width ||
-				  [_depthTexture height] != drawableSize.height)) {
+                                 [_depthTexture height] != drawableSize.height)) {
         MTLTextureDescriptor *desc =
-	    [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
-							       width:drawableSize.width
-							      height:drawableSize.height
-							   mipmapped:NO];
+           [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+                                                              width:drawableSize.width
+                                                             height:drawableSize.height
+                                                          mipmapped:NO];
         desc.usage = MTLTextureUsageRenderTarget;
         desc.storageMode = MTLStorageModePrivate;
         
@@ -334,6 +336,14 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     if (_device == nil)
 	_device = MTLCreateSystemDefaultDevice();
 
+    {
+	CGRect mainRect = [self.window.screen  bounds];
+	CGRect selfRect = self.frame;
+	NSLog(@"DIMENSIONS main %f.%f self %f.%f",
+	      mainRect.size.width, mainRect.size.height,
+	      selfRect.size.width, selfRect.size.height);
+	NSLog(@"origin y main=%f self=%f", mainRect.origin.y, selfRect.origin.y);
+    }
     CGFloat scale;
     // If we've moved to a window by the time our frame is being set,
     // we can take its scale as our own
@@ -560,8 +570,10 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {
     self = [super initWithFrame: frame];
     if (self != nil) {
-	self.backgroundColor = [UIColor redColor];
+	self.backgroundColor = [UIColor clearColor];
 	self.frame = frame;
+
+	_vc = vc;
 
 	// Create the device and a metal CA layer
 	assert(_device != nil);
@@ -591,7 +603,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 
 	[self setupPipeline];
 
-	_startedRadio = NO;
+	_radioPlaying = NO;
 
 	UIGestureRecognizer *recog;
 	recog = [[UILongPressGestureRecognizer alloc]
@@ -606,10 +618,35 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     return self;
 }
 
+- (void) displayOptions
+{
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"Test title"
+						    message: @"Whole station"
+					     preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Option 1"
+                                                     style: UIAlertActionStyleDefault
+                                                   handler:^(UIAlertAction *act) {
+            NSLog(@"Perform 1");
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Option 2"
+                                      style: UIAlertActionStyleDefault
+                                    handler:^(UIAlertAction *act) {
+	    NSLog(@"Perform 2");
+        }];
+    [alert addAction: action];
+
+    [_vc presentViewController: alert animated:YES completion: nil];
+}
+
 - (void) longPressed: (UILongPressGestureRecognizer *) sender {
     CGPoint point = [sender locationInView:self];
-    if (sender.state == UIGestureRecognizerStateEnded) {
+    if (sender.state == UIGestureRecognizerStateBegan) {
 	NSLog(@"long pressed at (%f,%f)", point.x, point.y);
+	[self displayOptions];
     } else {
 	NSLog(@"ignoring begin long press");
     }
@@ -619,29 +656,30 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateEnded) {
 	NSLog(@"tap pressed at (%f,%f)", point.x, point.y);
-
-	if (!_startedRadio) {
-	    _stream = [[MFANAqStream alloc] initWithUrl:@"http://new-webstream.wmfo.org/"];
-	    _player = [[MFANStreamPlayer alloc] initWithStream: _stream];
-
-	    [NSTimer scheduledTimerWithTimeInterval: 10.0
-					     target:self
-					   selector:@selector(restartRadio:)
-					   userInfo:nil
-					    repeats: NO];
-	    _startedRadio = YES;
-	}
+	[self toggleRunning: self];
     } else {
 	NSLog(@"ignoring begin tap");
     }
 }
 
-- (void) restartRadio: (id) junk {
+- (void) toggleRunning: (id) junk
+{
+    if (!_radioPlaying) {
+	_stream = [[MFANAqStream alloc] initWithUrl:@"http://new-webstream.wmfo.org/"];
+	_player = [[MFANStreamPlayer alloc] initWithStream: _stream];
+	_radioPlaying = YES;
+    } else {
+	[self stopRadio: self];
+    }
+}
+
+- (void) stopRadio: (id) junk {
     NSLog(@"in restartradio");
     [_player shutdown];
+    NSLog(@"streamplayer shutdown done");
     [_stream shutdown];
-    _startedRadio = NO;
-    NSLog(@"shutdown of radio done");
+    _radioPlaying = NO;
+    NSLog(@"shutdown of mfanaqstream done");
 }
 
 @end

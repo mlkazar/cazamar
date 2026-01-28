@@ -283,6 +283,9 @@ RadioStream::rcv( void *contextp,
     if (commonReqp->isClosed())
         return -1;
 
+    if (radiop->_closed)
+        return -1;
+
     callp = radiop->_callp;
 
     httpError = callp->httpError();
@@ -296,17 +299,20 @@ RadioStream::rcv( void *contextp,
     contentLength = callp->getRcvContentLength();
 
     if (httpError < 200 || httpError >= 300) {
+        radiop->release();
         return -1;
     }
 
     /* acknowledge EOF */
     if (len == 0) {
+        radiop->release();
         return 0;
     }
 
     if (strncasecmp(callp->inContentType()->c_str(), "audio/x-mpegurl", 15) == 0) {
         radiop->_controlBytesReceived += len;
         if (radiop->_controlBytesReceived > _maxControlBytes) {
+            radiop->release();
             return -1;
         }
         bufferp = (char *) malloc(len+1);
@@ -326,6 +332,7 @@ RadioStream::rcv( void *contextp,
               (contentLength > 0 && contentLength < 100000)) {
         radiop->_controlBytesReceived += len;
         if (radiop->_controlBytesReceived > _maxControlBytes) {
+            radiop->release();
             return -1;
         }
         bufferp = (char *) malloc(len+1);

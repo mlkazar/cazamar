@@ -418,9 +418,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
      * since the AudioQueue system deadlocks if you do.
      */
     if (_audioQueue) {
-	AudioQueueStop(_audioQueue, /* immediate */ 0);
+	AudioQueueStop(_audioQueue, /* immediate */ 1);
 	AudioQueueDispose(_audioQueue, /* immediate */ 0);
     }
+    NSLog(@"just stopped AudioQueue %p", _audioQueue);
 
     // this, plus the shutdown flag beimg set, will cause the playAsync
     // thread's read to fail and the thread will exit.  The thread's
@@ -434,7 +435,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     /* leave _audioQueue pointer set in case we need it during parse call shutdown */
     _audioQueue = NULL;
 
-    _shutdownTimer = [NSTimer scheduledTimerWithTimeInterval: 10.0
+    _shutdownTimer = [NSTimer scheduledTimerWithTimeInterval: 1.0
 			      target:self
 			      selector:@selector(shutdownPart2:)
 			      userInfo:nil
@@ -604,6 +605,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    osp_assert(_audioQueue != nil);
 	    bufRefp->mAudioDataByteSize = bytesCopied;
 
+	    NSLog(@"just queued %d bytes", bytesCopied);
 	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 						 bufRefp,
 						 packetsCopied,
@@ -689,6 +691,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
     NSLog(@"StreamPlayer async thread exited");
     if (!_shutdown) {
+	NSLog(@"StreamPlayer thread triggers shutdown");
 	// Thread exited but no one did a shutdown, so do it now
 	[self shutdown];
     }
