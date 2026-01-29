@@ -24,6 +24,7 @@ NS_ASSUME_NONNULL_BEGIN
     uint8_t *_imageData;
     id<MTLLibrary> _library;
     id<MTLTexture> _wyepTexture;
+    id<MTLTexture> _wmfoTexture;
     id<MTLCommandQueue> _comQueue;
     id<MTLBuffer> _vertexBuffer;
     id<MTLBuffer> _rotationBuffer;
@@ -443,7 +444,8 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	[backEncoder setDepthStencilState: _depthStencil];
 
 	// start drawing back surface
-	[backEncoder setFragmentTexture:_wyepTexture atIndex: 0];
+	[backEncoder setFragmentTexture:_wmfoTexture atIndex: 0];
+	[backEncoder setFragmentTexture:_wyepTexture atIndex: 1];
 
 #if 0
 	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
@@ -592,6 +594,9 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	// load image from resource
 	UIImage *image = [UIImage imageNamed: @"wyep.jpeg"];
 	_wyepTexture = [self setupTextureFromImage: image];;
+
+	image = [UIImage imageNamed: @"wmfo.jpg"];
+	_wmfoTexture = [self setupTextureFromImage: image];;
 
 	[self setupDepthTexture];
 

@@ -32,6 +32,7 @@ struct Vertex
     float4 color;
     float3 normal;
     float2 texturePos;
+    uint iid;
 };
 
 struct Rotations
@@ -59,6 +60,7 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
     vertexOut.color = vertices[vid].color;
     // x goes from -.5 to .5, and y goes from -.3 to .3, and we neeed to map
     // to 0 to 1 in both dimensions.
+    vertexOut.iid = instanceId;
     vertexOut.texturePos = float2(vertices[vid].position.x + .5,
     			          (vertices[vid].position.y + .3) / .6);
 
@@ -66,7 +68,7 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
 }
 
 fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]],
-	 texture2d<float> diffuseTexture [[texture(0)]]
+	 array<texture2d<float>,2> diffuseTextures [[texture(0)]]
 )
 {
     float4 color;
@@ -82,7 +84,8 @@ fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]],
     if (vertexIn.color.x == 0.2 && vertexIn.color.y == 1.0) {
         // This is green screen to get image, based on a disgusting version of green
 	// that won't be used elsewhere.
-        sampleColor = diffuseTexture.sample(textureSampler, vertexIn.texturePos.xy).rgb;
+	uint iid = vertexIn.iid;
+	sampleColor = diffuseTextures[iid].sample(textureSampler, vertexIn.texturePos.xy).rgb;
         color = float4(sampleColor, 1.5);
     } else {
         // point halfway between light source and view direction (Z axis).
