@@ -592,10 +592,31 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	_fragmentProc = [_library newFunctionWithName: @"fragment_sign_proc"];
 
 	// load image from resource
+#if 0
 	UIImage *image = [UIImage imageNamed: @"wyep.jpeg"];
 	_wyepTexture = [self setupTextureFromImage: image];;
+#else
+	{
+	    NSURL *imageUrl = [NSURL URLWithString:@"https://wyep.org/apple-touch-icon.png"];
+	    NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
+	    UIImage *image = [UIImage imageWithData: imageData];
 
-	image = [UIImage imageNamed: @"wmfo.jpg"];
+	    CGSize size = image.size;
+	    CGRect rect = CGRectMake(0, 0, size.width, size.height);
+	    UIGraphicsBeginImageContextWithOptions(size, YES, image.scale);
+
+	    CGContextRef context = UIGraphicsGetCurrentContext();
+	    [[UIColor whiteColor] setFill];
+	    CGContextFillRect(context, rect);
+	    [image drawInRect: CGRectMake(0, 0, size.width, size.height)];
+	    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+	    UIGraphicsEndImageContext();
+
+	    _wyepTexture = [self setupTextureFromImage: newImage];
+	}
+#endif
+
+	UIImage *image = [UIImage imageNamed: @"wmfo.jpg"];
 	_wmfoTexture = [self setupTextureFromImage: image];;
 
 	[self setupDepthTexture];

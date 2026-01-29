@@ -48,6 +48,8 @@ displayStations(RadioScanQuery *queryp)
     for(stationp = queryp->_stations.head(); stationp; stationp = stationp->_dqNextp) {
         printf("Station name is '%s'\n", stationp->_stationName.c_str());
         printf("Description:\n%s\n", stationp->_stationShortDescr.c_str());
+        if (stationp->_iconUrl.length() > 0)
+            printf("Icon %s\n", stationp->_iconUrl.c_str());
         printf("Source was %s\n", stationp->_stationSource.c_str());
 
         printf("Streams:\n");

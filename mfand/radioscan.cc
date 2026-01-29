@@ -702,6 +702,7 @@ RadioScanQuery::searchFile() {
     Json::Node *rootNodep = nullptr;
     Json::Node *stationNodep = nullptr;
     Json::Node *urlNodep = nullptr;
+    Json::Node *iconNodep = nullptr;
     Json::Node *nameNodep = nullptr;
     Json::Node *tagNodep = nullptr;
     Json jsonSys;
@@ -749,6 +750,12 @@ RadioScanQuery::searchFile() {
         if (urlNodep != nullptr)
             urlResolved = urlNodep->_children.head()->_name;
         
+
+        std::string iconUrl;
+        iconNodep = stationNodep->searchForChild("favicon");
+        if (iconNodep != nullptr)
+            iconUrl = iconNodep->_children.head()->_name;
+        stationp->_iconUrl = iconUrl;
 
         stationp = new RadioScanStation();
         stationp->init(this);

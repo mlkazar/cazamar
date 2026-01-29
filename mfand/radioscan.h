@@ -118,6 +118,7 @@ class RadioScanStation {
     dqueue<Entry> _entries;
     std::string _stationName;
     std::string _stationShortDescr;
+    std::string _iconUrl;
     RadioScanStation *_dqNextp;
     RadioScanStation *_dqPrevp;
     std::string _stationSource;
