@@ -894,6 +894,12 @@ RadioScanQuery::browseFile() {
             name = RadioScanStation::upperCase(_query);
         }
 
+        std::string iconUrl;
+        childNodep = stationNodep->searchForChild("favicon");
+        if (childNodep != nullptr) {
+            iconUrl = childNodep->_children.head()->_name;
+        }
+
         std::string codec;
         childNodep = stationNodep->searchForChild("codec");
         if (childNodep != nullptr) {
@@ -924,6 +930,7 @@ RadioScanQuery::browseFile() {
         stationp->_stationName = name;
         stationp->_stationSource = std::string("radio-browser");
         stationp->_sourceUrl = url;
+        stationp->_iconUrl = iconUrl;
         // these are defaults if the stream doesn't have a header
         stationp->_streamRateKb = bitRate;
         stationp->_streamType = codec;
@@ -1016,6 +1023,7 @@ RadioScanQuery::searchRadioTime()
     Xgml::Node *childListp;
     Xgml::Attr *attrNodep;
     std::string textString;
+    std::string imageUrl;
     int foundBitrate;
     int foundText;
     std::string urlString;
@@ -1068,6 +1076,8 @@ RadioScanQuery::searchRadioTime()
             else if (strcmp(attrNodep->_name.c_str(), "text") == 0) {
                 textString = attrNodep->_value;
                 foundText = 1;
+            } else if (strcmp(attrNodep->_name.c_str(), "image") == 0) {
+                imageUrl = attrNodep->_value;
             }
         }
 
@@ -1108,6 +1118,7 @@ RadioScanQuery::searchRadioTime()
         stationp->_stationName = textString;
         stationp->_stationShortDescr = textString;
         stationp->_stationSource = std::string("radio time");
+        stationp->_iconUrl = imageUrl;
 
         code = stationp->streamApply(data.c_str(), RadioScanStation::stwCallback, stationp, this);
         if (code || stationp->_entries.count() == 0) {
@@ -1137,6 +1148,7 @@ RadioScanQuery::searchShoutcast()
     Xgml::Attr *attrNodep;
     const char *stationNamep = NULL;
     const char *stationGenrep = NULL;
+    const char *iconUrlp = NULL;
     const char *basep;
     uint32_t stationId=0;
     int tc;
@@ -1211,6 +1223,8 @@ RadioScanQuery::searchShoutcast()
                 }
                 else if (strcmp(attrNodep->_name.c_str(), "genre") == 0) {
                     stationGenrep = attrNodep->_value.c_str();
+                } else if (strcmp(attrNodep->_name.c_str(), "logo") == 0) {
+                    iconUrlp = attrNodep->_value.c_str();
                 }
                 else if (strcmp(attrNodep->_name.c_str(), "id") == 0) {
                     stationId = atoi(attrNodep->_value.c_str());
@@ -1227,6 +1241,8 @@ RadioScanQuery::searchShoutcast()
             /* set these so that addStreamEntry has some useful defaults */
             stationp->_stationName = std::string(stationNamep);
             stationp->_stationShortDescr = std::string(stationGenrep);
+            if (iconUrlp != nullptr)
+                stationp->_iconUrl = std::string(iconUrlp);
             stationp->_stationSource = std::string("shoutcast");
 
             code = stationp->streamApply(std::string(tbuffer), RadioScanStation::stwCallback,

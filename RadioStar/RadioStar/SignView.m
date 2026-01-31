@@ -18,6 +18,22 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@implementation SignStation {
+    NSString *_stationName;
+    NSString *_shortDescr;
+    NSString *_streamUrl;
+    NSString *_iconUrl;
+
+    // row and column, both 0 based
+    SignCoord _rowColumn;
+}
+
+- (SignStation *) init {
+    self = [super init];
+    return self;
+}
+@end
+
 @implementation SignView {
     id<MTLDevice> _device;
     CAMetalLayer *_metalLayer;
@@ -33,6 +49,8 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLFunction> _fragmentProc;
     id<MTLRenderPipelineState> _pipeline;
     CADisplayLink *_displayLink;
+
+    NSMutableSet *_allStations;
 
     ViewController *_vc;
 
@@ -261,6 +279,14 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 				       options: MTLResourceCPUCacheModeDefaultCache];
 };
 
+SignCoord SignCoordMake(uint8_t x,uint8_t y) {
+    SignCoord rval;
+    rval._x = x;
+    rval._y = y;
+
+    return rval;
+}
+
 - (void) getRotationBuffer: (id<MTLBuffer>) buffer
 		     index: (uint32_t) ix
 		   radians:(float) radians
@@ -293,7 +319,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 - (void) setupRotationBuffer {
     _rotationRadians = -1.0;
     _rotationDir = YES;	// add with time
-    _rotationBuffer = [_device newBufferWithLength:sizeof(SignRotations)
+    _rotationBuffer = [_device newBufferWithLength:36*sizeof(SignRotations)
 					   options:MTLResourceCPUCacheModeDefaultCache];
 };
 
@@ -368,11 +394,29 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     [self setupDepthTexture];
 }
 
+- (void) addStation: (NSString *) stationName
+	 shortDescr: (NSString *) shortDescr
+	  streamUrl: (NSString *) streamUrl
+	    iconUrl: (NSString *) iconUrl
+	  rowColumn: (SignCoord) rowColumn {
+    SignStation *station = [[SignStation alloc] init];
+    station.stationName = stationName;
+    station.shortDescr = shortDescr;
+    station.streamUrl = streamUrl;
+    station.iconUrl = iconUrl;
+    station.rowColumn = rowColumn;
+
+    [_allStations addObject: station];
+}
+
 - (void) redraw {
     id<CAMetalDrawable> drawable = [_metalLayer nextDrawable];
     id<MTLTexture> texture;
 
-    if (drawable != nil) {
+    if (drawable != nil ) {
+	if ([_allStations count] == 0)
+	    return;
+
 	CGSize drawableSize = _metalLayer.drawableSize;
 
 	// compute factor to multiply Y coordinate by
@@ -391,23 +435,6 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 #else
 	_rotationRadians = 0.0;
 #endif
-
-	CGPoint origin;
-	origin.x = 1.8;
-	origin.y = 4.0;
-	[self getRotationBuffer:_rotationBuffer
-			  index: 0
-			radians: _rotationRadians
-			 origin: origin
-			 aspect: aspect];
-
-	origin.x = -1.0;
-	origin.y = -4.0;
-	[self getRotationBuffer:_rotationBuffer
-			  index: 1
-			radians: _rotationRadians
-			 origin: origin
-			 aspect: aspect];
 
 	// if we're visible, get the frame buffer (called a texture for some
 	// reason).
@@ -433,6 +460,25 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	    [comBuffer renderCommandEncoderWithDescriptor:descr];
 	[backEncoder setRenderPipelineState: _pipeline];
 
+	SignStation *station;
+	uint32_t signCount = 0;
+	for(station in _allStations) {
+	    CGPoint origin;
+	    origin.x = -1.5 + 1.5* station.rowColumn._x;
+	    origin.y = 4.0 - station.rowColumn._y;
+
+	    [self getRotationBuffer:_rotationBuffer
+			      index: signCount
+			    radians: _rotationRadians
+			     origin: origin
+			     aspect: aspect];
+
+	    [backEncoder setFragmentTexture: [self getTextureForUrl: station.iconUrl]
+				    atIndex: signCount];
+
+	    signCount++;
+	}
+
 	// offset is byte offset into vertex buffer's data.  atIndex
 	// is used to find the buffer (they're assigned indices at
 	// allocation time).
@@ -444,8 +490,6 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	[backEncoder setDepthStencilState: _depthStencil];
 
 	// start drawing back surface
-	[backEncoder setFragmentTexture:_wmfoTexture atIndex: 0];
-	[backEncoder setFragmentTexture:_wyepTexture atIndex: 1];
 
 #if 0
 	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
@@ -470,7 +514,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 				 indexType: MTLIndexTypeUInt16
 			       indexBuffer: _indexBuffer
 			 indexBufferOffset: 0
-			     instanceCount: 2];
+			     instanceCount: signCount];
 #endif
 
 	// all done encoding command
@@ -569,6 +613,35 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     return texture;
 }
 
+- (id<MTLTexture>) getTextureForUrl: (NSString *) imageUrlString
+{
+    // Load the image
+    NSURL *imageUrl = [NSURL URLWithString: imageUrlString];
+    NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
+    UIImage *image = [UIImage imageWithData: imageData];
+
+    // Create a context (canvas) to draw in
+    CGSize size = image.size;
+    CGRect rect = CGRectMake(0, 0, size.width, size.height);
+    UIGraphicsBeginImageContextWithOptions(size, YES, image.scale);
+
+    // fill it with white so that transparent parts of the icon don't
+    // appear weird/dark, and then= draw the image of the icon into
+    // this current context.
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    [[UIColor whiteColor] setFill];
+    CGContextFillRect(context, rect);
+    [image drawInRect: CGRectMake(0, 0, size.width, size.height)];
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    // turn the image into a metal texture.
+    id<MTLTexture> returnTexture;
+    returnTexture = [self setupTextureFromImage: newImage];
+
+    return returnTexture;
+}
+
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {
     self = [super initWithFrame: frame];
     if (self != nil) {
@@ -576,6 +649,26 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	self.frame = frame;
 
 	_vc = vc;
+	_allStations = [[NSMutableSet alloc] init];
+
+	[self addStation: @"WYEP"
+	      shortDescr: @"Where music matters"
+	       streamUrl: @"https://ais-sa3.cdnstream1.com/2557_128.mp3"
+		 iconUrl: @"https://wyep.org/apple-touch-icon.png"
+	       rowColumn: SignCoordMake(0,0)];
+
+	[self addStation: @"WESA"
+	      shortDescr: @"Where news matters"
+	       streamUrl: @"https://ais-sa3.cdnstream1.com/2556_128.mp3"
+		 iconUrl: @"https://wesa.org/apple-touch-icon.png"
+	       rowColumn: SignCoordMake(1,0)];
+
+	[self addStation: @"WESA"
+	      shortDescr: @"Where news matters"
+	       streamUrl: @"https://ais-sa3.cdnstream1.com/2556_128.mp3"
+		 iconUrl: @"https://wesa.org/apple-touch-icon.png"
+	       rowColumn: SignCoordMake(1,1)];
+
 
 	// Create the device and a metal CA layer
 	assert(_device != nil);

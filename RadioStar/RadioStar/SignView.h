@@ -20,13 +20,30 @@ typedef struct _SignVertex {
 
 typedef uint16_t SignIndex;
 
-typedef struct _SignRotations {
+typedef struct _SignRotation {
     matrix_float4x4 _mvpRotation;
     matrix_float4x4 _mvRotation;
     matrix_float3x3 _normalRotation;
 } SignRotations;
 
+typedef struct _SignCoord {
+    uint8_t _x;
+    uint8_t _y;
+} SignCoord;
+
 NS_ASSUME_NONNULL_BEGIN
+
+@interface SignStation : NSObject
+
+@property NSString *stationName;
+@property NSString *shortDescr;
+@property NSString *streamUrl;
+@property NSString *iconUrl;
+@property SignCoord rowColumn;
+
+- (SignStation *) init;
+
+@end
 
 @interface SignView : UIView
 

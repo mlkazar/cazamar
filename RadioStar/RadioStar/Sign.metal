@@ -68,7 +68,7 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
 }
 
 fragment half4 fragment_sign_proc(Vertex vertexIn [[stage_in]],
-	 array<texture2d<float>,2> diffuseTextures [[texture(0)]]
+	 array<texture2d<float>,36> diffuseTextures [[texture(0)]]
 )
 {
     float4 color;
