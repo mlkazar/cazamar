@@ -18,14 +18,23 @@
 - (UIView *) setupSignView {
     SignView *view;
     CGRect rect = self.view.frame;
-    float hMargin = 15.0;
 
-    rect.origin.y += hMargin;
-    rect.size.height -= 2*hMargin;
-    rect.size.height *= 0.92;
     view = [[SignView alloc] initWithFrame: rect ViewCont: self];
 
     return view;
+}
+
+// We have to do this separately from view creation because scene's makeKeyAndVisible
+// sets the frame to the window's.
+- (void) adjustViewFrame {
+    CGRect rect = self.view.frame;
+    float vMargin = 20.0;
+
+    rect.origin.y += vMargin;
+    rect.size.height -= 2*vMargin;
+    rect.size.height *= 0.92;
+
+    [self.view setFrame: rect];
 }
 
 - (UIView *) setupGraphView {

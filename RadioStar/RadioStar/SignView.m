@@ -54,6 +54,13 @@ NS_ASSUME_NONNULL_BEGIN
 
     ViewController *_vc;
 
+    // computeLayout figure out how many of each icon fit in the X and
+    // Y directions.  The [xy]Spread values are the distance from
+    uint32_t _xCount;
+    uint32_t _yCount;
+    float _xSpread;
+    float _ySpread;
+
     float _rotationRadians;
     bool _rotationDir;
 
@@ -65,8 +72,13 @@ NS_ASSUME_NONNULL_BEGIN
     MFANStreamPlayer *_player;
 }
 
+// some defines for the images we're dealing with
+static const float cameraDistance = 5.0;
+static const float boundingX = 1.4;
+static const float boundingY = 0.6 * boundingX;
+static const uint32_t maxIcons = 36;
+
 static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
-    //    vector_float3 axis = {.7071, 0, .7071};
     vector_float3 axis={0, 1, 0};
 
     // rotate around (1, 0, 1, 0) (normalized)
@@ -111,18 +123,19 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
   // Rectangle positions, 1/6 as deep as wide, .6 as high as wide.
   // Total of 6 sides or 12 triangles.
   //
-  // Front/back planes at z=.0833 and z=-.0833, x=.5 thru -.5, y=.3 thru -.3
+  // Front/back planes at z=.0833 and z=-.0833, x=.7 thru -.7, y=.5 thru -.5
   //
   // Top/bottom at y=.3 & -.3, z and x ranges above.
   //
   // Left/right at x=.5 & -.5, y and z ranges above.
 */
-    static const float FZ=.1;		//front z
-    static const float BZ=-.1;		//back z
-    static const float LX = -0.7;	// left x
-    static const float RX = 0.7;	//right x
-    static const float TY = 0.42;	// top y
-    static const float BY = -0.42;	// bottom y
+    static const float FZ=.1;			//front z
+    static const float BZ=-.1;			//back z
+
+    static const float LX = -boundingX/2;	// left x
+    static const float RX = boundingX/2;	//right x
+    static const float TY = boundingY/2;	// top y
+    static const float BY = -boundingY/2;	// bottom y
 
     static const float SA = .25;	// side alpha
     static const float FA = 0.10;	// front alpha
@@ -135,8 +148,8 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     // second winding to be visible from the other side.
     static const SignVertex vertices[] = {
 	// back side, top left triangle (same as above, only different
-	// Z, winding order and normal.  Color is green screen, so
-	// must match .metal file.
+	// Z, winding order and normal.  Color is my defined green
+	// (.2, 1, 0) screen, so must match .metal file.
 	{._position = {LX, BY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
 	{._position = {LX, TY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
 	{._position = {RX, TY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
@@ -299,7 +312,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     data = ((char *) [buffer contents]) + (ix * sizeof(SignRotations));
     rotation = matrixRotateAndTranslate(radians, origin);
 
-    vector_float3 cameraPosition = {0,0,-5};
+    vector_float3 cameraPosition = {0,0,-cameraDistance};
     matrix_float4x4 cameraMatrix = matrix_float4x4_translation(cameraPosition);
 
     shaderRotations._mvRotation = matrix_multiply(cameraMatrix, rotation);
@@ -353,6 +366,64 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	NSLog(@"couldn't create pipeline object");
     }
  }
+
+- (void) computeLayout {
+    // Because we use a 90 degree viewing pyramid (frustrum?) to view
+    // the screen at a distance of cameraDistance from the object, the
+    // Y coordinate in world space goes from -cameraDistance up to
+    // +cameraDistance, or with 5 for the camera distance, from -5 to 5.
+    //
+    // The X coordinate is reduced by the screen frame ratio of
+    // width/height.  That's probably about 0.5 on a typical iPhone,
+    // and so is about -.2.5 to 2.5.
+    //
+    float topMargin = 0.2;
+    float leftMargin = 0.1;
+    float ySpace = 10.0;
+    float xSpace = ySpace * (self.frame.size.width / self.frame.size.height);
+
+    // we leave a little extra space around the icons to make them
+    // look OK even with the edge (in the Z direction) potentially
+    // blocking the adjacent icon.
+    float iconWidth = boundingX + 0.05;
+    float iconHeight = boundingY + 0.15;
+
+    // How many can we fit horizontally and vertically
+    int32_t xCount = (xSpace - leftMargin) / iconWidth;
+    int32_t yCount = (ySpace - topMargin) / iconHeight;
+
+    // how much extra space do we have on each line, per icon.  Double left
+    // margin so we leave some space on the right as well.x
+    float extraX = ((xSpace - 2*leftMargin) - (xCount * iconWidth)) / xCount;
+    if (extraX < 0.0)
+	extraX = 0.0;
+
+    NSLog(@"Icon array %d X %d stations extraX=%f", xCount, yCount, extraX);
+
+    //  Note that when we set an origin for an icon, that's the
+    // location in world space for the center of the icon.  And note
+    // that the world space has (0, 0) in its center.  Note that we
+    // may assign too many icons positions on the screen (more than
+    // maxIcons), but the render loop will stop adding them to
+    // the redraw list if that happens.
+    float xPos = (iconWidth - xSpace) / 2.0 + leftMargin;
+    float yPos = (ySpace - iconHeight) / 2.0 - topMargin;
+    uint32_t columns = 0;
+    SignStation *station;
+    for(station in _allStations) {
+	station.origin = CGPointMake(xPos, yPos);
+	columns++;
+	if (columns >= xCount) {
+	    // switch to next row
+	    xPos = (iconWidth - xSpace) / 2.0 + leftMargin;
+	    yPos -= iconHeight;
+	    columns = 0;
+	} else {
+	    xPos += iconWidth + extraX;
+	}
+    }
+
+}
 
 - (void)setFrame:(CGRect)frame
 {
@@ -463,14 +534,20 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	SignStation *station;
 	uint32_t signCount = 0;
 	for(station in _allStations) {
+#if 0
+	    // assigned by computeLayout now
 	    CGPoint origin;
 	    origin.x = -1.5 + 1.5* station.rowColumn._x;
 	    origin.y = 4.0 - station.rowColumn._y;
+#endif
+
+	    if (signCount >= maxIcons)
+		break;
 
 	    [self getRotationBuffer:_rotationBuffer
 			      index: signCount
 			    radians: _rotationRadians
-			     origin: origin
+			     origin: station.origin
 			     aspect: aspect];
 
 	    [backEncoder setFragmentTexture: [self getTextureForUrl: station.iconUrl]
@@ -669,6 +746,16 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		 iconUrl: @"https://wesa.org/apple-touch-icon.png"
 	       rowColumn: SignCoordMake(1,1)];
 
+	[self addStation: @"WYEP"
+	      shortDescr: @"Where music matters"
+	       streamUrl: @"https://ais-sa3.cdnstream1.com/2557_128.mp3"
+		 iconUrl: @"https://wyep.org/apple-touch-icon.png"
+	       rowColumn: SignCoordMake(2,8)];
+
+	// assign origin points to all stations in world space Note
+	// that world space's origin is in the center, and each icon's
+	// object's center in object space is at (0,0).
+	[self computeLayout];
 
 	// Create the device and a metal CA layer
 	assert(_device != nil);

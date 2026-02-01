@@ -22,9 +22,16 @@
     // initialized and attached to the scene.  This delegate does not
     // imply the connecting scene or session are new (see
     // `application:configurationForConnectingSceneSession` instead).
+    ViewController *vc;
     self.window = [[UIWindow alloc] initWithWindowScene: (UIWindowScene *) scene];
-    [self.window setRootViewController: [[ViewController alloc] init]];
+    vc = [[ViewController alloc] init];
+    [self.window setRootViewController: vc];
     [self.window makeKeyAndVisible];
+
+    // Must be done after makeKeyAndVisible, since mKAV sets the root
+    // view's frame to the entire window.  This call reduces the view
+    // frame to avoid the control areas.
+    [vc adjustViewFrame];
 }
 
 
