@@ -60,6 +60,8 @@ NS_ASSUME_NONNULL_BEGIN
     uint32_t _yCount;
     float _xSpread;
     float _ySpread;
+    float _xSpace;
+    float _ySpace;
 
     float _rotationRadians;
     bool _rotationDir;
@@ -379,8 +381,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     //
     float topMargin = 0.2;
     float leftMargin = 0.1;
-    float ySpace = 10.0;
-    float xSpace = ySpace * (self.frame.size.width / self.frame.size.height);
+
+    _ySpace = 10.0;
+    _xSpace = _ySpace * (self.frame.size.width / self.frame.size.height);
 
     // we leave a little extra space around the icons to make them
     // look OK even with the edge (in the Z direction) potentially
@@ -389,12 +392,12 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     float iconHeight = boundingY + 0.15;
 
     // How many can we fit horizontally and vertically
-    int32_t xCount = (xSpace - leftMargin) / iconWidth;
-    int32_t yCount = (ySpace - topMargin) / iconHeight;
+    int32_t xCount = (_xSpace - leftMargin) / iconWidth;
+    int32_t yCount = (_ySpace - topMargin) / iconHeight;
 
     // how much extra space do we have on each line, per icon.  Double left
     // margin so we leave some space on the right as well.x
-    float extraX = ((xSpace - 2*leftMargin) - (xCount * iconWidth)) / xCount;
+    float extraX = ((_xSpace - 2*leftMargin) - (xCount * iconWidth)) / xCount;
     if (extraX < 0.0)
 	extraX = 0.0;
 
@@ -406,8 +409,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     // may assign too many icons positions on the screen (more than
     // maxIcons), but the render loop will stop adding them to
     // the redraw list if that happens.
-    float xPos = (iconWidth - xSpace) / 2.0 + leftMargin;
-    float yPos = (ySpace - iconHeight) / 2.0 - topMargin;
+    float xPos = (iconWidth - _xSpace) / 2.0 + leftMargin;
+    float yPos = (_ySpace - iconHeight) / 2.0 - topMargin;
     uint32_t columns = 0;
     SignStation *station;
     for(station in _allStations) {
@@ -415,7 +418,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	columns++;
 	if (columns >= xCount) {
 	    // switch to next row
-	    xPos = (iconWidth - xSpace) / 2.0 + leftMargin;
+	    xPos = (iconWidth - _xSpace) / 2.0 + leftMargin;
 	    yPos -= iconHeight;
 	    columns = 0;
 	} else {
@@ -493,19 +496,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// compute factor to multiply Y coordinate by
 	float aspect = drawableSize.width / drawableSize.height;
 
-#if 0
-	if (_rotationDir) {
-	    _rotationRadians += 0.012;
-	    if (_rotationRadians > .8)
-		_rotationDir = NO;
-	} else {
-	    _rotationRadians -= 0.012;
-	    if (_rotationRadians < -0.8)
-		_rotationDir = YES;
-	}
-#else
 	_rotationRadians = 0.0;
-#endif
 
 	// if we're visible, get the frame buffer (called a texture for some
 	// reason).
@@ -568,22 +559,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	// start drawing back surface
 
-#if 0
-	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
-				indexCount: 6
-				 indexType: MTLIndexTypeUInt16
-			       indexBuffer: _indexBuffer
-			 indexBufferOffset: 0
-			     instanceCount: 1];
-
-	// now draw the rest of the box
-	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
-				indexCount:[_indexBuffer length] / sizeof(SignIndex) - 6
-				 indexType: MTLIndexTypeUInt16
-			       indexBuffer: _indexBuffer
-			 indexBufferOffset: 6 * sizeof(SignIndex)
-			     instanceCount: 1];
-#else
 	// draw the whole box; encoder may do the triangles in order
 	// listed.
 	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
@@ -592,7 +567,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 			       indexBuffer: _indexBuffer
 			 indexBufferOffset: 0
 			     instanceCount: signCount];
-#endif
 
 	// all done encoding command
         [backEncoder endEncoding];
@@ -858,11 +832,31 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 }
 
+- (SignStation *) findStationByTouch:(CGPoint) touchPosition
+{
+    CGSize dims = self.frame.size;
+    float modelX = (touchPosition.x / dims.width) * _xSpace - _xSpace/2;
+    float modelY = _ySpace/2 - (touchPosition.y / dims.height) * _ySpace;
+
+    SignStation *station;
+    for(station in _allStations) {
+	if ( (modelX >= station.origin.x - boundingX / 2) &&
+	     (modelX <= station.origin.x + boundingX / 2) &&
+	     (modelY >= station.origin.y - boundingY / 2) &&
+	     (modelY <= station.origin.y + boundingY / 2)) {
+	    return station;
+	}
+    }
+
+    return nil;
+}
+
 - (void) tapPressed: (UILongPressGestureRecognizer *) sender {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateEnded) {
-	NSLog(@"tap pressed at (%f,%f)", point.x, point.y);
-	[self toggleRunning: self];
+	SignStation *station = [self findStationByTouch: point];
+	NSLog(@"tap station=%p name=%@", station, station.stationName);
+	// [self toggleRunning: self];
     } else {
 	NSLog(@"ignoring begin tap");
     }
