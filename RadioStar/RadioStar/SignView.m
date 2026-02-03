@@ -30,6 +30,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (SignStation *) init {
     self = [super init];
+    if (self) {
+	self.isPlaying = NO;
+	self.isRecording = NO;
+    }
     return self;
 }
 @end
@@ -50,7 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLRenderPipelineState> _pipeline;
     CADisplayLink *_displayLink;
 
-    NSMutableSet *_allStations;
+    NSMutableOrderedSet *_allStations;
 
     ViewController *_vc;
 
@@ -69,7 +73,7 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLTexture> _depthTexture;
     id<MTLDepthStencilState> _depthStencil;
 
-    bool _radioPlaying;
+    SignStation *_playingStation;
     MFANAqStream *_stream;
     MFANStreamPlayer *_player;
 }
@@ -700,7 +704,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	self.frame = frame;
 
 	_vc = vc;
-	_allStations = [[NSMutableSet alloc] init];
+	_allStations = [[NSMutableOrderedSet alloc] init];
 
 	[self addStation: @"WYEP"
 	      shortDescr: @"Where music matters"
@@ -783,7 +787,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	[self setupPipeline];
 
-	_radioPlaying = NO;
+	_playingStation = nil;
 
 	UIGestureRecognizer *recog;
 	recog = [[UILongPressGestureRecognizer alloc]
@@ -855,30 +859,33 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateEnded) {
 	SignStation *station = [self findStationByTouch: point];
+	SignStation *prevStation = _playingStation;
 	NSLog(@"tap station=%p name=%@", station, station.stationName);
-	// [self toggleRunning: self];
+
+	// stop playing old station
+	if (prevStation != nil) {
+	    [self stopRadio];
+	    _playingStation = nil;
+	}
+
+	// start new station if different.
+	if (station != nil && station != prevStation) {
+	    _stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
+	    _player = [[MFANStreamPlayer alloc] initWithStream: _stream];
+	    _playingStation = station;
+	}
     } else {
 	NSLog(@"ignoring begin tap");
     }
 }
 
-- (void) toggleRunning: (id) junk
-{
-    if (!_radioPlaying) {
-	_stream = [[MFANAqStream alloc] initWithUrl:@"http://new-webstream.wmfo.org/"];
-	_player = [[MFANStreamPlayer alloc] initWithStream: _stream];
-	_radioPlaying = YES;
-    } else {
-	[self stopRadio: self];
-    }
-}
-
-- (void) stopRadio: (id) junk {
+- (void) stopRadio {
     NSLog(@"in restartradio");
     [_player shutdown];
     NSLog(@"streamplayer shutdown done");
     [_stream shutdown];
-    _radioPlaying = NO;
+    _player = nil;
+    _stream = nil;
     NSLog(@"shutdown of mfanaqstream done");
 }
 

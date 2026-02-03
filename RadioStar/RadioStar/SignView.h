@@ -40,6 +40,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property NSString *streamUrl;
 @property NSString *iconUrl;
 @property SignCoord rowColumn;
+@property bool isPlaying;
+@property bool isRecording;
 @property CGPoint origin;
 
 - (SignStation *) init;

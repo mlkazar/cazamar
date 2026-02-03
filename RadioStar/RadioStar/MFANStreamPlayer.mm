@@ -686,6 +686,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    [self pushBuffer: bufRefp];
 	    pthread_mutex_unlock(&_playerMutex);
 	}
+	bytesCopied = 0;
+	packetsCopied = 0;
 	bufRefp = NULL;
     }
 
