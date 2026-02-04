@@ -19,6 +19,7 @@
 @implementation MFANAqStreamPacket {
     uint64_t _ms;
     std::string _data;
+    NSString *_playingSong;
     AudioStreamPacketDescription _descr;
 }
 
@@ -173,6 +174,7 @@
     BOOL _haveProperties;
     FILE *_recordingFilep;
 
+    // This is the string of the song currently playing.
     NSString *_currentPlaying;
 
     /* our choices for max # of bytes in a buffer, and packets in a buffer */
@@ -354,6 +356,7 @@ MFANAqStream_PacketsProc( void *contextp,
 
 	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
 	[packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
+	packet.playingSong = aqp->_currentPlaying;
 	[aqp->_packetArray addObject: packet];
 
 	packetsCopied++;

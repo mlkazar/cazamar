@@ -434,6 +434,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void)setFrame:(CGRect)frame
 {
+    // TODO: frame height is too large by origin.y
+    frame.size.height -= frame.origin.y;
     [super setFrame:frame];
     
     // setup device here, which is called from 'super initWithFrame' init
@@ -451,6 +453,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
     
     CGSize drawableSize = self.bounds.size;
+    NSLog(@"frame updated to %f x %f at %f.%f", frame.size.width, frame.size.height,
+	  frame.origin.x, frame.origin.y);
+    NSLog(@"bounds updated to %f x %f", self.bounds.size.width, self.bounds.size.height);
     
     // Since drawable size is in pixels, we need to multiply by the
     // scale to move from points to pixels

@@ -59,6 +59,9 @@
 @end
 
 @interface MFANAqStreamPacket : NSObject
+
+@property NSString *playingSong;
+
 - (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr;
 
 - (char *) getData;
