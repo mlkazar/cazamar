@@ -105,8 +105,8 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 {
     CGSize drawableSize = _metalLayer.drawableSize;
 
-    if ( _depthTexture == nil || ([_depthTexture width] != drawableSize.width ||
-                                 [_depthTexture height] != drawableSize.height)) {
+    if (_depthTexture == nil || ([_depthTexture width] != drawableSize.width ||
+				 [_depthTexture height] != drawableSize.height)) {
         MTLTextureDescriptor *desc =
            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
                                                               width:drawableSize.width
@@ -393,7 +393,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     // look OK even with the edge (in the Z direction) potentially
     // blocking the adjacent icon.
     float iconWidth = boundingX + 0.05;
-    float iconHeight = boundingY + 0.15;
+    float iconHeight = boundingY + 0.20;
 
     // How many can we fit horizontally and vertically
     int32_t xCount = (_xSpace - leftMargin) / iconWidth;
@@ -441,14 +441,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (_device == nil)
 	_device = MTLCreateSystemDefaultDevice();
 
-    {
-	CGRect mainRect = [self.window.screen  bounds];
-	CGRect selfRect = self.frame;
-	NSLog(@"DIMENSIONS main %f.%f self %f.%f",
-	      mainRect.size.width, mainRect.size.height,
-	      selfRect.size.width, selfRect.size.height);
-	NSLog(@"origin y main=%f self=%f", mainRect.origin.y, selfRect.origin.y);
-    }
     CGFloat scale;
     // If we've moved to a window by the time our frame is being set,
     // we can take its scale as our own
@@ -508,7 +500,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	MTLRenderPassDescriptor *descr = [MTLRenderPassDescriptor renderPassDescriptor];
 	descr.colorAttachments[0].texture = texture;
-	descr.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, .2, 1);
+	descr.colorAttachments[0].clearColor = MTLClearColorMake(.9, .9, 1.0, 1);
 	descr.colorAttachments[0].storeAction = MTLStoreActionStore;
 	descr.colorAttachments[0].loadAction = MTLLoadActionClear;
 
@@ -750,10 +742,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_fragmentProc = [_library newFunctionWithName: @"fragment_sign_proc"];
 
 	// load image from resource
-#if 0
-	UIImage *image = [UIImage imageNamed: @"wyep.jpeg"];
-	_wyepTexture = [self setupTextureFromImage: image];;
-#else
 	{
 	    NSURL *imageUrl = [NSURL URLWithString:@"https://wyep.org/apple-touch-icon.png"];
 	    NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
@@ -772,7 +760,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	    _wyepTexture = [self setupTextureFromImage: newImage];
 	}
-#endif
 
 	UIImage *image = [UIImage imageNamed: @"wmfo.jpg"];
 	_wmfoTexture = [self setupTextureFromImage: image];;
@@ -839,8 +826,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (SignStation *) findStationByTouch:(CGPoint) touchPosition
 {
     CGSize dims = self.frame.size;
-    float modelX = (touchPosition.x / dims.width) * _xSpace - _xSpace/2;
-    float modelY = _ySpace/2 - (touchPosition.y / dims.height) * _ySpace;
+    CGPoint viewOrigin = self.frame.origin;
+    float modelX = ((touchPosition.x - viewOrigin.x) / dims.width) * _xSpace - _xSpace/2;
+    float modelY = _ySpace/2 - ((touchPosition.y - viewOrigin.y) / dims.height) * _ySpace;
 
     SignStation *station;
     for(station in _allStations) {

@@ -7,3 +7,14 @@ Ideas for Radio app
 3 back and skip buttons
 
 4 save recordings.  some UI to select true start and end of song.
+
+========Todo========
+
+1 -- Todo items
+
+2 -- make sure multi-word queries are properly escaped ('\020' or '+') in
+HTTP queries in RadioScan.
+
+3 -- Incremental populate code.
+
+4 -- current song needs to be represented in file data stream.

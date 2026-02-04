@@ -9,7 +9,5 @@
 
 @interface ViewController : UIViewController
 
-- (void) adjustViewFrame;
-
 @end
 

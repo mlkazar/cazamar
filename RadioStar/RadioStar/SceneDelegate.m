@@ -27,11 +27,6 @@
     vc = [[ViewController alloc] init];
     [self.window setRootViewController: vc];
     [self.window makeKeyAndVisible];
-
-    // Must be done after makeKeyAndVisible, since mKAV sets the root
-    // view's frame to the entire window.  This call reduces the view
-    // frame to avoid the control areas.
-    [vc adjustViewFrame];
 }
 
 
