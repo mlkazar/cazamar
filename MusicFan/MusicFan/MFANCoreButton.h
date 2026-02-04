@@ -16,6 +16,11 @@
 	      title: (NSString *) title
 	      color:(UIColor *) baseColor;
 
+- (id)initWithFrame:(CGRect)frame
+	      title: (NSString *) title
+	      color:(UIColor *) baseColor
+    backgroundColor:(UIColor *) backgroundColor;
+
 - (void) addCallback: (id) contextp
 	  withAction: (SEL) callback;
 

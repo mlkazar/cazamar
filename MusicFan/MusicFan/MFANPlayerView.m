@@ -2748,7 +2748,8 @@ artPressed: (id) button withEvent: (UIEvent *)event
 	    _hlButtonFrame.origin.y += 4.5* textHeight;
 	    _hlButton = [[MFANCoreButton alloc] initWithFrame: _hlButtonFrame
 							title:@"Border"
-							color: [MFANTopSettings baseColor]];
+							color: [MFANTopSettings baseColor]
+					      backgroundColor:[MFANTopSettings clearBaseColor]];
 	    // could pass setTextAlignment: NSTextAlignmentRight through, but don't need to
 	    [_parent addSubview: _hlButton];
 	    [_hlButton setFillColor: _radioBackground];

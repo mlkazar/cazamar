@@ -8,7 +8,6 @@
 
 #import "MFANCoreButton.h"
 #import "MFANCGUtil.h"
-#import "MFANTopSettings.h"
 
 @implementation MFANCoreButton {
     SEL _callback;
@@ -17,6 +16,7 @@
     int _selected;
     UIColor *_color;
     UIColor *_fillColor;
+    UIColor *_backgroundColor;
     CGRect _frame;
     NSString *_title;
     UIImage *_settingsImage;
@@ -63,41 +63,67 @@
     return _title;
 }
 
+- (void) commonInitWithFrame: (CGRect) frame
+		       title: (NSString *) title
+		       color: (UIColor *) baseColor
+	     backgroundColor: (UIColor *) backgroundColor {
+
+    // Initialization code
+    self.backgroundColor = [UIColor clearColor];
+    [self setTitleColor: baseColor forState: UIControlStateNormal];
+    [self setTitleColor: baseColor forState: UIControlStateSelected];
+    self.titleLabel.font = [UIFont boldSystemFontOfSize: frame.size.height*0.6];
+    [self.titleLabel setTextAlignment: NSTextAlignmentCenter];
+    _color = baseColor;
+    _fillColor = [UIColor clearColor];
+    _backgroundColor = backgroundColor;
+    _selected = YES;
+    _frame = frame;
+    _title = title;
+    _callback = nil;
+    _context = nil;
+    _context2 = nil;
+
+    _silverImage = resizeImage2( [UIImage imageNamed: @"button.png"],
+				 frame.size);
+
+    if ([title isEqualToString: @"Settings"]) {
+	_settingsImage = resizeImage( [UIImage imageNamed: @"settings.png"],
+				      frame.size.width);
+	//_settingsImage = tintImage(_settingsImage, baseColor);
+	_settingsImage = traceImage(_silverImage, _settingsImage);
+	[self setImage: _settingsImage forState: UIControlStateNormal];
+    }
+
+    [self addTarget: self
+	     action: @selector(buttonPressed:withEvent:)
+	  forControlEvents: UIControlEventAllTouchEvents];
+}
+
+- (id)initWithFrame:(CGRect)frame
+	      title: (NSString *) title
+	      color:(UIColor *) baseColor {
+    self = [super initWithFrame:frame];
+    if (self) {
+	[self commonInitWithFrame: frame
+			    title: title
+			    color: baseColor
+		  backgroundColor: nil];
+    }
+    return self;
+}
+
 - (id)initWithFrame:(CGRect)frame
 	      title: (NSString *) title
 	      color:(UIColor *) baseColor
+    backgroundColor:(UIColor *) backgroundColor
 {
     self = [super initWithFrame:frame];
     if (self) {
-        // Initialization code
-	self.backgroundColor = [UIColor clearColor];
-	[self setTitleColor: baseColor forState: UIControlStateNormal];
-	[self setTitleColor: baseColor forState: UIControlStateSelected];
-	self.titleLabel.font = [UIFont boldSystemFontOfSize: frame.size.height*0.6];
-	[self.titleLabel setTextAlignment: NSTextAlignmentCenter];
-	_color = baseColor;
-	_fillColor = [UIColor clearColor];
-	_selected = YES;
-	_frame = frame;
-	_title = title;
-	_callback = nil;
-	_context = nil;
-	_context2 = nil;
-
-	_silverImage = resizeImage2( [UIImage imageNamed: @"button.png"],
-				     frame.size);
-
-	if ([title isEqualToString: @"Settings"]) {
-	    _settingsImage = resizeImage( [UIImage imageNamed: @"settings.png"],
-					  frame.size.width);
-	    //_settingsImage = tintImage(_settingsImage, baseColor);
-	    _settingsImage = traceImage(_silverImage, _settingsImage);
-	    [self setImage: _settingsImage forState: UIControlStateNormal];
-	}
-
-	[self addTarget: self
-	      action: @selector(buttonPressed:withEvent:)
-	      forControlEvents: UIControlEventAllTouchEvents];
+	[self commonInitWithFrame: frame
+			    title: title
+			    color: baseColor
+		  backgroundColor: backgroundColor];
     }
     return self;
 }
@@ -214,7 +240,7 @@
 						strokeWidth,
 						strokeWidth);
 	CGContextSetLineWidth(cx, strokeWidth);
-	CGContextSetFillColorWithColor(cx, [MFANTopSettings clearBaseColor].CGColor);
+	CGContextSetFillColorWithColor(cx, _backgroundColor.CGColor);
 	CGContextSetStrokeColorWithColor(cx, _color.CGColor);
 	bezierPath = [UIBezierPath bezierPathWithRoundedRect: insetRect
 				   cornerRadius:  2*strokeWidth];

@@ -76,7 +76,8 @@
 
 	_musicButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 					       title: @"Border"
-					       color: [MFANTopSettings baseColor]];
+					       color: [MFANTopSettings baseColor]
+					     backgroundColor:[MFANTopSettings clearBaseColor]];
 	[_musicButton setClearText: @"+ Define Music Channel"];
 	[_musicButton addCallback: self withAction: @selector(musicPressed:)];
 	[self addSubview: _musicButton];
@@ -84,7 +85,8 @@
 
 	_radioButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 					       title: @"Border"
-					       color: [MFANTopSettings baseColor]];
+					       color: [MFANTopSettings baseColor]
+					     backgroundColor: [MFANTopSettings clearBaseColor]];
 	[_radioButton setClearText: @"+ Define Radio Channel"];
 	[_radioButton addCallback: self withAction: @selector(radioPressed:)];
 	[self addSubview: _radioButton];
@@ -92,7 +94,8 @@
 
 	_podcastButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 					       title: @"Border"
-					       color: [MFANTopSettings baseColor]];
+					       color: [MFANTopSettings baseColor]
+					       backgroundColor: [MFANTopSettings clearBaseColor]];
 	[_podcastButton setClearText: @"+ Define Podcast Channel"];
 	[_podcastButton addCallback: self withAction: @selector(podcastPressed:)];
 	[self addSubview: _podcastButton];
@@ -100,23 +103,26 @@
 
 	_upnpButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 					       title: @"Border"
-					       color: [MFANTopSettings baseColor]];
+					       color: [MFANTopSettings baseColor]
+					    backgroundColor: [MFANTopSettings clearBaseColor]];
 	[_upnpButton setClearText: @"Setup UPnP Servers"];
 	[_upnpButton addCallback: self withAction: @selector(upnpPressed:)];
 	[self addSubview: _upnpButton];
 	buttonFrame.origin.y += _buttonVMargin + _buttonHeight;
 
 	_downloadsButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
-					       title: @"Border"
-					       color: [MFANTopSettings baseColor]];
+							   title: @"Border"
+							   color: [MFANTopSettings baseColor]
+						 backgroundColor: [MFANTopSettings clearBaseColor]]	;
 	[_downloadsButton setClearText: @"Manage downloaded content"];
 	[_downloadsButton addCallback: self withAction: @selector(downloadsPressed:)];
 	[self addSubview: _downloadsButton];
 	buttonFrame.origin.y += _buttonVMargin + _buttonHeight;
 
 	_helpButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
-					       title: @"Border"
-					       color: [MFANTopSettings baseColor]];
+						      title: @"Border"
+						      color: [MFANTopSettings baseColor]
+					    backgroundColor: [MFANTopSettings clearBaseColor]];
 	[_helpButton setClearText: @"Help pages"];
 	[_helpButton addCallback: self withAction: @selector(helpPressed:)];
 	[self addSubview: _helpButton];
@@ -124,7 +130,8 @@
 
 	_settingsButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 						  title: @"Border"
-						  color: [MFANTopSettings baseColor]];
+						  color: [MFANTopSettings baseColor]
+						backgroundColor: [MFANTopSettings clearBaseColor]];
 	[_settingsButton setClearText: @"Settings"];
 	[_settingsButton addCallback: self withAction: @selector(settingsPressed:)];
 	[self addSubview: _settingsButton];
@@ -132,7 +139,8 @@
 
 	_showHistoryButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 						     title: @"Border"
-						     color: [MFANTopSettings baseColor]];
+						     color: [MFANTopSettings baseColor]
+						   backgroundColor: [MFANTopSettings clearBaseColor	]];
 	[_showHistoryButton setClearText: @"Show History"];
 	[_showHistoryButton addCallback: self withAction: @selector(showHistoryPressed:)];
 	[self addSubview: _showHistoryButton];
@@ -140,7 +148,8 @@
 
 	_doneButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 					       title: @"Border"
-					       color: [MFANTopSettings baseColor]];
+					       color: [MFANTopSettings baseColor]
+					    backgroundColor: [MFANTopSettings clearBaseColor]];
 	[_doneButton setClearText: @"Done"];
 	[_doneButton addCallback: self withAction: @selector(donePressed:)];
 	[self addSubview: _doneButton];
