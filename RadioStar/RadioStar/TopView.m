@@ -1,8 +1,13 @@
 #import "TopView.h"
 #import "MFANCoreButton.h"
 #import "MarqueeLabel.h"
+#import "MFANStreamPlayer.h"
 
-@implementation TopView
+@implementation TopView {
+    MarqueeLabel *_marquee;
+    MFANCoreButton *_playButton;
+    SignView *_signView;
+}
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc {
     self = [super initWithFrame: frame];
@@ -24,15 +29,22 @@
 	signFrame.origin.y = usableOriginY;
 	signFrame.size.height = usableHeight * 0.9;
 	SignView *signView = [[SignView alloc] initWithFrame: signFrame ViewCont: vc];
+	_signView = signView;
 	[self addSubview: signView];
+
+	[signView setSongCallback: self sel:@selector(songChanged:)];
+	[signView setStateCallback: self sel:@selector(stateChanged:)];
 
 	CGRect marqueeFrame = screenFrame;
 	marqueeFrame.origin.y = signFrame.origin.y + signFrame.size.height;
 	marqueeFrame.size.height = usableHeight * 0.05;
 	MarqueeLabel *marquee = [[MarqueeLabel alloc] initWithFrame: marqueeFrame];
+	_marquee = marquee;
 	[marquee setTextColor: [UIColor blackColor]];
 	[marquee setTextAlignment: NSTextAlignmentCenter];
 	[self addSubview: marquee];
+	NSLog(@"setting marquee frame to y=%f height=%f",
+	      marqueeFrame.origin.y, marqueeFrame.size.height);
 
 	// and put something there.
 	[marquee setText: @"[Your ad here]"];
@@ -47,6 +59,7 @@
 					      initWithFrame: playButtonFrame
 						      title:@"Play"
 						      color: [UIColor blackColor]];
+	_playButton = playButton;
 	[playButton addCallback: self withAction:@selector(playPressed:withData:)];
 	[self addSubview: playButton];
     }
@@ -54,8 +67,32 @@
     return self;
 }
 
+- (void) stateChanged: (id) aplayer {
+    MFANStreamPlayer *player = (MFANStreamPlayer *) aplayer;
+    NSLog(@"in state changed player=%p isPlaying=%d", player, [player isPlaying]);
+    if ([player isPlaying])
+	[_playButton setTitle:@"Pause"];
+    else
+	[_playButton setTitle:@"Play"];
+}
+
+- (void) songChanged: (id) asong {
+    NSString *song = (NSString *) asong;
+    if (song != nil) {
+	[_marquee setText: song];
+    } else {
+	[_marquee setText: @"[None]"];
+    }
+}
+
 - (void) playPressed: (id) sender withData: (NSNumber *)movement {
-    NSLog(@"in play pressed");
+    MFANStreamPlayer *player = [_signView getCurrentPlayer];
+    if (player == nil)
+	return;
+    if ([player isPaused])
+	[player resume];
+    else
+	[player pause];
 }
 
 @end

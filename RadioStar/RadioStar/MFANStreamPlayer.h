@@ -16,6 +16,8 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 - (NSString *)getCurrentPlaying;
 
+- (bool) isPaused;
+
 - (BOOL) isPlaying;
 
 - (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel;

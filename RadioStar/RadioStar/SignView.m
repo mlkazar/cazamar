@@ -13,7 +13,6 @@
 
 #import "GraphMath.h"
 #import "MFANAqStream.h"
-#import "MFANStreamPlayer.h"
 #import "SignView.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -76,6 +75,12 @@ NS_ASSUME_NONNULL_BEGIN
     SignStation *_playingStation;
     MFANAqStream *_stream;
     MFANStreamPlayer *_player;
+
+    id _stateCallbackObj;
+    SEL _stateCallbackSel;
+
+    id _songCallbackObj;
+    SEL _songCallbackSel;
 }
 
 // some defines for the images we're dealing with
@@ -104,6 +109,8 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 - (void)setupDepthTexture
 {
     CGSize drawableSize = _metalLayer.drawableSize;
+
+    NSLog(@"setupDepthTexture using %f x %f", drawableSize.width, drawableSize.height);
 
     if (_depthTexture == nil || ([_depthTexture width] != drawableSize.width ||
 				 [_depthTexture height] != drawableSize.height)) {
@@ -432,12 +439,24 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 }
 
+- (CALayer *) makeBackingLayer {
+    return [CAMetalLayer layer];
+}
+
+// From AAPL metalview doc
++ (Class) layerClass {
+    return [CAMetalLayer class];
+}
+
 - (void)setFrame:(CGRect)frame
 {
-    // TODO: frame height is too large by origin.y
+    // TODO: frame height is too large by origin.y.  Figure out why.
     frame.size.height -= frame.origin.y;
     [super setFrame:frame];
     
+    NSLog(@"in SIGNVIEW setframe %f x %f at %f.%f",
+	  frame.size.width, frame.size.height, frame.origin.x, frame.origin.y);
+
     // setup device here, which is called from 'super initWithFrame' init
     // our initWithFrame function.
     if (_device == nil)
@@ -455,8 +474,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     CGSize drawableSize = self.bounds.size;
     NSLog(@"frame updated to %f x %f at %f.%f", frame.size.width, frame.size.height,
 	  frame.origin.x, frame.origin.y);
-    NSLog(@"bounds updated to %f x %f", self.bounds.size.width, self.bounds.size.height);
-    
+    NSLog(@"bounds at %f x %f at %f.%f", self.bounds.size.width, self.bounds.size.height,
+	  self.bounds.origin.x, self.bounds.origin.y);
+
     // Since drawable size is in pixels, we need to multiply by the
     // scale to move from points to pixels
     drawableSize.width *= scale;
@@ -465,6 +485,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (_metalLayer == nil)
 	_metalLayer = [CAMetalLayer layer];
     _metalLayer.drawableSize = drawableSize;
+    NSLog(@"metallayer %f x %f at %f.%f",
+	  _metalLayer.frame.size.width,_metalLayer.frame.size.height,
+	  _metalLayer.frame.origin.x, _metalLayer.frame.origin.y);
 
     [self setupDepthTexture];
 }
@@ -496,6 +519,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	// compute factor to multiply Y coordinate by
 	float aspect = drawableSize.width / drawableSize.height;
+
+	NSLog(@"in redraw with drawableSize %f x %f",
+	      drawableSize.width, drawableSize.height);
 
 	_rotationRadians = 0.0;
 
@@ -865,6 +891,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	if (station != nil && station != prevStation) {
 	    _stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
 	    _player = [[MFANStreamPlayer alloc] initWithStream: _stream];
+	    [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
+	    [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
 	    _playingStation = station;
 	}
     } else {
@@ -879,7 +907,32 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [_stream shutdown];
     _player = nil;
     _stream = nil;
+    if (_stateCallbackObj != nil) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+	NSLog(@"player upcalls state shutdown");
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[self->_stateCallbackObj performSelector: self->_stateCallbackSel
+					      withObject: nil];
+	    });
+#pragma clang diagnostic pop
+	
+    }
     NSLog(@"shutdown of mfanaqstream done");
+}
+
+- (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel {
+    _songCallbackSel = callbackSel;
+    _songCallbackObj = callbackObj;
+}
+
+- (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel {
+    _stateCallbackSel = callbackSel;
+    _stateCallbackObj = callbackObj;
+}
+
+- (MFANStreamPlayer *) getCurrentPlayer {
+    return _player;
 }
 
 @end

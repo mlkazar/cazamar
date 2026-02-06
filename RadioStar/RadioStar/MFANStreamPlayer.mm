@@ -164,6 +164,7 @@ MFANStreamPlayer_getUnknownString()
     // tracking playing; the stupid AudioQueue property listener
     // doesn't notice if you actually pause playing.
     uint64_t _lastReturnedMs;	/* time an audio packet was last returned to us */
+    uint64_t _lastManualChange;	// time we last changed playing state manually
     float _dataRate;		/* estimated data rate */
     NSTimer *_spyTimer;		/* timer firing every second or so */
     NSTimer *_shutdownTimer;	/* used for delayed shutdown work */
@@ -258,8 +259,7 @@ static pthread_mutex_t _playerMutex;
 void
 MFANStreamPlayer_handleOutput( void *acontextp,
 			       AudioQueueRef aqRefp,
-			       AudioQueueBufferRef bufRefp)
-{
+			       AudioQueueBufferRef bufRefp) {
     MFANStreamPlayer *aqp = (__bridge MFANStreamPlayer *) acontextp;
 
     /* push the buffer for reuse */
@@ -270,8 +270,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 }
 
 /* called on the main thread to create a new player */
-- (MFANStreamPlayer *) initWithStream: (MFANAqStream *) stream
-{
+- (MFANStreamPlayer *) initWithStream: (MFANAqStream *) stream {
     self = [super init];
     if (self) {
 	NSLog(@"- streamplayer init starts for %p", self);
@@ -291,6 +290,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 	_dataRate = 0.0;
 	_lastReturnedMs = osp_time_ms();
+	_lastManualChange = osp_time_ms();
 	_lastUpcalledIsPlaying = NO;
 	_upcalledShutdownState = NO;
 	_isPlaying= NO;
@@ -330,59 +330,49 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return self;
 }
 
-/* called on main thread to see if the music is actually playing, i.e. if buffers
- * of music are being returned to our free pool.
- */
-- (void) spyMonitor: (id) junk
-{
-    uint64_t now;
-
-    pthread_mutex_lock(&_playerMutex);
-
-    now = osp_time_ms();
-    if (now - _lastReturnedMs > 2500) {
-	_isPlaying = NO;
-    }
-    else {
-	_isPlaying = YES;
-    }
-
-#if 0
-    if (now - _lastReturnedMs > 5000) {
-	[self shutdown];
-
-	/* and force new upcall, so player detects streamplayer has stopped; only do this once
-	 * for a given streamplayer.
-	 */
-	if (!_upcalledShutdownState) {
-	    _upcalledShutdownState = YES;
-	    _lastUpcalledIsPlaying = !_isPlaying;
-	}
-    }
-#endif
-
-    if (_stateCallbackObj != nil && _lastUpcalledIsPlaying != _isPlaying) {
+- (void) checkUpcalledState {
+    if (!_shutdown &&
+	_stateCallbackObj != nil &&
+	_lastUpcalledIsPlaying != _isPlaying) {
 	_lastUpcalledIsPlaying = _isPlaying;
 	pthread_mutex_unlock(&_playerMutex);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[self->_stateCallbackObj performSelector: self->_stateCallbackSel
-					      withObject: nil];
+					      withObject: self];
 	    });
+	pthread_mutex_lock(&_playerMutex);
+    }
 #pragma clang diagnostic pop
-	return;
+}
+
+/* called on main thread to see if the music is actually playing, i.e. if buffers
+ * of music are being returned to our free pool.
+ */
+- (void) spyMonitor: (id) junk {
+    uint64_t now;
+
+    pthread_mutex_lock(&_playerMutex);
+
+    now = osp_time_ms();
+    if (now - _lastManualChange > 3000) {
+	if (now - _lastReturnedMs > 2500) {
+	    _isPlaying = NO;
+	}
+	else {
+	    _isPlaying = YES;
+	}
     }
-    else {
-	pthread_mutex_unlock(&_playerMutex);
-    }
+
+    [self checkUpcalledState];
+    pthread_mutex_unlock(&_playerMutex);
 }
 
 /* must be called with the aqLock held; drops lock temporarily;
  * Called from various threads.
  */
-- (void) shutdown
-{
+- (void) shutdown {
     NSLog(@"- in shutdown audio for aqp=%p", self);
 
     /* check if we've started a shutdown procedure */
@@ -444,8 +434,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 }
 
 /* the timer itself should keep our MFANStreamPlayer allocated until it fires */
-- (void) shutdownPart2: (id) junk
-{
+- (void) shutdownPart2: (id) junk {
     int32_t i;
 
     pthread_mutex_lock(&_playerMutex);
@@ -485,8 +474,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 }
 
 /* called when someone presses pause */
-- (void) pause
-{
+- (void) pause {
     pthread_mutex_lock(&_playerMutex);
     if (_shutdown) {
 	pthread_mutex_unlock(&_playerMutex);
@@ -497,12 +485,14 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	AudioQueuePause(_audioQueue);
     }
     _paused = YES;
+    _isPlaying = NO;
+    _lastManualChange = osp_time_ms();
+    [self checkUpcalledState];
     pthread_mutex_unlock(&_playerMutex);
 }
 
 /* called when someone presses resume */
-- (void) resume
-{
+- (void) resume {
     pthread_mutex_lock(&_playerMutex);
     if (_shutdown) {
 	pthread_mutex_unlock(&_playerMutex);
@@ -513,27 +503,27 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	AudioQueueStart(_audioQueue, NULL);
     }
     _paused = NO;
+    _isPlaying = YES;
+    _lastManualChange = osp_time_ms();
+    [self checkUpcalledState];
     pthread_mutex_unlock(&_playerMutex);
 }
 
-- (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel
-{
+- (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel {
     pthread_mutex_lock(&_playerMutex);
     _stateCallbackObj = callbackObj;
     _stateCallbackSel = callbackSel;
     pthread_mutex_unlock(&_playerMutex);
 }
 
-- (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel
-{
+- (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel {
     pthread_mutex_lock(&_playerMutex);
     _songCallbackObj = callbackObj;
     _songCallbackSel = callbackSel;
     pthread_mutex_unlock(&_playerMutex);
 }
 
-- (BOOL) isPlaying
-{
+- (BOOL) isPlaying {
     /* note that the k...isRunning property doesn't notice
      * pause/resume, and so is useless.  We track output buffer handle
      * returns instead, using a timer.
@@ -582,13 +572,13 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return audioQueue;
 }
 
-- (void) playAsync: (id) junk
-{
+- (void) playAsync: (id) junk {
     MFANAqStreamPacket *packet;
     AudioQueueBufferRef bufRefp = nil;
     uint32_t bytesCopied = 0;
     uint32_t packetsCopied = 0;
     OSStatus osStatus;
+    NSString *lastUpcalledSong;
 
     while(!_shutdown) {
 	if (_streamReader == nil) {
@@ -631,6 +621,18 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    // someone has closed the stream; had there been no data
 	    // available yet, the read call would have simply blocked.
 	    break;
+	}
+
+	if (lastUpcalledSong != packet.playingSong) {
+	    lastUpcalledSong = packet.playingSong;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+	    dispatch_async(dispatch_get_main_queue(), ^{
+		    [self->_songCallbackObj performSelector: self->_songCallbackSel
+						  withObject: packet.playingSong];
+		});
+#pragma clang diagnostic pop
+	    
 	}
 
 	// once we have a packet, we can find out the stream type,
@@ -706,8 +708,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
  * More can be sent to us than we have room for, in which case we block
  * until room has freed up.
  */
-- (void) pushBuffer: (AudioQueueBufferRef) item
-{
+- (void) pushBuffer: (AudioQueueBufferRef) item {
     uint32_t ix;
 
     while (_availCount >= MFANStreamPlayer_nBuffers) {
@@ -728,8 +729,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 }
 
 /* called with _playerMutex held */
-- (AudioQueueBufferRef) popBuffer
-{
+- (AudioQueueBufferRef) popBuffer {
     AudioQueueBufferRef item;
 
     while (_availCount <= 0) {
@@ -751,13 +751,11 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return item;
 }
 
-- (NSString *)getCurrentPlaying
-{
+- (NSString *)getCurrentPlaying {
     return _currentPlaying;
 }
 
-- (BOOL) isShutdown
-{
+- (BOOL) isShutdown {
     return _shutdown;
 }
 
@@ -765,8 +763,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     NSLog(@"- dealloc of streamplayer %p", self);
 }
 
-- (NSString *) getEncodingType
-{
+- (NSString *) getEncodingType {
     NSString *rstr;
     if (_dataFormat.mFormatID == 'aac ')
 	rstr = @"AAC";
@@ -783,8 +780,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return rstr;
 }
 
-- (NSString *) getStreamUrl
-{
+- (NSString *) getStreamUrl {
     if (_aqStream) {
 	return [_aqStream getUrl];
     } else {
@@ -792,8 +788,11 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     }
 }
 
-- (float) dataRate
-{
+- (bool) isPaused {
+    return _paused;
+}
+
+- (float) dataRate {
     return _dataRate;
 }
 

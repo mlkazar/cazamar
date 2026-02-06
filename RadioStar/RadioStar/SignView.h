@@ -8,6 +8,7 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import "ViewController.h"
+#import "MFANStreamPlayer.h"
 
 @import simd;
 
@@ -51,6 +52,16 @@ NS_ASSUME_NONNULL_BEGIN
 @interface SignView : UIView
 
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc;
+
++ (Class) layerClass;
+
+- (CALayer *) makeBackingLayer;
+
+- (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel;
+
+- (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel;
+
+- (MFANStreamPlayer *) getCurrentPlayer;
 
 @end
 

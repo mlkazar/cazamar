@@ -7,4 +7,8 @@
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc;
 
+- (void) songChanged: (id) player;
+
+- (void) stateChanged: (id) player;
+
 @end
