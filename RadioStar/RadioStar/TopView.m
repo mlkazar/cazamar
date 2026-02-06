@@ -27,7 +27,7 @@
 
 	signFrame = screenFrame;
 	signFrame.origin.y = usableOriginY;
-	signFrame.size.height = usableHeight * 0.9;
+	signFrame.size.height = usableHeight * 0.90;
 	SignView *signView = [[SignView alloc] initWithFrame: signFrame ViewCont: vc];
 	_signView = signView;
 	[self addSubview: signView];
@@ -42,12 +42,13 @@
 	_marquee = marquee;
 	[marquee setTextColor: [UIColor blackColor]];
 	[marquee setTextAlignment: NSTextAlignmentCenter];
+	[marquee setFont: [UIFont fontWithName: @"Arial-BoldMT" size: 30]];
 	[self addSubview: marquee];
 	NSLog(@"setting marquee frame to y=%f height=%f",
 	      marqueeFrame.origin.y, marqueeFrame.size.height);
 
 	// and put something there.
-	[marquee setText: @"[Your ad here]"];
+	[marquee setText: @"[Long press screen for menu]"];
 	[marquee setNeedsDisplay];
 
 	CGRect playButtonFrame = screenFrame;

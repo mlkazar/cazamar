@@ -27,6 +27,8 @@
     vc = [[ViewController alloc] init];
     [self.window setRootViewController: vc];
     [self.window makeKeyAndVisible];
+
+    [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
 }
 
 

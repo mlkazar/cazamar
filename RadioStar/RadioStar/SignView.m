@@ -531,7 +531,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	MTLRenderPassDescriptor *descr = [MTLRenderPassDescriptor renderPassDescriptor];
 	descr.colorAttachments[0].texture = texture;
-	descr.colorAttachments[0].clearColor = MTLClearColorMake(.9, .9, 1.0, 1);
+	// I always search for UIColor or RGB to find the next line
+	descr.colorAttachments[0].clearColor = MTLClearColorMake(.50, 0.50, 0.50, 1.0);
 	descr.colorAttachments[0].storeAction = MTLStoreActionStore;
 	descr.colorAttachments[0].loadAction = MTLLoadActionClear;
 

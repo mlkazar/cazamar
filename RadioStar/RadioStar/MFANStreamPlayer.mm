@@ -293,7 +293,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_lastManualChange = osp_time_ms();
 	_lastUpcalledIsPlaying = NO;
 	_upcalledShutdownState = NO;
-	_isPlaying= NO;
+	_isPlaying= YES;
 	_stateCallbackObj = nil;
 
 	_availIx = 0;
@@ -326,6 +326,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 					       selector: @selector(playAsync:)
 					       object: nil];
 	[_readerThread start];
+
+	[self setupAudioSession: NO];	// don't mix with other audio
+
+	[self checkUpcalledState];
     }
     return self;
 }
@@ -794,6 +798,81 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 - (float) dataRate {
     return _dataRate;
+}
+
+- (void) audioRouteChanged: (NSNotification *) notification
+{
+    NSDictionary *userInfo = [notification userInfo];
+    NSNumber *reasonKey;
+    long reason;
+
+    reasonKey = (NSNumber *) userInfo[AVAudioSessionRouteChangeReasonKey];
+    reason = [reasonKey longValue];
+    if ( reason == AVAudioSessionRouteChangeReasonOldDeviceUnavailable) {
+	[self pause];
+    }
+}
+
+- (void) audioInterruption: (NSNotification *) notification
+{
+    NSDictionary *userInfo = [notification userInfo];
+    NSNumber *intKey;
+    NSNumber *optKey;
+    long intType;
+
+    intKey = (NSNumber *) userInfo[AVAudioSessionInterruptionTypeKey];
+    optKey = (NSNumber *) userInfo[AVAudioSessionInterruptionOptionKey];
+
+    intType = [intKey longValue];
+    if (intType == AVAudioSessionInterruptionTypeEnded) {
+	NSLog(@"- audio interruption ended");
+	if ([optKey longValue] & AVAudioSessionInterruptionOptionShouldResume) {
+	    NSLog(@"- resuming audio player");
+	    if (_isPlaying) {
+		[self resume];
+		[self checkUpcalledState];
+	    }
+	}
+    }
+    else if (intType == AVAudioSessionInterruptionTypeBegan) {
+	NSLog(@"- audio interruption began");
+	if (_isPlaying) {
+	    [self pause];
+	    [self checkUpcalledState];
+	}
+    }
+    else {
+	NSLog(@"! audio interruption unknown type %ld", intType);
+    }
+}
+
+- (void) setupAudioSession: (BOOL) mix
+{
+    NSError *setError;
+
+    setError = nil;
+
+    if (mix) {
+        [[AVAudioSession sharedInstance]
+            setCategory: AVAudioSessionCategoryPlayback
+            withOptions: AVAudioSessionCategoryOptionMixWithOthers
+            error: &setError];
+    }
+    else {
+        [[AVAudioSession sharedInstance]
+            setCategory: AVAudioSessionCategoryPlayback
+            withOptions: 0
+            error: &setError];
+    }
+
+    [[NSNotificationCenter defaultCenter] addObserver: self
+                                          selector: @selector(audioInterruption:)
+                                          name: AVAudioSessionInterruptionNotification
+                                          object: nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                          selector:@selector(audioRouteChanged:)
+                                          name:AVAudioSessionRouteChangeNotification
+                                          object:nil];
 }
 
 @end

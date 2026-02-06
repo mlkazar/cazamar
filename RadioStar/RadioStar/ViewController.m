@@ -25,7 +25,10 @@
     self.view = view;
 
     // Do any additional setup after loading the view.
-    self.view.backgroundColor = UIColor.whiteColor;
+    self.view.backgroundColor = [UIColor colorWithRed: 0.80
+						green:0.80
+						 blue:0.80
+						alpha:1.0];
 }
 
 @end
