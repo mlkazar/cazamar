@@ -14,6 +14,7 @@
 #import "GraphMath.h"
 #import "MFANAqStream.h"
 #import "SignView.h"
+#import "SearchStation.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -72,9 +73,14 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLTexture> _depthTexture;
     id<MTLDepthStencilState> _depthStencil;
 
+    SearchStation *_searchStation;
+
     SignStation *_playingStation;
     MFANAqStream *_stream;
     MFANStreamPlayer *_player;
+
+    UIGestureRecognizer *_pressRecognizer;
+    UIGestureRecognizer *_longPressRecognizer;
 
     id _stateCallbackObj;
     SEL _stateCallbackSel;
@@ -809,33 +815,47 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_playingStation = nil;
 
 	UIGestureRecognizer *recog;
-	recog = [[UILongPressGestureRecognizer alloc]
-		    initWithTarget: self action:@selector(longPressed:)];
-	[self addGestureRecognizer: recog];
+	_longPressRecognizer = [[UILongPressGestureRecognizer alloc]
+				   initWithTarget: self action:@selector(longPressed:)];
+	[self addGestureRecognizer: _longPressRecognizer];
 
-	recog = [[UITapGestureRecognizer alloc]
-		    initWithTarget: self action:@selector(tapPressed:)];
-	[self addGestureRecognizer: recog];
+	_pressRecognizer = [[UITapGestureRecognizer alloc]
+		    initWithTarget: self action:@selector(pressed:)];
+	[self addGestureRecognizer: _pressRecognizer];
     }
 
     return self;
 }
 
-- (void) displayOptions
+- (void) searchDone: (UISearchBar *) searchBar {
+    NSLog(@"signview search bar text is %@", searchBar.text);
+    _searchStation = nil;
+}
+
+- (void) displayAppOptions
 {
     UIAlertController *alert = [UIAlertController
-				   alertControllerWithTitle: @"Test title"
-						    message: @"Whole station"
+				   alertControllerWithTitle: @"RadioStar"
+						    message: @"Options"
 					     preferredStyle: UIAlertControllerStyleAlert];
 
-    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Option 1"
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Add station"
                                                      style: UIAlertActionStyleDefault
                                                    handler:^(UIAlertAction *act) {
-            NSLog(@"Perform 1");
+	    _searchStation = [[SearchStation alloc] initWithFrame: self.frame ViewCont: _vc];
+	    [self addSubview: _searchStation];
+	    [_searchStation setCallback: self WithSel: @selector(searchDone:)];
 	}];
     [alert addAction: action];
 
-    action = [UIAlertAction actionWithTitle:@"Option 2"
+    action = [UIAlertAction actionWithTitle:@"Help"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+            NSLog(@"Perform help");
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Cancel"
                                       style: UIAlertActionStyleDefault
                                     handler:^(UIAlertAction *act) {
 	    NSLog(@"Perform 2");
@@ -845,11 +865,38 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [_vc presentViewController: alert animated:YES completion: nil];
 }
 
+- (void) displayStationOptions: (SignStation *) station
+{
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"RadioStar"
+						    message: @"Station"
+					     preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Start recording"
+                                                     style: UIAlertActionStyleDefault
+                                                   handler:^(UIAlertAction *act) {
+            NSLog(@"Perform 1");
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Cancel"
+                                      style: UIAlertActionStyleDefault
+                                    handler:^(UIAlertAction *act) {
+	    NSLog(@"Cancel");
+        }];
+    [alert addAction: action];
+
+    [_vc presentViewController: alert animated:YES completion: nil];
+}
+
 - (void) longPressed: (UILongPressGestureRecognizer *) sender {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateBegan) {
-	NSLog(@"long pressed at (%f,%f)", point.x, point.y);
-	[self displayOptions];
+	SignStation *station = [self findStationByTouch: point];
+	if (station != nil)
+	    [self displayStationOptions: station];
+	else
+	    [self displayAppOptions];
     } else {
 	NSLog(@"ignoring begin long press");
     }
@@ -875,7 +922,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     return nil;
 }
 
-- (void) tapPressed: (UILongPressGestureRecognizer *) sender {
+- (void) pressed: (UILongPressGestureRecognizer *) sender {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateEnded) {
 	SignStation *station = [self findStationByTouch: point];
