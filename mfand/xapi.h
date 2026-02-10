@@ -106,7 +106,7 @@ class XApi : public CThread {
         XApi *_xapip;
         Rst *_rstp;
         uint8_t _busy;
-        uint32_t _startMs;
+        uint64_t _startMs;
 
         CThreadMutex _mutex;
 
@@ -152,7 +152,7 @@ class XApi : public CThread {
             _mutex.release();
         }
 
-        uint32_t getStartMs() {
+        uint64_t getStartMs() {
             return _startMs;
         }
 

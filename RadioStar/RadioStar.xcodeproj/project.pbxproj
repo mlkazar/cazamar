@@ -16,6 +16,10 @@
 		7F8418092F1EF49500B497E8 /* osp.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8418042F1EF49500B497E8 /* osp.cc */; };
 		7F84180A2F1EF49500B497E8 /* osptimer.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8418072F1EF49500B497E8 /* osptimer.cc */; };
 		7F84180D2F1EF4F000B497E8 /* radiostream.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F84180C2F1EF4F000B497E8 /* radiostream.cc */; };
+		7FAB24492F3AA16F00D99D4A /* xapi.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FAB24482F3AA16F00D99D4A /* xapi.cc */; };
+		7FAB244C2F3AA19200D99D4A /* radioscan.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FAB244B2F3AA19200D99D4A /* radioscan.cc */; };
+		7FAB244F2F3AA21000D99D4A /* json.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FAB244E2F3AA21000D99D4A /* json.cc */; };
+		7FAB24522F3AA22500D99D4A /* xgml.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FAB24512F3AA22500D99D4A /* xgml.cc */; };
 		7FC015EF2F33E0A4002BADD4 /* MFANCoreButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FC015EE2F33E0A4002BADD4 /* MFANCoreButton.m */; };
 		7FC015F12F33E161002BADD4 /* MFANCGUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FC015F02F33E161002BADD4 /* MFANCGUtil.m */; };
 		7FC015F82F33ECDA002BADD4 /* MarqueeLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FC015F72F33ECDA002BADD4 /* MarqueeLabel.m */; };
@@ -46,6 +50,14 @@
 		7F8418082F1EF49500B497E8 /* osptypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = osptypes.h; path = ../rpc/osptypes.h; sourceTree = SOURCE_ROOT; };
 		7F84180B2F1EF4F000B497E8 /* radiostream.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = radiostream.h; path = ../mfand/radiostream.h; sourceTree = SOURCE_ROOT; };
 		7F84180C2F1EF4F000B497E8 /* radiostream.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = radiostream.cc; path = ../mfand/radiostream.cc; sourceTree = SOURCE_ROOT; };
+		7FAB24472F3AA16F00D99D4A /* xapi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = xapi.h; path = ../mfand/xapi.h; sourceTree = SOURCE_ROOT; };
+		7FAB24482F3AA16F00D99D4A /* xapi.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = xapi.cc; path = ../mfand/xapi.cc; sourceTree = SOURCE_ROOT; };
+		7FAB244A2F3AA19200D99D4A /* radioscan.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = radioscan.h; path = ../mfand/radioscan.h; sourceTree = SOURCE_ROOT; };
+		7FAB244B2F3AA19200D99D4A /* radioscan.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = radioscan.cc; path = ../mfand/radioscan.cc; sourceTree = SOURCE_ROOT; };
+		7FAB244D2F3AA21000D99D4A /* json.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = json.h; path = ../rpc/json.h; sourceTree = SOURCE_ROOT; };
+		7FAB244E2F3AA21000D99D4A /* json.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = json.cc; path = ../rpc/json.cc; sourceTree = SOURCE_ROOT; };
+		7FAB24502F3AA22500D99D4A /* xgml.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = xgml.h; path = ../rpc/xgml.h; sourceTree = SOURCE_ROOT; };
+		7FAB24512F3AA22500D99D4A /* xgml.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = xgml.cc; path = ../rpc/xgml.cc; sourceTree = SOURCE_ROOT; };
 		7FC015ED2F33E0A4002BADD4 /* MFANCoreButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANCoreButton.h; path = ../MusicFan/MusicFan/MFANCoreButton.h; sourceTree = SOURCE_ROOT; };
 		7FC015EE2F33E0A4002BADD4 /* MFANCoreButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MFANCoreButton.m; path = ../MusicFan/MusicFan/MFANCoreButton.m; sourceTree = SOURCE_ROOT; };
 		7FC015F02F33E161002BADD4 /* MFANCGUtil.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MFANCGUtil.m; path = ../MusicFan/MusicFan/MFANCGUtil.m; sourceTree = SOURCE_ROOT; };
@@ -91,6 +103,14 @@
 		7F1E14B82ED6A80D00D08908 = {
 			isa = PBXGroup;
 			children = (
+				7FAB244D2F3AA21000D99D4A /* json.h */,
+				7FAB244E2F3AA21000D99D4A /* json.cc */,
+				7FAB24502F3AA22500D99D4A /* xgml.h */,
+				7FAB24512F3AA22500D99D4A /* xgml.cc */,
+				7FAB244A2F3AA19200D99D4A /* radioscan.h */,
+				7FAB244B2F3AA19200D99D4A /* radioscan.cc */,
+				7FAB24472F3AA16F00D99D4A /* xapi.h */,
+				7FAB24482F3AA16F00D99D4A /* xapi.cc */,
 				7FC015F62F33ECDA002BADD4 /* MarqueeLabel.h */,
 				7FC015F72F33ECDA002BADD4 /* MarqueeLabel.m */,
 				7FC015F02F33E161002BADD4 /* MFANCGUtil.m */,
@@ -215,6 +235,9 @@
 			files = (
 				7FC015F82F33ECDA002BADD4 /* MarqueeLabel.m in Sources */,
 				7F8417FB2F1EF40E00B497E8 /* bufsocket.cc in Sources */,
+				7FAB24522F3AA22500D99D4A /* xgml.cc in Sources */,
+				7FAB244C2F3AA19200D99D4A /* radioscan.cc in Sources */,
+				7FAB244F2F3AA21000D99D4A /* json.cc in Sources */,
 				7FC015F12F33E161002BADD4 /* MFANCGUtil.m in Sources */,
 				7F8417FC2F1EF40E00B497E8 /* bufgen.cc in Sources */,
 				7F84180D2F1EF4F000B497E8 /* radiostream.cc in Sources */,
@@ -223,6 +246,7 @@
 				7F8418002F1EF42E00B497E8 /* rst.cc in Sources */,
 				7FC015EF2F33E0A4002BADD4 /* MFANCoreButton.m in Sources */,
 				7F8418092F1EF49500B497E8 /* osp.cc in Sources */,
+				7FAB24492F3AA16F00D99D4A /* xapi.cc in Sources */,
 				7F84180A2F1EF49500B497E8 /* osptimer.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -18,26 +18,6 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@implementation SignStation {
-    NSString *_stationName;
-    NSString *_shortDescr;
-    NSString *_streamUrl;
-    NSString *_iconUrl;
-
-    // row and column, both 0 based
-    SignCoord _rowColumn;
-}
-
-- (SignStation *) init {
-    self = [super init];
-    if (self) {
-	self.isPlaying = NO;
-	self.isRecording = NO;
-    }
-    return self;
-}
-@end
-
 @implementation SignView {
     id<MTLDevice> _device;
     CAMetalLayer *_metalLayer;
@@ -814,21 +794,36 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	_playingStation = nil;
 
-	UIGestureRecognizer *recog;
-	_longPressRecognizer = [[UILongPressGestureRecognizer alloc]
-				   initWithTarget: self action:@selector(longPressed:)];
-	[self addGestureRecognizer: _longPressRecognizer];
-
-	_pressRecognizer = [[UITapGestureRecognizer alloc]
-		    initWithTarget: self action:@selector(pressed:)];
-	[self addGestureRecognizer: _pressRecognizer];
+	[self addRecognizers];
     }
 
     return self;
 }
 
+- (void) addRecognizers {
+    if (_longPressRecognizer == nil) {
+	_longPressRecognizer = [[UILongPressGestureRecognizer alloc]
+				   initWithTarget: self action:@selector(longPressed:)];
+	[self addGestureRecognizer: _longPressRecognizer];
+
+	_pressRecognizer = [[UITapGestureRecognizer alloc]
+			       initWithTarget: self action:@selector(pressed:)];
+	[self addGestureRecognizer: _pressRecognizer];
+    }
+}
+
+- (void) removeRecognizers {
+    if (_longPressRecognizer != nil) {
+	[self removeGestureRecognizer: _longPressRecognizer];
+	_longPressRecognizer = nil;
+	[self removeGestureRecognizer: _pressRecognizer];
+	_pressRecognizer = nil;
+    }
+}
+
 - (void) searchDone: (UISearchBar *) searchBar {
-    NSLog(@"signview search bar text is %@", searchBar.text);
+    NSLog(@"in searchdone");
+    [self addRecognizers];
     _searchStation = nil;
 }
 
@@ -842,9 +837,12 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     UIAlertAction *action = [UIAlertAction actionWithTitle:@"Add station"
                                                      style: UIAlertActionStyleDefault
                                                    handler:^(UIAlertAction *act) {
-	    _searchStation = [[SearchStation alloc] initWithFrame: self.frame ViewCont: _vc];
-	    [self addSubview: _searchStation];
-	    [_searchStation setCallback: self WithSel: @selector(searchDone:)];
+	    self->_searchStation = [[SearchStation alloc]
+				       initWithFrame: self.frame
+					    ViewCont: self->_vc];
+	    [self removeRecognizers];
+	    [self addSubview: self->_searchStation];
+	    [self->_searchStation setCallback: self WithSel: @selector(searchDone:)];
 	}];
     [alert addAction: action];
 

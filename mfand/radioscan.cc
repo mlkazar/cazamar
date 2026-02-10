@@ -751,14 +751,14 @@ RadioScanQuery::searchFile() {
             urlResolved = urlNodep->_children.head()->_name;
         
 
+        stationp = new RadioScanStation();
+        stationp->init(this);
+
         std::string iconUrl;
         iconNodep = stationNodep->searchForChild("favicon");
         if (iconNodep != nullptr)
             iconUrl = iconNodep->_children.head()->_name;
         stationp->_iconUrl = iconUrl;
-
-        stationp = new RadioScanStation();
-        stationp->init(this);
 
         tagNodep = stationNodep->searchForChild("tags");
         if (tagNodep != nullptr) {
@@ -817,7 +817,7 @@ RadioScan::scanSort(int32_t *datap, int32_t count)
 
 void
 RadioScanQuery::freeUnusedStations(std::vector<RadioScanStation *> *stationsp) {
-    uint32_t tsize = stationsp->size();
+    uint32_t tsize = (uint32_t) stationsp->size();
     RadioScanStation *stationp;
     for(uint32_t i = 0;i<tsize;i++) {
         stationp = (*stationsp)[i];
@@ -946,7 +946,7 @@ RadioScanQuery::browseFile() {
     uint32_t randomizeLimit;
 
     // don't try to return more than are available
-    arraySize = stations.size();
+    arraySize = (uint32_t) stations.size();
     if (arraySize < _browseMaxCount)
         maxReturned = arraySize;
     else
@@ -961,7 +961,7 @@ RadioScanQuery::browseFile() {
     if (randomizeLimit > arraySize)
         randomizeLimit = arraySize;
     for(i=0;i<randomizeLimit;i++) {
-        randomIx = random() % arraySize;
+        randomIx = (uint32_t) (random() % arraySize);
         stationp = stations[randomIx];
         stations[randomIx] = stations[i];
         stations[i] = stationp;
@@ -998,8 +998,8 @@ bool
 RadioScanQuery::isPrefix(std::string prefix, std::string target) {
     const char *prefixp = prefix.c_str();
     const char *targetp = target.c_str();
-    uint32_t prefixLen = prefix.size();
-    uint32_t targetLen = target.size();
+    uint32_t prefixLen = (uint32_t) prefix.size();
+    uint32_t targetLen = (uint32_t) target.size();
     int32_t count = targetLen - prefixLen;
 
     // slide prefix over i bytes and check if they match.
@@ -1030,7 +1030,7 @@ RadioScanQuery::searchRadioTime()
     const char *qpos;
     const char *tp;
     char *datap;
-    int32_t tlen;
+    int64_t tlen;
     RadioScanStation *stationp;
 
     strcpy(tbuffer, "http://opml.radiotime.com/Search.ashx?query=");
