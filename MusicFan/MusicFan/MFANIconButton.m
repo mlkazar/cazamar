@@ -8,7 +8,6 @@
 
 #import "MFANIconButton.h"
 #import "MFANCGUtil.h"
-#import "MFANTopSettings.h"
 
 @implementation MFANIconButton {
     SEL _callback;

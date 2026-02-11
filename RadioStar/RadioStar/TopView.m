@@ -48,7 +48,6 @@
 	      marqueeFrame.origin.y, marqueeFrame.size.height);
 
 	// and put something there.
-	[marquee setText: @"[Long press screen for menu]"];
 	[marquee setNeedsDisplay];
 
 	CGRect playButtonFrame = screenFrame;

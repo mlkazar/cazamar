@@ -58,6 +58,7 @@
 
 	_searchBar = [[UISearchBar alloc] initWithFrame: searchFrame];
 	_searchBar.showsCancelButton = YES;
+	_searchBar.showsBookmarkButton = YES;
 	_searchBar.delegate = self;
 	[self addSubview: _searchBar];
 
@@ -105,6 +106,15 @@
     _queryDone = YES;
 
     [NSThread exit];
+}
+
+- (void) searchBarBookmarkButtonClicked: (UISearchBar *) searchBar {
+    NSLog(@"search complete");
+    _canceled = NO;
+    [_searchBar resignFirstResponder];
+    [self removeFromSuperview];
+    
+    [self doNotify];
 }
 
 - (void) searchBarCancelButtonClicked:(UISearchBar *)searchBar {
@@ -344,4 +354,24 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 			 withRowAnimation: UITableViewRowAnimationAutomatic];
 }
 
+@end
+
+@implementation SearchStationResults {
+    SearchStation *_searchStation;
+    uint32_t _ix;
+}
+
+- (void) initWithSearchStation: (SearchStation *) search {
+    _ix = 0;
+    _searchStation = search;
+}
+
+// returns nil when out of entries
+- (SignStation *) getNext {
+    NSMutableArray *stations = _searchStation.signStations;
+    if (_ix >= [stations count])
+	return nil;
+    else
+	return stations[_ix++];
+}
 @end
