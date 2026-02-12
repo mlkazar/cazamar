@@ -28,6 +28,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (SignStation *) init;
 
+- (void) setIconImageFromUrl;
+
 @end
 
 NS_ASSUME_NONNULL_END

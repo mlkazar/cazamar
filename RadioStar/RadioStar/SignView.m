@@ -548,9 +548,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 			     origin: station.origin
 			     aspect: aspect];
 
-	    [backEncoder setFragmentTexture: [self getTextureForUrl: station.iconUrl]
+	    [station setIconImageFromUrl];
+	    [backEncoder setFragmentTexture: [self getTextureForImage: station.iconImage]
 				    atIndex: signCount];
-
 	    signCount++;
 	}
 
@@ -628,7 +628,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 }
 
-- (id<MTLTexture>) setupTextureFromImage:(UIImage *)image {
+- (id<MTLTexture>) getTextureForImage:(UIImage *)image {
     // prepare CG reference
     CGImageRef cgRef = [image CGImage];
     CGColorSpaceRef colorRef = CGColorSpaceCreateDeviceRGB();
@@ -669,40 +669,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	       bytesPerRow: bytesPerRow];
 
     return texture;
-}
-
-- (id<MTLTexture>) getTextureForUrl: (NSString *) imageUrlString
-{
-    // Load the image
-    NSURL *imageUrl = [NSURL URLWithString: imageUrlString];
-    UIImage *image;
-
-    NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
-    if (imageData == nil)
-	image = _genericImage;
-    else 
-	image = [UIImage imageWithData: imageData];
-
-    // Create a context (canvas) to draw in
-    CGSize size = image.size;
-    CGRect rect = CGRectMake(0, 0, size.width, size.height);
-    UIGraphicsBeginImageContextWithOptions(size, YES, image.scale);
-
-    // fill it with white so that transparent parts of the icon don't
-    // appear weird/dark, and then= draw the image of the icon into
-    // this current context.
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    [[UIColor whiteColor] setFill];
-    CGContextFillRect(context, rect);
-    [image drawInRect: CGRectMake(0, 0, size.width, size.height)];
-    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-
-    // turn the image into a metal texture.
-    id<MTLTexture> returnTexture;
-    returnTexture = [self setupTextureFromImage: newImage];
-
-    return returnTexture;
 }
 
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {

@@ -340,21 +340,12 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     else
 	cell.accessoryType = UITableViewCellAccessoryNone;
 
-    UIImage *image;
-    if ([station.iconUrl length] == 0) {
-	// [[cell imageView] setImage: _scaledGenericImage];
-	CGSize nameSize;
-	nameSize.width = 100.0;
-	nameSize.height = 30.0;
-	image = [self imageFromText: station.stationName Size: nameSize];
-    } else {
-	NSURL *imageUrl = [NSURL URLWithString: station.iconUrl];
-	NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
-	image = [UIImage imageWithData: imageData];
-    }
-    station.iconImage = image;
-    UIImage *scaledImage = resizeImage(image, 60);
+    [station setIconImageFromUrl];
+    UIImage *scaledImage = resizeImage(station.iconImage, 60);
+
     [[cell imageView] setImage: scaledImage];
+
+
 
     /* make cell clear */
     cell.contentView.backgroundColor = [UIColor clearColor];
