@@ -23,8 +23,6 @@ NS_ASSUME_NONNULL_BEGIN
     CAMetalLayer *_metalLayer;
     uint8_t *_imageData;
     id<MTLLibrary> _library;
-    id<MTLTexture> _wyepTexture;
-    id<MTLTexture> _wmfoTexture;
     id<MTLCommandQueue> _comQueue;
     id<MTLBuffer> _vertexBuffer;
     id<MTLBuffer> _rotationBuffer;
@@ -49,6 +47,8 @@ NS_ASSUME_NONNULL_BEGIN
 
     float _rotationRadians;
     bool _rotationDir;
+
+    UIImage *_genericImage;
 
     id<MTLTexture> _depthTexture;
     id<MTLDepthStencilState> _depthStencil;
@@ -539,13 +539,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	SignStation *station;
 	uint32_t signCount = 0;
 	for(station in _allStations) {
-#if 0
-	    // assigned by computeLayout now
-	    CGPoint origin;
-	    origin.x = -1.5 + 1.5* station.rowColumn._x;
-	    origin.y = 4.0 - station.rowColumn._y;
-#endif
-
 	    if (signCount >= maxIcons)
 		break;
 
@@ -682,8 +675,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 {
     // Load the image
     NSURL *imageUrl = [NSURL URLWithString: imageUrlString];
+    UIImage *image;
+
     NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
-    UIImage *image = [UIImage imageWithData: imageData];
+    if (imageData == nil)
+	image = _genericImage;
+    else 
+	image = [UIImage imageWithData: imageData];
 
     // Create a context (canvas) to draw in
     CGSize size = image.size;
@@ -728,18 +726,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		 iconUrl: @"https://wesa.org/apple-touch-icon.png"
 	       rowColumn: SignCoordMake(1,0)];
 
-	[self addStation: @"WESA"
-	      shortDescr: @"Where news matters"
-	       streamUrl: @"https://ais-sa3.cdnstream1.com/2556_128.mp3"
-		 iconUrl: @"https://wesa.org/apple-touch-icon.png"
-	       rowColumn: SignCoordMake(1,1)];
-
-	[self addStation: @"WYEP"
-	      shortDescr: @"Where music matters"
-	       streamUrl: @"https://ais-sa3.cdnstream1.com/2557_128.mp3"
-		 iconUrl: @"https://wyep.org/apple-touch-icon.png"
-	       rowColumn: SignCoordMake(2,8)];
-
 	// assign origin points to all stations in world space Note
 	// that world space's origin is in the center, and each icon's
 	// object's center in object space is at (0,0).
@@ -759,28 +745,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_vertexProc = [_library newFunctionWithName: @"vertex_sign_proc"];
 	_fragmentProc = [_library newFunctionWithName: @"fragment_sign_proc"];
 
-	// load image from resource
-	{
-	    NSURL *imageUrl = [NSURL URLWithString:@"https://wyep.org/apple-touch-icon.png"];
-	    NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
-	    UIImage *image = [UIImage imageWithData: imageData];
-
-	    CGSize size = image.size;
-	    CGRect rect = CGRectMake(0, 0, size.width, size.height);
-	    UIGraphicsBeginImageContextWithOptions(size, YES, image.scale);
-
-	    CGContextRef context = UIGraphicsGetCurrentContext();
-	    [[UIColor whiteColor] setFill];
-	    CGContextFillRect(context, rect);
-	    [image drawInRect: CGRectMake(0, 0, size.width, size.height)];
-	    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
-	    UIGraphicsEndImageContext();
-
-	    _wyepTexture = [self setupTextureFromImage: newImage];
-	}
-
-	UIImage *image = [UIImage imageNamed: @"wmfo.jpg"];
-	_wmfoTexture = [self setupTextureFromImage: image];;
+	// load something to use when URL load fails
+	_genericImage = [UIImage imageNamed: @"radio-icon.png"];
 
 	[self setupDepthTexture];
 
@@ -822,9 +788,27 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) searchDone: (UISearchBar *) searchBar {
+    SignStation *station;
+
     NSLog(@"in searchdone");
     [self addRecognizers];
+
+    if (_searchStation.canceled)
+	return;
+
+    SearchStationResults *iterator = [[SearchStationResults alloc]
+					 initWithSearchStation: _searchStation];
+    while((station = [iterator getNext]) != nil) {
+	if (station.isSelected)
+	    [_allStations addObject: station];
+    }
+
+    [self computeLayout];
+
     _searchStation = nil;
+
+    // force a redraw
+    [self animationOn];
 }
 
 - (void) displayAppOptions
@@ -841,7 +825,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 				       initWithFrame: self.frame
 					    ViewCont: self->_vc];
 	    [self removeRecognizers];
-	    [self addSubview: self->_searchStation];
+	    // [self addSubview: self->_searchStation];
 	    [self->_searchStation setCallback: self WithSel: @selector(searchDone:)];
 	}];
     [alert addAction: action];

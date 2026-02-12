@@ -16,7 +16,7 @@
 
 	CGRect signFrame;
 
-	float vertMargin = 25;
+	float vertMargin = vc.topMargin;
 
 	// We reserve vertMargin at the top and bottom of the screen.
 	// Then the signFrame gets 90% of the remaining space, the

@@ -8,11 +8,10 @@
 #import "ViewController.h"
 #import "TopView.h"
 
-@interface ViewController ()
-
-@end
-
-@implementation ViewController
+@implementation ViewController {
+    UIView *_origView;
+    float _topMargin;
+}
 
 - (void)viewDidLoad {
     UIView *view;
@@ -21,7 +20,9 @@
     NSLog(@"In viewDidLoad");
     [super viewDidLoad];
 
-    view = [[TopView alloc] initWithFrame: rect ViewCont: self];
+    _topMargin = 25;
+
+    _origView = view = [[TopView alloc] initWithFrame: rect ViewCont: self];
     self.view = view;
 
     // Do any additional setup after loading the view.
@@ -29,6 +30,14 @@
 						green:0.80
 						 blue:0.80
 						alpha:1.0];
+}
+
+- (void) setTopView: (UIView *) view {
+    self.view = view;
+}
+
+- (void) restoreTopView {
+    self.view = _origView;
 }
 
 @end

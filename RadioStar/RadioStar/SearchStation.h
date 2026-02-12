@@ -19,7 +19,7 @@
 @end
 
 @interface SearchStationResults : NSObject
-- (void) initWithSearchStation: (SearchStation *) search;
+- (SearchStationResults *) initWithSearchStation: (SearchStation *) search;
 
 // returns nil when out of entries
 - (SignStation *) getNext;

@@ -5,6 +5,10 @@
     NSString *_shortDescr;
     NSString *_streamUrl;
     NSString *_iconUrl;
+    NSString *_streamType;
+    UIImage *_iconImage;
+
+    uint32_t _streamRateKb;
 
     // row and column, both 0 based
     SignCoord _rowColumn;

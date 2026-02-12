@@ -1,6 +1,7 @@
 #import "SearchStation.h"
 #import "MFANCGUtil.h"
 #import "MFANSocket.h"
+#import "ViewController.h"
 
 #include "radioscan.h"
 
@@ -8,6 +9,7 @@
 // canceled.  It doesn't indicate completion until the
 // asynchronous thread completes.
 @implementation SearchStation {
+    ViewController *_vc;
     UISearchBar *_searchBar;
     UITableView *_stationTable;
     float _rowHeight;
@@ -47,8 +49,13 @@
     CGRect searchFrame;
     CGRect tableFrame;
 
+    frame = vc.view.frame;
+    frame.origin.y = vc.topMargin;
+    frame.size.height -= vc.topMargin;
+
     self = [super initWithFrame: frame];
     if (self != nil) {
+	_vc = vc;
 	_signStations = [[NSMutableArray alloc] init];
 	searchFrame = frame;
 	searchFrame.size.height *= 0.1;
@@ -90,6 +97,8 @@
 	[self addSubview: _stationTable];
 
 	_canceled = NO;
+
+	[vc setTopView: self];
     }
 
     return self;
@@ -112,7 +121,8 @@
     NSLog(@"search complete");
     _canceled = NO;
     [_searchBar resignFirstResponder];
-    [self removeFromSuperview];
+    // [self removeFromSuperview];
+    [_vc restoreTopView];
     
     [self doNotify];
 }
@@ -121,7 +131,8 @@
     NSLog(@"search canceled");
     _canceled = YES;
     [_searchBar resignFirstResponder];
-    [self removeFromSuperview];
+    // [self removeFromSuperview];
+    [_vc restoreTopView];
     
     [self doNotify];
 }
@@ -170,9 +181,30 @@
 	    newStation.isRecording = NO;
 
 	    // TODO: find best stream to use
+	    RadioScanStation::Entry *ep;
+	    RadioScanStation::Entry *bestEp = nullptr;
+	    uint32_t bestRate = 0;
+	    for(ep = _stationp->_entries.head(); ep; ep=ep->_dqNextp) {
+		if (ep->_streamRateKb >= bestRate) {
+		    bestRate = ep->_streamRateKb;
+		    bestEp = ep;
+		}
+	    }
+	    if (bestEp != nullptr) {
+		newStation.streamUrl = [NSString stringWithUTF8String:
+						     bestEp->_streamUrl.c_str()];
+		newStation.streamRateKb = bestEp->_streamRateKb;
+		newStation.streamType = [NSString stringWithUTF8String:
+						      bestEp->_streamType.c_str()];
+	    }
 
 	    // origin is set by layout code later.
-	    [_signStations addObject: newStation];
+	    if (bestEp != nil) {
+		[_signStations addObject: newStation];
+	    } else {
+		NSLog(@"internal error -- returned station %@ has no streams",
+		      newStation.stationName);
+	    }
 	    NSLog(@"querymonitor added station %@ %@",
 		  newStation.stationName, newStation.shortDescr);
 	} else {
@@ -308,30 +340,22 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     else
 	cell.accessoryType = UITableViewCellAccessoryNone;
 
-#if 0
-    imageHeight = 8.0 * 12 / 10;
-    image = [_popMediaSel imageByIx: realIx size: imageHeight];
-    if (image == nil) {
-	if (imageHeight != _scaledDefaultImageSize || _scaledDefaultImage == nil) {
-	    _scaledDefaultImage = resizeImage(_defaultImage, imageHeight);
-	    _scaledDefaultImageSize = imageHeight;
-	}
-	image = _scaledDefaultImage;
-    }
-
-
-    [[cell imageView] setImage: image];
-#else
-    if ([station.iconUrl length] == 0)
-	[[cell imageView] setImage: _scaledGenericImage];
-    else {
+    UIImage *image;
+    if ([station.iconUrl length] == 0) {
+	// [[cell imageView] setImage: _scaledGenericImage];
+	CGSize nameSize;
+	nameSize.width = 100.0;
+	nameSize.height = 30.0;
+	image = [self imageFromText: station.stationName Size: nameSize];
+    } else {
 	NSURL *imageUrl = [NSURL URLWithString: station.iconUrl];
 	NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
-	UIImage *image = [UIImage imageWithData: imageData];
-	UIImage *scaledImage = resizeImage(image, 60);
-	[[cell imageView] setImage: scaledImage];
+	image = [UIImage imageWithData: imageData];
     }
-#endif
+    station.iconImage = image;
+    UIImage *scaledImage = resizeImage(image, 60);
+    [[cell imageView] setImage: scaledImage];
+
     /* make cell clear */
     cell.contentView.backgroundColor = [UIColor clearColor];
     cell.backgroundView.backgroundColor = [UIColor clearColor];
@@ -340,6 +364,40 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     cell.backgroundColor = [UIColor clearColor];
 
     return cell;
+}
+
+- (UIImage *) imageFromText: (NSString *) text Size: (CGSize) size {
+    // 1. Ensure the UIKit context is pushed (necessary if not in drawRect:)
+    //    If you are in a UIView's drawRect:, this is already handled.
+
+    size = [text sizeWithFont: [UIFont systemFontOfSize: size.height]];
+    size.width *= 1.2;
+
+    UIGraphicsBeginImageContext(size);
+
+    // 2. Define the text and attributes
+    UIFont *font = [UIFont systemFontOfSize: size.height];
+    UIColor *textColor = [UIColor blackColor];
+
+    NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
+    paragraphStyle.alignment = NSTextAlignmentCenter; // Example alignment
+
+    NSDictionary *attributes = @{
+        NSFontAttributeName: font,
+        NSForegroundColorAttributeName: textColor,
+        NSParagraphStyleAttributeName: paragraphStyle
+    };
+
+    // 3. Define the drawing rectangle
+    CGRect textRect = CGRectMake(0.0, 0.0, size.width, size.height);
+
+    // 4. Draw the string
+    [text drawInRect:textRect withAttributes:attributes]; // Or use drawAtPoint for single line
+
+    UIImage *resultImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return resultImage;
 }
 
 - (void) tableView: (UITableView *) tview didSelectRowAtIndexPath: (NSIndexPath *) path
@@ -361,9 +419,14 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     uint32_t _ix;
 }
 
-- (void) initWithSearchStation: (SearchStation *) search {
-    _ix = 0;
-    _searchStation = search;
+- (SearchStationResults *) initWithSearchStation: (SearchStation *) search {
+    self = [super init];
+    if (self != nil) {
+	_ix = 0;
+	_searchStation = search;
+    }
+
+    return self;
 }
 
 // returns nil when out of entries

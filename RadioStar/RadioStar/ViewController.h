@@ -9,5 +9,11 @@
 
 @interface ViewController : UIViewController
 
+@property float topMargin;
+
+- (void) setTopView: (UIView *) view;
+
+- (void) restoreTopView;
+
 @end
 

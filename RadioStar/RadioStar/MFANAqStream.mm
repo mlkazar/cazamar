@@ -335,19 +335,6 @@ MFANAqStream_PacketsProc( void *contextp,
 	return;
     }
 
-#if 0
-    if (aqp->_isRecording) {
-	aqp->_recordedBytes += numBytes;
-	code = (uint32_t) fwrite(inDatap, 1, numBytes, aqp->_recordingFilep);
-	if (code != numBytes) {
-	    NSLog(@"recording error %d should be %d", (int) code, (int) numBytes);
-	    aqp->_isRecording = NO;
-	    fclose(aqp->_recordingFilep);
-	    aqp->_recordingFilep = NULL;
-	}
-    }
-#endif
-
     packetsCopied = 0;
     bytesCopied = 0;
     for(uint32_t i=0;i<numPackets;i++) {
