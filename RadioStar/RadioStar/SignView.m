@@ -13,8 +13,10 @@
 
 #import "GraphMath.h"
 #import "MFANAqStream.h"
+#import "MFANFileWriter.h"
 #import "SignView.h"
 #import "SearchStation.h"
+#import "SignSave.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -680,18 +682,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_vc = vc;
 	_allStations = [[NSMutableOrderedSet alloc] init];
 
-	[self addStation: @"WYEP"
-	      shortDescr: @"Where music matters"
-	       streamUrl: @"https://ais-sa3.cdnstream1.com/2557_128.mp3"
-		 iconUrl: @"https://wyep.org/apple-touch-icon.png"
-	       rowColumn: SignCoordMake(0,0)];
-
-	[self addStation: @"WESA"
-	      shortDescr: @"Where news matters"
-	       streamUrl: @"https://ais-sa3.cdnstream1.com/2556_128.mp3"
-		 iconUrl: @"https://wesa.org/apple-touch-icon.png"
-	       rowColumn: SignCoordMake(1,0)];
-
 	// assign origin points to all stations in world space Note
 	// that world space's origin is in the center, and each icon's
 	// object's center in object space is at (0,0).
@@ -727,6 +717,24 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_playingStation = nil;
 
 	[self addRecognizers];
+
+	[SignSave  restoreStationsFromFile: _allStations];
+
+	if ([_allStations count] == 0) {
+	    [self addStation: @"WYEP"
+		  shortDescr: @"Where music matters"
+		   streamUrl: @"https://ais-sa3.cdnstream1.com/2557_128.mp3"
+		     iconUrl: @"https://wyep.org/apple-touch-icon.png"
+		   rowColumn: SignCoordMake(0,0)];
+
+	    [self addStation: @"WESA"
+		  shortDescr: @"Where news matters"
+		   streamUrl: @"https://ais-sa3.cdnstream1.com/2556_128.mp3"
+		     iconUrl: @"https://wesa.org/apple-touch-icon.png"
+		   rowColumn: SignCoordMake(1,0)];
+	}
+
+	[self computeLayout];
     }
 
     return self;
@@ -772,6 +780,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [self computeLayout];
 
     _searchStation = nil;
+
+    [SignSave saveStationsToFile: _allStations];
 
     // force a redraw
     [self animationOn];

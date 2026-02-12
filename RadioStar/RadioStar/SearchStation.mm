@@ -331,9 +331,13 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     cell.textLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 32];
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
-    cell.detailTextLabel.text = station.shortDescr;
+    cell.detailTextLabel.text = [NSString stringWithFormat: @"%@[%dkb %@]",
+					  station.shortDescr,
+					  station.streamRateKb,
+					  station.streamType];
     cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 16];
     cell.detailTextLabel.textColor = [UIColor greenColor];
+    cell.detailTextLabel.adjustsFontSizeToFitWidth = YES;
 
     if (station.isSelected)
 	cell.accessoryType = UITableViewCellAccessoryCheckmark;
