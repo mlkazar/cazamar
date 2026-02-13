@@ -837,6 +837,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
     [alert addAction: action];
 
+    action = [UIAlertAction actionWithTitle:@"Remove station"
+				      style:UIAlertActionStyleDefault
+				    handler:^(UIAlertAction *act) {
+	    [self removeStation: station];
+	    [self animationOn];
+	}];
+    [alert addAction: action];
+
     action = [UIAlertAction actionWithTitle:@"Cancel"
                                       style: UIAlertActionStyleDefault
                                     handler:^(UIAlertAction *act) {
@@ -845,6 +853,16 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [alert addAction: action];
 
     [_vc presentViewController: alert animated:YES completion: nil];
+}
+
+- (void) removeStation: (SignStation *) station {
+    if (station == _playingStation) {
+	[self stopRadio];
+	_playingStation = nil;
+    }
+
+    [_allStations removeObject: station];
+    [self computeLayout];
 }
 
 - (void) longPressed: (UILongPressGestureRecognizer *) sender {
