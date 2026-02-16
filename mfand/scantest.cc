@@ -54,8 +54,9 @@ displayStations(RadioScanQuery *queryp)
 
         printf("Streams:\n");
         for(ep = stationp->_entries.head(); ep; ep=ep->_dqNextp) {
-            printf("%s with type=%s rate=%d kbits/sec\n",
-                   ep->_streamUrl.c_str(), ep->_streamType.c_str(), ep->_streamRateKb);
+            printf("%s with type=%s rate=%d kbits/sec(icy-br=%d)\n",
+                   ep->_streamUrl.c_str(), ep->_streamType.c_str(), ep->_streamRateKb,
+                   ep->_sawIcyBr);
         }
         printf("End of stream list\n\n");
     }

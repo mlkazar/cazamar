@@ -17,10 +17,14 @@
 #include "radiostream.h"
 
 @implementation MFANAqStreamPacket {
+    // probably useless since sender may have buffered up a lot of
+    // audio
     uint64_t _ms;
+
     std::string _data;
     NSString *_playingSong;
     AudioStreamPacketDescription _descr;
+    uint32_t _bitRate;
 }
 
 - (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr {
@@ -202,8 +206,13 @@
 
     uint64_t _packetStreamVersion;
 
-    // TODO: get rid of this, or modify getDataFormat to use it
+    // TODO: get rid of this, or modify getDataFormat to use it.  Note we use
+    // it to get frame durations.
     AudioStreamBasicDescription _dataFormat;
+
+    // Figures for computing how much time packet represents.
+    float _packetDuration;
+    float _frameDuration;
 
     // an array of MFANAqStreamPacket objects.
     // can't use a dictionary, because there's no way to search for
@@ -296,6 +305,11 @@ MFANAqStream_PropertyProc( void *contextp,
 
 	NSLog(@"PropertyProc has properties");
 	aqp->_haveProperties = YES;
+	aqp->_packetDuration = (1 / aqp->_dataFormat.mSampleRate) *
+	    aqp->_dataFormat.mFramesPerPacket;
+	aqp->_frameDuration = (1 / aqp->_dataFormat.mSampleRate);
+	NSLog(@"packet duration=%f frame duration=%f",
+	      aqp->_packetDuration, aqp->_frameDuration);
     }
 }
 
@@ -340,10 +354,13 @@ MFANAqStream_PacketsProc( void *contextp,
     for(uint32_t i=0;i<numPackets;i++) {
 	int64_t packetOffset = packetsp[i].mStartOffset;
 	int64_t packetSize = packetsp[i].mDataByteSize;
+	int64_t framesInPacket = packetsp[i].mVariableFramesInPacket;
 
 	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
 	[packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
 	packet.playingSong = aqp->_currentPlaying;
+	NSLog(@"packet framesInPacket=%ld duration=%f generic packet duration=%f",
+	      framesInPacket, framesInPacket * aqp->_frameDuration, aqp->_packetDuration);
 	[aqp->_packetArray addObject: packet];
 
 	packetsCopied++;

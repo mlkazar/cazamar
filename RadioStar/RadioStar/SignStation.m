@@ -38,13 +38,21 @@
     // 1. Ensure the UIKit context is pushed (necessary if not in drawRect:)
     //    If you are in a UIView's drawRect:, this is already handled.
 
+    // Graphics context doesn't handle 0 width contexts
+    if ([text length] <= 0) {
+	text = @"??";
+    }
+
     size = [text sizeWithFont: [UIFont systemFontOfSize: size.height]];
     size.width *= 1.2;
 
     UIGraphicsBeginImageContext(size);
 
-    // 2. Define the text and attributes
-    UIFont *font = [UIFont systemFontOfSize: size.height];
+    // 2. Define the text and attributes.  The '-2' reducing the
+    // height below works around a weirdness where the lowest pixel in
+    // a character gets duplicated as a vertical paint drip in gray
+    // across the bottom of the graphics image.
+    UIFont *font = [UIFont systemFontOfSize: size.height-2];
     UIColor *textColor = [UIColor blackColor];
 
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];

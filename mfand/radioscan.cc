@@ -180,6 +180,7 @@ RadioScanStation::streamApply( std::string url,
             code = reqp->findIncomingHeader("icy-br", &brValue);
             if (code == 0) {
                 _streamRateKb = atoi(brValue.c_str());
+                _sawIcyBr = 1;
             }
 
             /* this will terminate the RST call when data is next delivered on
@@ -933,6 +934,7 @@ RadioScanQuery::browseFile() {
         stationp->_iconUrl = iconUrl;
         // these are defaults if the stream doesn't have a header
         stationp->_streamRateKb = bitRate;
+        stationp->_sawIcyBr = 0;
         stationp->_streamType = codec;
     }
 
@@ -1340,7 +1342,7 @@ RadioScanStation::stwCallback(void *contextp, const char *urlp)
     else
         streamTypep = stationp->_streamType.c_str();
 
-    stationp->addStreamEntry(urlp, streamTypep, stationp->_streamRateKb);
+    stationp->addStreamEntry(urlp, streamTypep, stationp->_streamRateKb, stationp->_sawIcyBr);
     
     return 0;
 }
@@ -1555,7 +1557,10 @@ RadioScanStation::del()
  * 'http://foo.com/bar.pls'
  */
 void
-RadioScanStation::addStreamEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb)
+RadioScanStation::addStreamEntry(const char *streamUrlp,
+                                 const char *typep,
+                                 uint32_t streamRateKb,
+                                 int sawIcyBr)
 {
     Entry *ep;
 
@@ -1569,6 +1574,7 @@ RadioScanStation::addStreamEntry(const char *streamUrlp, const char *typep, uint
     ep->_streamUrl = std::string(streamUrlp);
     ep->_alive = -1;
     ep->_streamRateKb = streamRateKb;
+    ep->_sawIcyBr = sawIcyBr;
     ep->_streamType = typep;
     _scanp->takeLock();
     _entries.append(ep);

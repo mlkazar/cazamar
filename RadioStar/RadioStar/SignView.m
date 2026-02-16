@@ -863,6 +863,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     [_allStations removeObject: station];
     [self computeLayout];
+
+    [SignSave saveStationsToFile: _allStations];
 }
 
 - (void) longPressed: (UILongPressGestureRecognizer *) sender {

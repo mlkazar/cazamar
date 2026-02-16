@@ -104,9 +104,11 @@ class RadioScanStation {
         std::string _streamUrl;
         std::string _streamType;
         int8_t _alive;  /* -1 means unknown, 0 is no, 1 is yes */
+        int8_t _sawIcyBr;       // saw icy-br
 
         Entry() {
             _alive = -1;
+            _sawIcyBr = 0;
         }
     };
 
@@ -128,6 +130,7 @@ class RadioScanStation {
     // the url may expand into multiple stream URLs
     std::string _sourceUrl;
     uint32_t _streamRateKb;    /* station stream rate in kbits/second */
+    uint8_t _sawIcyBr;
     std::string _streamType;
 
     void init(RadioScanQuery *queryp) {
@@ -135,7 +138,10 @@ class RadioScanStation {
         _scanp = queryp->_scanp;
     }
 
-    void addStreamEntry(const char *streamUrlp, const char *typep, uint32_t streamRateKb);
+    void addStreamEntry(const char *streamUrlp,
+                        const char *typep,
+                        uint32_t streamRateKb,
+                        int sawIcyBr);
 
     int32_t streamApply(std::string url,
                         streamUrlProc *urlProcp,
@@ -180,6 +186,7 @@ class RadioScanStation {
 
     RadioScanStation() {
         _inQueryList = false;
+        _sawIcyBr = 0;
     }
 };
 
