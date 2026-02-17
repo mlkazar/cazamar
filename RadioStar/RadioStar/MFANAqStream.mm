@@ -210,6 +210,12 @@
     // it to get frame durations.
     AudioStreamBasicDescription _dataFormat;
 
+    // failure tracking state to see if we got too many failures in a
+    // short period.
+    bool _failed;
+    uint32_t _failedWindowMs;		// # of milliseconds for hard failure detect
+    uint32_t _failedWindowCount;	// # of failures in that window past which stream is dead
+
     // Figures for computing how much time packet represents.
     float _packetDuration;
     float _frameDuration;
@@ -359,7 +365,7 @@ MFANAqStream_PacketsProc( void *contextp,
 	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
 	[packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
 	packet.playingSong = aqp->_currentPlaying;
-	NSLog(@"packet framesInPacket=%ld duration=%f generic packet duration=%f",
+	NSLog(@"packet framesInPacket=%lld duration=%f generic packet duration=%f",
 	      framesInPacket, framesInPacket * aqp->_frameDuration, aqp->_packetDuration);
 	[aqp->_packetArray addObject: packet];
 
@@ -603,6 +609,10 @@ MFANAqStream_rsControlProc( void *contextp,
 
 	_pthreadWaiters = 0;
 
+	_failed = NO;
+	_failedWindowMs = 4000;
+	_failedWindowCount = 6;
+
 	_radioStreamThread = [[NSThread alloc] initWithTarget: self
 					       selector: @selector(playAsync:)
 					       object: nil];
@@ -622,6 +632,8 @@ MFANAqStream_rsControlProc( void *contextp,
     NSLog(@"in playAsync");
     // Just keep restarting the radiostream until we're told to shut
     // it down.
+    uint64_t lastWindowStartMs = osp_time_ms();
+    uint32_t lastWindowErrorCount = 0;
     while(1) {
 	/* initialize basics */
 	pthread_mutex_lock(&_streamMutex);
@@ -647,6 +659,17 @@ MFANAqStream_rsControlProc( void *contextp,
 	    _radioStreamp = nullptr;
 	}
 	pthread_mutex_unlock(&_streamMutex);
+
+	lastWindowErrorCount++;
+	if (lastWindowErrorCount > _failedWindowCount) {
+	    NSLog(@"%d recent errors in stream, too many to ignore", lastWindowErrorCount);
+	    break;
+	}
+	// Start a new error tracking window
+	if (osp_time_ms() - lastWindowStartMs > _failedWindowMs) {
+	    lastWindowErrorCount = 0;
+	    lastWindowStartMs = osp_time_ms();
+	}
     }
 
     // lock still held

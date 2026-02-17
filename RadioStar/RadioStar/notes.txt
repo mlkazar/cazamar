@@ -10,11 +10,40 @@ Ideas for Radio app
 
 ========Todo========
 
-1 -- Todo items
+** bullet proof playing code
 
-2 -- make sure multi-word queries are properly escaped ('\020' or '+') in
+-- make sure multi-word queries are properly escaped ('\020' or '+') in
 HTTP queries in RadioScan.
 
-3 -- Incremental populate code.
+-- +20 / -20 buttons
 
-4 -- current song needs to be represented in file data stream.
+-- Automatically figure out if browing or searching for a single
+station (pretty much always browse, but watching try treating as a
+name as well)
+
+-- clearer done and cancel buttons during search
+
+-- some way to see which station is playing.
+
+-- trim saved music stream after N minutes
+
+-- incremental image population for search bar and main screen
+
+-- save history per station (or globally).  The latter is probably better.
+
+** current song needs to be represented in file data stream.
+
+-- basic record button.  When recording, don't shutdown stream.
+   Indicate visually.
+
+Longer term items
+
+-- alarm clock functionality?
+
+-- Some way when saving a recording to edit the start and end times.
+
+-- smart record functionality -- by song boundary
+
+-- export recordings somehow
+
+-- use backing file for large streams
