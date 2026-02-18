@@ -19,18 +19,26 @@
 @implementation MFANAqStreamPacket {
     // probably useless since sender may have buffered up a lot of
     // audio
-    uint64_t _ms;
+    uint64_t _startMs;
+    uint32_t _durationMs;
 
     std::string _data;
+    bool _read;
     NSString *_playingSong;
     AudioStreamPacketDescription _descr;
-    uint32_t _bitRate;
+}
+
+- (MFANAqStreamPacket *) init {
+    self = [super init];
+    if (self != nil) {
+	_read = NO;
+    }
+    return self;
 }
 
 - (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr {
     _data.append(data, descr->mDataByteSize);
     _descr = *descr;
-    _ms = osp_time_ms();
 
     return 0;
 }
@@ -48,10 +56,6 @@
     *descr = _descr;
 }
 
-- (uint64_t) getMs {
-    return _ms;
-}
-    
 @end
 
 @implementation MFANAqStreamReader {
@@ -66,12 +70,16 @@
     self = [super init];
     if (self != nil) {
 	_aqStream = stream;
+	MFANAqStreamPacket *packet;
 	uint64_t recordCount = [stream.packetArray count];
 
-	if (recordCount > 0)
-	    _recordMs = [stream.packetArray[recordCount - 1] getMs] + 1;
-	else
+	// start past the last record already in the stream
+	if (recordCount > 0) {
+	    packet = [stream.packetArray lastObject];
+	    _recordMs = packet.startMs + packet.durationMs;
+	} else {
 	    _recordMs = 0;
+	}
 
 	_ix = recordCount;
 	_packetStreamVersion = stream.packetStreamVersion;
@@ -82,8 +90,8 @@
 }
 
 // Called with aq mutex held.
-- ( bool) checkIndexValidity {
-    return (_packetStreamVersion >= _aqStream.packetStreamVersion);
+- ( bool) indexIsValid {
+    return (_packetStreamVersion == _aqStream.packetStreamVersion);
 }
 
 // Called with aq mutex held
@@ -94,8 +102,10 @@
     // time stamp >= the input parameter.
     uint64_t ix;
 
+    MFANAqStreamPacket *packet;
     for(ix = 0; ix < [_aqStream.packetArray count]; ix++) {
-	if ([_aqStream.packetArray[ix] getMs] >= ms)
+	packet = [_aqStream.packetArray objectAtIndex: ix];
+	if (packet.startMs >= ms)
 	    break;
     }
     return ix;
@@ -111,7 +121,7 @@
 - (bool) hasData {
     bool rval;
     pthread_mutex_lock([MFANAqStream streamMutex]);
-    if (!self.checkIndexValidity) {
+    if (!self.indexIsValid) {
 	_ix = [self findPacketIx: _recordMs];
 	_packetStreamVersion = _aqStream.packetStreamVersion;
     }
@@ -142,7 +152,7 @@
 	    return nil;
 	}
 
-	if (!self.checkIndexValidity) {
+	if (!self.indexIsValid) {
 	    _ix = [self findPacketIx: _recordMs];
 	    _packetStreamVersion = _aqStream.packetStreamVersion;
 	}
@@ -153,11 +163,12 @@
 	}
 
 	packet = _aqStream.packetArray[_ix];
-	_recordMs = [packet getMs] + 1;
+	_recordMs = packet.startMs + packet.durationMs;
 	_ix++;
 	break;
     }
     pthread_mutex_unlock([MFANAqStream streamMutex]);
+    packet.read = YES;
     return packet;
 }
 
@@ -206,6 +217,8 @@
 
     uint64_t _packetStreamVersion;
 
+    uint64_t _lastPacketEndMs;
+
     // TODO: get rid of this, or modify getDataFormat to use it.  Note we use
     // it to get frame durations.
     AudioStreamBasicDescription _dataFormat;
@@ -223,7 +236,7 @@
     // an array of MFANAqStreamPacket objects.
     // can't use a dictionary, because there's no way to search for
     // next entry GE than a search key.
-    NSMutableArray *_packetArray;
+    NSMutableOrderedSet *_packetArray;
     pthread_cond_t _packetArrayCv;
 }
 
@@ -319,6 +332,40 @@ MFANAqStream_PropertyProc( void *contextp,
     }
 }
 
+// Must be called with lock held; currently that happens since this is
+// called from code called from rsDataProc, which grabs that lock.
+- (void) pruneOldestMs: (uint64_t) pruneLength {
+    uint64_t startMs;	// time before which we prune everything.
+
+    if (pruneLength > _lastPacketEndMs)
+	return;
+    else
+	startMs = _lastPacketEndMs - pruneLength;
+
+    while(true) {
+	MFANAqStreamPacket *packet;
+	packet = [_packetArray firstObject];
+	if (packet == nil)
+	    break;
+	if (packet.startMs >= startMs)
+	    break;
+
+	// packet exists before the prune time, remove it.
+	NSLog(@"pruning packet with startMs=%lld (startMs=%lld)", packet.startMs, startMs);
+	osp_assert(packet.read == YES);
+	[_packetArray removeObject: packet];
+	{
+	    packet = _packetArray.firstObject;
+	    NSLog(@"remaining count=%ld first=%lld",
+		  (unsigned long) [_packetArray count],
+		  (packet == nil)? 0 : packet.startMs);
+	}
+    }
+
+    // readers' cached indices are now wrong
+    _packetStreamVersion++;
+}
+
 /* this function is called by the parser when a non-zero set of
  * records is available.  We upcall it, and save it to
  * any open file.
@@ -363,15 +410,35 @@ MFANAqStream_PacketsProc( void *contextp,
 	int64_t framesInPacket = packetsp[i].mVariableFramesInPacket;
 
 	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
+
+	// adjust time stamps
+	packet.startMs = aqp->_lastPacketEndMs;
+	if (framesInPacket > 0) {
+	    packet.durationMs = (uint32_t) (framesInPacket * aqp->_frameDuration * 1000.0);
+	} else {
+	    packet.durationMs = (uint32_t)(aqp->_packetDuration * 1000);
+	}
+	aqp->_lastPacketEndMs = packet.startMs + packet.durationMs;
+
 	[packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
 	packet.playingSong = aqp->_currentPlaying;
-	NSLog(@"packet framesInPacket=%lld duration=%f generic packet duration=%f",
-	      framesInPacket, framesInPacket * aqp->_frameDuration, aqp->_packetDuration);
+	if (framesInPacket > 0)
+	    NSLog(@"packet framesInPacket=%lld duration=%f generic packet duration=%f",
+		  framesInPacket, framesInPacket * aqp->_frameDuration, aqp->_packetDuration);
 	[aqp->_packetArray addObject: packet];
 
 	packetsCopied++;
 	bytesCopied += packetSize;
     }
+
+    // NB: if you make this smaller than the implicit delay from the
+    // stream player being behind the incoming stream, this may
+    // trigger pruning of data before the player actually gets to see
+    // it the first time.  Right now, we queue about 256K of data in
+    // the stream player, or about 32 seconds at 64Kbits (a shorter
+    // duration at higher rates of course).  So, you should keep this
+    // above 32000.
+    [aqp pruneOldestMs: 600000];
 
     // notify target that there's data available.  Note that we have
     // the streamMutex at this point, so our notify callback has to be
@@ -574,6 +641,8 @@ MFANAqStream_rsControlProc( void *contextp,
     if (self) {
 	NSLog(@"- AqStream init starts for %p", self);
 
+	_lastPacketEndMs = 0;
+
 	_shuttingDown = NO;
 	_audioStreamHandle = 0;
 	_radioStreamp = nullptr;
@@ -586,7 +655,7 @@ MFANAqStream_rsControlProc( void *contextp,
 	pthread_cond_init(&_packetArrayCv, NULL);
 	_urlString = url;
 
-	_packetArray = [[NSMutableArray alloc] init];
+	_packetArray = [[NSMutableOrderedSet alloc] init];
 
 	_pthreadDone = NO;
 	_isRecording = NO;

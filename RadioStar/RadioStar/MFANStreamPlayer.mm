@@ -306,7 +306,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_currentPlaying = MFANStreamPlayer_getUnknownString();
 	_songCount++;
 
-	_maxBufferSize = 0x4000;
+	_maxBufferSize = 0x6000;
 	_maxPacketCount = 512;
 
         _packetsp = ((AudioStreamPacketDescription *)
@@ -361,7 +361,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
     now = osp_time_ms();
     if (now - _lastManualChange > 3000) {
-	if (now - _lastReturnedMs > 2500) {
+	if (now - _lastReturnedMs > 5000) {
 	    _isPlaying = NO;
 	}
 	else {

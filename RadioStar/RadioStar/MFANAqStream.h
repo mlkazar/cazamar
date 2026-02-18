@@ -61,6 +61,9 @@
 @interface MFANAqStreamPacket : NSObject
 
 @property NSString *playingSong;
+@property uint64_t startMs;
+@property uint32_t durationMs;
+@property bool read;
 
 - (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr;
 
@@ -70,7 +73,7 @@
 
 - (uint64_t) getLength;
 
-- (uint64_t) getMs;
+- (MFANAqStreamPacket *) init;
 @end
 
 @interface MFANAqStreamReader : NSObject
@@ -92,7 +95,7 @@
 
 @interface MFANAqStream : NSObject
 
-@property NSMutableArray *packetArray;
+@property NSMutableOrderedSet *packetArray;
 @property uint64_t packetStreamVersion;
 
 + (pthread_mutex_t *) streamMutex;
