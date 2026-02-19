@@ -179,6 +179,8 @@ MFANStreamPlayer_getUnknownString()
     SEL _songCallbackSel;	/* who to notify, if anyone */
     id _songCallbackObj;	/* ditto */
 
+    NSString *_lastUpcalledSong;
+
     /* buffers start off available, and get filled by an asynchronous
      * process as our MFANStreamPlayer_PacketsProc function is called by
      * the stream parser and sent to the AudioQueue player.
@@ -292,6 +294,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_lastReturnedMs = osp_time_ms();
 	_lastManualChange = osp_time_ms();
 	_lastUpcalledIsPlaying = NO;
+	_lastUpcalledSong = @"[Junk xyzzy]";	// won't match
 	_upcalledShutdownState = NO;
 	_isPlaying= YES;
 	_stateCallbackObj = nil;
@@ -576,6 +579,19 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return audioQueue;
 }
 
+- (void) checkUpcalledSong: (NSString *) playingSong {
+    if (_lastUpcalledSong != playingSong) {
+	_lastUpcalledSong = playingSong;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[self->_songCallbackObj performSelector: self->_songCallbackSel
+					     withObject: playingSong];
+	    });
+#pragma clang diagnostic pop
+    }
+}
+
 - (void) playAsync: (id) junk {
     MFANAqStreamPacket *packet;
     AudioQueueBufferRef bufRefp = nil;
@@ -627,17 +643,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    break;
 	}
 
-	if (lastUpcalledSong != packet.playingSong) {
-	    lastUpcalledSong = packet.playingSong;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-	    dispatch_async(dispatch_get_main_queue(), ^{
-		    [self->_songCallbackObj performSelector: self->_songCallbackSel
-						  withObject: packet.playingSong];
-		});
-#pragma clang diagnostic pop
-	    
-	}
+	[self checkUpcalledSong: packet.playingSong];
 
 	// once we have a packet, we can find out the stream type,
 	// which is required for creating the queue.

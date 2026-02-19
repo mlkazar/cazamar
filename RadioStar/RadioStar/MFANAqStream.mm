@@ -352,7 +352,6 @@ MFANAqStream_PropertyProc( void *contextp,
 
 	// packet exists before the prune time, remove it.
 	NSLog(@"pruning packet with startMs=%lld (startMs=%lld)", packet.startMs, startMs);
-	osp_assert(packet.read == YES);
 	[_packetArray removeObject: packet];
 	{
 	    packet = _packetArray.firstObject;

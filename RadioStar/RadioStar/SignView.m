@@ -29,6 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLBuffer> _vertexBuffer;
     id<MTLBuffer> _rotationBuffer;
     id<MTLBuffer> _indexBuffer;
+    id<MTLBuffer> _infoBuffer;
     id<MTLFunction> _vertexProc;
     id<MTLFunction> _fragmentProc;
     id<MTLRenderPipelineState> _pipeline;
@@ -242,6 +243,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	{._position = {LX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
 	{._position = {LX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
 
+#if 0
 	// front side, top left triangle
 	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
 	{._position = {LX, TY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
@@ -251,6 +253,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	{._position = {RX, TY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
 	{._position = {RX, BY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
 	{._position = {LX, BY, FZ, 1}, ._color={.9, .9, 1, FA}, ._normal = {0, 0, 1} },
+#endif
     };
 
     _vertexBuffer = [_device newBufferWithBytes: vertices
@@ -291,6 +294,14 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     _indexBuffer = [_device newBufferWithBytes: indices
 					length: sizeof(indices)
 				       options: MTLResourceCPUCacheModeDefaultCache];
+};
+
+- (void) setupInfoBuffer {
+    SignInfo signInfo;
+    signInfo._selectedId = -1;
+    _infoBuffer = [_device newBufferWithBytes: &signInfo
+				       length: sizeof(signInfo)
+				      options: MTLResourceCPUCacheModeDefaultCache];
 };
 
 SignCoord SignCoordMake(uint8_t x,uint8_t y) {
@@ -538,9 +549,15 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    [comBuffer renderCommandEncoderWithDescriptor:descr];
 	[backEncoder setRenderPipelineState: _pipeline];
 
+	SignInfo *signInfop = (SignInfo *) [_infoBuffer contents];
+	signInfop->_selectedId = -1;
+
 	SignStation *station;
 	uint32_t signCount = 0;
 	for(station in _allStations) {
+	    if (_playingStation == station)
+		signInfop->_selectedId = signCount;
+
 	    if (signCount >= maxIcons)
 		break;
 
@@ -559,9 +576,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// offset is byte offset into vertex buffer's data.  atIndex
 	// is used to find the buffer (they're assigned indices at
 	// allocation time).
-	[backEncoder setVertexBuffer: _vertexBuffer offset:0 atIndex: 0];
-
-	[backEncoder setVertexBuffer: _rotationBuffer offset:0 atIndex: 1];
+	[backEncoder setVertexBuffer: _vertexBuffer offset: 0 atIndex: 0];
+	[backEncoder setVertexBuffer: _rotationBuffer offset: 0 atIndex: 1];
+	[backEncoder setVertexBuffer: _infoBuffer offset: 0 atIndex: 2];
 
 	[backEncoder setCullMode:MTLCullModeBack];
 	[backEncoder setDepthStencilState: _depthStencil];
@@ -711,6 +728,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	[self setupIndexBuffer];
 
 	[self setupRotationBuffer];
+
+	[self setupInfoBuffer];
 
 	[self setupPipeline];
 
@@ -921,6 +940,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
 	    _playingStation = station;
 	}
+	[self animationOn];
     } else {
 	NSLog(@"ignoring begin tap");
     }

@@ -18,7 +18,12 @@ typedef struct _SignVertex {
     vector_float4 _color;	// RGBA
     vector_float3 _normal;	// XYZ
     vector_float2 _texturePos;	// XY
+    unsigned int _iid;
 } SignVertex;
+
+typedef struct _SignInfo {
+    int _selectedId;
+} SignInfo;
 
 typedef uint16_t SignIndex;
 

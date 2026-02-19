@@ -81,7 +81,7 @@
     if (song != nil) {
 	[_marquee setText: song];
     } else {
-	[_marquee setText: @"[None]"];
+	[_marquee setText: @"[Unknown]"];
     }
 }
 
