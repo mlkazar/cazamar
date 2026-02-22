@@ -10,10 +10,11 @@
 @interface ViewController : UIViewController
 
 @property float topMargin;
+@property UIColor *backgroundColor;
 
-- (void) setTopView: (UIView *) view;
+- (void) pushTopView: (UIView *) view;
 
-- (void) restoreTopView;
+- (void) popTopView;
 
 @end
 

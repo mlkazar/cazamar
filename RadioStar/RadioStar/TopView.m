@@ -14,6 +14,10 @@
     if (self != nil) {
 	CGRect screenFrame = self.frame;
 
+	NSLog(@"FRANE TOPVIEW %fx%f@%f.%f",
+	      screenFrame.size.width, screenFrame.size.height,
+	      screenFrame.origin.x, screenFrame.origin.y);
+
 	CGRect signFrame;
 
 	float vertMargin = vc.topMargin;
@@ -31,6 +35,10 @@
 	SignView *signView = [[SignView alloc] initWithFrame: signFrame ViewCont: vc];
 	_signView = signView;
 	[self addSubview: signView];
+
+	NSLog(@" FRAME SIGNVIEW %fx%f@%f.%f",
+	      signFrame.size.width, signFrame.size.height,
+	      signFrame.origin.x, signFrame.origin.y);
 
 	[signView setSongCallback: self sel:@selector(songChanged:)];
 	[signView setStateCallback: self sel:@selector(stateChanged:)];

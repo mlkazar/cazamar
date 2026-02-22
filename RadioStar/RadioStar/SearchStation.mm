@@ -49,15 +49,25 @@
     CGRect searchFrame;
     CGRect tableFrame;
 
-    frame = vc.view.frame;
-    frame.origin.y = vc.topMargin;
-    frame.size.height -= vc.topMargin;
+    self.frame = vc.view.frame;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
 	_vc = vc;
 	_signStations = [[NSMutableArray alloc] init];
 	searchFrame = frame;
+	searchFrame.origin.y = vc.topMargin;
+	searchFrame.size.height -= searchFrame.origin.y;
+
+	NSLog(@"FRAME searchstation %f x %f at %f.%f",
+	      self.frame.size.width, self.frame.size.height,
+	      self.frame.origin.x, self.frame.origin.y);
+
+	NSLog(@"FRAME searchframe %f x %f at %f.%f",
+	      frame.size.width, frame.size.height, frame.origin.x, frame.origin.y);
+
+	self.backgroundColor = vc.backgroundColor;
+
 	searchFrame.size.height *= 0.1;
 	_rowHeight = 72.0;
 
@@ -91,14 +101,14 @@
 	[_stationTable setDelegate: self];
 	[_stationTable setRowHeight: _rowHeight];
 	[_stationTable setSectionIndexMinimumDisplayRowCount: 20];
-	[_stationTable setBackgroundColor: [UIColor whiteColor]];
+	[_stationTable setBackgroundColor: vc.backgroundColor];
 	_stationTable.sectionIndexBackgroundColor = [UIColor clearColor];
 	[_stationTable setSeparatorStyle: UITableViewCellSeparatorStyleNone];
 	[self addSubview: _stationTable];
 
 	_canceled = NO;
 
-	[vc setTopView: self];
+	[vc pushTopView: self];
     }
 
     return self;
@@ -122,7 +132,7 @@
     _canceled = NO;
     [_searchBar resignFirstResponder];
     // [self removeFromSuperview];
-    [_vc restoreTopView];
+    [_vc popTopView];
     
     [self doNotify];
 }
@@ -132,7 +142,7 @@
     _canceled = YES;
     [_searchBar resignFirstResponder];
     // [self removeFromSuperview];
-    [_vc restoreTopView];
+    [_vc popTopView];
     
     [self doNotify];
 }

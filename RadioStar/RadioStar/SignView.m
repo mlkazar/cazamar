@@ -449,8 +449,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void)setFrame:(CGRect)frame
 {
+#if 0
     // TODO: frame height is too large by origin.y.  Figure out why.
-    frame.size.height -= frame.origin.y;
+    // frame.size.height -= frame.origin.y;
+    // CALayer origin was non-zero, should have been zero.
+#endif
     [super setFrame:frame];
     
     NSLog(@"in SIGNVIEW setframe %f x %f at %f.%f",
@@ -709,7 +712,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	if (_metalLayer == nil)
 	    _metalLayer = [CAMetalLayer layer];
 	_metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-	_metalLayer.frame = self.frame;
+	CGRect trect = self.frame;
+	trect.origin.x = 0;
+	trect.origin.y = 0;
+	_metalLayer.frame = trect;
+	NSLog(@"METAL FRAME %f x %f at %f.%f",
+	  self.frame.size.width, self.frame.size.height,
+	      self.frame.origin.x, self.frame.origin.y);
 
 	[self.layer addSublayer: _metalLayer];
 
@@ -903,8 +912,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 {
     CGSize dims = self.frame.size;
     CGPoint viewOrigin = self.frame.origin;
-    float modelX = ((touchPosition.x - viewOrigin.x) / dims.width) * _xSpace - _xSpace/2;
-    float modelY = _ySpace/2 - ((touchPosition.y - viewOrigin.y) / dims.height) * _ySpace;
+    //    float modelX = ((touchPosition.x - viewOrigin.x) / dims.width) * _xSpace - _xSpace/2;
+    float modelX = (touchPosition.x / dims.width) * _xSpace - _xSpace/2;
+    //   float modelY = _ySpace/2 - ((touchPosition.y - viewOrigin.y) / dims.height) * _ySpace;
+    float modelY = _ySpace/2 - (touchPosition.y / dims.height) * _ySpace;
 
     SignStation *station;
     for(station in _allStations) {

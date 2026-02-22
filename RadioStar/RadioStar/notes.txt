@@ -23,9 +23,9 @@ name as well)
 
 -- clearer done and cancel buttons during search
 
--- some way to see which station is playing.
+** some way to see which station is playing.
 
--- trim saved music stream after N minutes
+** trim saved music stream after N minutes
 
 -- incremental image population for search bar and main screen
 
@@ -35,6 +35,8 @@ name as well)
 
 -- basic record button.  When recording, don't shutdown stream.
    Indicate visually.
+
+-- some visual queue that station search is complete
 
 Longer term items
 

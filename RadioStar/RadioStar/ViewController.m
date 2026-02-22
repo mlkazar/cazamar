@@ -9,8 +9,9 @@
 #import "TopView.h"
 
 @implementation ViewController {
-    UIView *_origView;
+    NSMutableArray *_oldViews;	// of UIView objects
     float _topMargin;
+    UIColor *_backgroundColor;
 }
 
 - (void)viewDidLoad {
@@ -20,24 +21,30 @@
     NSLog(@"In viewDidLoad");
     [super viewDidLoad];
 
-    _topMargin = 25;
+    _oldViews = [[NSMutableArray alloc] init];
 
-    _origView = view = [[TopView alloc] initWithFrame: rect ViewCont: self];
-    self.view = view;
+    _topMargin = 50;
+
+    self.view = [[TopView alloc] initWithFrame: rect ViewCont: self];
+
+    _backgroundColor = [UIColor colorWithRed: 0.80
+				       green:0.80
+					blue:0.80
+				       alpha:1.0];
 
     // Do any additional setup after loading the view.
-    self.view.backgroundColor = [UIColor colorWithRed: 0.80
-						green:0.80
-						 blue:0.80
-						alpha:1.0];
+    self.view.backgroundColor = _backgroundColor;
 }
 
-- (void) setTopView: (UIView *) view {
+- (void) pushTopView: (UIView *) view {
+    [_oldViews addObject: self.view];
     self.view = view;
+    view.backgroundColor = _backgroundColor;
 }
 
-- (void) restoreTopView {
-    self.view = _origView;
+- (void) popTopView {
+    self.view = [_oldViews lastObject];
+    [_oldViews removeLastObject];
 }
 
 @end
