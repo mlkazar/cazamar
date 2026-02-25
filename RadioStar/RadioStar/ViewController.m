@@ -15,7 +15,6 @@
 }
 
 - (void)viewDidLoad {
-    UIView *view;
     CGRect rect = self.view.frame;
 
     NSLog(@"In viewDidLoad");

@@ -14,6 +14,7 @@
 #import "GraphMath.h"
 #import "MFANAqStream.h"
 #import "MFANFileWriter.h"
+#import "RadioHistory.h"
 #import "SignView.h"
 #import "SearchStation.h"
 #import "SignSave.h"
@@ -140,7 +141,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     static const float BY = -boundingY/2;	// bottom y
 
     static const float SA = .25;	// side alpha
-    static const float FA = 0.10;	// front alpha
+    // static const float FA = 0.10;	// front alpha
 
     static const float GLev = 0.6;	// green level for border
 
@@ -841,6 +842,18 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
     [alert addAction: action];
 
+    action = [UIAlertAction actionWithTitle:@"Show history"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+            NSLog(@"show history");
+	    RadioHistory *history;
+	    history = [[RadioHistory alloc] initWithViewController:_vc];
+	    [history setCallback: self WithSel: @selector(historyDone:)];
+	    [history addHistoryStation: @"WMFO" withSong:@"Yellow submarine"];
+	    [_vc pushTopView: history];
+	}];
+    [alert addAction: action];
+
     action = [UIAlertAction actionWithTitle:@"Cancel"
                                       style: UIAlertActionStyleDefault
                                     handler:^(UIAlertAction *act) {
@@ -849,6 +862,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [alert addAction: action];
 
     [_vc presentViewController: alert animated:YES completion: nil];
+}
+
+- (void) historyDone: (id) junk {
+    [_vc popTopView];
 }
 
 - (void) displayStationOptions: (SignStation *) station
@@ -911,7 +928,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (SignStation *) findStationByTouch:(CGPoint) touchPosition
 {
     CGSize dims = self.frame.size;
-    CGPoint viewOrigin = self.frame.origin;
+    // CGPoint viewOrigin = self.frame.origin;
     //    float modelX = ((touchPosition.x - viewOrigin.x) / dims.width) * _xSpace - _xSpace/2;
     float modelX = (touchPosition.x / dims.width) * _xSpace - _xSpace/2;
     //   float modelY = _ySpace/2 - ((touchPosition.y - viewOrigin.y) / dims.height) * _ySpace;

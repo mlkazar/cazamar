@@ -25,6 +25,7 @@
 		7FC015F82F33ECDA002BADD4 /* MarqueeLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FC015F72F33ECDA002BADD4 /* MarqueeLabel.m */; };
 		7FCF3DE52F3E38B8001E34E6 /* MFANFileWriter.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7FCF3DE42F3E38B8001E34E6 /* MFANFileWriter.mm */; };
 		7FD578002F1EF853002187FA /* cthread.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FD577FF2F1EF853002187FA /* cthread.cc */; };
+		7FE4340A2F4DC34E000BC7A4 /* MFANIconButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FE434092F4DC34E000BC7A4 /* MFANIconButton.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +68,9 @@
 		7FCF3DE32F3E38B8001E34E6 /* MFANFileWriter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANFileWriter.h; path = ../MusicFan/MusicFan/MFANFileWriter.h; sourceTree = SOURCE_ROOT; };
 		7FCF3DE42F3E38B8001E34E6 /* MFANFileWriter.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = MFANFileWriter.mm; path = ../MusicFan/MusicFan/MFANFileWriter.mm; sourceTree = SOURCE_ROOT; };
 		7FD577FF2F1EF853002187FA /* cthread.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = cthread.cc; path = ../rpc/cthread.cc; sourceTree = SOURCE_ROOT; };
+		7FE434052F4DC32C000BC7A4 /* RadioStar.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = RadioStar.xcodeproj; sourceTree = SOURCE_ROOT; };
+		7FE434082F4DC34E000BC7A4 /* MFANIconButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANIconButton.h; path = ../MusicFan/MusicFan/MFANIconButton.h; sourceTree = SOURCE_ROOT; };
+		7FE434092F4DC34E000BC7A4 /* MFANIconButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MFANIconButton.m; path = ../MusicFan/MusicFan/MFANIconButton.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -106,9 +110,12 @@
 		7F1E14B82ED6A80D00D08908 = {
 			isa = PBXGroup;
 			children = (
+				7FE434082F4DC34E000BC7A4 /* MFANIconButton.h */,
+				7FE434092F4DC34E000BC7A4 /* MFANIconButton.m */,
 				7FCF3DE32F3E38B8001E34E6 /* MFANFileWriter.h */,
 				7FCF3DE42F3E38B8001E34E6 /* MFANFileWriter.mm */,
 				7FAB244D2F3AA21000D99D4A /* json.h */,
+				7FE434052F4DC32C000BC7A4 /* RadioStar.xcodeproj */,
 				7FAB244E2F3AA21000D99D4A /* json.cc */,
 				7FAB24502F3AA22500D99D4A /* xgml.h */,
 				7FAB24512F3AA22500D99D4A /* xgml.cc */,
@@ -165,6 +172,11 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		7F6DC4462F4EF866004ED68D /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -216,6 +228,12 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7F1E14C22ED6A80D00D08908 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 7F6DC4462F4EF866004ED68D /* Products */;
+					ProjectRef = 7FE434052F4DC32C000BC7A4 /* RadioStar.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				7F1E14C02ED6A80D00D08908 /* RadioStar */,
@@ -242,6 +260,7 @@
 				7F8417FB2F1EF40E00B497E8 /* bufsocket.cc in Sources */,
 				7FAB24522F3AA22500D99D4A /* xgml.cc in Sources */,
 				7FAB244C2F3AA19200D99D4A /* radioscan.cc in Sources */,
+				7FE4340A2F4DC34E000BC7A4 /* MFANIconButton.m in Sources */,
 				7FAB244F2F3AA21000D99D4A /* json.cc in Sources */,
 				7FC015F12F33E161002BADD4 /* MFANCGUtil.m in Sources */,
 				7F8417FC2F1EF40E00B497E8 /* bufgen.cc in Sources */,

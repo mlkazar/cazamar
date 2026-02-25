@@ -598,7 +598,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     uint32_t bytesCopied = 0;
     uint32_t packetsCopied = 0;
     OSStatus osStatus;
-    NSString *lastUpcalledSong;
 
     while(!_shutdown) {
 	if (_streamReader == nil) {

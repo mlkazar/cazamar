@@ -27,7 +27,7 @@ SOFTWARE.
 using namespace metal;
 
 struct SignInfo {
-    int selectedId;
+    unsigned int selectedId;
 };
 
 struct Vertex
@@ -55,7 +55,7 @@ struct Rotations
 
 vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
        constant Rotations *rotations [[buffer(1)]],
-       device SignInfo *signInfo [[buffer(2)]],
+       const device SignInfo *signInfo [[buffer(2)]],
        uint vid [[vertex_id]],
        uint instanceId [[instance_id]])
 {

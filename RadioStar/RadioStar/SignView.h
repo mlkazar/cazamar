@@ -22,7 +22,7 @@ typedef struct _SignVertex {
 } SignVertex;
 
 typedef struct _SignInfo {
-    int _selectedId;
+    unsigned int _selectedId;
 } SignInfo;
 
 typedef uint16_t SignIndex;
