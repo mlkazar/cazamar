@@ -7,6 +7,7 @@
 
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
+#import "RadioHistory.h"
 #import "ViewController.h"
 #import "MFANStreamPlayer.h"
 #import "SignStation.h"
@@ -37,6 +38,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface SignView : UIView
 
+@property RadioHistory *history;
+@property ViewController *vc;
+
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc;
 
 + (Class) layerClass;
@@ -47,7 +51,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel;
 
+- (NSString *) getPlayingStationName;
+
 - (MFANStreamPlayer *) getCurrentPlayer;
+
+- (void) setRadioHistory: (RadioHistory *) history;
 
 @end
 

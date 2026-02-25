@@ -428,7 +428,7 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 {
     UIAlertController *alert = [UIAlertController
 				   alertControllerWithTitle: @"RadioStar"
-						    message: @"History"
+						    message: @"Are you sure?"
 					     preferredStyle: UIAlertControllerStyleAlert];
 
     UIAlertAction *action = [UIAlertAction actionWithTitle:@"Clear History"

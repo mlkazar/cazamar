@@ -7,6 +7,8 @@
     MarqueeLabel *_marquee;
     MFANCoreButton *_playButton;
     SignView *_signView;
+    RadioHistory *_history;
+    ViewController *_vc;
 }
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc {
@@ -21,6 +23,8 @@
 	CGRect signFrame;
 
 	float vertMargin = vc.topMargin;
+
+	_vc = vc;
 
 	// We reserve vertMargin at the top and bottom of the screen.
 	// Then the signFrame gets 90% of the remaining space, the
@@ -70,9 +74,18 @@
 	_playButton = playButton;
 	[playButton addCallback: self withAction:@selector(playPressed:withData:)];
 	[self addSubview: playButton];
+
+	_history = [[RadioHistory alloc] initWithViewController:vc];
+	[_history setCallback: self WithSel: @selector(historyDone:)];
+
+	[signView setRadioHistory: _history];
     }
 
     return self;
+}
+
+- (void) historyDone: (id) junk {
+    [_vc popTopView];
 }
 
 - (void) stateChanged: (id) aplayer {
@@ -88,6 +101,8 @@
     NSString *song = (NSString *) asong;
     if (song != nil) {
 	[_marquee setText: song];
+	[_history addHistoryStation: [_signView getPlayingStationName]
+			   withSong: song];
     } else {
 	[_marquee setText: @"[Unknown]"];
     }

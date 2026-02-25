@@ -71,6 +71,8 @@ NS_ASSUME_NONNULL_BEGIN
 
     id _songCallbackObj;
     SEL _songCallbackSel;
+
+    RadioHistory *_history;
 }
 
 // some defines for the images we're dealing with
@@ -846,11 +848,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
             NSLog(@"show history");
-	    RadioHistory *history;
-	    history = [[RadioHistory alloc] initWithViewController:_vc];
-	    [history setCallback: self WithSel: @selector(historyDone:)];
-	    [history addHistoryStation: @"WMFO" withSong:@"Yellow submarine"];
-	    [_vc pushTopView: history];
+	    if (self.history != nil) {
+		// pop is done by TopView in its history done callback
+		[self.vc pushTopView: self.history];
+	    }
 	}];
     [alert addAction: action];
 
@@ -1007,6 +1008,17 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (MFANStreamPlayer *) getCurrentPlayer {
     return _player;
+}
+
+- (NSString *) getPlayingStationName {
+    if (_playingStation != nil)
+	return _playingStation.stationName;
+    else
+	return @"[Unknown station]";
+}
+
+- (void) setRadioHistory: (RadioHistory *) history {
+    _history = history;
 }
 
 @end
