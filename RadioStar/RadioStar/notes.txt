@@ -29,7 +29,7 @@ name as well)
 
 -- incremental image population for search bar and main screen
 
--- save history per station (or globally).  The latter is probably better.
+** save history per station (or globally).  The latter is probably better.
 
 ** current song needs to be represented in file data stream.
 
