@@ -119,8 +119,9 @@
 
     searchStringp = [_queryString cStringUsingEncoding: NSUTF8StringEncoding];
 
-    _queryp = NULL;	/* searchStation will allocate it */
-    _scanp->searchStation(std::string(searchStringp), &_queryp);
+    _queryp = new RadioScanQuery();
+    _queryp->initSmart(_scanp, std::string(searchStringp));
+    _scanp->searchStation("", &_queryp);
 
     _queryDone = YES;
 

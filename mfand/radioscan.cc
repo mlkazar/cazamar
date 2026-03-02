@@ -695,6 +695,7 @@ RadioScanStation::upperCase(std::string name)
     return result;
 }
 
+// We're going to put the first word in the name and use the others as tags
 int32_t
 RadioScanQuery::searchFile() {
     std::string queryResults;
@@ -834,8 +835,9 @@ RadioScanQuery::returnStation(RadioScanStation *stationp) {
     _stations.append(stationp);
 }
 
+// Can tagList comma separated: all must be present.  Multiple tag= terms, any must be present
 int32_t
-RadioScanQuery::browseFile() {
+RadioScanQuery::browseFile(bool useTag) {
     std::string queryResults;
     char *datap;
     int32_t code;
@@ -845,19 +847,34 @@ RadioScanQuery::browseFile() {
     Json jsonSys;
     RadioScanStation *stationp;
     uint32_t i;
+    std::string tstr;
 
     std::string url = ("http://all.api.radio-browser.info/json/stations/search?");
-    if (_browseCountry.size() > 0) {
-        url.append(std::string("countrycode=") + _browseCountry + "&");
+    if (_countryList.size() > 0) {
+        tstr = _countryList.front();
+        url.append(std::string("countrycode=") + tstr + "&");
     }
-    if (_browseGenre.size() > 0) {
-        url.append(std::string("tag=") + _browseGenre + "&");
+
+    std::list<std::string>::iterator it;
+    for(it = _genreList.begin(); it != _genreList.end(); ++it) {
+        tstr = *it;
+        url.append(std::string("tag=") + tstr + "&");
     }
-    if (_browseState.size() > 0) {
-        url.append(std::string("state=") + _browseState + "?");
+
+    if (_cityList.size() > 0) {
+        tstr = _cityList.front();
+        url.append(std::string("city=") + tstr + "&");
     }
-    // easy way to have a standard termination
-    url.append("limit=100000");
+
+    for(it = _nameList.begin(); it != _nameList.end(); ++it) {
+        tstr = *it;
+        if (useTag)
+            url.append(std::string("tag=") + tstr + "&");
+        else
+            url.append(std::string("name=") + tstr + "&");
+    }
+
+    url.append("limit=10000");
 
     code = _scanp->retrieveContents(url, &queryResults);
     if (code)
@@ -1013,6 +1030,8 @@ RadioScanQuery::isPrefix(std::string prefix, std::string target) {
     return false;
 }
 
+// multiple words concatenated with '+' does an OR search (any keyword hits)
+// Effectively a browse
 int32_t
 RadioScanQuery::searchRadioTime()
 {
@@ -1034,9 +1053,23 @@ RadioScanQuery::searchRadioTime()
     char *datap;
     int64_t tlen;
     RadioScanStation *stationp;
+    uint64_t totalCount;
+    uint32_t i;
+    std::list<std::string>::iterator it;
+
+    if (_nameList.size() <= 0)
+        return 0;
 
     strcpy(tbuffer, "http://opml.radiotime.com/Search.ashx?query=");
-    strcat(tbuffer, _query.c_str());
+
+    totalCount = _nameList.size();
+    for(i=0, it = _nameList.begin(); it != _nameList.end(); ++it, ++i) {
+        strcat(tbuffer, (*it).c_str());
+        if (i < totalCount-1) {
+            // add '+' separator
+            strcat(tbuffer, "+");
+        }
+    }
     strcat(tbuffer, "&types=station&format=mp3,aac");
 
     code = _scanp->retrieveContents(std::string(tbuffer), &data);
@@ -1141,9 +1174,6 @@ RadioScanQuery::searchShoutcast()
     const char *keyStringp = "HF3T2bjHaPcadpSG";
     std::string data;
     char *datap;
-    const char *tp;
-    int eatingSpaces;
-    int32_t count;
     Xgml xgmlSys;
     Xgml::Node *xgmlNodep;
     Xgml::Node *childListp;
@@ -1153,36 +1183,21 @@ RadioScanQuery::searchShoutcast()
     const char *iconUrlp = NULL;
     const char *basep;
     uint32_t stationId=0;
-    int tc;
     RadioScanStation *stationp;
+    uint32_t i;
+    uint64_t totalCount;
+    std::list<std::string>::iterator it;
 
     snprintf(tbuffer, sizeof(tbuffer),
              "http://api.shoutcast.com/legacy/stationsearch?k=%s&limit=100&search=",
              keyStringp);
 
-    /* concatenate words from search string, with spaces turned into '+' characters */
-    eatingSpaces = 1;
-    count = 0;
-    for(tp = _query.c_str(); count < sizeof(tbuffer) - 1024; tp++) {
-        tc = *tp;
-        if (tc == 0)
-            break;
-        if (tc == ' ') {
-            if (eatingSpaces)
-                continue;
-            else {
-                eatingSpaces = 1;
-                strcat(tbuffer, "+");
-                count++;
-            }
-        }
-        else {
-            char dummy[2];
-            dummy[0] = tc;
-            dummy[1] = 0;
-            strcat(tbuffer, dummy);
-            count++;
-            eatingSpaces = 0;
+    totalCount = _nameList.size();
+    for(i=0, it = _nameList.begin(); it != _nameList.end(); ++it, ++i) {
+        strcat(tbuffer, (*it).c_str());
+        if (i < totalCount-1) {
+            // add '+' separator
+            strcat(tbuffer, "+");
         }
     }
 
@@ -1261,6 +1276,7 @@ RadioScanQuery::searchShoutcast()
     return 0;
 }
 
+// This only accepts a single word for callsign.
 int32_t
 RadioScanQuery::searchDar()
 {
@@ -1275,9 +1291,12 @@ RadioScanQuery::searchDar()
     std::string stationShortDescr;
     std::string url;
 
+    if (_nameList.size() <= 0)
+        return 0;
+
     snprintf(tbuffer, sizeof(tbuffer),
             "http://api.dar.fm/uberstationurl.php?callsign=%s&callback=json&partner_token=6670654103",
-            _query.c_str());
+             _nameList.front().c_str());
     code = _scanp->retrieveContents(std::string(tbuffer), &data);
     if (code != 0)
         return code;
@@ -1347,6 +1366,7 @@ RadioScanStation::stwCallback(void *contextp, const char *urlp)
     return 0;
 }
 
+// This only does name searches for four letter station names.
 int32_t
 RadioScanQuery::searchStreamTheWorld()
 {
@@ -1364,8 +1384,9 @@ RadioScanQuery::searchStreamTheWorld()
     stationp->_stationName = RadioScanStation::upperCase(_query);
     stationp->_stationShortDescr = "FM Radio";
     stationp->_stationSource = std::string("StreamTheWorld FM");
+    std::string name = _nameList.front();
     snprintf(tbuffer, sizeof(tbuffer),
-             "http://playerservices.streamtheworld.com/pls/%sFMAAC.pls", _query.c_str());
+             "http://playerservices.streamtheworld.com/pls/%sFMAAC.pls", name.c_str());
     code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp, this);
     if (code || stationp->_entries.count() == 0) {
         delete stationp;
@@ -1382,8 +1403,9 @@ RadioScanQuery::searchStreamTheWorld()
     stationp->_stationName = RadioScanStation::upperCase(_query);
     stationp->_stationShortDescr = "AM Radio";
     stationp->_stationSource = std::string("StreamTheWorld AM");
+    name = _nameList.front();
     snprintf(tbuffer, sizeof(tbuffer),
-             "http://playerservices.streamtheworld.com/pls/%sAMAAC.pls", _query.c_str());
+             "http://playerservices.streamtheworld.com/pls/%sAMAAC.pls", name.c_str());
     code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp, this);
     if (code || stationp->_entries.count() == 0) {
         delete stationp;
@@ -1392,22 +1414,6 @@ RadioScanQuery::searchStreamTheWorld()
     }
     
     return 0;
-}
-
-void
-RadioScanQuery::initBrowse(RadioScan *scanp, 
-                           int32_t maxCount,
-                           std::string country,
-                           std::string state,
-                           std::string city,
-                           std::string genre)
-{
-    _browseMaxCount = maxCount;
-    _browseCountry = country;
-    _browseState = state;
-    _browseCity = city;
-    _browseGenre = genre;
-    _scanp = scanp;
 }
 
 std::string
@@ -1431,12 +1437,60 @@ RadioScanQuery::getStatus()
     return result;
 }
 
-/* call initBrowse, and then browseStations with the resulting initialized query */
+bool
+RadioScanQuery::isDelimeter(char ac) {
+    return (ac == ',' || ac == ' ');
+}
+
 void
-RadioScan::browseStations( RadioScanQuery *resp)
-{
-    resp->_baseStatus = std::string("Browsing radio-browser.info");
-    resp->browseFile();
+RadioScanQuery::addWord(std::string newWord) {
+    const char *tp = newWord.c_str();
+    if (strncmp(tp, "c:", 2) == 0) {
+        _countryList.push_back(newWord);
+    } else if (strncmp(tp, "t:", 2) == 0) {
+        _cityList.push_back(newWord);
+    } else if (strncmp(tp, "g:", 2) == 0) {
+        _genreList.push_back(newWord);
+    } else {
+        _nameList.push_back(newWord);
+    }
+}
+
+// External function to handle searches if you don't know if this is a browse
+// or direct search.
+void
+RadioScanQuery::initSmart(RadioScan *scanp, std::string query) {
+    std::string currentWord;
+
+    _scanp = scanp;
+
+    bool startWord = true;
+    const char *tp = query.c_str();
+    char tc;
+
+    while((tc = *tp++) != 0) {
+        if (startWord) {
+            if (isDelimeter(tc))
+                continue;
+            else {
+                currentWord.append(1, tc);
+                startWord = false;
+            }
+        } else {
+            if (isDelimeter(tc)) {
+                startWord = true;
+                addWord(currentWord);
+                currentWord.clear();
+            } else {
+                currentWord.append(1, tc);
+            }
+        }
+    }
+
+    // here we may have a word left in currentWord
+    if (currentWord.length() > 0) {
+        addWord(currentWord);
+    }
 }
 
 /* external function to do a specific search */
@@ -1444,29 +1498,39 @@ void
 RadioScan::searchStation(std::string query, RadioScanQuery **respp)
 {
     RadioScanQuery *resp;
+    std::string name;
 
     resp = *respp;
     if (resp == NULL) {
         resp = new RadioScanQuery();
+        resp->initSmart(this, query);
+        *respp = resp;
     }
-
-    resp->init(this, query);
-    *respp = resp;
 
     // Most stations have no entries, but some have a whole bunch.
     //
     // TODO: Not clear if it is worth it, but perhaps limit to first 4 results
-    if (query.size() <= 4) {
-        resp->_baseStatus = std::string("Searching StreamTheWorld");
-        resp->searchStreamTheWorld();
-        if (resp->isAborted())
-            return;
+    if (resp->_nameList.size() >= 1) {
+        name = resp->_nameList.front();
+        if (name.size() <= 4) {
+            resp->_baseStatus = std::string("Searching StreamTheWorld");
+            resp->searchStreamTheWorld();
+            if (resp->isAborted())
+                return;
+        }
     }
 
     // This one replaces the file download, which is now generated
-    // from this site.
+    // from this site.  The first call treats all the tokens as
+    // components of the name, and the second call treats them as
+    // tags, any of which being present will match a station.
     resp->_baseStatus = std::string("Searching radio-browser.info");
-    resp->searchFile();
+    resp->browseFile(false);    // words aren't tags, but names
+    if (resp->isAborted())
+        return;
+
+    resp->_baseStatus = std::string("Searching radio-browser.info");
+    resp->browseFile(true);     // words are tags
     if (resp->isAborted())
         return;
 
@@ -1477,7 +1541,6 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     if (resp->isAborted())
         return;
 
-#if 1
     // TODO: sometimes really slow; only use uberstation URL
     // Get rid of this
     /* add entries from DAR.fm */
@@ -1485,16 +1548,12 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     resp->searchDar();
     if (resp->isAborted())
         return;
-#endif
 
-
-#if 1
     // doesn't seem to work for station names, just genres
     resp->_baseStatus = std::string("Searching Shoutcast");
     resp->searchShoutcast();
     if (resp->isAborted())
         return;
-#endif
 
     takeLock();
     

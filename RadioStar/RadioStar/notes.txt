@@ -8,6 +8,8 @@ Ideas for Radio app
 
 4 save recordings.  some UI to select true start and end of song.
 
+5 use photopea for drawing
+
 ========Todo========
 
 ** bullet proof playing code

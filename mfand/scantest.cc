@@ -85,58 +85,19 @@ main(int argc, char **argv)
 
     if (strcmp(argv[1], "lookup") == 0) {
         queryp = new RadioScanQuery();
+        queryp->initSmart(scanp, std::string(argv[2]));
 
         // monitor this query
         chp->init((CThread::StartMethod) &QueryMonitor::start, monitorp, queryp);
 
-        scanp->searchStation(std::string(argv[2]), &queryp);
+        // start the actual search
+        scanp->searchStation(std::string(""), &queryp);
 
         printf("\nAll done with query=%p for string='%s'\n", queryp, queryp->_query.c_str());
 
         displayStations(queryp);
 
         delete queryp;
-    } else if (strcmp(argv[1], "browse") == 0) {
-        printf("Starting browse test\n");
-
-        /* create a new browse query, and pass it to the monitor, and then get rid of
-         * the old query.
-         */
-        queryp = new RadioScanQuery();
-
-        // monitor this query
-        chp->init((CThread::StartMethod) &QueryMonitor::start, monitorp, queryp);
-
-        const char *countryp = "us";    // international country code
-        const char *genrep = "";        // whatever the station is tagged with
-        if (argc > 2) {
-            if (strcasecmp(argv[2], "all") == 0)
-                countryp = "";
-            else
-                countryp = argv[2];
-        }
-        if (argc > 3) {
-            if (strcasecmp(argv[3], "all") == 0)
-                genrep = "";
-            else
-                genrep = argv[3];
-        }
-
-        // ignore state and city for now
-        queryp->initBrowse(scanp, 5, countryp, "", "", genrep);
-
-        monitorp->updateQuery(queryp);
-
-        scanp->browseStations(queryp);
-
-        printf("Back from browsing\n\n");
-
-        monitorp->stop();
-
-        displayStations(queryp);
-
-        delete queryp;
-        queryp = NULL;
     } else {
         printf("unrecognized test operation '%s'\n", argv[1]);
         return -1;

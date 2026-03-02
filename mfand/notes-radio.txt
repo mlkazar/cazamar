@@ -26,13 +26,27 @@ get stations.rsd for tunein:
 http://rb2rs.freemyip.com/latest.zip
 unzip to ~/mac/mfand/stations.rsd
 
-http://radiosure.fr has documentation on all of this.
+http://radiosure.fr has documentation on all of this.  It really points you
+at radio-browser.info.
 
 Actually, you can retrieve the whole database, or do queries, via
 https://fi1.api.radio-browser.info.  Read the doc to get all the
 possible host names for the server.  The doc is at
 api.radio-browser.info, though radio-browser.info gives things like
 apps that use it.
+
+List countries and country code:
+http://de1.api.radio-browser.info/json/countries
+
+List of states:states
+http://de1.api.radio-browser.info/json/states
+
+List of tags:
+http://de1.api.radio-browser.info/json/tags
+
+Advanced search:
+http://de1.api.radio-browser.info/xml/stations/search
+
 
 ----supports genre
 
@@ -53,7 +67,7 @@ dar.fm partner ID = 6670654103
 email michael.kazar@verizon.net
 
 ---- doesn't seem to work for names reliably, though worked for genre
-http://api.shoutcast.com/legacy/stationsearch?k=HF3T2bjHaPcadpSG&limit=100&search=<string+with+spaces>ç
+http://api.shoutcast.com/legacy/stationsearch?k=HF3T2bjHaPcadpSG&limit=100&search=<string+with+spaces>
 shoutcast key=HF3T2bjHaPcadpSG
 email=michael.kazar@verizon.net
 search string has spaces turned into '+'

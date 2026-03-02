@@ -842,37 +842,9 @@ wrapMediaItems(NSArray *mediaArray)
     searchStringp = [_searchString cStringUsingEncoding: NSUTF8StringEncoding];
     NSLog(@"search is %s", searchStringp);
 
-    if (strchr(searchStringp, ':') != nullptr) {
-	NSArray *browseTokens = [_searchString componentsSeparatedByCharactersInSet:
-						   [NSCharacterSet whitespaceCharacterSet]];
-	std::string country;
-	std::string city;
-	std::string state;
-	std::string genre;
-	for(NSString *token in browseTokens) {
-	    searchStringp = [token cStringUsingEncoding: NSUTF8StringEncoding];
-	    if (strncasecmp("c:", searchStringp, 2) == 0) {
-		/* choose random set, matching country */
-		country = std::string(searchStringp+2);
-	    }
-	    else if (strncasecmp("ct:", searchStringp, 3) == 0) {
-		city = std::string(searchStringp + 3);
-	    }
-	    else if (strncasecmp("s:", searchStringp, 2) == 0) {
-		state = std::string(searchStringp + 2);
-	    }
-	    else if (strncasecmp("g:", searchStringp, 2) == 0) {
-		genre = std::string(searchStringp + 2);
-	    }
-	}
-
-	_queryp = new RadioScanQuery();
-	_queryp->initBrowse(_scanp, 16, country, state, city, genre);
-	_scanp->browseStations(_queryp);
-    } else {
-	_queryp = NULL;	/* searchStation will allocate it */
-	_scanp->searchStation(std::string(searchStringp), &_queryp);
-    }
+    _queryp = new RadioScanQuery();
+    _queryp->initSmart(_scanp, searchStringp);
+    _scanp->searchStation("", &_queryp);
     NSLog(@"back from search -- %ld stations", _queryp->_stations.count());
     
     /* now add in all the stations we found */

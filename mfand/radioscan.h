@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <list>
 
 #include "dqueue.h"
 #include "xapi.h"
@@ -28,10 +29,10 @@ public:
 
     std::string _verifyingUrl;  // URL being checked, if any
 
-    std::string _browseCountry;       /* for browsing */
-    std::string _browseState;
-    std::string _browseCity;
-    std::string _browseGenre;
+    std::list<std::string> _nameList;
+    std::list<std::string> _countryList;
+    std::list<std::string> _cityList;;
+    std::list<std::string> _genreList;
     int32_t _browseMaxCount;
 
     RadioScan *_scanp;
@@ -43,6 +44,7 @@ public:
     RadioScanQuery() {
         _refCount = 0;
         _aborted = 0;
+        _browseMaxCount = 10000;
     }
 
     void init(RadioScan *scanp, std::string query) {
@@ -57,6 +59,8 @@ public:
                     std::string city,
                     std::string genre);
 
+    void initSmart(RadioScan *scanp, std::string query);
+
     void freeUnusedStations(std::vector<RadioScanStation *> *stations);
 
     void returnStation(RadioScanStation *stationp);
@@ -67,15 +71,19 @@ public:
 
     int32_t searchDar();
 
+    void addWord(std::string newWord);
+
     int32_t searchFile();
 
     int32_t searchShoutcast();
 
-    int32_t browseFile();
+    int32_t browseFile(bool useTag);
 
     std::string getStatus();
 
     bool isPrefix(std::string prefix, std::string target);
+
+    bool isDelimeter(char ac);
 
     void abort() {
         _aborted = 1;
