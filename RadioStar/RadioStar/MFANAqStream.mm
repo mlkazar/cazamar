@@ -192,10 +192,6 @@
     // This is the string of the song currently playing.
     NSString *_currentPlaying;
 
-    /* our choices for max # of bytes in a buffer, and packets in a buffer */
-    uint32_t _maxBufferSize;
-    uint32_t _maxPacketCount;
-
     /* tracking playing; the stupid AudioQueue property listener
      * doesn't notice if you actually pause playing (another Apple
      * POS).
@@ -351,6 +347,7 @@ MFANAqStream_PropertyProc( void *contextp,
 	    break;
 
 	// packet exists before the prune time, remove it.
+	osp_assert(packet.read);
 	NSLog(@"pruning packet with startMs=%lld (startMs=%lld)", packet.startMs, startMs);
 	[_packetArray removeObject: packet];
 	{
@@ -667,9 +664,6 @@ MFANAqStream_rsControlProc( void *contextp,
 	_lastDataBytes = 0;
 
 	_activeParseCalls = 0;
-
-	_maxBufferSize = 0x4000;
-	_maxPacketCount = 512;
 
 	_streamAttachCounter = 0;
 

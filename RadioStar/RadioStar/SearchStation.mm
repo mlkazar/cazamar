@@ -1,5 +1,6 @@
 #import "SearchStation.h"
 #import "MFANCGUtil.h"
+#import "MFANIconButton.h"
 #import "MFANSocket.h"
 #import "ViewController.h"
 
@@ -34,6 +35,12 @@
     // The search code fills this in with an array of SignStation
     // objects, which get displayed via the _stationTable.
     NSMutableArray *_signStations;
+
+    MFANIconButton *_cancelButton;
+    MFANIconButton *_doneButton;
+    UIPickerView *_pickerView;
+
+    uint32_t _pickerRow;
 }
 
 - (void) doNotify {
@@ -49,15 +56,22 @@
     CGRect searchFrame;
     CGRect tableFrame;
 
+    // TODO: we shouldn't have frame as a parameter -- just confusing.
     self.frame = vc.view.frame;
+    frame = vc.view.frame;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
+	// size for search bar and bottom buttons
+	float verticalViewSize = frame.size.height * 0.1;
+	float searchBarWidthPct = 0.6;
+
 	_vc = vc;
 	_signStations = [[NSMutableArray alloc] init];
 	searchFrame = frame;
+	searchFrame.size.width = frame.size.width * searchBarWidthPct;
 	searchFrame.origin.y = vc.topMargin;
-	searchFrame.size.height -= searchFrame.origin.y;
+	searchFrame.size.height = verticalViewSize;
 
 	NSLog(@"FRAME searchstation %f x %f at %f.%f",
 	      self.frame.size.width, self.frame.size.height,
@@ -66,22 +80,40 @@
 	NSLog(@"FRAME searchframe %f x %f at %f.%f",
 	      frame.size.width, frame.size.height, frame.origin.x, frame.origin.y);
 
+	CGRect textFrame;
+	textFrame = searchFrame;
+	textFrame.origin.x = searchFrame.size.width;
+	textFrame.size.width = frame.size.width * (1 - searchBarWidthPct);
+
 	self.backgroundColor = vc.backgroundColor;
 
-	searchFrame.size.height *= 0.1;
+	// for UITableView
 	_rowHeight = 72.0;
 
 	_stationp = nullptr;
 
 	_searchBar = [[UISearchBar alloc] initWithFrame: searchFrame];
-	_searchBar.showsCancelButton = YES;
-	_searchBar.showsBookmarkButton = YES;
+	_searchBar.showsCancelButton = NO;
+	_searchBar.showsBookmarkButton = NO;
 	_searchBar.delegate = self;
 	[self addSubview: _searchBar];
 
-	tableFrame = frame;
+	_pickerView = [[UIPickerView alloc] initWithFrame: textFrame];
+	[self addSubview: _pickerView];
+	_pickerView.delegate = self;
+	_pickerView.dataSource = self;
+	_pickerView.backgroundColor = [UIColor greenColor];
+	[_pickerView setValue: [UIColor blackColor] forKey: @"textColor"];
+
+	_pickerRow = 0;
+
+	tableFrame.origin.x = 0;
 	tableFrame.origin.y = searchFrame.origin.y + searchFrame.size.height;
-	tableFrame.size.height *= 0.9;
+	tableFrame.size.width = frame.size.width;
+	// use the rest of the vertical space, but reserve one
+	// verticalViewSize for buttons at the bottom.
+	tableFrame.size.height = (frame.size.height - tableFrame.origin.y
+				  - verticalViewSize);
 
 	_genericImage = [UIImage imageNamed: @"radio-icon.png"];
 	_scaledGenericImage = resizeImage(_genericImage, 60);
@@ -106,6 +138,43 @@
 	[_stationTable setSeparatorStyle: UITableViewCellSeparatorStyleNone];
 	[self addSubview: _stationTable];
 
+	// layout cancel and done buttons
+	CGRect cancelFrame;
+	CGRect doneFrame;
+	cancelFrame.origin.y = frame.size.height - verticalViewSize;
+	cancelFrame.size.height = verticalViewSize;
+	cancelFrame.size.width = verticalViewSize; // make it square
+	// center button 1/3 of way across
+	cancelFrame.origin.x = frame.size.width/3 - verticalViewSize/2;
+
+        _cancelButton = [[MFANIconButton alloc]
+			    initWithFrame: cancelFrame
+				    title: @"Cancel"
+				    color: [UIColor colorWithHue: 0.4
+						      saturation: 1.0
+						      brightness: 1.0
+							   alpha: 1.0]
+				     file: @"icon-cancel.png"];
+        [_cancelButton addCallback: self
+		      withAction: @selector(cancelPressed:withData:)];
+        [self addSubview: _cancelButton];
+
+
+	doneFrame = cancelFrame;
+	doneFrame.origin.x = frame.size.width*(2.0/3.0) - verticalViewSize/2;
+
+        _doneButton = [[MFANIconButton alloc]
+			  initWithFrame: doneFrame
+				  title: @"Done"
+				  color: [UIColor colorWithHue: 0.4
+						    saturation: 1.0
+						    brightness: 1.0
+							 alpha: 1.0]
+				   file: @"icon-done.png"];
+        [_doneButton addCallback: self
+		      withAction: @selector(donePressed:withData:)];
+        [self addSubview: _doneButton];
+
 	_canceled = NO;
 
 	[vc pushTopView: self];
@@ -116,21 +185,31 @@
 
 - (void) searchAsync: (id) junk {
     const char *searchStringp;
+    RadioScan::ScanType scanType;
 
     searchStringp = [_queryString cStringUsingEncoding: NSUTF8StringEncoding];
 
+    if (_pickerRow == 0) {
+	scanType = RadioScan::useName;
+    } else if (_pickerRow == 1) {
+	scanType = RadioScan::useTag;
+    }
+
     _queryp = new RadioScanQuery();
     _queryp->initSmart(_scanp, std::string(searchStringp));
-    _scanp->searchStation("", &_queryp);
+    _scanp->searchStation(_queryp, scanType);
 
     _queryDone = YES;
 
     [NSThread exit];
 }
 
-- (void) searchBarBookmarkButtonClicked: (UISearchBar *) searchBar {
-    NSLog(@"search complete");
-    _canceled = NO;
+- (void) cancelPressed: (id) sender withData: (NSNumber *) number {
+    NSLog(@"search canceled");
+    _canceled = YES;
+    if (_queryTimer != nil) {
+	[_queryTimer invalidate];
+    }
     [_searchBar resignFirstResponder];
     // [self removeFromSuperview];
     [_vc popTopView];
@@ -138,11 +217,13 @@
     [self doNotify];
 }
 
-- (void) searchBarCancelButtonClicked:(UISearchBar *)searchBar {
-    NSLog(@"search canceled");
-    _canceled = YES;
+- (void) donePressed: (id) sender withData: (NSNumber *) number {
+    NSLog(@"search complete");
+    if (_queryTimer != nil) {
+	[_queryTimer invalidate];
+    }
+    _canceled = NO;
     [_searchBar resignFirstResponder];
-    // [self removeFromSuperview];
     [_vc popTopView];
     
     [self doNotify];
@@ -416,6 +497,33 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     [_stationTable reloadRowsAtIndexPaths:
 		 [NSArray arrayWithObject: path]
 			 withRowAnimation: UITableViewRowAnimationAutomatic];
+}
+
+- (NSInteger) numberOfComponentsInPickerView:(UIPickerView *) pickerView {
+     return 1;
+}
+
+- (NSInteger) pickerView:(UIPickerView *) pickerView
+ numberOfRowsInComponent:(NSInteger) comp {
+    return 2;
+}
+
+- (NSString *) pickerView:(UIPickerView *) pickerView
+	      titleForRow:(NSInteger)row
+	     forComponent:(NSInteger)component {
+    if (row == 0)
+	return @"By name";
+    else if (row == 1)
+	return @"By keywords";
+    else
+	return @"BOOP!";
+}
+
+- (void)pickerView:(UIPickerView *)thePickerView 
+      didSelectRow:(NSInteger)row 
+       inComponent:(NSInteger)component {
+
+    NSLog(@"in picker select %d", row);
 }
 
 @end

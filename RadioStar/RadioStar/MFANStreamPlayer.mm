@@ -135,7 +135,7 @@
    sterams are AAC_ADTSType.
  */
 
-static const uint32_t MFANStreamPlayer_nBuffers = 16;
+static const uint32_t MFANStreamPlayer_nBuffers = 48;
 
 /* global function */
 NSString *
@@ -614,7 +614,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    osp_assert(_audioQueue != nil);
 	    bufRefp->mAudioDataByteSize = bytesCopied;
 
-	    NSLog(@"just queued %d bytes", bytesCopied);
+	    NSLog(@"player out of stream data, enqueued %d bytes avail=%d",
+		  bytesCopied, _availCount);
 	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 						 bufRefp,
 						 packetsCopied,
@@ -689,7 +690,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 					     bufRefp,
 					     packetsCopied,
 					     _packetsp);
-	NSLog(@"enqueued %d bytes %d packets", bytesCopied, packetsCopied);
+	NSLog(@"full buffer, enqueued %d bytes %d packets avail=%d",
+	      bytesCopied, packetsCopied, _availCount);
 	if (osStatus != 0) {
 	    /* buffer didn't get queued so we have to avoid losing it */
 	    NSLog(@"! streamplayer enqueue failed, repushing");

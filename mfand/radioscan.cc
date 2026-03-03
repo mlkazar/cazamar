@@ -837,7 +837,7 @@ RadioScanQuery::returnStation(RadioScanStation *stationp) {
 
 // Can tagList comma separated: all must be present.  Multiple tag= terms, any must be present
 int32_t
-RadioScanQuery::browseFile(bool useTag) {
+RadioScanQuery::browseFile(RadioScan::ScanType scanType) {
     std::string queryResults;
     char *datap;
     int32_t code;
@@ -868,9 +868,9 @@ RadioScanQuery::browseFile(bool useTag) {
 
     for(it = _nameList.begin(); it != _nameList.end(); ++it) {
         tstr = *it;
-        if (useTag)
+        if (scanType == RadioScan::useTag)
             url.append(std::string("tag=") + tstr + "&");
-        else
+        else if (scanType == RadioScan::useName)
             url.append(std::string("name=") + tstr + "&");
     }
 
@@ -1033,7 +1033,7 @@ RadioScanQuery::isPrefix(std::string prefix, std::string target) {
 // multiple words concatenated with '+' does an OR search (any keyword hits)
 // Effectively a browse
 int32_t
-RadioScanQuery::searchRadioTime()
+RadioScanQuery::searchRadioTime(RadioScan::ScanType scanType)
 {
     char tbuffer[1024];
     int32_t code;
@@ -1057,7 +1057,14 @@ RadioScanQuery::searchRadioTime()
     uint32_t i;
     std::list<std::string>::iterator it;
 
+    // TODO: there is a browse API
+    // (see https://tunein-api.corehacked.com/endpoints-and-streaming/endpoints/browse-endpoint)
+    // that we might be able to make use of, but the categories are numbers and it isn't clear
+    // how to map them to meanings.
     if (_nameList.size() <= 0)
+        return 0;
+
+    if (scanType != RadioScan::useName)
         return 0;
 
     strcpy(tbuffer, "http://opml.radiotime.com/Search.ashx?query=");
@@ -1167,7 +1174,7 @@ RadioScanQuery::searchRadioTime()
 }
 
 int32_t
-RadioScanQuery::searchShoutcast()
+RadioScanQuery::searchShoutcast(RadioScan::ScanType scanType)
 {
     int32_t code;
     char tbuffer[4096];
@@ -1188,8 +1195,12 @@ RadioScanQuery::searchShoutcast()
     uint64_t totalCount;
     std::list<std::string>::iterator it;
 
+    // Supports only tag searches
+    if (scanType != RadioScan::useTag)
+        return 0;
+
     snprintf(tbuffer, sizeof(tbuffer),
-             "http://api.shoutcast.com/legacy/stationsearch?k=%s&limit=100&search=",
+             "http://api.shoutcast.com/legacy/genresearch?k=%s&limit=100&search=",
              keyStringp);
 
     totalCount = _nameList.size();
@@ -1278,7 +1289,7 @@ RadioScanQuery::searchShoutcast()
 
 // This only accepts a single word for callsign.
 int32_t
-RadioScanQuery::searchDar()
+RadioScanQuery::searchDar(RadioScan::ScanType scanType)
 {
     char tbuffer[1024];
     int32_t code;
@@ -1290,6 +1301,9 @@ RadioScanQuery::searchDar()
     RadioScanStation *stationp;
     std::string stationShortDescr;
     std::string url;
+
+    if (scanType != RadioScan::useName)
+        return 0;
 
     if (_nameList.size() <= 0)
         return 0;
@@ -1313,27 +1327,13 @@ RadioScanQuery::searchDar()
         return -3;
     url = tnodep->_children.head()->_name;
 
-    snprintf(tbuffer, sizeof(tbuffer),
-            "http://api.dar.fm/playlist.php?callsign=%s&callback=json&partner_token=6670654103",
-            _query.c_str());
-    code = _scanp->retrieveContents(std::string(tbuffer), &data);
-    if (code == 0) {
-        datap = const_cast<char *>(data.c_str());
-        code = jsonSys.parseJsonChars(&datap, &rootNodep);
-        if (code == 0) {
-            tnodep = rootNodep->searchForChild("genre");
-            if (tnodep)
-                stationShortDescr = tnodep->_children.head()->_name;
-        }
-    }
-
     delete rootNodep;
 
     stationp = new RadioScanStation();
     stationp->init(this);
 
     /* set these so that addStreamEntry has some useful defaults */
-    stationp->_stationName = RadioScanStation::upperCase(_query);
+    stationp->_stationName = RadioScanStation::upperCase(_nameList.front());
     stationp->_stationShortDescr = stationShortDescr;
     stationp->_stationSource = std::string("dar.fm");
 
@@ -1368,12 +1368,15 @@ RadioScanStation::stwCallback(void *contextp, const char *urlp)
 
 // This only does name searches for four letter station names.
 int32_t
-RadioScanQuery::searchStreamTheWorld()
+RadioScanQuery::searchStreamTheWorld(RadioScan::ScanType scanType)
 {
     char tbuffer[1024];
     int32_t code;
     std::string result;
     RadioScanStation *stationp;
+
+    if (scanType != RadioScan::useName)
+        return 0;
 
     if (isAborted())
         return -1;
@@ -1495,17 +1498,9 @@ RadioScanQuery::initSmart(RadioScan *scanp, std::string query) {
 
 /* external function to do a specific search */
 void
-RadioScan::searchStation(std::string query, RadioScanQuery **respp)
+RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
 {
-    RadioScanQuery *resp;
     std::string name;
-
-    resp = *respp;
-    if (resp == NULL) {
-        resp = new RadioScanQuery();
-        resp->initSmart(this, query);
-        *respp = resp;
-    }
 
     // Most stations have no entries, but some have a whole bunch.
     //
@@ -1514,7 +1509,7 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
         name = resp->_nameList.front();
         if (name.size() <= 4) {
             resp->_baseStatus = std::string("Searching StreamTheWorld");
-            resp->searchStreamTheWorld();
+            resp->searchStreamTheWorld(scanType);
             if (resp->isAborted())
                 return;
         }
@@ -1525,19 +1520,14 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     // components of the name, and the second call treats them as
     // tags, any of which being present will match a station.
     resp->_baseStatus = std::string("Searching radio-browser.info");
-    resp->browseFile(false);    // words aren't tags, but names
-    if (resp->isAborted())
-        return;
-
-    resp->_baseStatus = std::string("Searching radio-browser.info");
-    resp->browseFile(true);     // words are tags
+    resp->browseFile(scanType);    // words aren't tags, but names
     if (resp->isAborted())
         return;
 
     // TODO: this can return a whole bunch of things, so search for
     // the query string in the name before doing more work.
     resp->_baseStatus = std::string("Searching RadioTime");
-    resp->searchRadioTime();
+    resp->searchRadioTime(scanType);
     if (resp->isAborted())
         return;
 
@@ -1545,13 +1535,13 @@ RadioScan::searchStation(std::string query, RadioScanQuery **respp)
     // Get rid of this
     /* add entries from DAR.fm */
     resp->_baseStatus = std::string("Searching dar.fm");
-    resp->searchDar();
+    resp->searchDar(scanType);
     if (resp->isAborted())
         return;
 
     // doesn't seem to work for station names, just genres
     resp->_baseStatus = std::string("Searching Shoutcast");
-    resp->searchShoutcast();
+    resp->searchShoutcast(scanType);
     if (resp->isAborted())
         return;
 

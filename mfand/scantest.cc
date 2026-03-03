@@ -91,7 +91,7 @@ main(int argc, char **argv)
         chp->init((CThread::StartMethod) &QueryMonitor::start, monitorp, queryp);
 
         // start the actual search
-        scanp->searchStation(std::string(""), &queryp);
+        scanp->searchStation(queryp);
 
         printf("\nAll done with query=%p for string='%s'\n", queryp, queryp->_query.c_str());
 

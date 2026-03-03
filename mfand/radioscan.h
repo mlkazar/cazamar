@@ -20,6 +20,49 @@ class RadioScan;
 class RadioScanQuery;
 class RadioScanStation;
 
+/* instantiate a radioscan object once, and then perform multiple search operations.
+ * It creates its own cdisp object now, but if we ever have multiple users of a 
+ * thread pool, we can pass in a cdisp instead.
+ */
+class RadioScan {
+    dqueue<RadioScanQuery> _activeQueries;
+    static CThreadMutex _lock;
+
+ public:
+    /* max # of 301 redirects before we call it quits */
+    static const uint32_t _maxRedirects = 4;
+
+    // unqualified tokens might be interpreted as components of a
+    // name, or of a keyword tag.
+    typedef enum _ScanType {
+        useName = 1,
+        useTag = 2,
+    } ScanType;
+
+    XApi *_xapip;
+    BufGen *_stwBufp;
+    XApi::ClientConn *_stwConnp;
+    BufGenFactory *_factoryp;
+
+    void init(BufGenFactory *factoryp, std::string dirPrefix);
+
+    void searchStation(RadioScanQuery *resp, ScanType=useName);
+
+    void browseStations( RadioScanQuery *resp);
+
+    static void takeLock() {
+        _lock.take();
+    }
+
+    static void releaseLock() {
+        _lock.release();
+    }
+
+    static void scanSort(int32_t *datap, int32_t count);
+
+    int32_t retrieveContents(std::string url , std::string *strp);
+};
+
 class RadioScanQuery {
     friend class RadioScan;
 private:
@@ -65,19 +108,19 @@ public:
 
     void returnStation(RadioScanStation *stationp);
 
-    int32_t searchStreamTheWorld();
+    int32_t searchStreamTheWorld(RadioScan::ScanType scanType);
 
-    int32_t searchRadioTime();
+    int32_t searchRadioTime(RadioScan::ScanType scanType);
 
-    int32_t searchDar();
+    int32_t searchDar(RadioScan::ScanType scanType);
 
     void addWord(std::string newWord);
 
     int32_t searchFile();
 
-    int32_t searchShoutcast();
+    int32_t searchShoutcast(RadioScan::ScanType scanType);
 
-    int32_t browseFile(bool useTag);
+    int32_t browseFile(RadioScan::ScanType scanType);
 
     std::string getStatus();
 
@@ -196,40 +239,4 @@ class RadioScanStation {
         _inQueryList = false;
         _sawIcyBr = 0;
     }
-};
-
-/* instantiate a radioscan object once, and then perform multiple search operations.
- * It creates its own cdisp object now, but if we ever have multiple users of a 
- * thread pool, we can pass in a cdisp instead.
- */
-class RadioScan {
-    dqueue<RadioScanQuery> _activeQueries;
-    static CThreadMutex _lock;
-
- public:
-    /* max # of 301 redirects before we call it quits */
-    static const uint32_t _maxRedirects = 4;
-
-    XApi *_xapip;
-    BufGen *_stwBufp;
-    XApi::ClientConn *_stwConnp;
-    BufGenFactory *_factoryp;
-
-    void init(BufGenFactory *factoryp, std::string dirPrefix);
-
-    void searchStation(std::string query, RadioScanQuery **respp);
-
-    void browseStations( RadioScanQuery *resp);
-
-    static void takeLock() {
-        _lock.take();
-    }
-
-    static void releaseLock() {
-        _lock.release();
-    }
-
-    static void scanSort(int32_t *datap, int32_t count);
-
-    int32_t retrieveContents(std::string url , std::string *strp);
 };

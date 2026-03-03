@@ -7,7 +7,9 @@
 @interface SearchStation : UIView<UITextViewDelegate,
     UITableViewDelegate,
     UITableViewDataSource,
-    UISearchBarDelegate> 
+    UISearchBarDelegate,
+    UIPickerViewDataSource,
+    UIPickerViewDelegate>
 
 @property bool canceled;
 @property NSMutableArray *signStations;
