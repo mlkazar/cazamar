@@ -12,6 +12,13 @@ Ideas for Radio app
 
 ========Todo========
 
+-- Stall a bit until buffers are loaded when starting new station
+
+-- Clicking on blank area should display useful stuff like hihghlight and
+web stream info.
+
+-- Add stop button.
+
 ** bullet proof playing code
 
 ** make sure multi-word queries are properly escaped ('\020' or '+') in
@@ -38,7 +45,7 @@ name as well)
 -- basic record button.  When recording, don't shutdown stream.
    Indicate visually.
 
--- some visual queue that station search is complete
+** some visual queue that station search is complete
 
 Longer term items
 
@@ -51,3 +58,5 @@ Longer term items
 -- export recordings somehow
 
 -- use backing file for large streams
+
+-- shazam button to identify playing song.
