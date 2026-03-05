@@ -12,6 +12,7 @@
 @import simd;
 
 #import "GraphMath.h"
+#import "ManualStation.h"
 #import "MFANAqStream.h"
 #import "MFANFileWriter.h"
 #import "RadioHistory.h"
@@ -58,6 +59,8 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLDepthStencilState> _depthStencil;
 
     SearchStation *_searchStation;
+
+    ManualStation *_manualStation;
 
     SignStation *_playingStation;
     MFANAqStream *_stream;
@@ -818,6 +821,35 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [self animationOn];
 }
 
+- (void) manualDone: (UISearchBar *) searchBar {
+    NSLog(@"in searchdone");
+    [_vc popTopView];
+
+    [self addRecognizers];
+
+    if (_manualStation.canceled) {
+	_manualStation = nil;
+	return;
+    }
+
+    SignStation *station = [[SignStation alloc] init];
+    station.stationName = _manualStation.stationName;
+    station.shortDescr = @"Added manually";
+    station.streamUrl = _manualStation.stationUrl;
+    station.iconUrl = @"";
+    station.rowColumn = SignCoordMake(0,0);	// will be filled in
+    [_allStations addObject: station];
+
+    [self computeLayout];
+
+    _manualStation = nil;
+
+    [SignSave saveStationsToFile: _allStations];
+
+    // force a redraw
+    [self animationOn];
+}
+
 - (void) displayAppOptions
 {
     UIAlertController *alert = [UIAlertController
@@ -825,7 +857,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 						    message: @"Options"
 					     preferredStyle: UIAlertControllerStyleAlert];
 
-    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Add station"
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Search for station"
                                                      style: UIAlertActionStyleDefault
                                                    handler:^(UIAlertAction *act) {
 	    self->_searchStation = [[SearchStation alloc]
@@ -834,6 +866,17 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    [self removeRecognizers];
 	    // [self addSubview: self->_searchStation];
 	    [self->_searchStation setCallback: self WithSel: @selector(searchDone:)];
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Manually add station"
+				      style: UIAlertActionStyleDefault
+				    handler:^(UIAlertAction *act) {
+	    self->_manualStation = [[ManualStation alloc]
+					    initWithViewCont: self->_vc];
+	    [self removeRecognizers];
+	    [self->_manualStation setCallback: self withSel: @selector(manualDone:)];
+	    [self->_vc pushTopView: self->_manualStation];
 	}];
     [alert addAction: action];
 

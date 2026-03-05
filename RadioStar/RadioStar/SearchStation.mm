@@ -40,6 +40,9 @@
     MFANIconButton *_doneButton;
     UIPickerView *_pickerView;
 
+    // displaying state of running query
+    UIAlertController *_alert;
+
     uint32_t _pickerRow;
 }
 
@@ -183,9 +186,13 @@
     return self;
 }
 
+// This thread creates the query, but the query gets freed on the main
+// thread to simplify concurrency control.  Once _queryDone is set,
+// the main thread is allowed to do whatever it wants with _queryp,
+// like delete it.
 - (void) searchAsync: (id) junk {
     const char *searchStringp;
-    RadioScan::ScanType scanType;
+    RadioScan::ScanType scanType = RadioScan::useName;
 
     searchStringp = [_queryString cStringUsingEncoding: NSUTF8StringEncoding];
 
@@ -204,6 +211,8 @@
     [NSThread exit];
 }
 
+// cancel button pressed before starting or after completion of search
+// *NOT* code that runs when search is aborted.
 - (void) cancelPressed: (id) sender withData: (NSNumber *) number {
     NSLog(@"search canceled");
     _canceled = YES;
@@ -217,10 +226,12 @@
     [self doNotify];
 }
 
+// All done with the search process.
 - (void) donePressed: (id) sender withData: (NSNumber *) number {
     NSLog(@"search complete");
     if (_queryTimer != nil) {
 	[_queryTimer invalidate];
+	_queryTimer = nil;
     }
     _canceled = NO;
     [_searchBar resignFirstResponder];
@@ -229,6 +240,57 @@
     [self doNotify];
 }
 
+- (void) displayQueryStatus: (RadioScanQuery *) queryp {
+    if (_alert == nil) {
+	_alert = [UIAlertController
+				   alertControllerWithTitle: @"RadioStar"
+						    message: @"Searching"
+					     preferredStyle: UIAlertControllerStyleAlert];
+
+	UIAlertAction *action = [UIAlertAction
+				    actionWithTitle:@"Stop search"
+					      style: UIAlertActionStyleDefault
+					    handler:^(UIAlertAction *act) {
+		NSLog(@"stopping search");
+		if (self->_queryp)
+		    self->_queryp->abort();
+	    }];
+	[_alert addAction: action];
+	[_vc presentViewController:_alert animated:YES completion: nil];
+    }
+
+    if (queryp != nullptr) {
+	std::string status = queryp->getStatus();
+	_alert.message = [NSString stringWithUTF8String: status.c_str()];
+    } else {
+	_alert.message = @"Search complete";
+    }
+}
+
+// Call this after the query monitor has completed waiting for the
+// RadioScanQuery to terminate, to cleanup any other state created by
+// the queryMonitor.
+- (void) cleanupQueryMonitor {
+    [_alert dismissViewControllerAnimated: YES completion: nil];
+    _alert = nil;
+
+    if (_queryTimer != nil) {
+	[_queryTimer invalidate];
+	_queryTimer = nil;
+    }
+
+    if (_queryp) {
+	delete _queryp;
+	_queryp = nullptr;
+    }
+}
+
+// This does more than monitor the query -- it is responsible for
+// aborting the query and cleaning up the RadioScanQuery object.  It
+// implicitly doesn't terminate before the query's termination is
+// acknowledged, which is important because this code doesn't handle
+// more than one outstanding query at a time (which we could fix if
+// necessary).
 - (void) queryMonitor: (id) junk {
     SignStation *newStation;
     bool doAdd = NO;
@@ -309,8 +371,11 @@
     // trigger reload of uitable's visible parts.
     [_stationTable reloadData];
 
+    [self displayQueryStatus: _queryp];
+
     if (_queryDone) {
 	// nothing until done button pressed
+	[self cleanupQueryMonitor];
     } else {
 	_queryTimer = [NSTimer scheduledTimerWithTimeInterval: 0.5
 						       target:self
@@ -523,7 +588,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
       didSelectRow:(NSInteger)row 
        inComponent:(NSInteger)component {
 
-    NSLog(@"in picker select %d", row);
+    NSLog(@"in picker select %d", (int) row);
 }
 
 @end
