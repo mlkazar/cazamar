@@ -12,12 +12,12 @@ Ideas for Radio app
 
 ========Todo========
 
--- Stall a bit until buffers are loaded when starting new station
+** Stall a bit until buffers are loaded when starting new station (was bug)
 
--- Clicking on blank area should display useful stuff like hihghlight and
-web stream info.
+-- Clicking on blank area should display useful stuff like hihghlight
+and web stream info (partly done)
 
--- Add stop button.
+** Add stop button.
 
 ** bullet proof playing code
 
@@ -51,9 +51,9 @@ name as well)
 
 ** hiccups during Bach play
 
--- stop doesn't stop very fast
+** stop doesn't stop very fast
 
--- redo UI for displaying station details (speed, type, URLs)
+** redo UI for displaying station details (speed, type, URLs)
 
 -- RPC timeout takes too long when we switch to/from 5G.
 

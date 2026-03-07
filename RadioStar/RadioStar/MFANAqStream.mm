@@ -16,6 +16,8 @@
 #include "bufsocket.h"
 #include "radiostream.h"
 
+#define _showIo false
+
 @implementation MFANAqStreamPacket {
     // probably useless since sender may have buffered up a lot of
     // audio
@@ -73,7 +75,7 @@
 	MFANAqStreamPacket *packet;
 	uint64_t recordCount = [stream.packetArray count];
 
-	NSLog(@"AqStream attaching reader after %d stream packets", recordCount);
+	NSLog(@"AqStream attaching reader after %lld stream packets", recordCount);
 
 	// start past the last record already in the stream
 	if (recordCount > 0) {
@@ -355,12 +357,6 @@ MFANAqStream_PropertyProc( void *contextp,
 	// osp_assert(packet.read);
 	NSLog(@"pruning packet with startMs=%lld (startMs=%lld)", packet.startMs, startMs);
 	[_packetArray removeObject: packet];
-	{
-	    packet = _packetArray.firstObject;
-	    NSLog(@"remaining count=%ld first=%lld",
-		  (unsigned long) [_packetArray count],
-		  (packet == nil)? 0 : packet.startMs);
-	}
     }
 
     // readers' cached indices are now wrong
@@ -403,7 +399,9 @@ MFANAqStream_PacketsProc( void *contextp,
 	return;
     }
 
-    NSLog(@"AqStream parser received %d bytes w %d packets", numBytes, numPackets);
+    if (_showIo) {
+	NSLog(@"AqStream parser received %d bytes w %d packets", numBytes, numPackets);
+    }
 
     packetsCopied = 0;
     bytesCopied = 0;
@@ -588,8 +586,6 @@ MFANAqStream_rsControlProc( void *contextp,
 	RadioStream::EvSongChangedData *songp = (RadioStream::EvSongChangedData *) evDatap;
 	if (songp->_song.length() > 0) {
 	    newSong = [NSString stringWithUTF8String: songp->_song.c_str()];
-	    NSLog(@"- AqPlayer %p newsong is %@ songp=%p songStr=%p",
-		  aqp, newSong, songp, songp->_song.c_str());
 	    aqp->_currentPlaying = newSong;
 	} else {
 	    aqp->_currentPlaying = nil;

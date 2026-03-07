@@ -163,9 +163,9 @@
 
 - (void) playPressed: (id) sender withData: (NSNumber *)movement {
     MFANStreamPlayer *player = [_signView getCurrentPlayer];
-    if (player == nil)
-	return;
-    if ([player isPaused])
+    if (player == nil) {
+	[_signView startCurrentStation];
+    } else if ([player isPaused])
 	[player resume];
     else
 	[player pause];

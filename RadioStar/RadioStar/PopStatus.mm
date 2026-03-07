@@ -4,6 +4,8 @@
 #import "ViewController.h"
 #import "MarqueeLabel.h"
 
+#include "osp.h"
+
 @implementation PopStatus {
     ViewController *_vc;
     MFANIconButton *_doneButton;
@@ -11,7 +13,7 @@
     MFANAqStream *_stream;
     SignStation *_station;
 
-    uint64_t startTimeMs;
+    uint64_t _startTimeMs;
 
     // tags
     UILabel *_stationNameLabel;
@@ -32,6 +34,7 @@
 
     id _callbackObj;
     SEL _callbackSel;
+    bool _didNotify;
 }
 
 - (void) setCallback: (id) obj withSel: (SEL) sel {
@@ -40,6 +43,10 @@
 }
 
 - (void) doNotify {
+    if (_didNotify)
+	return;
+    _didNotify = true;
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
     if (_callbackObj != nil) {
@@ -75,7 +82,11 @@
 					       alpha: 0.5];
 
 	UIColor *textColor = [UIColor blackColor];
-	UIColor *bkgColor = [UIColor redColor];
+	UIColor *labelColor = [UIColor colorWithRed: 0.9
+					      green: 0.9
+					       blue: 0.9
+					      alpha: 1.0];
+	UIColor *valueColor = [UIColor whiteColor];
 
 	self.backgroundColor = screenColor;
 
@@ -95,7 +106,7 @@
 	labelFrame.size.height = labelHeight;
 
 	_stationNameLabel = [[UILabel alloc] initWithFrame:labelFrame];
-	_stationNameLabel.backgroundColor = bkgColor;
+	_stationNameLabel.backgroundColor = labelColor;
 	_stationNameLabel.text = @"Station name";
 	_stationNameLabel.textColor = [UIColor blackColor];
 	_stationNameLabel.textAlignment = NSTextAlignmentLeft;
@@ -110,14 +121,14 @@
 	/* add first text box */
 	_stationNameView = [[MarqueeLabel alloc] initWithFrame: boxFrame];
 	[_stationNameView setTextColor: textColor];
-	[_stationNameView setBackgroundColor: [UIColor yellowColor]];
+	[_stationNameView setBackgroundColor: valueColor];
 	[_stationNameView setText: station.stationName];
 	[self addSubview: _stationNameView];
 
 	
 	labelFrame.origin.y += labelHeight + frame.size.height * 0.05;
 	_speedAndTypeLabel = [[UILabel alloc] initWithFrame:labelFrame];
-	_speedAndTypeLabel.backgroundColor = [UIColor clearColor];
+	_speedAndTypeLabel.backgroundColor = labelColor;
 	_speedAndTypeLabel.text = @"Stream rate";
 	_speedAndTypeLabel.textColor = [UIColor blackColor];
 	_speedAndTypeLabel.textAlignment = NSTextAlignmentLeft;
@@ -127,7 +138,7 @@
 	boxFrame.origin.y += boxHeight + frame.size.height * 0.05;
 	_speedAndTypeView = [[UILabel alloc] initWithFrame: boxFrame];
 	[_speedAndTypeView setTextColor: textColor];
-	[_speedAndTypeView setBackgroundColor: [UIColor yellowColor]];
+	[_speedAndTypeView setBackgroundColor: valueColor];
 	NSString *satString;
 	if (_player == nil)
 	    satString = @"No data";
@@ -156,10 +167,33 @@
 		      withAction: @selector(donePressed:withData:)];
 	[self addSubview: _doneButton];
 
-	startTimeMs = osp_time_ms();
+	_startTimeMs = osp_time_ms();
+
+	_didNotify = false;
+
+	_timer = [NSTimer scheduledTimerWithTimeInterval: 1.0
+						  target: self
+						selector: @selector(updateStats:)
+						userInfo: nil
+						 repeats: YES];
     }
 
     return self;
+}
+
+- (void) updateStats: (id) junk {
+    NSString *satString;
+    if (_player == nil)
+	satString = @"No data";
+    else
+	satString = [NSString stringWithFormat: @"%8.0f kbps %@",
+			      [_player getDataRate] / 1000,
+			      [_player getEncodingType]];
+    [_speedAndTypeView setText: satString];
+
+    if (osp_time_ms() - _startTimeMs > 40000) {
+	[self doNotify];
+    }
 }
 
 - (void) shutdown {

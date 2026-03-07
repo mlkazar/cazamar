@@ -15,6 +15,7 @@
 #import "ManualStation.h"
 #import "MFANAqStream.h"
 #import "MFANFileWriter.h"
+#import "PopStatus.h"
 #import "RadioHistory.h"
 #import "SignView.h"
 #import "SearchStation.h"
@@ -65,6 +66,8 @@ NS_ASSUME_NONNULL_BEGIN
     SignStation *_playingStation;
     MFANAqStream *_stream;
     MFANStreamPlayer *_player;
+
+    PopStatus *_popStatus;
 
     UIGestureRecognizer *_pressRecognizer;
     UIGestureRecognizer *_longPressRecognizer;
@@ -962,12 +965,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateBegan) {
 	SignStation *station = [self findStationByTouch: point];
-	if (station != nil)
-	    [self displayStationOptions: station];
-	else
-	    [self displayAppOptions];
-    } else {
-	NSLog(@"ignoring begin long press");
+	[self displayAppOptions];
     }
 }
 
@@ -993,40 +991,90 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     return nil;
 }
 
+- (void) startStation: (SignStation *) station {
+    _stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
+    _player = [[MFANStreamPlayer alloc] initWithStream: _stream];
+    [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
+    [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+}
+
+- (void) startCurrentStation {
+    if (_playingStation != nil && _player == nil) {
+	[self startStation: _playingStation];
+    }
+}
+
 - (void) pressed: (UILongPressGestureRecognizer *) sender {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateEnded) {
 	SignStation *station = [self findStationByTouch: point];
-	SignStation *prevStation = _playingStation;
-	NSLog(@"tap station=%p name=%@", station, station.stationName);
+	if (station != nil) {
+	    SignStation *prevStation = _playingStation;
+	    NSLog(@"tap station=%p name=%@", station, station.stationName);
 
-	// stop playing old station
-	if (prevStation != nil) {
-	    [self stopRadio];
-	    _playingStation = nil;
-	}
+	    if (station == _playingStation) {
+		if (_player == nil) {
+		    [self startStation: station];
+		} else if ([_player isPaused]) {
+		    [_player resume];
+		} else {
+		    [self showPopStatus];
+		}
+		return;
+	    }
 
-	// start new station if different.
-	if (station != nil && station != prevStation) {
-	    _stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
-	    _player = [[MFANStreamPlayer alloc] initWithStream: _stream];
-	    [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
-	    [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
-	    _playingStation = station;
+	    // stop playing old station
+	    if (prevStation != nil) {
+		[self stopRadio];
+		_playingStation = nil;
+	    }
+
+	    // start new station if different.  Player and stream are nil
+	    // together.
+	    if (station != nil && _player == nil) {
+		[self startStation: station];
+		_playingStation = station;
+	    }
+	    [self animationOn];
+	} else {
+	    // random press
+	    [self showPopStatus];
 	}
-	[self animationOn];
     } else {
-	NSLog(@"ignoring begin tap");
+	[self displayAppOptions];
     }
 }
 
+- (void) showPopStatus {
+    [self removeRecognizers];
+    CGRect childFrame = self.frame;
+    childFrame.origin.x = 0;
+    childFrame.origin.y = 0;
+    _popStatus = [[PopStatus alloc] initWithFrame: childFrame
+					 viewCont: _vc
+					   stream: _stream
+					   player: _player
+					  station: _playingStation];
+    [self addSubview: _popStatus];
+    [_popStatus setCallback: self withSel: @selector(popStatusDone:withData:)];
+}
+
+- (void) popStatusDone:(id) j1 withData:(id) j2 {
+    [self addRecognizers];
+    [_popStatus shutdown];
+    [_popStatus removeFromSuperview];
+ }
+
 - (void) stopRadio {
     NSLog(@"in restartradio");
-    [_player shutdown];
+    if (_player != nil)
+	[_player shutdown];
     NSLog(@"streamplayer shutdown done");
-    [_stream shutdown];
+    if (_stream != nil)
+	[_stream shutdown];
     _player = nil;
     _stream = nil;
+    [self animationOn];
     if (_stateCallbackObj != nil) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"

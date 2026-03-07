@@ -144,6 +144,8 @@ MFANStreamPlayer_getUnknownString()
     return @"[Unknown]";
 }
 
+#define _showIo false
+
 @implementation MFANStreamPlayer {
     AudioQueueRef _audioQueue;
     AudioStreamBasicDescription _dataFormat;	/* detailed data format info from parser */
@@ -274,8 +276,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     /* push the buffer for reuse */
     pthread_mutex_lock(&_playerMutex);
     aqp->_queuedBytes -= bufRefp->mAudioDataByteSize;
-    NSLog(@"buffer with %d bytes returned, leaving %lld in audio queue",
-	  bufRefp->mAudioDataByteSize, aqp->_queuedBytes);
+    if (_showIo) {
+	NSLog(@"buffer with %d bytes returned, leaving %lld in audio queue",
+	      bufRefp->mAudioDataByteSize, aqp->_queuedBytes);
+    }
     [aqp pushBuffer: bufRefp];
     aqp->_lastReturnedMs = now;
 
@@ -363,7 +367,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 	NSLog(@"- streamplayer init2 starts for %p cplaying=%p", self, _currentPlaying);
 
-	_spyTimer = [NSTimer scheduledTimerWithTimeInterval: 1.0
+	_spyTimer = [NSTimer scheduledTimerWithTimeInterval: 0.33
 			     target:self
 			     selector:@selector(spyMonitor:)
 			     userInfo:nil
@@ -661,8 +665,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    osp_assert(_audioQueue != nil);
 	    bufRefp->mAudioDataByteSize = bytesCopied;
 
-	    NSLog(@"StreamPlayer out of stream data, enqueued %d bytes avail=%d",
-		  bytesCopied, _availCount);
+	    if (_showIo) {
+		NSLog(@"StreamPlayer out of stream data, enqueued %d bytes avail=%d",
+		      bytesCopied, _availCount);
+	    }
 	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 						 bufRefp,
 						 packetsCopied,
@@ -674,15 +680,20 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 		[self pushBuffer: bufRefp];
 		pthread_mutex_unlock(&_playerMutex);
 	    }
-	    NSLog(@"StreamPlayer enqueued %d bytes %d packets availForAlloc=%d queuedBytes=%lld",
-		  bytesCopied, packetsCopied, _availCount, _queuedBytes);
+	    if (_showIo) {
+		NSLog(@"StreamPlayer enqueued %d bytes %d packets"
+		      @"availForAlloc=%d queuedBytes=%lld",
+		      bytesCopied, packetsCopied, _availCount, _queuedBytes);
+	    }
 
 	    bufRefp = NULL;
 
 	    pthread_mutex_lock(&_playerMutex);
 	    _queuedBytes += bytesCopied;
-	    NSLog(@"buffer with %d bytes queued, giving %ld in audio queue",
-		  bytesCopied, _queuedBytes);
+	    if (_showIo) {
+		NSLog(@"buffer with %d bytes queued, giving %lld in audio queue",
+		      bytesCopied, _queuedBytes);
+	    }
 	    bufRefp = [self popBuffer];
 	    pthread_mutex_unlock(&_playerMutex);
 	    bytesCopied = 0;
@@ -756,9 +767,11 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    _queuedBytes += bytesCopied;
 	    pthread_mutex_unlock(&_playerMutex);
 
-	    NSLog(@"StreamPlayer full buffer, enqueued %d bytes %d packets "
-		  @"avail=%d queuedBytes=%lld",
-		  bytesCopied, packetsCopied, _availCount, _queuedBytes);
+	    if (_showIo) {
+		NSLog(@"StreamPlayer full buffer, enqueued %d bytes %d packets "
+		      @"avail=%d queuedBytes=%lld",
+		      bytesCopied, packetsCopied, _availCount, _queuedBytes);
+	    }
 
 	    bytesCopied = 0;
 	    packetsCopied = 0;
@@ -811,7 +824,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    return NULL;
 	}
 	_availEmptyWaiter = YES;
-	NSLog(@"streamplayer waiting for an available free buffer to use");
 	pthread_cond_wait(&_aqCond, &_playerMutex);
     }
     _availCount--;

@@ -59,6 +59,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) stopRadio;
 
+- (void) startCurrentStation;
+
 @end
 
 NS_ASSUME_NONNULL_END
