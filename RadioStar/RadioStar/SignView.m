@@ -914,9 +914,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) displayStationOptions: (SignStation *) station
 {
+    NSString *status = [NSString stringWithFormat: @"%8.0f kbps", [_player getDataRate]/1000.0];
+
     UIAlertController *alert = [UIAlertController
 				   alertControllerWithTitle: @"RadioStar"
-						    message: @"Station"
+						    message: status
 					     preferredStyle: UIAlertControllerStyleAlert];
 
     UIAlertAction *action = [UIAlertAction actionWithTitle:@"Start recording"

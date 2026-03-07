@@ -28,10 +28,10 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 - (bool) isShutdown;
 
+- (float) getDataRate;
+
 - (NSString *) getEncodingType;
 
 - (NSString *) getStreamUrl;
-
-- (float) dataRate;
 
 @end

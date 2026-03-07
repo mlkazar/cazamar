@@ -57,6 +57,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) setRadioHistory: (RadioHistory *) history;
 
+- (void) stopRadio;
+
 @end
 
 NS_ASSUME_NONNULL_END

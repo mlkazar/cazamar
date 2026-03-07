@@ -66,14 +66,16 @@
 	[self setTitleColor: baseColor forState: UIControlStateNormal];
 	[self setTitleColor: baseColor forState: UIControlStateSelected];
 	self.titleLabel.font = [UIFont boldSystemFontOfSize: frame.size.height*0.15];
-	// [self.titleLabel setTextAlignment: NSTextAlignmentRight];
 	[self setContentVerticalAlignment:UIControlContentVerticalAlignmentBottom];
 	[self setContentHorizontalAlignment:UIControlContentHorizontalAlignmentCenter];
+	_selectedTitle = title;
+	if ([title length] > 0) {
+	    [self setClearText: title];
+	}
+
 	_color = baseColor;
 	_selected = NO;
 	_frame = frame;
-	[self setClearText: title];
-	_selectedTitle = title;
 	_callback = nil;
 	_context = nil;
 	_context2 = nil;
@@ -203,10 +205,14 @@
     cx = UIGraphicsGetCurrentContext();
 
     /* finally draw the glossy button */
-    newRect = rect;
-    newRect.size.height = rect.size.height * 0.85;
-    newRect.size.width = newRect.size.height;
-    newRect.origin.x = rect.size.width/2 - newRect.size.width/2;
+    if ([_title length] > 0) {
+	newRect = rect;
+	newRect.size.height = rect.size.height * 0.85;
+	newRect.size.width = newRect.size.height;
+	newRect.origin.x = rect.size.width/2 - newRect.size.width/2;
+    } else {
+	newRect = rect;
+    }
     if (_flashLit) {
 	[_selectedImage drawInRect: newRect];
     }

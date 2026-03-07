@@ -73,6 +73,8 @@
 	MFANAqStreamPacket *packet;
 	uint64_t recordCount = [stream.packetArray count];
 
+	NSLog(@"AqStream attaching reader after %d stream packets", recordCount);
+
 	// start past the last record already in the stream
 	if (recordCount > 0) {
 	    packet = [stream.packetArray lastObject];
@@ -108,6 +110,9 @@
 	if (packet.startMs >= ms)
 	    break;
     }
+
+    NSLog(@"findPacketIx for %lld ms returns %lld", ms, ix);
+
     return ix;
 }
 
@@ -397,6 +402,8 @@ MFANAqStream_PacketsProc( void *contextp,
 	}
 	return;
     }
+
+    NSLog(@"AqStream parser received %d bytes w %d packets", numBytes, numPackets);
 
     packetsCopied = 0;
     bytesCopied = 0;

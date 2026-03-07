@@ -1,11 +1,15 @@
 #import "TopView.h"
 #import "MFANCoreButton.h"
+#import "MFANIconButton.h"
 #import "MarqueeLabel.h"
 #import "MFANStreamPlayer.h"
 
 @implementation TopView {
     MarqueeLabel *_marquee;
     MFANCoreButton *_playButton;
+    MFANIconButton *_stopButton;
+    MFANCoreButton *_skipFwdButton;
+    MFANCoreButton *_skipBackButton;
     SignView *_signView;
     RadioHistory *_history;
     ViewController *_vc;
@@ -62,18 +66,54 @@
 	// and put something there.
 	[marquee setNeedsDisplay];
 
-	CGRect playButtonFrame = screenFrame;
-	playButtonFrame.size.height = usableHeight * 0.05;
-	playButtonFrame.size.width = playButtonFrame.size.height; // use square frame
-	playButtonFrame.origin.x = (screenFrame.size.width - playButtonFrame.size.width) / 2;
-	playButtonFrame.origin.y = marqueeFrame.origin.y + marqueeFrame.size.height;
+	CGRect buttonFrame = screenFrame;
+
+	buttonFrame.size.height = usableHeight * 0.05;
+
+	float smallButtonWidth = buttonFrame.size.height;
+	float largeButtonWidth = 2*buttonFrame.size.height;
+
+	buttonFrame.size.width = largeButtonWidth;
+	buttonFrame.origin.x = screenFrame.size.width/5 - largeButtonWidth/2;
+	buttonFrame.origin.y = marqueeFrame.origin.y + marqueeFrame.size.height;
+
+	_skipBackButton = [[MFANCoreButton alloc]
+			      initWithFrame: buttonFrame
+				      title: @"Blank"
+				      color: [UIColor blackColor]];
+	[_skipBackButton addCallback: self withAction:@selector(skipBackPressed:withData:)];
+	[_skipBackButton setClearText: @"-20"];
+	[self addSubview: _skipBackButton];
+
+	buttonFrame.size.width = smallButtonWidth;
+	buttonFrame.origin.x = 2*screenFrame.size.width/5 - smallButtonWidth/2;
 	MFANCoreButton *playButton = [[MFANCoreButton alloc]
-					      initWithFrame: playButtonFrame
+					      initWithFrame: buttonFrame
 						      title:@"Play"
 						      color: [UIColor blackColor]];
 	_playButton = playButton;
 	[playButton addCallback: self withAction:@selector(playPressed:withData:)];
 	[self addSubview: playButton];
+
+	buttonFrame.size.width = smallButtonWidth;
+	buttonFrame.origin.x = 3*screenFrame.size.width/5 - smallButtonWidth/2;
+	_stopButton = [[MFANIconButton alloc]
+			  initWithFrame: buttonFrame
+				  title: @""
+				  color: [UIColor blackColor]
+				   file:@"icon-stop.png"];
+	[_stopButton addCallback: self withAction: @selector(stopPressed:withData:)];
+	[self addSubview: _stopButton];
+
+	buttonFrame.size.width = largeButtonWidth;
+	buttonFrame.origin.x = 4*screenFrame.size.width/5 - largeButtonWidth/2;
+	_skipFwdButton = [[MFANCoreButton alloc]
+			      initWithFrame: buttonFrame
+				      title: @"Blank"
+				      color: [UIColor blackColor]];
+	[_skipFwdButton addCallback: self withAction:@selector(skipFwdPressed:withData:)];
+	[_skipFwdButton setClearText: @"+20"];
+	[self addSubview: _skipFwdButton];
 
 	_history = [[RadioHistory alloc] initWithViewController:vc];
 	[_history setCallback: self WithSel: @selector(historyDone:)];
@@ -86,6 +126,19 @@
 
 - (void) historyDone: (id) junk {
     [_vc popTopView];
+}
+
+- (void) skipFwdPressed:(id) junk withData: junk2 {
+    NSLog(@"+20");
+}
+
+- (void) skipBackPressed:(id) junk withData: junk2 {
+    NSLog(@"-20");
+}
+
+- (void) stopPressed:(id) junk withData: junk2 {
+    [_signView stopRadio];
+    NSLog(@"STOP");
 }
 
 - (void) stateChanged: (id) aplayer {
