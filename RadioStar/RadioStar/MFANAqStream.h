@@ -106,7 +106,9 @@
 
 - (NSString *) getDataFormatString;
 
-- (NSString *) getUrl;
+- (NSString *) getPublicUrl;
+
+- (NSString *) getFinalUrl;
 
 - (void) getDataFormat: (AudioStreamBasicDescription *) format;
 

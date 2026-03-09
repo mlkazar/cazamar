@@ -774,7 +774,16 @@ MFANAqStream_rsControlProc( void *contextp,
     return &_packetArrayCv;
 }
 
-- (NSString *) getUrl {
+- (NSString *) getFinalUrl {
+    if (_radioStreamp != nullptr) {
+	std::string finalUrl = "http://" + *(_radioStreamp->getStreamUrl());
+	return [NSString stringWithUTF8String: finalUrl.c_str()];
+    } else {
+	return @"[No data]";
+    }
+}
+
+- (NSString *) getPublicUrl {
     return _urlString;
 }
 

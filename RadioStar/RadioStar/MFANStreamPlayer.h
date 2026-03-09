@@ -32,6 +32,6 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 - (NSString *) getEncodingType;
 
-- (NSString *) getStreamUrl;
+- (NSString *) getPublicUrl;
 
 @end

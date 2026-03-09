@@ -21,6 +21,8 @@
     UILabel *_searchUrlLabel;
     UILabel *_realUrlLabel;
     UILabel *_speedAndTypeLabel;
+    UILabel *_publicUrlLabel;
+    UILabel *_finalUrlLabel;
 
     // properties
     MarqueeLabel *_stationNameView;
@@ -28,6 +30,8 @@
     MarqueeLabel *_searchUrlView;
     MarqueeLabel *_realUrlView;
     UILabel *_speedAndTypeView;
+    MarqueeLabel *_publicUrlView;
+    MarqueeLabel *_finalUrlView;
 
     // so we can update the status a few times per second
     NSTimer *_timer;
@@ -63,10 +67,7 @@
 {
     // we get the frame from the view controller
     CGRect boxFrame;
-    CGRect buttonFrame;
     CGRect labelFrame;
-
-    UIColor *bkgColor;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
@@ -79,7 +80,7 @@
 	UIColor *screenColor = [UIColor colorWithRed: 0.3
 					       green: 0.3
 						blue: 0.3
-					       alpha: 0.5];
+					       alpha: 0.75];
 
 	UIColor *textColor = [UIColor blackColor];
 	UIColor *labelColor = [UIColor colorWithRed: 0.9
@@ -149,23 +150,43 @@
 	[_speedAndTypeView setText: satString];
 	[self addSubview: _speedAndTypeView];
 
-	/* now add Done button */
-	float buttonWidth = frame.size.width/8;
-	buttonFrame = frame;
-	buttonFrame.origin.y = 0.9*frame.size.height;
-	buttonFrame.size.height = buttonWidth;	// square buttons
-	buttonFrame.origin.x = frame.size.width/2 - buttonWidth/2;
-	buttonFrame.size.width = buttonWidth;
-	_doneButton = [[MFANIconButton alloc] initWithFrame: buttonFrame
-						      title: @"Done"
-						      color: [UIColor colorWithHue: 0.4
-									saturation: 1.0
-									brightness: 1.0
-									     alpha: 1.0]
-						       file: @"icon-done.png"];
-	[_doneButton addCallback: self
-		      withAction: @selector(donePressed:withData:)];
-	[self addSubview: _doneButton];
+	// third text box
+	labelFrame.origin.y += labelHeight;
+	_publicUrlLabel = [[UILabel alloc] initWithFrame: labelFrame];
+	_publicUrlLabel.backgroundColor = labelColor;
+	_publicUrlLabel.text = @"Public URL";
+	_publicUrlLabel.textColor = [UIColor blackColor];
+	_publicUrlLabel.textAlignment = NSTextAlignmentLeft;
+	[self addSubview: _publicUrlLabel];
+
+	boxFrame.origin.y += boxHeight;
+	_publicUrlView = [[MarqueeLabel alloc] initWithFrame: boxFrame];
+	[_publicUrlView setTextColor: textColor];
+	[_publicUrlView setBackgroundColor: valueColor];
+	[_publicUrlView setText: [_player getPublicUrl]];
+	[self addSubview: _publicUrlView];
+
+#if 0
+	// fourth text box
+	labelFrame.origin.y += labelHeight;
+	_finalUrlLabel = [[UILabel alloc] initWithFrame: labelFrame];
+	_finalUrlLabel.backgroundColor = labelColor;
+	_finalUrlLabel.text = @"Final URL";
+	_finalUrlLabel.textColor = [UIColor blackColor];
+	_finalUrlLabel.textAlignment = NSTextAlignmentLeft;
+	[self addSubview: _finalUrlLabel];
+
+	boxFrame.origin.y += boxHeight;
+	_finalUrlView = [[MarqueeLabel alloc] initWithFrame: boxFrame];
+	[_finalUrlView setTextColor: textColor];
+	[_finalUrlView setBackgroundColor: valueColor];
+	[_finalUrlView setText: [_stream getFinalUrl]];
+	[self addSubview: _finalUrlView];
+#endif
+
+	[self addTarget: self
+	     action:@selector(donePressed:withEvent:)
+	     forControlEvents: UIControlEventTouchUpInside];
 
 	_startTimeMs = osp_time_ms();
 
@@ -191,7 +212,7 @@
 			      [_player getEncodingType]];
     [_speedAndTypeView setText: satString];
 
-    if (osp_time_ms() - _startTimeMs > 40000) {
+    if (osp_time_ms() - _startTimeMs > 60000) {
 	[self doNotify];
     }
 }
@@ -201,7 +222,7 @@
     _timer = nil;
 }
 
-- (void) donePressed: (id) junk1 withData: (id) junk2 {
+- (void) donePressed: (id) junk1 withEvent: (UIEvent *) junk2 {
     [self doNotify];
 }
 

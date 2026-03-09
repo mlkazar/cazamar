@@ -6,7 +6,7 @@
 #import "SignStation.h"
 #import "ViewController.h"
 
-@interface PopStatus : UIView
+@interface PopStatus : UIButton
 
 - (PopStatus *) initWithFrame: (CGRect) frame
 		     viewCont: (ViewController *) vc

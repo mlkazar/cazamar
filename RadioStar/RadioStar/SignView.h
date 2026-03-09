@@ -61,6 +61,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) startCurrentStation;
 
+- (void) displayAppOptions;
+
 @end
 
 NS_ASSUME_NONNULL_END

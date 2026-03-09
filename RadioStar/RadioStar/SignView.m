@@ -965,7 +965,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateBegan) {
 	SignStation *station = [self findStationByTouch: point];
-	[self displayAppOptions];
+	[self showPopStatus];
     }
 }
 

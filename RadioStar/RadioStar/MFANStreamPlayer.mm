@@ -867,9 +867,9 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return rstr;
 }
 
-- (NSString *) getStreamUrl {
+- (NSString *) getPublicUrl {
     if (_aqStream) {
-	return [_aqStream getUrl];
+	return [_aqStream getPublicUrl];
     } else {
 	return @"[None]";
     }

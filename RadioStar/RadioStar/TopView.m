@@ -10,6 +10,7 @@
     MFANIconButton *_stopButton;
     MFANCoreButton *_skipFwdButton;
     MFANCoreButton *_skipBackButton;
+    MFANCoreButton *_startButton;
     SignView *_signView;
     RadioHistory *_history;
     ViewController *_vc;
@@ -51,8 +52,25 @@
 	[signView setSongCallback: self sel:@selector(songChanged:)];
 	[signView setStateCallback: self sel:@selector(stateChanged:)];
 
+	CGRect startFrame = screenFrame;
+	startFrame.origin.y = signFrame.origin.y + signFrame.size.height;
+	startFrame.size.height = usableHeight * .05;
+	MFANCoreButton *_startButton= [[MFANCoreButton alloc]
+					  initWithFrame: startFrame
+						  title: @"None"
+						  color: [UIColor blackColor]
+					backgroundColor: [UIColor greenColor]];
+	[_startButton setBackgroundColor:
+		   [UIColor colorWithRed: 0.0
+				   green: 0.75
+				    blue:0.0
+				   alpha: 1.0]];
+	[_startButton setClearText: @"Main Menu"];
+	[_startButton addCallback: self withAction: @selector(startPressed:)];
+	[self addSubview: _startButton];
+
 	CGRect marqueeFrame = screenFrame;
-	marqueeFrame.origin.y = signFrame.origin.y + signFrame.size.height;
+	marqueeFrame.origin.y = startFrame.origin.y + startFrame.size.height;
 	marqueeFrame.size.height = usableHeight * 0.05;
 	MarqueeLabel *marquee = [[MarqueeLabel alloc] initWithFrame: marqueeFrame];
 	_marquee = marquee;
@@ -126,6 +144,10 @@
 
 - (void) historyDone: (id) junk {
     [_vc popTopView];
+}
+
+- (void) startPressed: (id) junk {
+    [_signView displayAppOptions];
 }
 
 - (void) skipFwdPressed:(id) junk withData: junk2 {
