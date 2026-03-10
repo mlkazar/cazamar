@@ -914,7 +914,7 @@ MFANAqPlayer_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int3
      * provides exponential decay.
      */
     now = osp_time_ms();
-    delta = now - aqp->_lastDataMs;
+    delta = (uint32_t) (now - aqp->_lastDataMs);
     if (delta > 2000) {
 	updateRate = ((aqp->_lastDataBytes + nbytes) * 1000.0) / delta;
 	aqp->_dataRate = aqp->_dataRate * 0.8 +  updateRate * 0.2;
@@ -1105,6 +1105,10 @@ MFANAqPlayer_rsControlProc( void *contextp,
 			     MFANAqPlayer_rsControlProc,
 			     (__bridge void *) self);
 	NSLog(@"- aqplayer %p radioplayer done", self);
+
+	// wait a bit so we don't overload app with new stream
+	// creation if the network is down or something.
+	[NSThread sleepForTimeInterval: 5.0];
     }
 
     [self shutdownAudio];

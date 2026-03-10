@@ -16,7 +16,7 @@
 #include "bufsocket.h"
 #include "radiostream.h"
 
-#define _showIo false
+#define _showIo true
 
 @implementation MFANAqStreamPacket {
     // probably useless since sender may have buffered up a lot of
@@ -125,18 +125,62 @@
     return _ix;
 }
 
-- (bool) hasData {
+// Check to see if there are at least targetMs of audio queued in the
+// stream.  If wait is set, wait until there is.  Return true if there
+// is, otherwise false.
+- (bool) waitForAtLeast: (uint64_t) targetBytes {
     bool rval;
     pthread_mutex_lock([MFANAqStream streamMutex]);
+
+    rval = false;
+    while(true) {
+	if (_aqStream.shuttingDown || _closed) {
+	    rval = false;
+	    break;
+	}
+
+	if (!self.indexIsValid) {
+	    _ix = [self findPacketIx: _recordMs];
+	    _packetStreamVersion = _aqStream.packetStreamVersion;
+	}
+
+	uint64_t totalPackets = [_aqStream.packetArray count] - _ix;
+	uint64_t totalBytes = 0;
+	if (totalPackets > 0) {
+	    // assume one packet's length is a good estimator of the
+	    // average packet size.  This function is rarely called
+	    // and so could also work by just adding up the # of
+	    // bytes, stopping when the target is reached.
+	    totalBytes = [_aqStream.packetArray[_ix] getLength] * totalPackets;
+	} else {
+	    totalBytes = 0;;
+	}
+	if (totalBytes >= targetBytes) {
+	    rval = true;
+	    break;
+	}
+
+	pthread_cond_wait([_aqStream packetArrayCv], [MFANAqStream streamMutex]);
+	continue;
+    }
+
+    pthread_mutex_unlock([MFANAqStream streamMutex]);
+
+    return rval;
+}
+
+- (bool) hasData {
+    bool rval;
+
+    pthread_mutex_lock([MFANAqStream streamMutex]);
+
     if (!self.indexIsValid) {
 	_ix = [self findPacketIx: _recordMs];
 	_packetStreamVersion = _aqStream.packetStreamVersion;
     }
 
-    if (_ix >= [_aqStream.packetArray count])
-	rval = NO;
-    else
-	rval = YES;
+    rval = (_ix < [_aqStream.packetArray count]);
+
     pthread_mutex_unlock([MFANAqStream streamMutex]);
 
     return rval;
@@ -154,7 +198,7 @@
 
     pthread_mutex_lock([MFANAqStream streamMutex]);
     while(true) {
-	if (_closed) {
+	if (_aqStream.shuttingDown || _closed) {
 	    pthread_mutex_unlock([MFANAqStream streamMutex]);
 	    return nil;
 	}
@@ -222,8 +266,6 @@
 
     uint64_t _lastPacketEndMs;
 
-    // TODO: get rid of this, or modify getDataFormat to use it.  Note we use
-    // it to get frame durations.
     AudioStreamBasicDescription _dataFormat;
 
     // failure tracking state to see if we got too many failures in a
@@ -269,6 +311,9 @@ static pthread_mutex_t _streamMutex;
     }
 
     _shuttingDown = YES;
+
+    // terminate any reads or waits for data
+    pthread_cond_broadcast(&_packetArrayCv);
 
     // this is safe to call on any thread, because all it does is set
     // a flag that tells RST to shutdown on the next packet of data.
@@ -630,11 +675,6 @@ MFANAqStream_rsControlProc( void *contextp,
     *format = _dataFormat;
 }
 
-// TODO: get rid of this
-- (void) dealloc {
-    NSLog(@"in dealloc");
-}
-
 - (MFANAqStream *) initWithUrl: (NSString *) url {
     self = [super init];
     if (self) {
@@ -715,7 +755,7 @@ MFANAqStream_rsControlProc( void *contextp,
 			     MFANAqStream_rsDataProc,
 			     MFANAqStream_rsControlProc,
 			     (__bridge void *) self);
-	NSLog(@"- aqplayer %p radioplayer done", self);
+	NSLog(@"****- aqplayer %p radioplayer done", self);
 
 	// stop upcalls from this instance and release our reference to it.
 	pthread_mutex_lock(&_streamMutex);
@@ -725,16 +765,36 @@ MFANAqStream_rsControlProc( void *contextp,
 	}
 	pthread_mutex_unlock(&_streamMutex);
 
+#if 0
 	lastWindowErrorCount++;
 	if (lastWindowErrorCount > _failedWindowCount) {
 	    NSLog(@"%d recent errors in stream, too many to ignore", lastWindowErrorCount);
 	    break;
 	}
+#endif
+
+	// recheck before waiting.
+	if (_shuttingDown)
+	    break;
+
+	[NSThread sleepForTimeInterval: 10.0];
+
 	// Start a new error tracking window
 	if (osp_time_ms() - lastWindowStartMs > _failedWindowMs) {
 	    lastWindowErrorCount = 0;
 	    lastWindowStartMs = osp_time_ms();
 	}
+
+	pthread_mutex_lock(&_streamMutex);
+	// This will force the stream to resynchronize with the file
+	// parser.
+	if (_audioStreamHandle) {
+	    NSLog(@"****aqstream closes audiofile");
+	    AudioFileStreamClose(_audioStreamHandle);
+	    _audioStreamHandle = nullptr;
+	}
+
+	pthread_mutex_unlock(&_streamMutex);
     }
 
     // lock still held

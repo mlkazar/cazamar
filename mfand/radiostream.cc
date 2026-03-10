@@ -537,6 +537,7 @@ RadioStream::init( BufGenFactory *factoryp,
                              &haveHeaders,
                              /* allDoneProc */ NULL,
                              this);
+        printf("****radiostream: call terminated with code=%d\n", code);
         if (code < 0) {
             break;
         }
@@ -564,7 +565,7 @@ RadioStream::init( BufGenFactory *factoryp,
             /* if we failed while streaming, it could just be that we switched
              * networks, so we try again a few times.
              */
-            if (++_failedCallsSinceData > 100) {
+            if (1 /*++_failedCallsSinceData > 100*/) {
                 /* too many failures since we've received data */
                 code = -1;
                 break;

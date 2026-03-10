@@ -14,7 +14,9 @@ Ideas for Radio app
 
 ** Stall a bit until buffers are loaded when starting new station (was bug)
 
--- Clicking on blank area should display useful stuff like hihghlight
+-- edit existing radio station
+
+** Clicking on blank area should display useful stuff like hihghlight
 and web stream info (partly done)
 
 ** Add stop button.
@@ -57,7 +59,7 @@ name as well)
 
 -- RPC timeout takes too long when we switch to/from 5G.
 
--- doesn't always reconnect after a failiure.
+-- doesn't reconnect after a failiure.
 
 Longer term items
 

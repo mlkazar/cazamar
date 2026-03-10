@@ -83,6 +83,8 @@
 
 - (bool) hasData;
 
+- (bool) waitForAtLeast: (uint64_t) targetBytes;
+
 // returns absolute seek position.  If whence is 0, it is an
 // absolute time.
 - (uint64_t) seek:(uint64_t) ms whence: (int) whence;
@@ -97,6 +99,7 @@
 
 @property NSMutableOrderedSet *packetArray;
 @property uint64_t packetStreamVersion;
+@property bool shuttingDown;
 
 + (pthread_mutex_t *) streamMutex;
 

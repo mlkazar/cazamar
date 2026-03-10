@@ -144,7 +144,7 @@ MFANStreamPlayer_getUnknownString()
     return @"[Unknown]";
 }
 
-#define _showIo false
+#define _showIo true
 
 @implementation MFANStreamPlayer {
     AudioQueueRef _audioQueue;
@@ -358,7 +358,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_currentPlaying = MFANStreamPlayer_getUnknownString();
 	_songCount++;
 
-	_maxBufferSize = 0x6000;
+	_maxBufferSize = 0x4000;
 	_maxPacketCount = 512;
 
         _packetsp = ((AudioStreamPacketDescription *)
@@ -467,7 +467,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	NSLog(@"Starting queue dispose");
 	AudioQueueStop(_audioQueue, /* immediate */ 1);
 	AudioQueueDispose(_audioQueue, /* immediate */ 0);
-	NSLog(@"dispose processing done");
+	NSLog(@"****dispose processing done");
     }
     NSLog(@"just stopped AudioQueue %p", _audioQueue);
 
@@ -656,8 +656,36 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     _streamReader = [[MFANAqStreamReader alloc] initWithStream: _aqStream];
     packet = nil;
     while(!_shutdown) {
+	// If there's nothing queued to the AudioQueue, we don't
+	// process the stream input until there's at least 3-4 buffers
+	// worth of data present, since I noticed that if you queue
+	// only one small buffer to the AudioQueue, and don't have
+	// more data, the queue will simply return the buffer to you
+	// without playing any music.  IOW, it won't play any sounds
+	// unless it has a decent amount of queued data.
+	if (_queuedBytes == 0) {
+	    // don't start filling the audio queue unless we know we
+	    // can provide at least 3 buffers of audio data.
+	    if (![_streamReader waitForAtLeast: 3 * _maxBufferSize]) {
+		break;
+	    }
+	}
+
 	// if we have data to flush and no more data queued for us,
 	// send it to the AudioQueue now, and then wait for more.
+	//
+	// One tricky point: the audio player doesn't actually make
+	// sounds unless it has a few milliseconds of audio queued.
+	// So, if the stream stalls, and then we feed the audio queue
+	// one buffer at a time (say 16KB), where that data isn't
+	// followed by more for its duration, then the audioiqueue
+	// will never actually produce sounds.
+	//
+	// Normally, radio stations start off with a few seconds of
+	// audio in a burst, but after the network stream pauses, this
+	// can become a problem.  So, we make sure that the amount
+	// queued or available to queue immediately is at least N
+	// milliseonds, for N at least a few hundred.
 	if (![_streamReader hasData] && packetsCopied > 0) {
 	    // flush pending data if we're going to block waiting for
 	    // more data.  Note that once we have processed any
