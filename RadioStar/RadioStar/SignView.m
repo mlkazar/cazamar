@@ -993,9 +993,16 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) startStation: (SignStation *) station {
     _stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
+    [_stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
     _player = [[MFANStreamPlayer alloc] initWithStream: _stream];
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
     [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+}
+
+- (void) restartStationWithStream: (id) stream {
+    [self stopRadio];
+    [NSThread sleepForTimeInterval: 3.0];
+    [self startCurrentStation];
 }
 
 - (void) startCurrentStation {

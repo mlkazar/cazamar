@@ -631,6 +631,9 @@ RadioStream::close() {
     /* _closed flag forces next call to rcv to return a failure, which
      * will terminate the RST call.
      */
+    if (_bufSocketp) {
+        _bufSocketp->disconnect();
+    }
 #endif
     release();
 }

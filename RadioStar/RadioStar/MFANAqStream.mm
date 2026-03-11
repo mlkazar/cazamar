@@ -16,7 +16,7 @@
 #include "bufsocket.h"
 #include "radiostream.h"
 
-#define _showIo true
+#define _showIo false
 
 @implementation MFANAqStreamPacket {
     // probably useless since sender may have buffered up a lot of
@@ -268,6 +268,9 @@
 
     AudioStreamBasicDescription _dataFormat;
 
+    id _failureCallbackObj;
+    SEL _failureCallbackSel;
+
     // failure tracking state to see if we got too many failures in a
     // short period.
     bool _failed;
@@ -283,6 +286,11 @@
     // next entry GE than a search key.
     NSMutableOrderedSet *_packetArray;
     pthread_cond_t _packetArrayCv;
+}
+
+- (void) setFailureCallback: (id) callbackObj sel: (SEL) callbackSel {
+    _failureCallbackObj = callbackObj;
+    _failureCallbackSel = callbackSel;
 }
 
 static int _staticSetup = 0;
@@ -739,14 +747,10 @@ MFANAqStream_rsControlProc( void *contextp,
     // it down.
     uint64_t lastWindowStartMs = osp_time_ms();
     uint32_t lastWindowErrorCount = 0;
-    while(1) {
+
+    {
 	/* initialize basics */
 	pthread_mutex_lock(&_streamMutex);
-	if (_shuttingDown) {
-	    // break with lock held
-	    break;
-	}
-
 	_radioStreamp = new RadioStream();
 	pthread_mutex_unlock(&_streamMutex);
 
@@ -763,29 +767,7 @@ MFANAqStream_rsControlProc( void *contextp,
 	    _radioStreamp->close();
 	    _radioStreamp = nullptr;
 	}
-	pthread_mutex_unlock(&_streamMutex);
 
-#if 0
-	lastWindowErrorCount++;
-	if (lastWindowErrorCount > _failedWindowCount) {
-	    NSLog(@"%d recent errors in stream, too many to ignore", lastWindowErrorCount);
-	    break;
-	}
-#endif
-
-	// recheck before waiting.
-	if (_shuttingDown)
-	    break;
-
-	[NSThread sleepForTimeInterval: 10.0];
-
-	// Start a new error tracking window
-	if (osp_time_ms() - lastWindowStartMs > _failedWindowMs) {
-	    lastWindowErrorCount = 0;
-	    lastWindowStartMs = osp_time_ms();
-	}
-
-	pthread_mutex_lock(&_streamMutex);
 	// This will force the stream to resynchronize with the file
 	// parser.
 	if (_audioStreamHandle) {
@@ -800,6 +782,17 @@ MFANAqStream_rsControlProc( void *contextp,
     // lock still held
     _pthreadDone = YES;
     pthread_mutex_unlock(&_streamMutex);
+
+    // if we're being shutdown, don't upcall with a request to restart things.
+    if (!_shuttingDown && _failureCallbackObj != nil) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[self->_failureCallbackObj performSelector: _failureCallbackSel
+						withObject: self];
+	    });
+    }
+#pragma clang diagnostic pop
 
     pthread_cond_broadcast(&_pthreadIdleCv);
 

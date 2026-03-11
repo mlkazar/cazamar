@@ -144,7 +144,7 @@ MFANStreamPlayer_getUnknownString()
     return @"[Unknown]";
 }
 
-#define _showIo true
+#define _showIo false
 
 @implementation MFANStreamPlayer {
     AudioQueueRef _audioQueue;

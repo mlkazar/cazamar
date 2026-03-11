@@ -19,7 +19,7 @@
  * The condWait function always returns after the base timeout passed.
  *
  * This module only implements the client side of the connection
- * library, since we use the server side API.
+ * library, since we don't use the server side API.
  */
 pthread_mutex_t MFANSocket_mutex;
 int MFANSocket_didStaticInit = 0;
@@ -83,7 +83,8 @@ MFANSocket::fillFromSocket(OspMBuf *mbp)
 
     pthread_mutex_lock(&MFANSocket_mutex);
     code = 0;
-    while (_error == 0 && (!_safeToRead || _readInProgress)) {
+    _safeToRead = CFReadStreamHasBytesAvailable(_readStreamCF);
+    while (_closed == 0 && _error == 0 && (!_safeToRead || _readInProgress)) {
         _readersWaiting++;
         code = condWait(&_cond, &MFANSocket_mutex);
         _readersWaiting--;
@@ -93,12 +94,14 @@ MFANSocket::fillFromSocket(OspMBuf *mbp)
     _readInProgress = 1;
     pthread_mutex_unlock(&MFANSocket_mutex);
 
-    if (code == 0) {
-        code = (int32_t) CFReadStreamRead(_readStreamCF, (UInt8 *) mbp->data(), mbp->bytesAtEnd());
-    }
-    else {
-        printf("- MFANSocket read wait timed out\n");
-        /* code is still -1 */
+    if (_closed == 0 && code == 0 && _error == 0) {
+        // we should only be here if we think there's data available.
+        code = (int32_t) CFReadStreamRead(_readStreamCF,
+                                          (UInt8 *) mbp->data(),
+                                          mbp->bytesAtEnd());
+    } else {
+        printf("- MFANSocket read wait timed out / failed (err=%d)\n", _error);
+        code = -1;
     }
 
     pthread_mutex_lock(&MFANSocket_mutex);
@@ -150,6 +153,8 @@ MFANSocket::disconnect()
     _closed = 1;
 
     pthread_mutex_unlock(&MFANSocket_mutex);
+
+    pthread_cond_broadcast(&_cond);
 }
 
 void
@@ -416,6 +421,7 @@ MFANSocket::readStreamCallback( CFReadStreamRef stream, CFStreamEventType ev, vo
     if ( (ev & kCFStreamEventErrorOccurred)) {
         printf("- MFANSocket callback read error flags 0x%x\n", (int) ev);
         socketp->_error = 1;
+        socketp->_safeToRead = 0;
         if (socketp->_readersWaiting) {
             pthread_cond_broadcast(&socketp->_cond);
         }
@@ -449,6 +455,7 @@ MFANSocket::writeStreamCallback( CFWriteStreamRef stream, CFStreamEventType ev, 
     if ( (ev & kCFStreamEventErrorOccurred)) {
         printf("- MFANSocket callback write error ev=0x%x\n", (int) ev);
         socketp->_error = -1;
+        socketp->_safeToWrite = 0;
         if (socketp->_writersWaiting) {
             pthread_cond_broadcast(&socketp->_cond);
         }

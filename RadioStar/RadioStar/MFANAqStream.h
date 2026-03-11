@@ -115,6 +115,8 @@
 
 - (void) getDataFormat: (AudioStreamBasicDescription *) format;
 
+- (void) setFailureCallback: (id) callbackObj sel: (SEL) callbackSel;
+
 // We can only have one target at a time, but we can attach and detach
 // it without affecting the actual stream receiver.
 - (int32_t) attachTarget: (MFANAqStreamTarget *) target;
