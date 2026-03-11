@@ -4,9 +4,12 @@
 
 @interface SignSave : NSObject
 
-+ (int32_t) saveStationsToFile: (NSMutableOrderedSet *) allStations;
+typedef void (^CompletionBlock)();
 
-+ (int32_t) restoreStationsFromFile: (NSMutableOrderedSet *) allStatons;
+- (int32_t) initSaveToFile: (NSMutableOrderedSet *) allStations;
+
+- (int32_t) initRestoreFromFile: (NSMutableOrderedSet *) allStatons
+		     completion: (CompletionBlock) block;
 
 @end
 

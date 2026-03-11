@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property uint32_t streamRateKb;
 @property bool isRecording;
 @property bool isSelected;
+@property bool isLoaded;
 @property CGPoint origin;
 @property UIImage *iconImage;
 
@@ -28,7 +29,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (SignStation *) init;
 
-- (void) setIconImageFromUrl;
+- (void) setIconImageFromUrl: (BOOL) doLoad;
+
+- (void) tryLoadFromUrl;
 
 @end
 

@@ -16,6 +16,7 @@
     bool _isPlaying;
     bool _isRecording;
     bool _isSelected;
+    bool _isLoaded;
 
     CGPoint _origin;
 }
@@ -30,6 +31,7 @@
 	self.isPlaying = NO;
 	self.isRecording = NO;
 	self.isSelected = NO;
+	self.isLoaded = NO;
     }
     return self;
 }
@@ -76,7 +78,40 @@
     return resultImage;
 }
 
-- (void) setIconImageFromUrl {
+- (void) tryLoadFromUrl {
+    UIImage *image;
+    if (!_isLoaded && [_iconUrl length] > 0) {
+	NSURL *imageUrl = [NSURL URLWithString: _iconUrl];
+	NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
+	if (imageData != nil) {
+	    image = [UIImage imageWithData: imageData];
+	    if (image != nil) {
+		_iconImage = [self fixupImage: image];
+		_isLoaded = YES;
+	    }
+	}
+    }
+}
+
+- (UIImage *) fixupImage: (UIImage *) image {
+    CGSize size = image.size;
+    CGRect rect = CGRectMake(0, 0, size.width, size.height);
+    UIGraphicsBeginImageContextWithOptions(size, YES, image.scale);
+
+    // fill it with white so that transparent parts of the icon don't
+    // appear weird/dark, and then draw the image of the icon into
+    // this current context.
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    [[UIColor whiteColor] setFill];
+    CGContextFillRect(context, rect);
+    [image drawInRect: CGRectMake(0, 0, size.width, size.height)];
+    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return newImage;
+}
+
+- (void) setIconImageFromUrl: (bool) doLoad {
     UIImage *image;
     NSString *nameToUse;
     static const uint32_t maxChars = 6;
@@ -87,11 +122,8 @@
        return;
 
     // try URL
-    if ([_iconUrl length] > 0) {
-       NSURL *imageUrl = [NSURL URLWithString: _iconUrl];
-       NSData *imageData = [[NSData alloc] initWithContentsOfURL: imageUrl];
-       if (imageData != nil)
-           image = [UIImage imageWithData: imageData];
+    if (doLoad && [_iconUrl length] > 0) {
+	[self tryLoadFromUrl];
     }
 
     // generate image from text of first few characters of station name
@@ -109,21 +141,7 @@
     }
 
     // Now fix the image by turning any transparent pixels into white pixels
-    CGSize size = image.size;
-    CGRect rect = CGRectMake(0, 0, size.width, size.height);
-    UIGraphicsBeginImageContextWithOptions(size, YES, image.scale);
-
-    // fill it with white so that transparent parts of the icon don't
-    // appear weird/dark, and then draw the image of the icon into
-    // this current context.
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    [[UIColor whiteColor] setFill];
-    CGContextFillRect(context, rect);
-    [image drawInRect: CGRectMake(0, 0, size.width, size.height)];
-    UIImage *newImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-
-    _iconImage = newImage;
+    _iconImage = [self fixupImage: image];
 }
 
 @end

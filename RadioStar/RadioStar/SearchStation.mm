@@ -501,7 +501,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     else
 	cell.accessoryType = UITableViewCellAccessoryNone;
 
-    [station setIconImageFromUrl];
+    [station setIconImageFromUrl: YES];
     UIImage *scaledImage = resizeImage(station.iconImage, 60);
 
     [[cell imageView] setImage: scaledImage];

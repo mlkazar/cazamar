@@ -579,7 +579,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 			     origin: station.origin
 			     aspect: aspect];
 
-	    [station setIconImageFromUrl];
+	    [station setIconImageFromUrl: NO];
 	    [backEncoder setFragmentTexture: [self getTextureForImage: station.iconImage]
 				    atIndex: signCount];
 	    signCount++;
@@ -755,7 +755,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	[self addRecognizers];
 
-	[SignSave  restoreStationsFromFile: _allStations];
+	[[SignSave alloc] initRestoreFromFile: _allStations
+				   completion: ^() {
+		[self animationOn];
+	    }];
 
 	if ([_allStations count] == 0) {
 	    [self addStation: @"WYEP"
@@ -818,7 +821,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     _searchStation = nil;
 
-    [SignSave saveStationsToFile: _allStations];
+    [[SignSave alloc] initSaveToFile: _allStations];
 
     // force a redraw
     [self animationOn];
@@ -847,7 +850,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     _manualStation = nil;
 
-    [SignSave saveStationsToFile: _allStations];
+    [[SignSave alloc] initSaveToFile: _allStations];
 
     // force a redraw
     [self animationOn];
@@ -958,7 +961,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [_allStations removeObject: station];
     [self computeLayout];
 
-    [SignSave saveStationsToFile: _allStations];
+    [[SignSave alloc] initSaveToFile: _allStations];
 }
 
 - (void) longPressed: (UILongPressGestureRecognizer *) sender {

@@ -9,9 +9,12 @@
 
 #include "json.h"
 
-@implementation SignSave
+@implementation SignSave {
+    NSMutableOrderedSet *_allStations;
+    CompletionBlock _completionBlock;
+}
 
-+ (int32_t) saveStationsToFile: (NSMutableOrderedSet *) allStations {
+- (int32_t) initSaveToFile: (NSMutableOrderedSet *) allStations {
     Json jsys;
     Json::Node *rootNodep;
     std::string jsonData;
@@ -83,7 +86,8 @@
     return code;
 }
 
-+ (int32_t) restoreStationsFromFile: (NSMutableOrderedSet *) allStations {
+- (int32_t) initRestoreFromFile: (NSMutableOrderedSet *) allStations
+		     completion: (CompletionBlock) block {
     Json json;
     Json::Node *rootNodep = nullptr;
     int32_t code;
@@ -91,6 +95,8 @@
     FILE *filep;
 
     fileNamep = [fileNameForFile(@"stations.json") cStringUsingEncoding: NSUTF8StringEncoding];
+
+    _completionBlock = block;
 
     filep = fopen(fileNamep, "r");
     if (!filep) {
@@ -129,12 +135,29 @@
 	station.iconUrl =
 	    [NSString stringWithUTF8String: tnodep->_children.head()->_name.c_str()];
 
-	[station setIconImageFromUrl];
+	[station setIconImageFromUrl: NO];
 
 	[allStations addObject: station];
     }
 
+    NSThread *thr = [[NSThread alloc] initWithTarget: self
+					    selector: @selector(loadAsync:)
+					      object: allStations];
+    [thr start];
+
     return 0;
+}
+
+- (void) loadAsync: (NSMutableOrderedSet *) allStations {
+    SignStation *station;
+    for(station in allStations) {
+	[station tryLoadFromUrl];
+	if (_completionBlock != nil) {
+	    _completionBlock();
+	}
+    }
+
+    [NSThread exit];
 }
 
 @end

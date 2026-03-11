@@ -38,7 +38,7 @@ name as well)
 
 ** trim saved music stream after N minutes
 
--- incremental image population for search bar and main screen
+** incremental image population for search bar and main screen
 
 ** save history per station (or globally).  The latter is probably better.
 
@@ -57,9 +57,9 @@ name as well)
 
 ** redo UI for displaying station details (speed, type, URLs)
 
--- RPC timeout takes too long when we switch to/from 5G.
+** RPC timeout takes too long when we switch to/from 5G.
 
--- doesn't reconnect after a failiure.
+** doesn't reconnect after a failiure.
 
 Longer term items
 
