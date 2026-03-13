@@ -369,7 +369,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 	_spyTimer = [NSTimer scheduledTimerWithTimeInterval: 0.33
 			     target:self
-			     selector:@selector(spyMonitor:)
+
+						   selector:@selector(spyMonitor:)
 			     userInfo:nil
 			     repeats: YES];
 
@@ -379,7 +380,19 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 					       object: nil];
 	[_readerThread start];
 
-	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+#if 0
+	MPMusicPlayerController *tempPlayer;
+	tempPlayer = [MPMusicPlayerController systemMusicPlayer];
+	[[NSNotificationCenter defaultCenter]
+	    addObserver: self
+	    selector: @selector(mpMusicChanged:)
+	    name: MPMusicPlayerControllerNowPlayingItemDidChangeNotification
+	    object: tempPlayer];
+	[tempPlayer beginGeneratingPlaybackNotifications];
+	NSLog(@"- tempPlayer=%p", tempPlayer);
+	[tempPlayer setRepeatMode: MPMusicRepeatModeNone];
+	[tempPlayer setShuffleMode: MPMusicShuffleModeOff];	// amylfax shuffle time
+#endif
 
 	[self setupAudioSession: NO];	// don't mix with other audio
 

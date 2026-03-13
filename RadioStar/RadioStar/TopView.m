@@ -14,6 +14,7 @@
     SignView *_signView;
     RadioHistory *_history;
     ViewController *_vc;
+    NSMutableDictionary *_nowPlayingInfo;
 }
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc {
@@ -137,6 +138,8 @@
 	[_history setCallback: self WithSel: @selector(historyDone:)];
 
 	[signView setRadioHistory: _history];
+
+	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }
 
     return self;
@@ -172,18 +175,44 @@
 	[_playButton setTitle:@"Play"];
 }
 
+- (void) updateIOSCenter: (NSString *) song {
+    _nowPlayingInfo = [[NSMutableDictionary alloc] init];
+    [_nowPlayingInfo setObject: [NSNumber numberWithDouble: 1.0]
+			forKey: MPNowPlayingInfoPropertyPlaybackRate];
+
+    [_nowPlayingInfo setObject: [NSNumber numberWithFloat: 0.0]
+			forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime];
+    [_nowPlayingInfo setObject: [NSNumber numberWithFloat: 300.0]
+			forKey: MPMediaItemPropertyPlaybackDuration];
+
+    [_nowPlayingInfo setObject: [NSNumber numberWithUnsignedInt: 1]
+			forKey: MPNowPlayingInfoPropertyPlaybackQueueIndex];
+    /* internet radio, queue should be really large, so that
+     * we never have queueIndex bigger than queueCount.
+     */
+    [_nowPlayingInfo setObject: [NSNumber numberWithUnsignedInt:
+					      (int) 2000]
+			forKey: MPNowPlayingInfoPropertyPlaybackQueueCount];
+    if (song != nil)
+	[_nowPlayingInfo setObject: song forKey: MPMediaItemPropertyTitle];
+
+    [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo: _nowPlayingInfo];
+}
+
 - (void) songChanged: (id) asong {
     NSString *song = (NSString *) asong;
     if (song != nil) {
+	[self updateIOSCenter: song];
 	[_marquee setText: song];
 	[_history addHistoryStation: [_signView getPlayingStationName]
 			   withSong: song];
     } else {
+	[self updateIOSCenter: @"[Unknown song"];
 	[_marquee setText: @"[Unknown]"];
     }
 }
 
-- (void) playPressed: (id) sender withData: (NSNumber *)movement {
+- (void) playInternal {
     MFANStreamPlayer *player = [_signView getCurrentPlayer];
     if (player == nil) {
 	[_signView startCurrentStation];
@@ -191,6 +220,37 @@
 	[player resume];
     else
 	[player pause];
+}
+
+- (void) playPressed: (id) sender withData: (NSNumber *)movement {
+    [self playInternal];
+}
+
+- (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
+    NSLog(@"- remotecontrolev = %d", (int) receivedEvent.type);
+    if (receivedEvent.type == UIEventTypeRemoteControl) {
+        switch (receivedEvent.subtype) {
+            case UIEventSubtypeRemoteControlPlay:
+            case UIEventSubtypeRemoteControlPause:
+            case UIEventSubtypeRemoteControlTogglePlayPause:
+		[self playInternal];
+                break;
+
+            case UIEventSubtypeRemoteControlPreviousTrack:
+		[_signView changeStationBy: -1];
+                break;
+
+            case UIEventSubtypeRemoteControlNextTrack:
+		[_signView changeStationBy: 1];
+                break;
+
+            default:
+		NSLog(@"!RMT mystery pressed %d", (int) receivedEvent.subtype);
+                break;
+        }
+
+	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+    }
 }
 
 @end

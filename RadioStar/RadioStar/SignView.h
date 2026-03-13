@@ -40,6 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property RadioHistory *history;
 @property ViewController *vc;
+@property (readonly) MFANStreamPlayer *player;
 
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc;
 
@@ -58,6 +59,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void) setRadioHistory: (RadioHistory *) history;
 
 - (void) stopRadio;
+
+- (void) changeStationBy: (int16_t) change;
 
 - (void) startCurrentStation;
 

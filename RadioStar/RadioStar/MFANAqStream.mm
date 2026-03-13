@@ -492,7 +492,7 @@ MFANAqStream_PacketsProc( void *contextp,
     // the stream player, or about 32 seconds at 64Kbits (a shorter
     // duration at higher rates of course).  So, you should keep this
     // above 32000.
-    [aqp pruneOldestMs: 600000];
+    [aqp pruneOldestMs: 300000];
 
     // notify target that there's data available.  Note that we have
     // the streamMutex at this point, so our notify callback has to be

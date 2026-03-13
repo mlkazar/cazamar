@@ -12,7 +12,9 @@
 
 @end
 
-@implementation SceneDelegate
+@implementation SceneDelegate {
+    ViewController *_vc;
+}
 
 
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
@@ -22,13 +24,13 @@
     // initialized and attached to the scene.  This delegate does not
     // imply the connecting scene or session are new (see
     // `application:configurationForConnectingSceneSession` instead).
-    ViewController *vc;
     self.window = [[UIWindow alloc] initWithWindowScene: (UIWindowScene *) scene];
-    vc = [[ViewController alloc] init];
-    [self.window setRootViewController: vc];
+    _vc = [[ViewController alloc] init];
+    [self.window setRootViewController: _vc];
     [self.window makeKeyAndVisible];
 
     [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
+    NSLog(@"scene willConnectToSession");
 }
 
 
@@ -37,24 +39,31 @@
     // This occurs shortly after the scene enters the background, or when its session is discarded.
     // Release any resources associated with this scene that can be re-created the next time the scene connects.
     // The scene may re-connect later, as its session was not necessarily discarded (see `application:didDiscardSceneSessions` instead).
+    NSLog(@"scene didDisconnect");
 }
 
 
 - (void)sceneDidBecomeActive:(UIScene *)scene {
-    // Called when the scene has moved from an inactive state to an active state.
-    // Use this method to restart any tasks that were paused (or not yet started) when the scene was inactive.
+    // Called when the scene has moved from an inactive state to an
+    // active state.  Use this method to restart any tasks that were
+    // paused (or not yet started) when the scene was inactive.
+    //
+    // This is the one that runs when we leave the lock screen.
+    NSLog(@"scene didBecomeActive");
 }
 
 
 - (void)sceneWillResignActive:(UIScene *)scene {
     // Called when the scene will move from an active state to an inactive state.
     // This may occur due to temporary interruptions (ex. an incoming phone call).
+    NSLog(@"scene willResignActive");
 }
 
 
 - (void)sceneWillEnterForeground:(UIScene *)scene {
     // Called as the scene transitions from the background to the foreground.
     // Use this method to undo the changes made on entering the background.
+    NSLog(@"scene willEnterForground");
 }
 
 
@@ -62,6 +71,7 @@
     // Called as the scene transitions from the foreground to the background.
     // Use this method to save data, release shared resources, and store enough scene-specific state information
     // to restore the scene back to its current state.
+    NSLog(@"scene didEnterBackground");
 }
 
 

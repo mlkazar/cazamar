@@ -7,6 +7,7 @@
     NSString *_iconUrl;
     NSString *_streamType;
     UIImage *_iconImage;
+    uint16_t _signIndex;
 
     uint32_t _streamRateKb;
 

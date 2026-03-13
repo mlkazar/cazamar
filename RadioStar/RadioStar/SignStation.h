@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property bool isSelected;
 @property bool isLoaded;
 @property CGPoint origin;
+@property uint16_t signIndex;
 @property UIImage *iconImage;
 
 - (void) setRowColumn: (SignCoord) rowColumn;

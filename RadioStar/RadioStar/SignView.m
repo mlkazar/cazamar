@@ -432,7 +432,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     float yPos = (_ySpace - iconHeight) / 2.0 - topMargin;
     uint32_t columns = 0;
     SignStation *station;
+    uint16_t ix = 0;
     for(station in _allStations) {
+	station.signIndex = ix++;
 	station.origin = CGPointMake(xPos, yPos);
 	columns++;
 	if (columns >= xCount) {
@@ -775,9 +777,19 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}
 
 	[self computeLayout];
+
+	[[NSNotificationCenter defaultCenter] addObserver:self
+						 selector:@selector(sceneDidBecomeActive:)
+						     name:UISceneDidActivateNotification
+						   object:nil];
     }
 
     return self;
+}
+
+- (void) sceneDidBecomeActive: (id) junk {
+    NSLog(@"scene didBecomeActive");
+    [self animationOn];
 }
 
 - (void) addRecognizers {
@@ -950,6 +962,43 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [alert addAction: action];
 
     [_vc presentViewController: alert animated:YES completion: nil];
+}
+
+- (void) changeStationBy: (int16_t) change {
+    uint16_t ix;
+    uint64_t count;
+    SignStation *newStation;
+
+    if (_playingStation == nil) {
+	ix = 0;
+    } else {
+	ix = _playingStation.signIndex + change;
+	count = [_allStations count];
+
+	if (ix+change == 0xFFFF)
+	    ix = count-1;
+	else {
+	    ix = ix % count;
+	}
+    }
+
+    // switch to station ix
+    newStation = _allStations[ix];
+    if (_playingStation == newStation)
+	return;
+
+    if (_playingStation != nil) {
+	[self stopRadio];
+	_playingStation = nil;
+    }
+
+    // start new station if different.  Player and stream are nil
+    // together, and stopRadio should have set to nil
+    if (_player == nil) {
+	[self startStation: newStation];
+	_playingStation = newStation;
+	[self animationOn];
+    }
 }
 
 - (void) removeStation: (SignStation *) station {
