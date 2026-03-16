@@ -264,6 +264,9 @@
 
     uint64_t _packetStreamVersion;
 
+    // the number of seconds per byte of media stream
+    float _byteDuration;
+
     uint64_t _lastPacketEndMs;
 
     AudioStreamBasicDescription _dataFormat;
@@ -383,8 +386,15 @@ MFANAqStream_PropertyProc( void *contextp,
 	aqp->_packetDuration = (1 / aqp->_dataFormat.mSampleRate) *
 	    aqp->_dataFormat.mFramesPerPacket;
 	aqp->_frameDuration = (1 / aqp->_dataFormat.mSampleRate);
-	NSLog(@"packet duration=%f frame duration=%f",
-	      aqp->_packetDuration, aqp->_frameDuration);
+
+	// Sample rate gives the # of frames per second.  Samples are
+	// mBytesPerFrame long.  So, duration per byte is (number of
+	// seconds per frame) * (frames per byte) or
+	// frameDuration/mBytesPerFrame
+	aqp->_byteDuration = aqp->_frameDuration / aqp->_dataFormat.mBytesPerFrame;
+
+	NSLog(@"packet duration=%f frame duration=%f byteDuration=%f",
+	      aqp->_packetDuration, aqp->_frameDuration, aqp->_byteDuration);
     }
 }
 

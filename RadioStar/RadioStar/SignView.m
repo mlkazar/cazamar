@@ -13,6 +13,7 @@
 
 #import "GraphMath.h"
 #import "ManualStation.h"
+#import "EditStation.h"
 #import "MFANAqStream.h"
 #import "MFANFileWriter.h"
 #import "PopStatus.h"
@@ -62,6 +63,9 @@ NS_ASSUME_NONNULL_BEGIN
     SearchStation *_searchStation;
 
     ManualStation *_manualStation;
+
+    EditStation *_editStation;
+    SignStation *_stationToEdit;
 
     SignStation *_playingStation;
     MFANAqStream *_stream;
@@ -1017,8 +1021,37 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateBegan) {
 	SignStation *station = [self findStationByTouch: point];
-	[self showPopStatus];
+	if (station == nil)
+	    station = _playingStation;
+	if (station != nil) {
+	    _stationToEdit = station;
+	    _editStation = [[EditStation alloc] initWithFrame: self.frame
+						      station: station
+						     viewCont: _vc];
+	    [_editStation setCallback: self withSel: @selector(editDone:)];
+	    [_vc pushTopView: _editStation];
+	}
     }
+}
+
+- (void) editDone: (id) junk {
+    [_vc popTopView];
+    if (!_editStation.canceled) {
+	if (_editStation.doRemove) {
+	    [self removeStation: _stationToEdit];
+	} else {
+	    // copy updated info
+	    _stationToEdit.stationName = _editStation.stationName;
+	    _stationToEdit.shortDescr = _editStation.shortDescr;
+	    _stationToEdit.streamUrl = _editStation.streamUrl;
+	    _stationToEdit.iconImage = nil;	// force regeneration
+	    [_stationToEdit setIconImageFromUrl: NO];
+	}
+	[[SignSave alloc] initSaveToFile: _allStations];
+	[self animationOn];
+    }
+
+    _stationToEdit = nil;
 }
 
 - (SignStation *) findStationByTouch:(CGPoint) touchPosition
@@ -1099,8 +1132,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    // random press
 	    [self showPopStatus];
 	}
-    } else {
-	[self displayAppOptions];
     }
 }
 
