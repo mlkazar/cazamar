@@ -51,13 +51,6 @@
 
 @class MFANAqStream;
 
-@interface MFANAqStreamTarget
-- (int32_t) notify: (MFANAqStream *) stream;
-- (int32_t) deliverPacket: (char *) data
-		   length: (uint32_t) length
-		   stream: (MFANAqStream *) stream;
-@end
-
 @interface MFANAqStreamPacket : NSObject
 
 @property NSString *playingSong;
@@ -89,6 +82,8 @@
 // absolute time.
 - (uint64_t) seek:(uint64_t) ms whence: (int) whence;
 
+- (uint64_t) tell;
+
 // create new reader, position it at current end
 - (MFANAqStreamReader *) initWithStream: (MFANAqStream *) stream;
 
@@ -100,6 +95,7 @@
 @property NSMutableOrderedSet *packetArray;
 @property uint64_t packetStreamVersion;
 @property bool shuttingDown;
+@property float byteDuration;
 
 + (pthread_mutex_t *) streamMutex;
 
@@ -116,12 +112,6 @@
 - (void) getDataFormat: (AudioStreamBasicDescription *) format;
 
 - (void) setFailureCallback: (id) callbackObj sel: (SEL) callbackSel;
-
-// We can only have one target at a time, but we can attach and detach
-// it without affecting the actual stream receiver.
-- (int32_t) attachTarget: (MFANAqStreamTarget *) target;
-
-- (void) detachTarget;
 
 // When shutdown, the pthread that does the RadioStream work exits and
 // releases its reference to the AqStream.

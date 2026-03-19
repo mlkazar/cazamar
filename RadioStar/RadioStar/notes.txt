@@ -14,7 +14,7 @@ Ideas for Radio app
 
 ** Stall a bit until buffers are loaded when starting new station (was bug)
 
--- edit existing radio station
+** edit existing radio station
 
 ** Clicking on blank area should display useful stuff like hihghlight
 and web stream info (partly done)
@@ -47,9 +47,16 @@ name as well)
 -- basic record button.  When recording, don't shutdown stream.
    Indicate visually.
 
+-- icon-done.png is really ugly: green is glaring.  Also text label
+   color needs to be black
+
+-- search is a little confusing when done
+
+-- search is ugly when searching / stop button needs to be clearer
+
 ** some visual queue that station search is complete
 
--- Session management so that song titles appear on lock screen.
+** Session management so that song titles appear on lock screen.
 
 ** hiccups during Bach play
 

@@ -207,12 +207,13 @@ MFANStreamPlayer_getUnknownString()
     uint32_t _availIx;
     uint32_t _availCount;
     BOOL _availEmptyWaiter;		/* parser is waiting for available buffers */
-    BOOL _availFullWaiter;		/* someone's waiting for space to add a new buffer */
     uint64_t _queuedBytes;		// # of bytes in queue for player
 
     BOOL _shutdown;
     BOOL _paused;
     BOOL _pthreadDone;
+
+    uint64_t _seekTarget;		// where we're seeking to
 
     NSThread *_readerThread;
 
@@ -280,6 +281,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	NSLog(@"buffer with %d bytes returned, leaving %lld in audio queue",
 	      bufRefp->mAudioDataByteSize, aqp->_queuedBytes);
     }
+    NSLog(@"buffer with %d bytes returned, leaving %lld in audio queue",
+	  bufRefp->mAudioDataByteSize, aqp->_queuedBytes);
     [aqp pushBuffer: bufRefp];
     aqp->_lastReturnedMs = now;
 
@@ -319,13 +322,19 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 }
 
 /* called on the main thread to create a new player */
-- (MFANStreamPlayer *) initWithStream: (MFANAqStream *) stream {
+- (MFANStreamPlayer *) initWithStream: (MFANAqStream *) stream ms:(uint64_t) ms {
     self = [super init];
     if (self) {
 	NSLog(@"- streamplayer init starts for %p", self);
 
 	// Remember the stream
 	_aqStream = stream;
+
+	// Create a reader
+	_streamReader = [[MFANAqStreamReader alloc] initWithStream: _aqStream];
+	if (ms != ~0ULL) {
+	    [_streamReader seek: ms whence: 0];
+	}
 
 	if ( !_staticSetup) {
 	    pthread_mutex_init(&_playerMutex, NULL);
@@ -352,7 +361,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_paused = NO;
 	_shutdown = NO;
 	_availEmptyWaiter = NO;
-	_availFullWaiter = NO;
 	_queuedBytes = 0;
 	_packetsp = NULL;
 	_currentPlaying = MFANStreamPlayer_getUnknownString();
@@ -477,10 +485,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     // thread's read to fail and the thread will exit.  The thread's
     // exiting will drop the thread's reference to the StreamPlayer
     [_streamReader close];
-
-    if (_aqStream) {
-	[_aqStream detachTarget];
-    }
 
     /* leave _audioQueue pointer set in case we need it during parse call shutdown */
     _audioQueue = NULL;
@@ -613,12 +617,15 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	return nil;
     }
 
+    NSLog(@"starting audioqueue init, availCount=%d", _availCount);
     for(uint32_t i=0;i<MFANStreamPlayer_nBuffers;i++) {
 	AudioQueueAllocateBuffer( audioQueue,
 				  _maxBufferSize,
 				  &_buffersp[i]);
 	[self pushBuffer: _buffersp[i]];
     }
+    NSLog(@"in setupAudioQueue done allocating, availCount=%d availIx=%d",
+	  _availCount, _availIx);
 
     /* turn up the volume; it is nice that this poorly documented
      * interface defaults to playing silently, so that if you forget
@@ -662,8 +669,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     uint32_t packetsCopied = 0;
     OSStatus osStatus;
 
-    // Create a reader
-    _streamReader = [[MFANAqStreamReader alloc] initWithStream: _aqStream];
     packet = nil;
     while(!_shutdown) {
 	// If there's nothing queued to the AudioQueue, we don't
@@ -676,7 +681,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	if (_queuedBytes == 0) {
 	    // don't start filling the audio queue unless we know we
 	    // can provide at least 3 buffers of audio data.
-	    if (![_streamReader waitForAtLeast: 3 * _maxBufferSize]) {
+	    if (![_streamReader waitForAtLeast: 2 * _maxBufferSize]) {
 		break;
 	    }
 	}
@@ -835,10 +840,9 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 - (void) pushBuffer: (AudioQueueBufferRef) item {
     uint32_t ix;
 
-    while (_availCount >= MFANStreamPlayer_nBuffers) {
+    if (_availCount >= MFANStreamPlayer_nBuffers) {
 	NSLog(@"streamplayer waiting for space in free list (SHOULDN'T EVER HAPPEN)");
-	_availFullWaiter = YES;
-	pthread_cond_wait(&_aqCond, &_playerMutex);
+	osp_assert("screwed up bufref list" == 0);
     }
 
     ix = _availIx+_availCount;
@@ -847,6 +851,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     _buffersp[ix] = item;
 
     _availCount++;
+    NSLog(@"pushBuffer %p availCount=%d", item, _availCount);
     if (_availEmptyWaiter) {
 	_availEmptyWaiter = NO;
 	pthread_cond_broadcast(&_aqCond);
@@ -868,10 +873,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     item = _buffersp[_availIx];
     if (++_availIx >= MFANStreamPlayer_nBuffers)
 	_availIx = 0;
-    if (_availFullWaiter) {
-	_availFullWaiter = NO;
-	pthread_cond_broadcast(&_aqCond);
-    }
+
+    NSLog(@"popbuffer availCount=%d item=%p", _availCount, item);
 
     return item;
 }
@@ -961,6 +964,15 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     else {
 	NSLog(@"! audio interruption unknown type %ld", intType);
     }
+}
+
+- (uint64_t) getSeekTarget: (float) offset {
+    uint64_t seekTarget;
+    float queuedSecs = _queuedBytes * _aqStream.byteDuration;
+    float nextRecordMs = (float) [_streamReader tell];
+
+    seekTarget = (uint64_t) (nextRecordMs + offset - queuedSecs);
+    return seekTarget;
 }
 
 - (void) setupAudioSession: (BOOL) mix

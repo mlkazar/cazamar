@@ -464,11 +464,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void)setFrame:(CGRect)frame
 {
-#if 0
-    // TODO: frame height is too large by origin.y.  Figure out why.
-    // frame.size.height -= frame.origin.y;
-    // CALayer origin was non-zero, should have been zero.
-#endif
     [super setFrame:frame];
     
     NSLog(@"in SIGNVIEW setframe %f x %f at %f.%f",
@@ -1079,7 +1074,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) startStation: (SignStation *) station {
     _stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
     [_stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
-    _player = [[MFANStreamPlayer alloc] initWithStream: _stream];
+    _player = [[MFANStreamPlayer alloc] initWithStream: _stream ms:~0ULL];
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
     [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
 }
@@ -1177,6 +1172,21 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	
     }
     NSLog(@"shutdown of mfanaqstream done");
+}
+
+- (void) seek: (float) distance {
+    uint64_t seekTargetMs;
+    if (_player != nil) {
+	seekTargetMs = [_player getSeekTarget:distance];
+	[_player shutdown];
+	_player = nil;
+    }
+
+    // and start a new player at the selected time code
+    _player = [[MFANStreamPlayer alloc] initWithStream: _stream ms:seekTargetMs];
+    [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
+    [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+    [self animationOn];
 }
 
 - (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel {

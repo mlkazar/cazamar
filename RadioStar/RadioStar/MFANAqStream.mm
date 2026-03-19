@@ -122,7 +122,18 @@
     pthread_mutex_lock([MFANAqStream streamMutex]);
     _ix = [self findPacketIx: ms];
     pthread_mutex_unlock([MFANAqStream streamMutex]);
+
+    // wakeup any pending read
+    pthread_cond_broadcast([_aqStream packetArrayCv]);
     return _ix;
+}
+
+- (uint64_t) tell {
+    uint64_t rval;
+    pthread_mutex_lock([MFANAqStream streamMutex]);
+    rval = _recordMs;
+    pthread_mutex_unlock([MFANAqStream streamMutex]);
+    return _recordMs;
 }
 
 // Check to see if there are at least targetMs of audio queued in the
@@ -251,8 +262,6 @@
 
     BOOL _pthreadWaiters;
     NSThread *_radioStreamThread;
-
-    MFANAqStreamTarget *_target;
 
     // counter incremented on each detach
     uint32_t _streamAttachCounter;
@@ -456,9 +465,6 @@ MFANAqStream_PacketsProc( void *contextp,
 
     if (numPackets == 0) {
 	NSLog(@"- PacketsProc shutting down audioqueue due to no packets");
-	if (aqp->_target) {
-	    [aqp->_target deliverPacket: NULL length: 0 stream:aqp];
-	}
 	return;
     }
 
@@ -503,13 +509,6 @@ MFANAqStream_PacketsProc( void *contextp,
     // duration at higher rates of course).  So, you should keep this
     // above 32000.
     [aqp pruneOldestMs: 300000];
-
-    // notify target that there's data available.  Note that we have
-    // the streamMutex at this point, so our notify callback has to be
-    // careful not to do anything directly, but instead fire off a
-    // timer or something to pop off stack frames.
-    if (aqp->_target != nil)
-	[aqp->_target notify: aqp];
 
     // and wakeup any readers
     pthread_cond_broadcast(&aqp->_packetArrayCv);
@@ -812,21 +811,6 @@ MFANAqStream_rsControlProc( void *contextp,
     threadReference = nil;
 
     pthread_exit(NULL);
-}
-
-- (int32_t) attachTarget: (MFANAqStreamTarget *) target {
-    pthread_mutex_lock(&_streamMutex);
-    _target = target;
-    pthread_mutex_unlock(&_streamMutex);
-
-    return 0;
-}
-
-- (void) detachTarget {
-    pthread_mutex_lock(&_streamMutex);
-    _streamAttachCounter++;
-    _target = nil;
-    pthread_mutex_unlock(&_streamMutex);
 }
 
 + (pthread_mutex_t *) streamMutex {

@@ -63,37 +63,6 @@ static UIColor *_backgroundColor;
     return;
 }
 
-#ifdef notdef
-- (void) tableView: (UITableView *) tview
-commitEditingStyle: (UITableViewCellEditingStyle) style
- forRowAtIndexPath: (NSIndexPath *) path
-{
-    long row;
-    NSMutableArray *histItemArray;
-
-    if (style == UITableViewCellEditingStyleDelete) {
-	row = [path row];
-	histItemArray = [_topHist histItems];
-	[histItemArray removeObjectAtIndex: row];
-
-	/* and mark that we've made changes so that we'll randomize and reload 
-	 * song list when Done is pressed.
-	 */
-	_topHist.changesMade = YES;
-
-	/* what a sad, sad joke is iOS -- clowns broke deleting an
-	 * item from a view from the swipe handler in ios 8.0.2.
-	 */
-	[NSTimer scheduledTimerWithTimeInterval: 0.01
-		 target: self
-		 selector: @selector(updateView:)
-		 userInfo: nil
-		 repeats: NO];
-    }
-    NSLog(@"SURPRISE CALL TO commiteditngstyle");
-}
-#endif
-
 - (void) removeRowAtPath: (NSIndexPath *) path
 {
     long row;
@@ -756,12 +725,5 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
     lastItem = [_histItems objectAtIndex: ix];
     return lastItem.highlighted;
 }
-
-#if 0
-- (void)drawRect:(CGRect)rect
-{
-    drawBackground(rect);
-}
-#endif
 
 @end /* RadioHistory */

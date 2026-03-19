@@ -8,7 +8,7 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 @interface MFANStreamPlayer : NSObject
 
-- (MFANStreamPlayer *) initWithStream : (MFANAqStream *) stream;
+- (MFANStreamPlayer *) initWithStream : (MFANAqStream *) stream ms: (uint64_t) ms;
 
 - (void) resume;
 
@@ -33,5 +33,7 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 - (NSString *) getEncodingType;
 
 - (NSString *) getPublicUrl;
+
+- (uint64_t) getSeekTarget: (float) offset;
 
 @end

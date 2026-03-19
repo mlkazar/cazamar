@@ -58,6 +58,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) setRadioHistory: (RadioHistory *) history;
 
+- (void) seek: (float) distance;
+
 - (void) stopRadio;
 
 - (void) changeStationBy: (int16_t) change;
