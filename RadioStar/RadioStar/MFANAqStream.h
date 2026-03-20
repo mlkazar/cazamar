@@ -95,7 +95,7 @@
 @property NSMutableOrderedSet *packetArray;
 @property uint64_t packetStreamVersion;
 @property bool shuttingDown;
-@property float byteDuration;
+@property float packetDuration;
 
 + (pthread_mutex_t *) streamMutex;
 

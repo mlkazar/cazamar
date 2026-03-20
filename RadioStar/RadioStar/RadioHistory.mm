@@ -361,8 +361,6 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 
 	/* and read in the file */
 	[self restoreEdits];
-
-	[self activateTop];
     }
     return self;
 }
@@ -370,6 +368,11 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 - (NSMutableArray *) histItems
 {
     return _histItems;
+}
+
+- (void) showHistory {
+    [_viewCont pushTopView: self];
+    [self activateTop];
 }
 
 + (UIColor *) backgroundColor

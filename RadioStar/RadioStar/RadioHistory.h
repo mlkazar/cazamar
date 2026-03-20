@@ -49,6 +49,8 @@
 
 - (BOOL) isHighlighted;
 
+- (void) showHistory;
+
 - (void) setCallback: (id) object WithSel: (SEL) selector;
 
 @end

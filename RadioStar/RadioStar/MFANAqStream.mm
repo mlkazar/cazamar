@@ -121,6 +121,8 @@
 - (uint64_t) seek: (uint64_t) ms whence: (int) how {
     pthread_mutex_lock([MFANAqStream streamMutex]);
     _ix = [self findPacketIx: ms];
+    _recordMs = ms;
+    NSLog(@"==>seek to ms=%lld index=%d", ms, _ix);
     pthread_mutex_unlock([MFANAqStream streamMutex]);
 
     // wakeup any pending read
@@ -133,7 +135,7 @@
     pthread_mutex_lock([MFANAqStream streamMutex]);
     rval = _recordMs;
     pthread_mutex_unlock([MFANAqStream streamMutex]);
-    return _recordMs;
+    return rval;
 }
 
 // Check to see if there are at least targetMs of audio queued in the
@@ -273,9 +275,6 @@
 
     uint64_t _packetStreamVersion;
 
-    // the number of seconds per byte of media stream
-    float _byteDuration;
-
     uint64_t _lastPacketEndMs;
 
     AudioStreamBasicDescription _dataFormat;
@@ -396,14 +395,12 @@ MFANAqStream_PropertyProc( void *contextp,
 	    aqp->_dataFormat.mFramesPerPacket;
 	aqp->_frameDuration = (1 / aqp->_dataFormat.mSampleRate);
 
-	// Sample rate gives the # of frames per second.  Samples are
-	// mBytesPerFrame long.  So, duration per byte is (number of
-	// seconds per frame) * (frames per byte) or
-	// frameDuration/mBytesPerFrame
-	aqp->_byteDuration = aqp->_frameDuration / aqp->_dataFormat.mBytesPerFrame;
+	// Sample rate gives the # of frames per second.  So,
+	// duration of a packet is frames per packet / (frames/second) = seconds/packet
+	aqp->_packetDuration = aqp->_dataFormat.mFramesPerPacket / aqp->_dataFormat.mSampleRate;
 
-	NSLog(@"packet duration=%f frame duration=%f byteDuration=%f",
-	      aqp->_packetDuration, aqp->_frameDuration, aqp->_byteDuration);
+	NSLog(@"packet duration=%f frame duration=%f packetDuration=%f",
+	      aqp->_packetDuration, aqp->_frameDuration, aqp->_packetDuration);
     }
 }
 
@@ -508,7 +505,7 @@ MFANAqStream_PacketsProc( void *contextp,
     // the stream player, or about 32 seconds at 64Kbits (a shorter
     // duration at higher rates of course).  So, you should keep this
     // above 32000.
-    [aqp pruneOldestMs: 300000];
+    [aqp pruneOldestMs: 480000];
 
     // and wakeup any readers
     pthread_cond_broadcast(&aqp->_packetArrayCv);

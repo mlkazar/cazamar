@@ -910,7 +910,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
             NSLog(@"show history");
 	    if (self.history != nil) {
 		// pop is done by TopView in its history done callback
-		[self.vc pushTopView: self.history];
+		[self.history showHistory];
 	    }
 	}];
     [alert addAction: action];
@@ -1175,7 +1175,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) seek: (float) distance {
-    uint64_t seekTargetMs;
+    uint64_t seekTargetMs = 0;
     if (_player != nil) {
 	seekTargetMs = [_player getSeekTarget:distance];
 	[_player shutdown];

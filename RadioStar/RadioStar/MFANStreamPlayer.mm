@@ -207,7 +207,7 @@ MFANStreamPlayer_getUnknownString()
     uint32_t _availIx;
     uint32_t _availCount;
     BOOL _availEmptyWaiter;		/* parser is waiting for available buffers */
-    uint64_t _queuedBytes;		// # of bytes in queue for player
+    uint64_t _queuedPackets;		// # of packetsin queue for player
 
     BOOL _shutdown;
     BOOL _paused;
@@ -276,13 +276,13 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
     /* push the buffer for reuse */
     pthread_mutex_lock(&_playerMutex);
-    aqp->_queuedBytes -= bufRefp->mAudioDataByteSize;
+    aqp->_queuedPackets -= bufRefp->mPacketDescriptionCount;
+    NSLog(@"==> buffer %p returned with %d packets, %lld still queued",
+	  bufRefp, bufRefp->mPacketDescriptionCount, aqp->_queuedPackets);
     if (_showIo) {
-	NSLog(@"buffer with %d bytes returned, leaving %lld in audio queue",
-	      bufRefp->mAudioDataByteSize, aqp->_queuedBytes);
+	NSLog(@"buffer with %d packets returned, leaving %lld in audio queue",
+	      bufRefp->mPacketDescriptionCount, aqp->_queuedPackets);
     }
-    NSLog(@"buffer with %d bytes returned, leaving %lld in audio queue",
-	  bufRefp->mAudioDataByteSize, aqp->_queuedBytes);
     [aqp pushBuffer: bufRefp];
     aqp->_lastReturnedMs = now;
 
@@ -325,7 +325,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 - (MFANStreamPlayer *) initWithStream: (MFANAqStream *) stream ms:(uint64_t) ms {
     self = [super init];
     if (self) {
-	NSLog(@"- streamplayer init starts for %p", self);
+	NSLog(@"- streamplayer init starts for %p ms=%lld", self, ms);
 
 	// Remember the stream
 	_aqStream = stream;
@@ -361,7 +361,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_paused = NO;
 	_shutdown = NO;
 	_availEmptyWaiter = NO;
-	_queuedBytes = 0;
+	_queuedPackets = 0;
 	_packetsp = NULL;
 	_currentPlaying = MFANStreamPlayer_getUnknownString();
 	_songCount++;
@@ -622,7 +622,9 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	AudioQueueAllocateBuffer( audioQueue,
 				  _maxBufferSize,
 				  &_buffersp[i]);
+	pthread_mutex_lock(&_playerMutex);
 	[self pushBuffer: _buffersp[i]];
+	pthread_mutex_unlock(&_playerMutex);
     }
     NSLog(@"in setupAudioQueue done allocating, availCount=%d availIx=%d",
 	  _availCount, _availIx);
@@ -678,10 +680,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	// more data, the queue will simply return the buffer to you
 	// without playing any music.  IOW, it won't play any sounds
 	// unless it has a decent amount of queued data.
-	if (_queuedBytes == 0) {
+	if (_queuedPackets == 0) {
 	    // don't start filling the audio queue unless we know we
-	    // can provide at least 3 buffers of audio data.
-	    if (![_streamReader waitForAtLeast: 2 * _maxBufferSize]) {
+	    // can provide at least one full buffers of audio data.
+	    if (![_streamReader waitForAtLeast: _maxBufferSize]) {
 		break;
 	    }
 	}
@@ -707,11 +709,17 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    // packets, we should have created the AudioQueue.
 	    osp_assert(_audioQueue != nil);
 	    bufRefp->mAudioDataByteSize = bytesCopied;
+	    bufRefp->mPacketDescriptionCount = packetsCopied;
 
 	    if (_showIo) {
 		NSLog(@"StreamPlayer out of stream data, enqueued %d bytes avail=%d",
 		      bytesCopied, _availCount);
 	    }
+	    NSLog(@"==> buffer %p(%p) queued with %d packets, %lld now queued",
+		  bufRefp, bufRefp->mAudioData,
+		  bufRefp->mPacketDescriptionCount,
+		  _queuedPackets + packetsCopied);
+
 	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 						 bufRefp,
 						 packetsCopied,
@@ -725,17 +733,17 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    }
 	    if (_showIo) {
 		NSLog(@"StreamPlayer enqueued %d bytes %d packets"
-		      @"availForAlloc=%d queuedBytes=%lld",
-		      bytesCopied, packetsCopied, _availCount, _queuedBytes);
+		      @"availForAlloc=%d queuedPackets=%lld",
+		      bytesCopied, packetsCopied, _availCount, _queuedPackets);
 	    }
 
 	    bufRefp = NULL;
 
 	    pthread_mutex_lock(&_playerMutex);
-	    _queuedBytes += bytesCopied;
+	    _queuedPackets += packetsCopied;
 	    if (_showIo) {
-		NSLog(@"buffer with %d bytes queued, giving %lld in audio queue",
-		      bytesCopied, _queuedBytes);
+		NSLog(@"buffer with %d pcakets queued, giving %lld in audio queue",
+		      packetsCopied, _queuedPackets);
 	    }
 	    bufRefp = [self popBuffer];
 	    pthread_mutex_unlock(&_playerMutex);
@@ -793,6 +801,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	} else {
 	    // packet doesn't fit, so queue the buffer
 	    bufRefp->mAudioDataByteSize = bytesCopied;
+	    bufRefp->mPacketDescriptionCount = packetsCopied;
 
 	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
 						 bufRefp,
@@ -807,13 +816,17 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    }
 
 	    pthread_mutex_lock(&_playerMutex);
-	    _queuedBytes += bytesCopied;
+	    NSLog(@"==> buffer %p(%p) queued with %d packets, %lld now queued",
+		  bufRefp, bufRefp->mAudioData,
+		  bufRefp->mPacketDescriptionCount,
+		  _queuedPackets + packetsCopied);
+	    _queuedPackets += packetsCopied;
 	    pthread_mutex_unlock(&_playerMutex);
 
 	    if (_showIo) {
 		NSLog(@"StreamPlayer full buffer, enqueued %d bytes %d packets "
-		      @"avail=%d queuedBytes=%lld",
-		      bytesCopied, packetsCopied, _availCount, _queuedBytes);
+		      @"avail=%d queuePackets=%lld",
+		      bytesCopied, packetsCopied, _availCount, _queuedPackets);
 	    }
 
 	    bytesCopied = 0;
@@ -966,13 +979,22 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     }
 }
 
+// get the millisecond timestamp of the packet to play that's offset
+// seconds after (or before if negative) the packet currently being
+// played by the AudioQueue.  We estimate the timestamp being played
+// as the time stamp of the next packet to be read from the stream,
+// minus the # of packets still in the AudioQueue.
 - (uint64_t) getSeekTarget: (float) offset {
-    uint64_t seekTarget;
-    float queuedSecs = _queuedBytes * _aqStream.byteDuration;
+    int64_t seekTarget;
+    float queuedSecs = _queuedPackets * _aqStream.packetDuration;
     float nextRecordMs = (float) [_streamReader tell];
 
-    seekTarget = (uint64_t) (nextRecordMs + offset - queuedSecs);
-    return seekTarget;
+    seekTarget = (int64_t) (nextRecordMs + 1000*offset - 1000*queuedSecs);
+
+    NSLog(@"==>seek target %lld queuedSecs=%f nextRecordMs=%f",
+	  seekTarget, queuedSecs, nextRecordMs);
+
+    return (seekTarget < 0? 0 : seekTarget);
 }
 
 - (void) setupAudioSession: (BOOL) mix

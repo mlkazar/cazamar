@@ -26,7 +26,7 @@ and web stream info (partly done)
 ** make sure multi-word queries are properly escaped ('\020' or '+') in
 HTTP queries in RadioScan.
 
--- +20 / -20 buttons
+** +20 / -20 buttons
 
 ** Automatically figure out if browing or searching for a single
 station (pretty much always browse, but watching try treating as a
@@ -53,6 +53,9 @@ name as well)
 -- search is a little confusing when done
 
 -- search is ugly when searching / stop button needs to be clearer
+
+** History should successfully scroll to bottom.  Need to add
+"showHistory" method that does the pushView + scroll operation.
 
 ** some visual queue that station search is complete
 
