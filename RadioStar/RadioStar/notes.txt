@@ -50,9 +50,15 @@ name as well)
 -- icon-done.png is really ugly: green is glaring.  Also text label
    color needs to be black
 
--- search is a little confusing when done
+** search is a little confusing when done
 
 -- search is ugly when searching / stop button needs to be clearer
+
+-- highlight button on popup status screen
+
+** fix shutdown bug in stream player ignoring pthreadDone
+
+** sync song title change with return of buffer (reduced buffer size)
 
 ** History should successfully scroll to bottom.  Need to add
 "showHistory" method that does the pushView + scroll operation.

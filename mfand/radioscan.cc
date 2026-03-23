@@ -1424,10 +1424,22 @@ RadioScanQuery::getStatus()
 {
     std::string result;
     char tbuffer[1024];
-    std::string status = _baseStatus;
+    std::string status = _baseStatus + "\n";
+    std::string hostName;
+    size_t endIndex;
     if (_verifyingUrl.size() != 0) {
-        status += ", verifying ";
-        status += _verifyingUrl;
+        endIndex = _verifyingUrl.find_first_of('/', 8);
+        if (endIndex != std::string::npos) {
+            hostName = _verifyingUrl.substr(0,endIndex);
+        } else {
+            hostName = _verifyingUrl;
+        }
+        if (hostName.substr(0,6) == "https:")
+            hostName = hostName.substr(8);
+        else
+            hostName = hostName.substr(7);
+        status += "Verifying ";
+        status += hostName;
         status += " ";
     }
 

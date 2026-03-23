@@ -135,7 +135,7 @@
    sterams are AAC_ADTSType.
  */
 
-static const uint32_t MFANStreamPlayer_nBuffers = 48;
+static const uint32_t MFANStreamPlayer_nBuffers = 6;
 
 /* global function */
 NSString *
@@ -219,6 +219,9 @@ MFANStreamPlayer_getUnknownString()
 
     /* state to keep track of main player pthread */
     pthread_cond_t _aqCond;
+
+    // state to keep track of thread exit
+    pthread_cond_t _pthreadDoneCond;
 
     /* rather than have a huge local, this array stores the packet
      * descriptors for the audio buffer we're about to queue.  Its
@@ -342,7 +345,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	}
 
 	pthread_cond_init(&_aqCond, NULL);
-
+	pthread_cond_init(&_pthreadDoneCond, NULL)
+;
 	_spyTimer = nil;
 	_shutdownTimer = nil;
 
@@ -463,6 +467,15 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
     _shutdown = YES;
 
+    // this, plus the shutdown flag beimg set, will cause the playAsync
+    // thread's read to fail and the thread will exit.  The thread's
+    // exiting will drop the thread's reference to the StreamPlayer
+    [_streamReader close];
+
+    while(!_pthreadDone) {
+	pthread_cond_wait(&_pthreadDoneCond, &_playerMutex);
+    }
+
     // drop the lock in case something we do during shutdown triggers a synchronous
     // callback.
     pthread_mutex_unlock(&_playerMutex);
@@ -480,11 +493,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	NSLog(@"****dispose processing done");
     }
     NSLog(@"just stopped AudioQueue %p", _audioQueue);
-
-    // this, plus the shutdown flag beimg set, will cause the playAsync
-    // thread's read to fail and the thread will exit.  The thread's
-    // exiting will drop the thread's reference to the StreamPlayer
-    [_streamReader close];
 
     /* leave _audioQueue pointer set in case we need it during parse call shutdown */
     _audioQueue = NULL;
@@ -601,6 +609,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     AudioQueueRef audioQueue;
     OSStatus osStatus;
 
+    NSLog(@"setupaudioqueue player=%p", self);
     [_aqStream getDataFormat: &_dataFormat];
     osStatus = AudioQueueNewOutput ( &_dataFormat,
 				     MFANStreamPlayer_handleOutput,
@@ -843,6 +852,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     }
 
     _pthreadDone = YES;
+    pthread_cond_broadcast(&_pthreadDoneCond);
     pthread_exit(NULL);
 }
 
@@ -1025,5 +1035,4 @@ MFANStreamPlayer_handleOutput( void *acontextp,
                                           name:AVAudioSessionRouteChangeNotification
                                           object:nil];
 }
-
 @end

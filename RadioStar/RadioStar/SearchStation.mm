@@ -43,6 +43,9 @@
     // displaying state of running query
     UIAlertController *_alert;
 
+    UIAlertController *_finishedAlert;
+    NSTimer *_finishedTimer;
+
     uint32_t _pickerRow;
 }
 
@@ -283,6 +286,42 @@
 	delete _queryp;
 	_queryp = nullptr;
     }
+
+    [self displayNextSteps];
+}
+
+- (void) displayNextSteps {
+    _finishedAlert = [UIAlertController
+				   alertControllerWithTitle: @"RadioStar"
+						    message: @"Next, select stations to add\n"
+			 @"and press done"
+					     preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK"
+                                                     style: UIAlertActionStyleDefault
+                                                   handler:^(UIAlertAction *act) {
+	    self->_finishedAlert = nil;
+	    if (self->_finishedTimer != nil) {
+		[self->_finishedTimer invalidate];
+		self->_finishedTimer = nil;
+	    }
+	}];
+    [_finishedAlert addAction: action];
+
+    _finishedTimer = [NSTimer scheduledTimerWithTimeInterval: 5.0
+						      target:self
+						    selector:@selector(finishedDismiss:)
+						    userInfo:nil
+						     repeats: NO];
+    [_vc presentViewController: _finishedAlert animated:YES completion: nil];
+}
+
+- (void) finishedDismiss: (id) junk {
+    if (_finishedAlert) {
+	[_finishedAlert dismissViewControllerAnimated: YES completion:nil];
+	_finishedAlert = nil;
+    }
+    _finishedTimer = nil;
 }
 
 // This does more than monitor the query -- it is responsible for
