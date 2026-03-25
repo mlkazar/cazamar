@@ -505,7 +505,7 @@ MFANAqStream_PacketsProc( void *contextp,
     // the stream player, or about 32 seconds at 64Kbits (a shorter
     // duration at higher rates of course).  So, you should keep this
     // above 32000.
-    [aqp pruneOldestMs: 480000];
+    [aqp pruneOldestMs: 60000];
 
     // and wakeup any readers
     pthread_cond_broadcast(&aqp->_packetArrayCv);

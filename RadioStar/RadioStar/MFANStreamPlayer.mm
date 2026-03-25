@@ -682,165 +682,168 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
     packet = nil;
     while(!_shutdown) {
-	// If there's nothing queued to the AudioQueue, we don't
-	// process the stream input until there's at least 3-4 buffers
-	// worth of data present, since I noticed that if you queue
-	// only one small buffer to the AudioQueue, and don't have
-	// more data, the queue will simply return the buffer to you
-	// without playing any music.  IOW, it won't play any sounds
-	// unless it has a decent amount of queued data.
-	if (_queuedPackets == 0) {
-	    // don't start filling the audio queue unless we know we
-	    // can provide at least one full buffers of audio data.
-	    if (![_streamReader waitForAtLeast: _maxBufferSize]) {
-		break;
+	@autoreleasepool {
+	    // If there's nothing queued to the AudioQueue, we don't
+	    // process the stream input until there's at least 3-4
+	    // buffers worth of data present, since I noticed that if
+	    // you queue only one small buffer to the AudioQueue, and
+	    // don't have more data, the queue will simply return the
+	    // buffer to you without playing any music.  IOW, it won't
+	    // play any sounds unless it has a decent amount of queued
+	    // data.
+	    if (_queuedPackets == 0) {
+		// don't start filling the audio queue unless we know we
+		// can provide at least one full buffers of audio data.
+		if (![_streamReader waitForAtLeast: _maxBufferSize]) {
+		    break;
+		}
 	    }
-	}
 
-	// if we have data to flush and no more data queued for us,
-	// send it to the AudioQueue now, and then wait for more.
-	//
-	// One tricky point: the audio player doesn't actually make
-	// sounds unless it has a few milliseconds of audio queued.
-	// So, if the stream stalls, and then we feed the audio queue
-	// one buffer at a time (say 16KB), where that data isn't
-	// followed by more for its duration, then the audioiqueue
-	// will never actually produce sounds.
-	//
-	// Normally, radio stations start off with a few seconds of
-	// audio in a burst, but after the network stream pauses, this
-	// can become a problem.  So, we make sure that the amount
-	// queued or available to queue immediately is at least N
-	// milliseonds, for N at least a few hundred.
-	if (![_streamReader hasData] && packetsCopied > 0) {
-	    // flush pending data if we're going to block waiting for
-	    // more data.  Note that once we have processed any
-	    // packets, we should have created the AudioQueue.
-	    osp_assert(_audioQueue != nil);
-	    bufRefp->mAudioDataByteSize = bytesCopied;
-	    bufRefp->mPacketDescriptionCount = packetsCopied;
+	    // if we have data to flush and no more data queued for us,
+	    // send it to the AudioQueue now, and then wait for more.
+	    //
+	    // One tricky point: the audio player doesn't actually make
+	    // sounds unless it has a few milliseconds of audio queued.
+	    // So, if the stream stalls, and then we feed the audio queue
+	    // one buffer at a time (say 16KB), where that data isn't
+	    // followed by more for its duration, then the audioiqueue
+	    // will never actually produce sounds.
+	    //
+	    // Normally, radio stations start off with a few seconds of
+	    // audio in a burst, but after the network stream pauses, this
+	    // can become a problem.  So, we make sure that the amount
+	    // queued or available to queue immediately is at least N
+	    // milliseonds, for N at least a few hundred.
+	    if (![_streamReader hasData] && packetsCopied > 0) {
+		// flush pending data if we're going to block waiting for
+		// more data.  Note that once we have processed any
+		// packets, we should have created the AudioQueue.
+		osp_assert(_audioQueue != nil);
+		bufRefp->mAudioDataByteSize = bytesCopied;
+		bufRefp->mPacketDescriptionCount = packetsCopied;
 
-	    if (_showIo) {
-		NSLog(@"StreamPlayer out of stream data, enqueued %d bytes avail=%d",
-		      bytesCopied, _availCount);
-	    }
-	    NSLog(@"==> buffer %p(%p) queued with %d packets, %lld now queued",
-		  bufRefp, bufRefp->mAudioData,
-		  bufRefp->mPacketDescriptionCount,
-		  _queuedPackets + packetsCopied);
+		if (_showIo) {
+		    NSLog(@"StreamPlayer out of stream data, enqueued %d bytes avail=%d",
+			  bytesCopied, _availCount);
+		}
+		NSLog(@"==> buffer %p(%p) queued with %d packets, %lld now queued",
+		      bufRefp, bufRefp->mAudioData,
+		      bufRefp->mPacketDescriptionCount,
+		      _queuedPackets + packetsCopied);
 
-	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
-						 bufRefp,
-						 packetsCopied,
-						 _packetsp);
-	    if (osStatus != 0) {
-		/* buffer didn't get queued so we have to avoid losing it */
-		NSLog(@"! streamplayer enqueue failed, repushing");
+		osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
+						     bufRefp,
+						     packetsCopied,
+						     _packetsp);
+		if (osStatus != 0) {
+		    /* buffer didn't get queued so we have to avoid losing it */
+		    NSLog(@"! streamplayer enqueue failed, repushing");
+		    pthread_mutex_lock(&_playerMutex);
+		    [self pushBuffer: bufRefp];
+		    pthread_mutex_unlock(&_playerMutex);
+		}
+		if (_showIo) {
+		    NSLog(@"StreamPlayer enqueued %d bytes %d packets"
+			  @"availForAlloc=%d queuedPackets=%lld",
+			  bytesCopied, packetsCopied, _availCount, _queuedPackets);
+		}
+
+		bufRefp = NULL;
+
 		pthread_mutex_lock(&_playerMutex);
-		[self pushBuffer: bufRefp];
+		_queuedPackets += packetsCopied;
+		if (_showIo) {
+		    NSLog(@"buffer with %d pcakets queued, giving %lld in audio queue",
+			  packetsCopied, _queuedPackets);
+		}
+		bufRefp = [self popBuffer];
 		pthread_mutex_unlock(&_playerMutex);
-	    }
-	    if (_showIo) {
-		NSLog(@"StreamPlayer enqueued %d bytes %d packets"
-		      @"availForAlloc=%d queuedPackets=%lld",
-		      bytesCopied, packetsCopied, _availCount, _queuedPackets);
+		bytesCopied = 0;
+		packetsCopied = 0;
 	    }
 
-	    bufRefp = NULL;
-
-	    pthread_mutex_lock(&_playerMutex);
-	    _queuedPackets += packetsCopied;
-	    if (_showIo) {
-		NSLog(@"buffer with %d pcakets queued, giving %lld in audio queue",
-		      packetsCopied, _queuedPackets);
-	    }
-	    bufRefp = [self popBuffer];
-	    pthread_mutex_unlock(&_playerMutex);
-	    bytesCopied = 0;
-	    packetsCopied = 0;
-	}
-
-	if (packet == nil) {
-	    packet = [_streamReader read];
 	    if (packet == nil) {
-		// someone has closed the stream; had there been no data
-		// available yet, the read call would have simply blocked.
-		break;
+		packet = [_streamReader read];
+		if (packet == nil) {
+		    // someone has closed the stream; had there been no data
+		    // available yet, the read call would have simply blocked.
+		    break;
+		}
 	    }
-	}
 
-	[self checkUpcalledSong: packet.playingSong];
+	    [self checkUpcalledSong: packet.playingSong];
 
-	// once we have a packet, we can find out the stream type,
-	// which is required for creating the queue.
-	if (_audioQueue == nil) {
-	    _audioQueue = [self setupAudioQueue];
-	}
+	    // once we have a packet, we can find out the stream type,
+	    // which is required for creating the queue.
+	    if (_audioQueue == nil) {
+		_audioQueue = [self setupAudioQueue];
+	    }
 
-	// make sure we have a buffer to hold the data we're reading.
-	// this must be done after creating the audio queue, or we
-	// won't have setup the buffers.
-	if (bufRefp == nil) {
-	    pthread_mutex_lock(&_playerMutex);
-	    bufRefp = [self popBuffer];
-	    pthread_mutex_unlock(&_playerMutex);
-	    bytesCopied = 0;
-	    packetsCopied = 0;
-	}
-
-	// Now that we have a packet, a queue and a buffer, do we have
-	// room in the buffer for this packet of data?
-	uint64_t packetSize = [packet getLength];
-	if (bytesCopied + packetSize <= _maxBufferSize &&
-	    packetsCopied + 1 <= _maxPacketCount) {
-
-	    // and do the copy: copy the data and the descriptor, and
-	    // then adjust the mStartOffset field to point to the
-	    // record's position in the new buffer.
-	    memcpy( (char *)bufRefp->mAudioData+bytesCopied,
-		    [packet getData],
-		    (size_t) packetSize);
-
-	    [packet getDescr: &_packetsp[packetsCopied]];
-	    _packetsp[packetsCopied].mStartOffset = bytesCopied;
-
-	    bytesCopied += packetSize;
-	    packetsCopied++;
-	    packet = nil;	// so we read again
-	} else {
-	    // packet doesn't fit, so queue the buffer
-	    bufRefp->mAudioDataByteSize = bytesCopied;
-	    bufRefp->mPacketDescriptionCount = packetsCopied;
-
-	    osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
-						 bufRefp,
-						 packetsCopied,
-						 _packetsp);
-	    if (osStatus != 0) {
-		/* buffer didn't get queued so we have to avoid losing it */
-		NSLog(@"! streamplayer enqueue failed, repushing");
+	    // make sure we have a buffer to hold the data we're reading.
+	    // this must be done after creating the audio queue, or we
+	    // won't have setup the buffers.
+	    if (bufRefp == nil) {
 		pthread_mutex_lock(&_playerMutex);
-		[self pushBuffer: bufRefp];
+		bufRefp = [self popBuffer];
 		pthread_mutex_unlock(&_playerMutex);
+		bytesCopied = 0;
+		packetsCopied = 0;
 	    }
 
-	    pthread_mutex_lock(&_playerMutex);
-	    NSLog(@"==> buffer %p(%p) queued with %d packets, %lld now queued",
-		  bufRefp, bufRefp->mAudioData,
-		  bufRefp->mPacketDescriptionCount,
-		  _queuedPackets + packetsCopied);
-	    _queuedPackets += packetsCopied;
-	    pthread_mutex_unlock(&_playerMutex);
+	    // Now that we have a packet, a queue and a buffer, do we have
+	    // room in the buffer for this packet of data?
+	    uint64_t packetSize = [packet getLength];
+	    if (bytesCopied + packetSize <= _maxBufferSize &&
+		packetsCopied + 1 <= _maxPacketCount) {
 
-	    if (_showIo) {
-		NSLog(@"StreamPlayer full buffer, enqueued %d bytes %d packets "
-		      @"avail=%d queuePackets=%lld",
-		      bytesCopied, packetsCopied, _availCount, _queuedPackets);
+		// and do the copy: copy the data and the descriptor, and
+		// then adjust the mStartOffset field to point to the
+		// record's position in the new buffer.
+		memcpy( (char *)bufRefp->mAudioData+bytesCopied,
+			[packet getData],
+			(size_t) packetSize);
+
+		[packet getDescr: &_packetsp[packetsCopied]];
+		_packetsp[packetsCopied].mStartOffset = bytesCopied;
+
+		bytesCopied += packetSize;
+		packetsCopied++;
+		packet = nil;	// so we read again
+	    } else {
+		// packet doesn't fit, so queue the buffer
+		bufRefp->mAudioDataByteSize = bytesCopied;
+		bufRefp->mPacketDescriptionCount = packetsCopied;
+
+		osStatus = AudioQueueEnqueueBuffer ( _audioQueue,
+						     bufRefp,
+						     packetsCopied,
+						     _packetsp);
+		if (osStatus != 0) {
+		    /* buffer didn't get queued so we have to avoid losing it */
+		    NSLog(@"! streamplayer enqueue failed, repushing");
+		    pthread_mutex_lock(&_playerMutex);
+		    [self pushBuffer: bufRefp];
+		    pthread_mutex_unlock(&_playerMutex);
+		}
+
+		pthread_mutex_lock(&_playerMutex);
+		NSLog(@"==> buffer %p(%p) queued with %d packets, %lld now queued",
+		      bufRefp, bufRefp->mAudioData,
+		      bufRefp->mPacketDescriptionCount,
+		      _queuedPackets + packetsCopied);
+		_queuedPackets += packetsCopied;
+		pthread_mutex_unlock(&_playerMutex);
+
+		if (_showIo) {
+		    NSLog(@"StreamPlayer full buffer, enqueued %d bytes %d packets "
+			  @"avail=%d queuePackets=%lld",
+			  bytesCopied, packetsCopied, _availCount, _queuedPackets);
+		}
+
+		bytesCopied = 0;
+		packetsCopied = 0;
+		bufRefp = NULL;
 	    }
-
-	    bytesCopied = 0;
-	    packetsCopied = 0;
-	    bufRefp = NULL;
 	}
     }
 
