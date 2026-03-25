@@ -79,14 +79,20 @@ public:
     int32_t _browseMaxCount;
 
     RadioScan *_scanp;
-    dqueue<RadioScanStation> _stations;
+    dqueue<RadioScanStation> _unverifiedStations;       // these get sorted into good vs bad
+    dqueue<RadioScanStation> _goodStations;
+    dqueue<RadioScanStation> _badStations;
     uint32_t _refCount;
     std::string _detailedStatus;
     int _aborted;
+    bool _verifying;
+    uint32_t _verifyingCount;
+    uint32_t _verifyingIndex;
 
     RadioScanQuery() {
         _refCount = 0;
         _aborted = 0;
+        _verifying = false;
         _browseMaxCount = 10000;
     }
 
@@ -106,6 +112,8 @@ public:
 
     void freeUnusedStations(std::vector<RadioScanStation *> *stations);
 
+    void considerStation(RadioScanStation *stationp);
+
     void returnStation(RadioScanStation *stationp);
 
     int32_t searchStreamTheWorld(RadioScan::ScanType scanType);
@@ -115,6 +123,8 @@ public:
     int32_t searchDar(RadioScan::ScanType scanType);
 
     void addWord(std::string newWord);
+
+    void verifyStations();
 
     int32_t searchFile();
 
@@ -180,7 +190,8 @@ class RadioScanStation {
     // These fields come from the radio directory, but
     // the url may expand into multiple stream URLs
     std::string _sourceUrl;
-    uint32_t _streamRateKb;    /* station stream rate in kbits/second */
+    std::string _altSourceUrl;  // if we have a second to check
+    uint32_t _streamRateKb;     /* station stream rate in kbits/second */
     uint8_t _sawIcyBr;
     std::string _streamType;
 

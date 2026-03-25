@@ -12,6 +12,16 @@ Ideas for Radio app
 
 ========Todo========
 
+-- basic record button.  When recording, don't shutdown stream.
+   Indicate visually.
+
+-- icon-done.png is really ugly: green is glaring.  Also text label
+   color needs to be black
+
+-- highlight button on popup status screen
+
+** search is ugly when searching / stop button needs to be clearer
+
 ** Stall a bit until buffers are loaded when starting new station (was bug)
 
 ** edit existing radio station
@@ -44,17 +54,7 @@ name as well)
 
 ** current song needs to be represented in file data stream.
 
--- basic record button.  When recording, don't shutdown stream.
-   Indicate visually.
-
--- icon-done.png is really ugly: green is glaring.  Also text label
-   color needs to be black
-
 ** search is a little confusing when done
-
--- search is ugly when searching / stop button needs to be clearer
-
--- highlight button on popup status screen
 
 ** fix shutdown bug in stream player ignoring pthreadDone
 

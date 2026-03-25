@@ -111,7 +111,7 @@
 					      title: @"Done"
 					      color: [UIColor colorWithHue: 0.4
 							      saturation: 1.0
-							      brightness: 1.0
+							      brightness: 0.56
 							      alpha: 1.0]
 					      file: @"icon-done.png"];
 	[_doneButton addCallback: self
@@ -124,7 +124,7 @@
 						title: @"Cancel"
 						color: [UIColor colorWithHue: 0.02
 								saturation: 1.0
-								brightness: 1.0
+								brightness: 0.56
 								alpha: 1.0]
 						file: @"icon-cancel.png"];
 	[_cancelButton addCallback: self

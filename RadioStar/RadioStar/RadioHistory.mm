@@ -328,7 +328,7 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 
 	buttonColor = [UIColor colorWithHue: defaultHue
 			       saturation: defaultSat
-			       brightness: 1.0
+			       brightness: 0.56
 			       alpha: 1.0];
 
 	/* now layout the clear/done/cancel buttons */
@@ -352,7 +352,10 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 	tframe.size.height = _buttonHeight;
 	_doneButton = [[MFANIconButton alloc] initWithFrame: tframe
 					      title: @"Done"
-					      color: [UIColor greenColor]
+						      color: [UIColor colorWithRed: 0.0
+									     green: 0.56
+									      blue: 0.0
+									     alpha: 1.0]
 					      file: @"icon-done.png"];
 	[_subviews addObject: _doneButton];
 	[self addSubview: _doneButton];

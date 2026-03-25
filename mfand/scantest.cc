@@ -45,7 +45,9 @@ displayStations(RadioScanQuery *queryp)
     RadioScanStation *stationp;
     RadioScanStation::Entry *ep;
 
-    for(stationp = queryp->_stations.head(); stationp; stationp = stationp->_dqNextp) {
+    for( stationp = queryp->_goodStations.head();
+         stationp;
+         stationp = stationp->_dqNextp) {
         printf("Station name is '%s'\n", stationp->_stationName.c_str());
         printf("Description:\n%s\n", stationp->_stationShortDescr.c_str());
         if (stationp->_iconUrl.length() > 0)
@@ -72,7 +74,7 @@ main(int argc, char **argv)
     CThreadHandle *chp;
 
     if (argc < 2) {
-        printf("usage: scantest name <name>\n  or scantest browse [country code=us] [genre]\n");
+        printf("usage: scantest lookup <name>\n");
         return -1;
     }
 

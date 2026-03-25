@@ -771,23 +771,9 @@ RadioScanQuery::searchFile() {
         /* set these so that addStreamEntry has some useful defaults */
         stationp->_stationName = name;
         stationp->_stationSource = std::string("radio-browser");
-
-        code = stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
-        if (code == 0) {
-            returnStation(stationp);
-            continue;
-        }
-
-       // if we can't handle the url perhaps url_resolved will work
-        code = stationp->streamApply(urlResolved, RadioScanStation::stwCallback,
-                                     stationp, this);
-        if (code == 0) {
-            returnStation(stationp);
-            continue;
-        }
-
-        // delete it
-        delete stationp;
+        stationp->_sourceUrl = url;
+        stationp->_altSourceUrl = urlResolved;
+        considerStation(stationp);
     }
 
     return 0;
@@ -817,6 +803,7 @@ RadioScan::scanSort(int32_t *datap, int32_t count)
     }
 }
 
+#if 0
 void
 RadioScanQuery::freeUnusedStations(std::vector<RadioScanStation *> *stationsp) {
     uint32_t tsize = (uint32_t) stationsp->size();
@@ -828,11 +815,12 @@ RadioScanQuery::freeUnusedStations(std::vector<RadioScanStation *> *stationsp) {
         delete stationp;
     }
 }
+#endif
 
 void
-RadioScanQuery::returnStation(RadioScanStation *stationp) {
+RadioScanQuery::considerStation(RadioScanStation *stationp) {
     stationp->_inQueryList = true;
-    _stations.append(stationp);
+    _unverifiedStations.append(stationp);
 }
 
 // Can tagList comma separated: all must be present.  Multiple tag= terms, any must be present
@@ -846,7 +834,6 @@ RadioScanQuery::browseFile(RadioScan::ScanType scanType) {
     Json::Node *childNodep = nullptr;
     Json jsonSys;
     RadioScanStation *stationp;
-    uint32_t i;
     std::string tstr;
 
     std::string url = ("http://all.api.radio-browser.info/json/stations/search?");
@@ -895,7 +882,6 @@ RadioScanQuery::browseFile(RadioScan::ScanType scanType) {
 
         if (isAborted()) {
             delete rootNodep;
-            freeUnusedStations(&stations);
             return -1;
         }
 
@@ -953,62 +939,12 @@ RadioScanQuery::browseFile(RadioScan::ScanType scanType) {
         stationp->_streamRateKb = bitRate;
         stationp->_sawIcyBr = 0;
         stationp->_streamType = codec;
+
+        considerStation(stationp);
     }
 
     delete rootNodep;
     rootNodep = nullptr;
-
-    uint32_t arraySize;
-    uint32_t maxReturned;
-    uint32_t returnedCount;
-    uint32_t randomIx;
-    uint32_t randomizeLimit;
-
-    // don't try to return more than are available
-    arraySize = (uint32_t) stations.size();
-    if (arraySize < _browseMaxCount)
-        maxReturned = arraySize;
-    else
-        maxReturned = _browseMaxCount;
-
-    // randomly exchange elements in the area we'll be returning
-    // stations from.  But since we may end up with some dead
-    // stations, we'll bail on our randomizing a little later than
-    // maxReturned (that's where the multiplier on maxReturned comes
-    // from).
-    randomizeLimit = 3 * maxReturned / 2;
-    if (randomizeLimit > arraySize)
-        randomizeLimit = arraySize;
-    for(i=0;i<randomizeLimit;i++) {
-        randomIx = (uint32_t) (random() % arraySize);
-        stationp = stations[randomIx];
-        stations[randomIx] = stations[i];
-        stations[i] = stationp;
-    }
-
-    returnedCount = 0;
-    for(i=0;i<arraySize;i++) {
-        if (isAborted()) {
-            freeUnusedStations(&stations);
-            return -1;
-        }
-
-        stationp = stations[i];
-        code = stationp->streamApply(stationp->_sourceUrl,
-                                     RadioScanStation::stwCallback,
-                                     stationp,
-                                     this);
-        if (code == 0) {
-            if (stationp->_entries.head() != nullptr) {
-                returnedCount++;
-                returnStation(stationp);
-            }
-        }
-        if (returnedCount > maxReturned)
-            break;
-    }
-
-    freeUnusedStations(&stations);
 
     return 0;
 }
@@ -1161,13 +1097,9 @@ RadioScanQuery::searchRadioTime(RadioScan::ScanType scanType)
         stationp->_stationShortDescr = textString;
         stationp->_stationSource = std::string("radio time");
         stationp->_iconUrl = imageUrl;
+        stationp->_sourceUrl = data.c_str();
 
-        code = stationp->streamApply(data.c_str(), RadioScanStation::stwCallback, stationp, this);
-        if (code || stationp->_entries.count() == 0) {
-            delete stationp;
-        } else {
-            returnStation(stationp);
-        }
+        considerStation(stationp);
     }
 
     return 0;
@@ -1272,15 +1204,9 @@ RadioScanQuery::searchShoutcast(RadioScan::ScanType scanType)
             if (iconUrlp != nullptr)
                 stationp->_iconUrl = std::string(iconUrlp);
             stationp->_stationSource = std::string("shoutcast");
+            stationp->_sourceUrl = std::string(tbuffer);
 
-            code = stationp->streamApply(std::string(tbuffer), RadioScanStation::stwCallback,
-                                         stationp, this);
-            if (code == 0) {
-                returnStation(stationp);
-            } else {
-                delete stationp;
-            }
-            /* tbuffer names the playlist file, so add the stream */
+            considerStation(stationp);
         } /* this is a station record */
     } /* loop over all stations */
 
@@ -1336,13 +1262,8 @@ RadioScanQuery::searchDar(RadioScan::ScanType scanType)
     stationp->_stationName = RadioScanStation::upperCase(_nameList.front());
     stationp->_stationShortDescr = stationShortDescr;
     stationp->_stationSource = std::string("dar.fm");
-
-    code = stationp->streamApply(url, RadioScanStation::stwCallback, stationp, this);
-    if (code == 0) {
-        returnStation(stationp);
-    }
-    else
-        delete stationp;
+    stationp->_sourceUrl = url;
+    considerStation(stationp);
 
     return 0;
 }
@@ -1394,7 +1315,7 @@ RadioScanQuery::searchStreamTheWorld(RadioScan::ScanType scanType)
     if (code || stationp->_entries.count() == 0) {
         delete stationp;
     } else {
-        returnStation(stationp);
+        considerStation(stationp);
     }
 
     if (isAborted())
@@ -1409,12 +1330,8 @@ RadioScanQuery::searchStreamTheWorld(RadioScan::ScanType scanType)
     name = _nameList.front();
     snprintf(tbuffer, sizeof(tbuffer),
              "http://playerservices.streamtheworld.com/pls/%sAMAAC.pls", name.c_str());
-    code = stationp->streamApply(tbuffer, RadioScanStation::stwCallback, stationp, this);
-    if (code || stationp->_entries.count() == 0) {
-        delete stationp;
-    } else {
-        returnStation(stationp);
-    }
+    stationp->_sourceUrl = std::string(tbuffer);
+    considerStation(stationp);
     
     return 0;
 }
@@ -1424,31 +1341,40 @@ RadioScanQuery::getStatus()
 {
     std::string result;
     char tbuffer[1024];
-    std::string status = _baseStatus + "\n";
+    std::string status;
     std::string hostName;
     size_t endIndex;
-    if (_verifyingUrl.size() != 0) {
-        endIndex = _verifyingUrl.find_first_of('/', 8);
-        if (endIndex != std::string::npos) {
-            hostName = _verifyingUrl.substr(0,endIndex);
-        } else {
-            hostName = _verifyingUrl;
+
+    if (!_verifying) {
+        result = _baseStatus;
+    } else {
+        snprintf(tbuffer, sizeof(tbuffer), "Verifying %d of %d stations\n",
+                 _verifyingIndex, _verifyingCount);
+        status = std::string(tbuffer);
+        if (_verifyingUrl.size() != 0) {
+            endIndex = _verifyingUrl.find_first_of('/', 8);
+            if (endIndex != std::string::npos) {
+                hostName = _verifyingUrl.substr(0,endIndex);
+            } else {
+                hostName = _verifyingUrl;
+            }
+            if (hostName.substr(0,6) == "https:")
+                hostName = hostName.substr(8);
+            else
+                hostName = hostName.substr(7);
+            status += "Verifying ";
+            status += hostName;
+            status += "\n";
         }
-        if (hostName.substr(0,6) == "https:")
-            hostName = hostName.substr(8);
+
+        if (_goodStations.count() == 1)
+            strcpy(tbuffer, " (1 station found)");
         else
-            hostName = hostName.substr(7);
-        status += "Verifying ";
-        status += hostName;
-        status += " ";
+            snprintf(tbuffer, sizeof(tbuffer), " (%ld stations found)",
+                     _goodStations.count());
+
+        result = status + std::string(tbuffer);
     }
-
-    if (_stations.count() == 1)
-        strcpy(tbuffer, " (1 station)");
-    else
-        snprintf(tbuffer, sizeof(tbuffer), " (%ld stations)", _stations.count());
-
-    result = status + std::string(tbuffer);
     return result;
 }
 
@@ -1520,7 +1446,7 @@ RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
     if (resp->_nameList.size() >= 1) {
         name = resp->_nameList.front();
         if (name.size() <= 4) {
-            resp->_baseStatus = std::string("Searching StreamTheWorld");
+            resp->_baseStatus = std::string("Searching StreamTheWorld (1/5)");
             resp->searchStreamTheWorld(scanType);
             if (resp->isAborted())
                 return;
@@ -1531,14 +1457,14 @@ RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
     // from this site.  The first call treats all the tokens as
     // components of the name, and the second call treats them as
     // tags, any of which being present will match a station.
-    resp->_baseStatus = std::string("Searching radio-browser.info");
+    resp->_baseStatus = std::string("Searching radio-browser.info (2/5)");
     resp->browseFile(scanType);    // words aren't tags, but names
     if (resp->isAborted())
         return;
 
     // TODO: this can return a whole bunch of things, so search for
     // the query string in the name before doing more work.
-    resp->_baseStatus = std::string("Searching RadioTime");
+    resp->_baseStatus = std::string("Searching RadioTime (3/5)");
     resp->searchRadioTime(scanType);
     if (resp->isAborted())
         return;
@@ -1546,20 +1472,57 @@ RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
     // TODO: sometimes really slow; only use uberstation URL
     // Get rid of this
     /* add entries from DAR.fm */
-    resp->_baseStatus = std::string("Searching dar.fm");
+    resp->_baseStatus = std::string("Searching dar.fm (4/5)");
     resp->searchDar(scanType);
     if (resp->isAborted())
         return;
 
     // doesn't seem to work for station names, just genres
-    resp->_baseStatus = std::string("Searching Shoutcast");
+    resp->_baseStatus = std::string("Searching Shoutcast (5/5)");
     resp->searchShoutcast(scanType);
     if (resp->isAborted())
         return;
 
+    resp->verifyStations();
+
     takeLock();
     
     releaseLock();
+}
+
+void
+RadioScanQuery::verifyStations() {
+    int32_t code;
+
+    _verifying = true;
+    _verifyingCount = _unverifiedStations.count();
+    _verifyingIndex = 0;
+
+    RadioScanStation *stationp;
+    while((stationp = _unverifiedStations.pop()) != nullptr) {
+        _verifyingUrl = stationp->_sourceUrl;
+        code = stationp->streamApply(stationp->_sourceUrl,
+                                     RadioScanStation::stwCallback,
+                                     stationp,
+                                     this);
+        if (code != 0) {
+            _verifyingUrl = stationp->_altSourceUrl;
+            if (stationp->_altSourceUrl.size() > 0) {
+                code = stationp->streamApply( stationp->_altSourceUrl,
+                                              RadioScanStation::stwCallback,
+                                              stationp,
+                                              this);
+            }
+        }
+
+        if (code == 0 && stationp->_entries.count() > 0) {
+            _goodStations.append(stationp);
+        } else {
+            _badStations.append(stationp);
+        }
+
+        _verifyingIndex++;
+    }
 }
 
 RadioScanStation::Entry *
@@ -1690,8 +1653,15 @@ RadioScanStation::hasISubstr(const char *keyp, std::string target)
 RadioScanQuery::~RadioScanQuery() {
     RadioScanStation *nextp;
     RadioScanStation *stationp;
-    for(stationp = _stations.head(); stationp != nullptr; stationp = nextp) {
-        osp_assert(stationp->_inQueryList);
+    for(stationp = _unverifiedStations.head(); stationp != nullptr; stationp = nextp) {
+        nextp = stationp->_dqNextp;
+        delete stationp;
+    }
+    for(stationp = _goodStations.head(); stationp != nullptr; stationp = nextp) {
+        nextp = stationp->_dqNextp;
+        delete stationp;
+    }
+    for(stationp = _badStations.head(); stationp != nullptr; stationp = nextp) {
         nextp = stationp->_dqNextp;
         delete stationp;
     }

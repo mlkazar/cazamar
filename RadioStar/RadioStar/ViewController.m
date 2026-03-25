@@ -26,9 +26,9 @@
 
     self.view = [[TopView alloc] initWithFrame: rect ViewCont: self];
 
-    _backgroundColor = [UIColor colorWithRed: 0.80
-				       green:0.80
-					blue:0.80
+    _backgroundColor = [UIColor colorWithRed: 0.8
+				       green:0.8
+					blue:0.8
 				       alpha:1.0];
 
     // Do any additional setup after loading the view.

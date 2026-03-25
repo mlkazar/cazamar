@@ -102,13 +102,19 @@
 	_searchBar.showsCancelButton = NO;
 	_searchBar.showsBookmarkButton = NO;
 	_searchBar.delegate = self;
+	_searchBar.searchBarStyle = UISearchBarStyleMinimal;
 	[self addSubview: _searchBar];
+	_searchBar. searchTextField.backgroundColor = [UIColor colorWithRed: 0.7
+								     green: 0.7
+								      blue: 0.7
+								     alpha: 1.0];
+	_searchBar.barTintColor = vc.backgroundColor;
 
 	_pickerView = [[UIPickerView alloc] initWithFrame: textFrame];
 	[self addSubview: _pickerView];
 	_pickerView.delegate = self;
 	_pickerView.dataSource = self;
-	_pickerView.backgroundColor = [UIColor greenColor];
+	_pickerView.backgroundColor = vc.backgroundColor;
 	[_pickerView setValue: [UIColor blackColor] forKey: @"textColor"];
 
 	_pickerRow = 0;
@@ -158,7 +164,7 @@
 				    title: @"Cancel"
 				    color: [UIColor colorWithHue: 0.4
 						      saturation: 1.0
-						      brightness: 1.0
+						      brightness: 0.56
 							   alpha: 1.0]
 				     file: @"icon-cancel.png"];
         [_cancelButton addCallback: self
@@ -174,7 +180,7 @@
 				  title: @"Done"
 				  color: [UIColor colorWithHue: 0.4
 						    saturation: 1.0
-						    brightness: 1.0
+						    brightness: 0.56
 							 alpha: 1.0]
 				   file: @"icon-done.png"];
         [_doneButton addCallback: self
@@ -347,8 +353,8 @@
     while(true) {
 	doAdd = NO;
 	if (!_stationp) {
-	    if (_queryp->_stations.head() != nullptr) {
-		_stationp = _queryp->_stations.head();
+	    if (_queryp->_goodStations.head() != nullptr) {
+		_stationp = _queryp->_goodStations.head();
 		doAdd = YES;
 	    }
 	} else {
@@ -532,7 +538,10 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 					  station.streamRateKb,
 					  station.streamType];
     cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 16];
-    cell.detailTextLabel.textColor = [UIColor greenColor];
+    cell.detailTextLabel.textColor = [UIColor colorWithRed: 0.0
+						     green: 0.5
+						      blue: 0.0
+						     alpha: 1.0];
     cell.detailTextLabel.adjustsFontSizeToFitWidth = YES;
 
     if (station.isSelected)

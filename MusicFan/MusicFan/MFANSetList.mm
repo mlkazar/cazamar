@@ -845,10 +845,10 @@ wrapMediaItems(NSArray *mediaArray)
     _queryp = new RadioScanQuery();
     _queryp->initSmart(_scanp, searchStringp);
     _scanp->searchStation(_queryp);
-    NSLog(@"back from search -- %ld stations", _queryp->_stations.count());
+    NSLog(@"back from search -- %ld stations", _queryp->_goodStations.count());
     
     /* now add in all the stations we found */
-    for(stationp = _queryp->_stations.head(); stationp; stationp=stationp->_dqNextp) {
+    for(stationp = _queryp->_goodStations.head(); stationp; stationp=stationp->_dqNextp) {
 	bestStreamp = NULL;
 	for(streamp = stationp->_entries.head(); streamp; streamp=streamp->_dqNextp) {
 	    if (bestStreamp == NULL || bestStreamp->_streamRateKb < streamp->_streamRateKb) {
