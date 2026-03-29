@@ -17,6 +17,9 @@
 
 @import simd;
 
+#define SIGNVIEW_METAL_STATIONS   256
+#define SIGNVIEW_METAL_FLAG_RECORDING   1
+
 typedef struct _SignVertex {
     vector_float4 _position;	// XYZW
     vector_float4 _color;	// RGBA
@@ -27,6 +30,7 @@ typedef struct _SignVertex {
 
 typedef struct _SignInfo {
     unsigned int _selectedId;
+    unsigned int _flags[SIGNVIEW_METAL_STATIONS];
 } SignInfo;
 
 typedef uint16_t SignIndex;

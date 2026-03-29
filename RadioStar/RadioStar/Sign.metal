@@ -28,6 +28,7 @@ using namespace metal;
 
 struct SignInfo {
     unsigned int selectedId;
+    unsigned int flags[256];
 };
 
 struct Vertex
@@ -63,7 +64,7 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
     vertexOut.position = rotations[instanceId].mvpRotationMatrix * vertices[vid].position;
     vertexOut.normal = rotations[instanceId].normalRotationMatrix * vertices[vid].normal;
 
-    float4 selectedGlassColor = float4{1.0, .6, 0, .75};
+    float4 selectedGlassColor = float4{1.0, .6, 0, 0.35};
 
     // pass green screen colors through unchanged.  Otherwise, use the
     // incoming glass color unless this is the selected icon.
@@ -73,6 +74,9 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
         vertexOut.color = selectedGlassColor;
     else
         vertexOut.color = vertices[vid].color;
+
+    if (signInfo->flags[instanceId] & 1)
+        vertexOut.color.z = 1.0;
 
     // x goes from -.5 to .5, and y goes from -.3 to .3, and we neeed to map
     // to 0 to 1 in both dimensions.

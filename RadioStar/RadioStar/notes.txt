@@ -12,10 +12,16 @@ Ideas for Radio app
 
 ========Todo========
 
--- basic record button.  When recording, don't shutdown stream.
+-- improve recording status visibility by flashing?
+
+** reorder by drag and drop
+
+-- provide visual indication of object being dragged
+
+** basic record button.  When recording, don't shutdown stream.
    Indicate visually.
 
--- icon-done.png is really ugly: green is glaring.  Also text label
+** icon-done.png is really ugly: green is glaring.  Also text label
    color needs to be black
 
 -- highlight button on popup status screen

@@ -202,7 +202,10 @@
 						       color: [UIColor blackColor]
 					     backgroundColor: [UIColor whiteColor]];
 	[recordButton setFillColor: [UIColor clearColor]];
-	[recordButton setClearText: @"Highlight"];
+	if ([_signView.history isHighlighted])
+	    [recordButton setClearText: @"Unhighlight"];
+	else
+	    [recordButton setClearText: @"Highlight"];
 	[recordButton addCallback: self
 		     withAction: @selector(highlightPressed:withData:)];
 	[self addSubview: recordButton];
@@ -266,6 +269,7 @@
 
 - (void) highlightPressed: (id) junk1 withData:(id) junk2 {
     NSLog(@"highlight pressed");
+    [_signView.history toggleHighlight];
     [self doNotify];
 }
 

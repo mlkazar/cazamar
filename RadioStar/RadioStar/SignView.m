@@ -76,6 +76,9 @@ NS_ASSUME_NONNULL_BEGIN
 
     UIGestureRecognizer *_pressRecognizer;
     UIGestureRecognizer *_longPressRecognizer;
+    UIGestureRecognizer *_dragRecognizer;
+
+    CGPoint _dragStart;
 
     id _stateCallbackObj;
     SEL _stateCallbackSel;
@@ -159,7 +162,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     static const float TY = boundingY/2;	// top y
     static const float BY = -boundingY/2;	// bottom y
 
-    static const float SA = .25;	// side alpha
+    static const float SA = 0.35;	// side alpha
     // static const float FA = 0.10;	// front alpha
 
     static const float GLev = 0.6;	// green level for border
@@ -575,11 +578,15 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	SignStation *station;
 	uint32_t signCount = 0;
 	for(station in _allStations) {
-	    if (_playingStation == station)
-		signInfop->_selectedId = signCount;
-
 	    if (signCount >= maxIcons)
 		break;
+
+	    if (_playingStation == station)
+		signInfop->_selectedId = signCount;
+	    if (station.isRecording)
+		signInfop->_flags[signCount] |= 1;
+	    else
+		signInfop->_flags[signCount] &= ~1;
 
 	    [self getRotationBuffer:_rotationBuffer
 			      index: signCount
@@ -808,6 +815,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_pressRecognizer = [[UITapGestureRecognizer alloc]
 			       initWithTarget: self action:@selector(pressed:)];
 	[self addGestureRecognizer: _pressRecognizer];
+
+	_dragRecognizer = [[UIPanGestureRecognizer alloc]
+			      initWithTarget: self action:@selector(dragPressed:)];
+	[self addGestureRecognizer: _dragRecognizer];
     }
 }
 
@@ -817,6 +828,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_longPressRecognizer = nil;
 	[self removeGestureRecognizer: _pressRecognizer];
 	_pressRecognizer = nil;
+	[self removeGestureRecognizer: _dragRecognizer];
+	_dragRecognizer = nil;
     }
 }
 
@@ -1018,6 +1031,36 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [self computeLayout];
 
     [[SignSave alloc] initSaveToFile: _allStations];
+}
+
+- (void) dragPressed: (UIPanGestureRecognizer *) sender {
+    NSLog(@"drag pan state %d", sender.state);
+    CGPoint point = [sender locationInView: self];
+    SignStation *startStation;
+    SignStation *endStation;
+    uint32_t count = [_allStations count];
+
+    NSLog(@"drag point is %f.%f", point.x, point.y);
+    if (sender.state == UIGestureRecognizerStateBegan) {
+	_dragStart = point;
+    } else if (sender.state == UIGestureRecognizerStateEnded) {
+	startStation = [self findStationByTouch: _dragStart];
+	if (startStation == nil)
+	    return;
+	endStation = [self findStationByTouch: point];
+	if (endStation == nil) {
+	    // move to end
+	    [_allStations removeObject: startStation];
+	    [_allStations addObject: startStation];
+	} else {
+	    // move to after endStation
+	    [_allStations removeObject: startStation];
+	    [_allStations insertObject: startStation atIndex: endStation.signIndex];
+	}
+	[self computeLayout];
+	[self animationOn];
+	[[SignSave alloc] initSaveToFile: _allStations];
+    }
 }
 
 - (void) longPressed: (UILongPressGestureRecognizer *) sender {
@@ -1260,6 +1303,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) startRecording {
     if (_playingStation != nil)
 	_playingStation.isRecording = true;
+    [self animationOn];
 }
 
 - (void) stopRecording {
@@ -1268,6 +1312,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_playingStation.recordingStream = nil;
 	_playingStation.isRecording = false;
     }
+    [self animationOn];
 }
 
 - (void) setRadioHistory: (RadioHistory *) history {
