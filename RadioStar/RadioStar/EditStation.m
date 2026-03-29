@@ -162,11 +162,10 @@
 	buttonFrame.origin.x = frame.size.width*3/6 - removeButtonWidth/2;
 	buttonFrame.size.width = removeButtonWidth;
 	_removeButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
-							title: @"None"
-							color: [UIColor colorWithHue: 0.0
-									  saturation: 1.0
-									  brightness: 1.0
-									       alpha: 1.0]];
+							title: @"Border"
+							color: [UIColor redColor]
+					      backgroundColor: [UIColor clearColor]];
+	[_removeButton setFillColor: [UIColor clearColor]];
 	[_removeButton setClearText: @"Remove"];
 	[_removeButton addCallback: self
 		     withAction: @selector(removePressed:withData:)];
@@ -177,20 +176,26 @@
 	buttonFrame.size.width = buttonWidth;
 	_cancelButton = [[MFANIconButton alloc] initWithFrame: buttonFrame
 						title: @"Cancel"
-						color: [UIColor colorWithHue: 0.02
-								saturation: 1.0
-								brightness: 0.56
-								alpha: 1.0]
+							color: [UIColor colorWithHue: 0.02
+									  saturation: 1.0
+									  brightness: 0.56
+									       alpha: 1.0]
 						file: @"icon-cancel.png"];
 	[_cancelButton addCallback: self
 		       withAction: @selector(cancelPressed:withData:)];
 	[self addSubview: _cancelButton];
 
 
+	[self setBackgroundColor: [UIColor colorWithRed: 0.6
+						  green: 0.6
+						   blue: 0.6
+						  alpha: 0.6]];
+#if 0
 	[self setBackgroundColor: [UIColor colorWithHue:0.0
 					   saturation: 0.0
 					   brightness: 0.0
 					   alpha: 0.6]];
+#endif
     }
 
     return self;

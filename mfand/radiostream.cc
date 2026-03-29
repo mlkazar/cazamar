@@ -565,17 +565,8 @@ RadioStream::init( BufGenFactory *factoryp,
             /* if we failed while streaming, it could just be that we switched
              * networks, so we try again a few times.
              */
-            if (1 /*++_failedCallsSinceData > 100*/) {
-                /* too many failures since we've received data */
-                code = -1;
-                break;
-            }
-
-            /* otherwise, we want to just restart this connection */
-            _controlProcp(_contextp, this, eventResync, NULL);
-            sleep(2);
-            cleanup();
-            continue;
+            code = -1;
+            break;
         }
         else if (code != 0) {
             /* not streaming, so an error is fatal */

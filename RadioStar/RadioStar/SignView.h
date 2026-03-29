@@ -12,28 +12,6 @@
 #import "MFANStreamPlayer.h"
 #import "SignStation.h"
 
-@import simd;
-
-typedef struct _SignVertex {
-    vector_float4 _position;	// XYZW
-    vector_float4 _color;	// RGBA
-    vector_float3 _normal;	// XYZ
-    vector_float2 _texturePos;	// XY
-    unsigned int _iid;
-} SignVertex;
-
-typedef struct _SignInfo {
-    unsigned int _selectedId;
-} SignInfo;
-
-typedef uint16_t SignIndex;
-
-typedef struct _SignRotation {
-    matrix_float4x4 _mvpRotation;
-    matrix_float4x4 _mvRotation;
-    matrix_float3x3 _normalRotation;
-} SignRotations;
-
 NS_ASSUME_NONNULL_BEGIN
 
 @interface SignView : UIView
@@ -41,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property RadioHistory *history;
 @property ViewController *vc;
 @property (readonly) MFANStreamPlayer *player;
+@property BOOL resumeAtEnd;
 
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc;
 
@@ -56,11 +35,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (MFANStreamPlayer *) getCurrentPlayer;
 
+- (MFANAqStream *) getCurrentStream;
+
+- (SignStation *) getCurrentStation;
+
 - (void) setRadioHistory: (RadioHistory *) history;
 
 - (void) seek: (float) distance;
 
-- (void) stopRadio;
+- (void) stopRadioResetStream: (BOOL) doReset;
 
 - (void) changeStationBy: (int16_t) change;
 
@@ -68,6 +51,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) displayAppOptions;
 
+- (void) stopRecording;
+
+- (void) startRecording;
 @end
 
 NS_ASSUME_NONNULL_END

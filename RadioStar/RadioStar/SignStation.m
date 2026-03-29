@@ -14,10 +14,12 @@
     // row and column, both 0 based
     SignCoord _rowColumn;
 
-    bool _isPlaying;
-    bool _isRecording;
-    bool _isSelected;
-    bool _isLoaded;
+    bool _isRecording;		// so don't stop stream if switch away
+    bool _isSelected;		// selected as part of search operation
+    bool _isLoaded;		// image is loaded
+
+    NSObject *_recordingStream;		// stream being recorded
+    uint64_t _recordingPosition;	// ms currently coming out the speaker
 
     CGPoint _origin;
 }
@@ -29,7 +31,6 @@
 - (SignStation *) init {
     self = [super init];
     if (self) {
-	self.isPlaying = NO;
 	self.isRecording = NO;
 	self.isSelected = NO;
 	self.isLoaded = NO;

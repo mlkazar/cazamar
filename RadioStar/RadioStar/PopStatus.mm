@@ -1,6 +1,8 @@
 #import "PopStatus.h"
 #import "MFANCGUtil.h"
+#import "MFANCoreButton.h"
 #import "MFANIconButton.h"
+#import "SignView.h"
 #import "ViewController.h"
 #import "MarqueeLabel.h"
 
@@ -12,6 +14,7 @@
     MFANStreamPlayer *_player;
     MFANAqStream *_stream;
     SignStation *_station;
+    SignView *_signView;
 
     uint64_t _startTimeMs;
 
@@ -61,20 +64,20 @@
 
 - (PopStatus *) initWithFrame: (CGRect) frame
 		     viewCont: (ViewController *) vc
-			  stream: (MFANAqStream *) stream
-			  player: (MFANStreamPlayer *) player
-			 station: (SignStation *) station
+		     signView: (SignView *) signView
 {
     // we get the frame from the view controller
     CGRect boxFrame;
     CGRect labelFrame;
+    CGRect buttonFrame;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
 	_vc = vc;
-	_player = player;
-	_stream = stream;
-	_station = station;
+	_signView = signView;
+	_player = [signView getCurrentPlayer];
+	_stream = [signView getCurrentStream];
+	_station = [signView getCurrentStation];
 	_vc = vc;
 	
 	UIColor *screenColor = [UIColor colorWithRed: 0.3
@@ -96,6 +99,7 @@
 	float boxWidth = frame.size.width * 0.60;
 	float labelHeight = boxHeight;
 	float labelWidth = frame.size.width * 0.35;
+	float buttonWidth = frame.size.width * 0.80;
 	// indent things so that we center the label and text box in
 	//the frame.
 	float indent = (frame.size.width - labelWidth - boxWidth) / 2;
@@ -123,7 +127,7 @@
 	_stationNameView = [[MarqueeLabel alloc] initWithFrame: boxFrame];
 	[_stationNameView setTextColor: textColor];
 	[_stationNameView setBackgroundColor: valueColor];
-	[_stationNameView setText: station.stationName];
+	[_stationNameView setText: _station.stationName];
 	[self addSubview: _stationNameView];
 
 	
@@ -165,6 +169,43 @@
 	[_publicUrlView setBackgroundColor: valueColor];
 	[_publicUrlView setText: [_player getPublicUrl]];
 	[self addSubview: _publicUrlView];
+
+	// Align each button in the full width, assuming we remove
+	// buttonIndent from each end
+#if 0
+	float buttonIndent = 0;
+#endif
+
+	buttonFrame = labelFrame;
+	buttonFrame.origin.y += labelHeight + frame.size.height * 0.05;
+	buttonFrame.origin.x = frame.size.width/2 - buttonWidth/2;
+	buttonFrame.size.height = labelHeight;
+	buttonFrame.size.width = buttonWidth;
+
+	MFANCoreButton *recordButton;
+	recordButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
+						       title: @"Border"
+						       color: [UIColor blackColor]
+					     backgroundColor: [UIColor whiteColor]];
+	[recordButton setFillColor: [UIColor clearColor]];
+	if (_station.isRecording)
+	    [recordButton setClearText: @"Stop recording"];
+	else
+	    [recordButton setClearText: @"Start recording"];
+	[recordButton addCallback: self
+		     withAction: @selector(recordPressed:withData:)];
+	[self addSubview: recordButton];
+
+	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
+	recordButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
+						       title: @"Border"
+						       color: [UIColor blackColor]
+					     backgroundColor: [UIColor whiteColor]];
+	[recordButton setFillColor: [UIColor clearColor]];
+	[recordButton setClearText: @"Highlight"];
+	[recordButton addCallback: self
+		     withAction: @selector(highlightPressed:withData:)];
+	[self addSubview: recordButton];
 
 #if 0
 	// fourth text box
@@ -212,6 +253,7 @@
 			      [_player getEncodingType]];
     [_speedAndTypeView setText: satString];
 
+    // have the status disappear on its own after a minute
     if (osp_time_ms() - _startTimeMs > 60000) {
 	[self doNotify];
     }
@@ -220,6 +262,21 @@
 - (void) shutdown {
     [_timer invalidate];
     _timer = nil;
+}
+
+- (void) highlightPressed: (id) junk1 withData:(id) junk2 {
+    NSLog(@"highlight pressed");
+    [self doNotify];
+}
+
+- (void) recordPressed: (id) junk1 withData:(id) junk2 {
+    NSLog(@"record pressed");
+    if (_station.isRecording)
+	[_signView stopRecording];
+    else
+	[_signView startRecording];
+
+    [self doNotify];
 }
 
 - (void) donePressed: (id) junk1 withEvent: (UIEvent *) junk2 {

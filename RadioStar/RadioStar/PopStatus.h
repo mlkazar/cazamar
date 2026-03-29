@@ -5,14 +5,13 @@
 #import "MFANStreamPlayer.h"
 #import "SignStation.h"
 #import "ViewController.h"
+#import "SignView.h"
 
 @interface PopStatus : UIButton
 
 - (PopStatus *) initWithFrame: (CGRect) frame
 		     viewCont: (ViewController *) vc
-		       stream: (MFANAqStream *) stream
-		       player: (MFANStreamPlayer *) player
-		      station: (SignStation *) station;
+		     signView: (SignView *) signView;
 
 - (void) setCallback: (id) obj withSel: (SEL) sel;
 

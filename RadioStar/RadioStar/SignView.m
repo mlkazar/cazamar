@@ -19,6 +19,7 @@
 #import "PopStatus.h"
 #import "RadioHistory.h"
 #import "SignView.h"
+#import "SignViewInt.h"
 #import "SearchStation.h"
 #import "SignSave.h"
 
@@ -81,6 +82,12 @@ NS_ASSUME_NONNULL_BEGIN
 
     id _songCallbackObj;
     SEL _songCallbackSel;
+
+    // when we switch back to a recording station, should we resume at
+    // the last record played (resumeAtEnd = NO), or resume at the
+    // current record now being sent by the station (resumeAtEnd =
+    // YES)
+    BOOL _resumeAtEnd;
 
     RadioHistory *_history;
 }
@@ -709,6 +716,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	self.backgroundColor = [UIColor clearColor];
 	self.frame = frame;
 
+	_resumeAtEnd = NO;
 	_vc = vc;
 	_allStations = [[NSMutableOrderedSet alloc] init];
 
@@ -987,7 +995,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	return;
 
     if (_playingStation != nil) {
-	[self stopRadio];
+	[self stopRadioResetStream: NO];
 	_playingStation = nil;
     }
 
@@ -1002,7 +1010,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) removeStation: (SignStation *) station {
     if (station == _playingStation) {
-	[self stopRadio];
+	[self stopRadioResetStream: YES];
 	_playingStation = nil;
     }
 
@@ -1072,15 +1080,32 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) startStation: (SignStation *) station {
-    _stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
-    [_stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
-    _player = [[MFANStreamPlayer alloc] initWithStream: _stream ms:~0ULL];
+    if (station.recordingStream == nil) {
+	_stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
+	[_stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
+    } else {
+	_stream = station.recordingStream;
+    }
+
+    if (_resumeAtEnd) {
+	_player = [[MFANStreamPlayer alloc] initWithStream: _stream
+							ms: ~0ULL];
+    } else {
+	_player = [[MFANStreamPlayer alloc] initWithStream: _stream
+							ms: station.recordingPosition];
+    }
+
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
     [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
 }
 
 - (void) restartStationWithStream: (id) stream {
-    [self stopRadio];
+    // we really don't want to reset the stream, but we need recreate
+    // the stream after a stream failure.
+    //
+    // TODO: separate out recorded
+    // stream from downloader.
+    [self stopRadioResetStream: YES];
     [NSThread sleepForTimeInterval: 3.0];
     [self startCurrentStation];
 }
@@ -1112,7 +1137,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	    // stop playing old station
 	    if (prevStation != nil) {
-		[self stopRadio];
+		[self stopRadioResetStream: NO];
 		_playingStation = nil;
 	    }
 
@@ -1137,9 +1162,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     childFrame.origin.y = 0;
     _popStatus = [[PopStatus alloc] initWithFrame: childFrame
 					 viewCont: _vc
-					   stream: _stream
-					   player: _player
-					  station: _playingStation];
+					 signView: self];
     [self addSubview: _popStatus];
     [_popStatus setCallback: self withSel: @selector(popStatusDone:withData:)];
 }
@@ -1150,15 +1173,31 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [_popStatus removeFromSuperview];
  }
 
-- (void) stopRadio {
+// doReset is true if we should force a stream close even if we're recording
+// the station.
+- (void) stopRadioResetStream: (BOOL) doReset {
     NSLog(@"in restartradio");
-    if (_player != nil)
+    uint64_t currentTimestamp = ~0ULL;
+    if (_player != nil) {
+	currentTimestamp = [_player getSeekTarget: 0.0];
 	[_player shutdown];
+	_player = nil;
+    }
     NSLog(@"streamplayer shutdown done");
-    if (_stream != nil)
-	[_stream shutdown];
-    _player = nil;
-    _stream = nil;
+
+    // shutdown the stream unless we're recording it.
+    if ( !doReset &&
+	 (_playingStation != nil && _playingStation.isRecording)) {
+	// keep downloading, but remember where to resume playing if we go
+	// back to this stream.
+	_playingStation.recordingStream = _stream;
+	_playingStation.recordingPosition = currentTimestamp;
+    } else {
+	if (_stream != nil) {
+	    [_stream shutdown];
+	    _stream = nil;
+	}
+    }
     [self animationOn];
     if (_stateCallbackObj != nil) {
 #pragma clang diagnostic push
@@ -1203,11 +1242,32 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     return _player;
 }
 
+- (MFANAqStream *) getCurrentStream {
+    return _stream;
+}
+
+- (SignStation *) getCurrentStation {
+    return _playingStation;
+}
+
 - (NSString *) getPlayingStationName {
     if (_playingStation != nil)
 	return _playingStation.stationName;
     else
 	return @"[Unknown station]";
+}
+
+- (void) startRecording {
+    if (_playingStation != nil)
+	_playingStation.isRecording = true;
+}
+
+- (void) stopRecording {
+    MFANAqStream *stream;
+    if (_playingStation != nil) {
+	_playingStation.recordingStream = nil;
+	_playingStation.isRecording = false;
+    }
 }
 
 - (void) setRadioHistory: (RadioHistory *) history {

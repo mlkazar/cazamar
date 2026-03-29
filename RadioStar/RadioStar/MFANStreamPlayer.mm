@@ -472,6 +472,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     // exiting will drop the thread's reference to the StreamPlayer
     [_streamReader close];
 
+    // if the async thread is stuck waiting for a buffer, this will
+    // let it discover the shutdown flag is set and fail.
+    pthread_cond_broadcast(&_aqCond);
+
     while(!_pthreadDone) {
 	pthread_cond_wait(&_pthreadDoneCond, &_playerMutex);
     }
@@ -757,6 +761,11 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 			  packetsCopied, _queuedPackets);
 		}
 		bufRefp = [self popBuffer];
+		if (bufRefp == nil) {
+		    pthread_mutex_unlock(&_playerMutex);
+		    osp_assert(_shutdown);
+		    break;
+		}
 		pthread_mutex_unlock(&_playerMutex);
 		bytesCopied = 0;
 		packetsCopied = 0;
@@ -785,6 +794,11 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    if (bufRefp == nil) {
 		pthread_mutex_lock(&_playerMutex);
 		bufRefp = [self popBuffer];
+		if (bufRefp == nil) {
+		    pthread_mutex_unlock(&_playerMutex);
+		    osp_assert(_shutdown);
+		    break;
+		}
 		pthread_mutex_unlock(&_playerMutex);
 		bytesCopied = 0;
 		packetsCopied = 0;
@@ -854,8 +868,11 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	[self shutdown];
     }
 
+    pthread_mutex_lock(&_playerMutex);
     _pthreadDone = YES;
     pthread_cond_broadcast(&_pthreadDoneCond);
+    pthread_mutex_unlock(&_playerMutex);
+
     pthread_exit(NULL);
 }
 

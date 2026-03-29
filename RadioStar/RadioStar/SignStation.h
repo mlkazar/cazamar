@@ -17,14 +17,15 @@ NS_ASSUME_NONNULL_BEGIN
 @property NSString *streamUrl;
 @property NSString *iconUrl;
 @property NSString *streamType;
-@property bool isPlaying;
 @property uint32_t streamRateKb;
 @property bool isRecording;
 @property bool isSelected;
 @property bool isLoaded;
 @property CGPoint origin;
 @property uint16_t signIndex;
-@property UIImage *iconImage;
+@property (nullable) UIImage *iconImage;
+@property (nullable) NSObject *recordingStream;
+@property uint64_t recordingPosition;
 
 - (void) setRowColumn: (SignCoord) rowColumn;
 

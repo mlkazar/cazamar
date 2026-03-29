@@ -122,7 +122,7 @@
     pthread_mutex_lock([MFANAqStream streamMutex]);
     _ix = [self findPacketIx: ms];
     _recordMs = ms;
-    NSLog(@"==>seek to ms=%lld index=%d", ms, _ix);
+    NSLog(@"==>seek to ms=%lld index=%lld", ms, _ix);
     pthread_mutex_unlock([MFANAqStream streamMutex]);
 
     // wakeup any pending read
@@ -249,7 +249,6 @@
     // number of active upcalls from the parser
     uint32_t _activeParseCalls;
 
-    BOOL _isRecording;
     BOOL _haveProperties;
     FILE *_recordingFilep;
 
@@ -505,7 +504,7 @@ MFANAqStream_PacketsProc( void *contextp,
     // the stream player, or about 32 seconds at 64Kbits (a shorter
     // duration at higher rates of course).  So, you should keep this
     // above 32000.
-    [aqp pruneOldestMs: 60000];
+    [aqp pruneOldestMs: 600000];
 
     // and wakeup any readers
     pthread_cond_broadcast(&aqp->_packetArrayCv);
@@ -711,7 +710,6 @@ MFANAqStream_rsControlProc( void *contextp,
 	_packetArray = [[NSMutableOrderedSet alloc] init];
 
 	_pthreadDone = NO;
-	_isRecording = NO;
 	_recordingFilep = NULL;
 
 	_haveProperties = NO;
@@ -749,17 +747,11 @@ MFANAqStream_rsControlProc( void *contextp,
     MFANAqStream *threadReference = self;
 
     NSLog(@"in playAsync");
-    // Just keep restarting the radiostream until we're told to shut
-    // it down.
-    uint64_t lastWindowStartMs = osp_time_ms();
-    uint32_t lastWindowErrorCount = 0;
-
     {
 	/* initialize basics */
 	pthread_mutex_lock(&_streamMutex);
 	_radioStreamp = new RadioStream();
 	pthread_mutex_unlock(&_streamMutex);
-
 	_radioStreamp->init( &socketFactory,
 			     (char *) [_urlString cStringUsingEncoding: NSUTF8StringEncoding],
 			     MFANAqStream_rsDataProc,
@@ -794,7 +786,7 @@ MFANAqStream_rsControlProc( void *contextp,
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->_failureCallbackObj performSelector: _failureCallbackSel
+		[self->_failureCallbackObj performSelector: self->_failureCallbackSel
 						withObject: self];
 	    });
     }

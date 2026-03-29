@@ -63,7 +63,7 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
     vertexOut.position = rotations[instanceId].mvpRotationMatrix * vertices[vid].position;
     vertexOut.normal = rotations[instanceId].normalRotationMatrix * vertices[vid].normal;
 
-    float4 selectedGlassColor = float4{0, 0, .6, .25};
+    float4 selectedGlassColor = float4{1.0, .6, 0, .75};
 
     // pass green screen colors through unchanged.  Otherwise, use the
     // incoming glass color unless this is the selected icon.
