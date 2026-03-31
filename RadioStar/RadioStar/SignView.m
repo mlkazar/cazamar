@@ -92,6 +92,8 @@ NS_ASSUME_NONNULL_BEGIN
     // YES)
     BOOL _resumeAtEnd;
 
+    uint32_t _fireCount;
+
     RadioHistory *_history;
 }
 
@@ -322,6 +324,7 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 - (void) setupInfoBuffer {
     SignInfo signInfo;
     signInfo._selectedId = -1;
+    signInfo._clock = 0;
     _infoBuffer = [_device newBufferWithBytes: &signInfo
 				       length: sizeof(signInfo)
 				      options: MTLResourceCPUCacheModeDefaultCache];
@@ -574,6 +577,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	SignInfo *signInfop = (SignInfo *) [_infoBuffer contents];
 	signInfop->_selectedId = -1;
+	signInfop->_clock++;
 
 	SignStation *station;
 	uint32_t signCount = 0;
@@ -636,11 +640,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// Perhaps a better approach is to use a 3D graphics API
 	// instead, but using metal allows us to do animation if we
 	// want.
-	[self animationOff];
+	[self animationOff: NO];
     }
 }
 
 - (void) displayLinkFired: (CADisplayLink *) displayLink {
+    // TODO: use CAFrameRateRange
+
     [self redraw];
 }
 
@@ -648,14 +654,26 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (_displayLink == nil) {
 	_displayLink = [CADisplayLink displayLinkWithTarget:self
 						   selector:@selector(displayLinkFired:)];
+	_displayLink.preferredFramesPerSecond = 10;
 	[_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     }
 }
 
-- (void) animationOff {
-    if (_displayLink != nil) {
-	[_displayLink invalidate];
-	_displayLink = nil;
+- (void) animationOff: (BOOL) forceOff {
+    SignStation *station;
+    BOOL recording = false;
+    for(station in _allStations) {
+	if (station.isRecording) {
+	    recording = true;
+	    break;
+	}
+    }
+
+    if (forceOff || !recording) {
+	if (_displayLink != nil) {
+	    [_displayLink invalidate];
+	    _displayLink = nil;
+	}
     }
 }
 
@@ -670,7 +688,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	NSLog(@"in didMoveToSuperview link=%p", _displayLink);
     } else {
 	NSLog(@"didmovetosuperview shutdown");
-	[self animationOff];
+	[self animationOff: YES];
     }
 }
 
@@ -714,6 +732,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [texture replaceRegion: tregion mipmapLevel:0 withBytes: rawData
 	       bytesPerRow: bytesPerRow];
 
+    free(rawData);
+
     return texture;
 }
 
@@ -722,6 +742,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (self != nil) {
 	self.backgroundColor = [UIColor clearColor];
 	self.frame = frame;
+
+	_fireCount = 0;
 
 	_resumeAtEnd = NO;
 	_vc = vc;
@@ -1123,11 +1145,21 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) startStation: (SignStation *) station {
-    if (station.recordingStream == nil) {
+    _stream = station.recordingStream;
+    if (_stream != nil) {
+	if (_stream.shuttingDown) {
+	    // call shutdown again in case the pthread hasn't exited
+	    // yet.  When shutdown completes, everything will be
+	    // cleanly shutdown.
+	    [_stream shutdown];
+	    _stream = nil;
+	}
+    }
+
+    // and create a stream if necessary.
+    if (_stream == nil) {
 	_stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
 	[_stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
-    } else {
-	_stream = station.recordingStream;
     }
 
     if (_resumeAtEnd) {

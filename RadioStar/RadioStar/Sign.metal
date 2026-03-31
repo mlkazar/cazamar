@@ -28,6 +28,7 @@ using namespace metal;
 
 struct SignInfo {
     unsigned int selectedId;
+    unsigned int clock;
     unsigned int flags[256];
 };
 
@@ -70,13 +71,21 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
     // incoming glass color unless this is the selected icon.
     if (vertices[vid].color.x == .2 && vertices[vid].color.y == 1.0)
         vertexOut.color = vertices[vid].color;
-    else if (instanceId == signInfo->selectedId)
-        vertexOut.color = selectedGlassColor;
-    else
-        vertexOut.color = vertices[vid].color;
-
-    if (signInfo->flags[instanceId] & 1)
-        vertexOut.color.z = 1.0;
+    else {
+        if (instanceId == signInfo->selectedId) {
+            vertexOut.color = selectedGlassColor;
+        } else {
+            vertexOut.color = vertices[vid].color;
+        }
+        if (signInfo->flags[instanceId] & 1) {
+            float factor = ((float) (signInfo->clock % 20)) / 10.0;
+	    if (factor > 1.0)
+                factor = 2.0 - factor;
+            vertexOut.color.z = factor;
+            vertexOut.color.x = vertexOut.color.x * (1.0 - factor);
+            vertexOut.color.y = vertexOut.color.x * (1.0 - factor);
+        }
+    }
 
     // x goes from -.5 to .5, and y goes from -.3 to .3, and we neeed to map
     // to 0 to 1 in both dimensions.

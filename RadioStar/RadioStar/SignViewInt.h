@@ -30,6 +30,7 @@ typedef struct _SignVertex {
 
 typedef struct _SignInfo {
     unsigned int _selectedId;
+    unsigned int _clock;
     unsigned int _flags[SIGNVIEW_METAL_STATIONS];
 } SignInfo;
 

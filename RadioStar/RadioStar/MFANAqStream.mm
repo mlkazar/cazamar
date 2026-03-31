@@ -310,7 +310,7 @@ static pthread_mutex_t _streamMutex;
     NSLog(@"in MFAqStream shutdown");
     pthread_mutex_lock(&_streamMutex);
     /* check if we've started a shutdown procedure */
-    if (_shuttingDown) {
+    if (_shuttingDown && _pthreadDone) {
 	pthread_mutex_unlock(&_streamMutex);
 	NSLog(@"- shutdownAudio for stopped player %p", self);
 	return;
@@ -347,8 +347,10 @@ static pthread_mutex_t _streamMutex;
     }
 
     // once the pthread is done, we can safely close this.
-    AudioFileStreamClose(_audioStreamHandle);
-    _audioStreamHandle = 0;
+    if (_audioStreamHandle != 0) {
+	AudioFileStreamClose(_audioStreamHandle);
+	_audioStreamHandle = 0;
+    }
 
     pthread_mutex_unlock(&_streamMutex);
 
@@ -504,7 +506,7 @@ MFANAqStream_PacketsProc( void *contextp,
     // the stream player, or about 32 seconds at 64Kbits (a shorter
     // duration at higher rates of course).  So, you should keep this
     // above 32000.
-    [aqp pruneOldestMs: 600000];
+    [aqp pruneOldestMs: 720000];	// should be 10-15 minutes in milliseconds
 
     // and wakeup any readers
     pthread_cond_broadcast(&aqp->_packetArrayCv);
