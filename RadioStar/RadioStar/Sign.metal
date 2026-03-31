@@ -32,6 +32,10 @@ struct SignInfo {
     unsigned int flags[256];
 };
 
+#define SIGNVIEW_METAL_FLAG_RECORDING           1
+#define SIGNVIEW_METAL_FLAG_DRAG_START          2
+#define SIGNVIEW_METAL_FLAG_DRAG_END            4
+
 struct Vertex
 {
     float4 position [[position]];
@@ -77,13 +81,24 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
         } else {
             vertexOut.color = vertices[vid].color;
         }
-        if (signInfo->flags[instanceId] & 1) {
-            float factor = ((float) (signInfo->clock % 20)) / 10.0;
-	    if (factor > 1.0)
-                factor = 2.0 - factor;
+
+        float factor = ((float) (signInfo->clock % 20)) / 10.0;
+        if (factor > 1.0)
+            factor = 2.0 - factor;
+        if (signInfo->flags[instanceId] & SIGNVIEW_METAL_FLAG_RECORDING) {
             vertexOut.color.z = factor;
             vertexOut.color.x = vertexOut.color.x * (1.0 - factor);
             vertexOut.color.y = vertexOut.color.x * (1.0 - factor);
+        } else if (signInfo->flags[instanceId] & SIGNVIEW_METAL_FLAG_DRAG_START) {
+            vertexOut.color.x = factor;
+            vertexOut.color.y = factor;
+            vertexOut.color.z = factor;
+            vertexOut.color.w = 1.0;
+        } else if (signInfo->flags[instanceId] & SIGNVIEW_METAL_FLAG_DRAG_END) {
+            vertexOut.color.x = factor;
+            vertexOut.color.y = factor;
+            vertexOut.color.z = factor;
+            vertexOut.color.w = 1.0;
         }
     }
 

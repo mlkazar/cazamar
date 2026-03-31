@@ -18,7 +18,9 @@
 @import simd;
 
 #define SIGNVIEW_METAL_STATIONS   256
-#define SIGNVIEW_METAL_FLAG_RECORDING   1
+#define SIGNVIEW_METAL_FLAG_RECORDING           1
+#define SIGNVIEW_METAL_FLAG_DRAG_START          2
+#define SIGNVIEW_METAL_FLAG_DRAG_END            4
 
 typedef struct _SignVertex {
     vector_float4 _position;	// XYZW

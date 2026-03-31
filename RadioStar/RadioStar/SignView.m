@@ -45,11 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
     ViewController *_vc;
 
     // computeLayout figure out how many of each icon fit in the X and
-    // Y directions.  The [xy]Spread values are the distance from
-    uint32_t _xCount;
-    uint32_t _yCount;
-    float _xSpread;
-    float _ySpread;
+    // Y directions.
     float _xSpace;
     float _ySpace;
 
@@ -72,13 +68,14 @@ NS_ASSUME_NONNULL_BEGIN
     MFANAqStream *_stream;
     MFANStreamPlayer *_player;
 
+    SignStation *_dragStartStation;
+    SignStation *_dragEndStation;
+
     PopStatus *_popStatus;
 
     UIGestureRecognizer *_pressRecognizer;
     UIGestureRecognizer *_longPressRecognizer;
     UIGestureRecognizer *_dragRecognizer;
-
-    CGPoint _dragStart;
 
     id _stateCallbackObj;
     SEL _stateCallbackSel;
@@ -588,9 +585,19 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    if (_playingStation == station)
 		signInfop->_selectedId = signCount;
 	    if (station.isRecording)
-		signInfop->_flags[signCount] |= 1;
+		signInfop->_flags[signCount] |= SIGNVIEW_METAL_FLAG_RECORDING;
 	    else
-		signInfop->_flags[signCount] &= ~1;
+		signInfop->_flags[signCount] &= ~SIGNVIEW_METAL_FLAG_RECORDING;
+
+	    if (station == _dragStartStation)
+		signInfop->_flags[signCount] |= SIGNVIEW_METAL_FLAG_DRAG_START;
+	    else
+		signInfop->_flags[signCount] &= ~SIGNVIEW_METAL_FLAG_DRAG_START;
+
+	    if (station == _dragEndStation)
+		signInfop->_flags[signCount] |= SIGNVIEW_METAL_FLAG_DRAG_END;
+	    else
+		signInfop->_flags[signCount] &= ~SIGNVIEW_METAL_FLAG_DRAG_END;
 
 	    [self getRotationBuffer:_rotationBuffer
 			      index: signCount
@@ -661,15 +668,20 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) animationOff: (BOOL) forceOff {
     SignStation *station;
-    BOOL recording = false;
+    BOOL keepAnimating = false;
+
     for(station in _allStations) {
 	if (station.isRecording) {
-	    recording = true;
+	    keepAnimating = YES;
 	    break;
 	}
     }
 
-    if (forceOff || !recording) {
+    if (_dragStartStation != nil ||
+	_dragEndStation != nil)
+	keepAnimating = YES;
+
+    if (forceOff || !keepAnimating) {
 	if (_displayLink != nil) {
 	    [_displayLink invalidate];
 	    _displayLink = nil;
@@ -1058,30 +1070,38 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) dragPressed: (UIPanGestureRecognizer *) sender {
     NSLog(@"drag pan state %d", sender.state);
     CGPoint point = [sender locationInView: self];
-    SignStation *startStation;
-    SignStation *endStation;
     uint32_t count = [_allStations count];
 
     NSLog(@"drag point is %f.%f", point.x, point.y);
     if (sender.state == UIGestureRecognizerStateBegan) {
-	_dragStart = point;
-    } else if (sender.state == UIGestureRecognizerStateEnded) {
-	startStation = [self findStationByTouch: _dragStart];
-	if (startStation == nil)
+	_dragStartStation = [self findStationByTouch: point];
+	[self animationOn];
+	if (_dragStartStation == nil)
 	    return;
-	endStation = [self findStationByTouch: point];
-	if (endStation == nil) {
+    } else if (sender.state == UIGestureRecognizerStateEnded) {
+	if (_dragStartStation == nil) {
+	    [self animationOn];
+	    return;
+	}
+	_dragEndStation = [self findStationByTouch: point];
+	if (_dragEndStation == nil) {
 	    // move to end
-	    [_allStations removeObject: startStation];
-	    [_allStations addObject: startStation];
+	    [_allStations removeObject: _dragStartStation];
+	    [_allStations addObject: _dragStartStation];
 	} else {
 	    // move to after endStation
-	    [_allStations removeObject: startStation];
-	    [_allStations insertObject: startStation atIndex: endStation.signIndex];
+	    [_allStations removeObject: _dragStartStation];
+	    [_allStations insertObject: _dragStartStation atIndex: _dragEndStation.signIndex];
 	}
 	[self computeLayout];
+	_dragStartStation = nil;
+	_dragEndStation = nil;
 	[self animationOn];
 	[[SignSave alloc] initSaveToFile: _allStations];
+    } else if (sender.state == UIGestureRecognizerStateChanged) {
+	if (_dragStartStation == nil)
+	    return;
+	_dragEndStation = [self findStationByTouch: point];
     }
 }
 

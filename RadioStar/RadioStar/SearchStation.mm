@@ -1,5 +1,6 @@
 #import "SearchStation.h"
 #import "MFANCGUtil.h"
+#import "MFANCoreButton.h"
 #import "MFANIconButton.h"
 #import "MFANSocket.h"
 #import "ViewController.h"
@@ -38,6 +39,7 @@
 
     MFANIconButton *_cancelButton;
     MFANIconButton *_doneButton;
+    MFANCoreButton *_helpButton;
     UIPickerView *_pickerView;
 
     // displaying state of running query
@@ -103,6 +105,7 @@
 	_searchBar.showsBookmarkButton = NO;
 	_searchBar.delegate = self;
 	_searchBar.searchBarStyle = UISearchBarStyleMinimal;
+	_searchBar.showsCancelButton = YES;
 	[self addSubview: _searchBar];
 	_searchBar. searchTextField.backgroundColor = [UIColor colorWithRed: 0.7
 								     green: 0.7
@@ -153,11 +156,12 @@
 	// layout cancel and done buttons
 	CGRect cancelFrame;
 	CGRect doneFrame;
+	CGRect helpFrame;
 	cancelFrame.origin.y = frame.size.height - verticalViewSize;
 	cancelFrame.size.height = verticalViewSize;
 	cancelFrame.size.width = verticalViewSize; // make it square
 	// center button 1/3 of way across
-	cancelFrame.origin.x = frame.size.width/3 - verticalViewSize/2;
+	cancelFrame.origin.x = frame.size.width/4.0 - verticalViewSize/2;
 
         _cancelButton = [[MFANIconButton alloc]
 			    initWithFrame: cancelFrame
@@ -171,9 +175,18 @@
 		      withAction: @selector(cancelPressed:withData:)];
         [self addSubview: _cancelButton];
 
+	helpFrame = cancelFrame;
+	helpFrame.origin.x = frame.size.width*(2.0/4.0) - verticalViewSize/2;
+	_helpButton = [[MFANCoreButton alloc]
+			      initWithFrame: helpFrame
+				      title: @"Blank"
+				      color: [UIColor blackColor]];
+	[_helpButton addCallback: self withAction:@selector(helpPressed:withData:)];
+	[_helpButton setClearText: @"?"];
+	[self addSubview: _helpButton];
 
 	doneFrame = cancelFrame;
-	doneFrame.origin.x = frame.size.width*(2.0/3.0) - verticalViewSize/2;
+	doneFrame.origin.x = frame.size.width*(3.0/4.0) - verticalViewSize/2;
 
         _doneButton = [[MFANIconButton alloc]
 			  initWithFrame: doneFrame
@@ -233,6 +246,10 @@
     [_vc popTopView];
     
     [self doNotify];
+}
+
+- (void) helpPressed: (id) sender withData: (NSNumber *) number {
+    NSLog(@"help pressed");
 }
 
 // All done with the search process.
@@ -428,6 +445,10 @@
 						      repeats: NO];
 	NSLog(@"querymonitor restarting timer");
     }
+}
+
+- (void) searchBarCancelButtonClicked: (UISearchBar *)searchBar {
+    [searchBar resignFirstResponder];
 }
 
 - (void) searchBarSearchButtonClicked:(UISearchBar *)searchBar {
