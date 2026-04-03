@@ -14,6 +14,7 @@
 #import "GraphMath.h"
 #import "ManualStation.h"
 #import "EditStation.h"
+#import "HelpView.h"
 #import "MFANAqStream.h"
 #import "MFANFileWriter.h"
 #import "PopStatus.h"
@@ -955,7 +956,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     action = [UIAlertAction actionWithTitle:@"Help"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
-            NSLog(@"Perform help");
+	    [[HelpView alloc] initWithFile:@"help-main" viewCont: self->_vc];
 	}];
     [alert addAction: action];
 
@@ -982,40 +983,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) historyDone: (id) junk {
     [_vc popTopView];
-}
-
-- (void) displayStationOptions: (SignStation *) station
-{
-    NSString *status = [NSString stringWithFormat: @"%8.0f kbps", [_player getDataRate]/1000.0];
-
-    UIAlertController *alert = [UIAlertController
-				   alertControllerWithTitle: @"RadioStar"
-						    message: status
-					     preferredStyle: UIAlertControllerStyleAlert];
-
-    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Start recording"
-                                                     style: UIAlertActionStyleDefault
-                                                   handler:^(UIAlertAction *act) {
-            NSLog(@"Perform 1");
-	}];
-    [alert addAction: action];
-
-    action = [UIAlertAction actionWithTitle:@"Remove station"
-				      style:UIAlertActionStyleDefault
-				    handler:^(UIAlertAction *act) {
-	    [self removeStation: station];
-	    [self animationOn];
-	}];
-    [alert addAction: action];
-
-    action = [UIAlertAction actionWithTitle:@"Cancel"
-                                      style: UIAlertActionStyleDefault
-                                    handler:^(UIAlertAction *act) {
-	    NSLog(@"Cancel");
-        }];
-    [alert addAction: action];
-
-    [_vc presentViewController: alert animated:YES completion: nil];
 }
 
 - (void) changeStationBy: (int16_t) change {

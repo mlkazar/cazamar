@@ -1,4 +1,5 @@
 #import "SearchStation.h"
+#import "HelpView.h"
 #import "MFANCGUtil.h"
 #import "MFANCoreButton.h"
 #import "MFANIconButton.h"
@@ -179,8 +180,9 @@
 	helpFrame.origin.x = frame.size.width*(2.0/4.0) - verticalViewSize/2;
 	_helpButton = [[MFANCoreButton alloc]
 			      initWithFrame: helpFrame
-				      title: @"Blank"
-				      color: [UIColor blackColor]];
+				      title: @"Circle"
+				      color: [UIColor blackColor]
+			    backgroundColor: [UIColor clearColor]];
 	[_helpButton addCallback: self withAction:@selector(helpPressed:withData:)];
 	[_helpButton setClearText: @"?"];
 	[self addSubview: _helpButton];
@@ -249,7 +251,7 @@
 }
 
 - (void) helpPressed: (id) sender withData: (NSNumber *) number {
-    NSLog(@"help pressed");
+    [[HelpView alloc] initWithFile: @"help-search" viewCont: _vc];
 }
 
 // All done with the search process.

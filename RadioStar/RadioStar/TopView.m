@@ -164,7 +164,7 @@
 }
 
 - (void) stopPressed:(id) junk withData: junk2 {
-    [_signView stopRadioResetStream: NO];
+    [_signView stopRadioResetStream: YES];
     NSLog(@"STOP");
 }
 

@@ -172,10 +172,6 @@
 
 	// Align each button in the full width, assuming we remove
 	// buttonIndent from each end
-#if 0
-	float buttonIndent = 0;
-#endif
-
 	buttonFrame = labelFrame;
 	buttonFrame.origin.y += labelHeight + frame.size.height * 0.05;
 	buttonFrame.origin.x = frame.size.width/2 - buttonWidth/2;
@@ -189,9 +185,9 @@
 					     backgroundColor: [UIColor whiteColor]];
 	[recordButton setFillColor: [UIColor clearColor]];
 	if (_station.isRecording)
-	    [recordButton setClearText: @"Stop recording"];
+	    [recordButton setClearText: @"No stream in background"];
 	else
-	    [recordButton setClearText: @"Start recording"];
+	    [recordButton setClearText: @"Stream in background"];
 	[recordButton addCallback: self
 		     withAction: @selector(recordPressed:withData:)];
 	[self addSubview: recordButton];
@@ -209,24 +205,6 @@
 	[recordButton addCallback: self
 		     withAction: @selector(highlightPressed:withData:)];
 	[self addSubview: recordButton];
-
-#if 0
-	// fourth text box
-	labelFrame.origin.y += labelHeight;
-	_finalUrlLabel = [[UILabel alloc] initWithFrame: labelFrame];
-	_finalUrlLabel.backgroundColor = labelColor;
-	_finalUrlLabel.text = @"Final URL";
-	_finalUrlLabel.textColor = [UIColor blackColor];
-	_finalUrlLabel.textAlignment = NSTextAlignmentLeft;
-	[self addSubview: _finalUrlLabel];
-
-	boxFrame.origin.y += boxHeight;
-	_finalUrlView = [[MarqueeLabel alloc] initWithFrame: boxFrame];
-	[_finalUrlView setTextColor: textColor];
-	[_finalUrlView setBackgroundColor: valueColor];
-	[_finalUrlView setText: [_stream getFinalUrl]];
-	[self addSubview: _finalUrlView];
-#endif
 
 	[self addTarget: self
 	     action:@selector(donePressed:withEvent:)
