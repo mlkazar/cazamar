@@ -82,13 +82,14 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
             vertexOut.color = vertices[vid].color;
         }
 
-        float factor = ((float) (signInfo->clock % 20)) / 10.0;
+        float factor = ((float) (signInfo->clock % 8)) / 4.0;
         if (factor > 1.0)
             factor = 2.0 - factor;
         if (signInfo->flags[instanceId] & SIGNVIEW_METAL_FLAG_RECORDING) {
-            vertexOut.color.z = factor;
-            vertexOut.color.x = vertexOut.color.x * (1.0 - factor);
-            vertexOut.color.y = vertexOut.color.x * (1.0 - factor);
+            vertexOut.color.x = (1.0 - vertexOut.color.x) * factor + vertexOut.color.x;
+            vertexOut.color.y = (1.0 - vertexOut.color.y) * factor + vertexOut.color.y;
+            vertexOut.color.z = (1.0 - vertexOut.color.z) * factor + vertexOut.color.z;
+	    vertexOut.color.w = 1.0;
         } else if (signInfo->flags[instanceId] & SIGNVIEW_METAL_FLAG_DRAG_START) {
             vertexOut.color.x = factor;
             vertexOut.color.y = factor;

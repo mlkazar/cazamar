@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreAudio/CoreAudioTypes.h>
 #import <CoreFoundation/CoreFoundation.h>
+#import "MFANAqStream.h"
 #import "MFANCGUtil.h"
 
 typedef struct _SignCoord {
@@ -24,8 +25,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property CGPoint origin;
 @property uint16_t signIndex;
 @property (nullable) UIImage *iconImage;
-@property (nullable) NSObject *recordingStream;
+@property (nullable) MFANAqStream *recordingStream;
 @property uint64_t recordingPosition;
+
+- (bool) isBkgStreaming;
 
 - (void) setRowColumn: (SignCoord) rowColumn;
 

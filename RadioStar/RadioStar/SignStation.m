@@ -18,7 +18,7 @@
     bool _isSelected;		// selected as part of search operation
     bool _isLoaded;		// image is loaded
 
-    NSObject *_recordingStream;		// stream being recorded
+    MFANAqStream *_recordingStream;	// stream being recorded
     uint64_t _recordingPosition;	// ms currently coming out the speaker
 
     CGPoint _origin;
@@ -26,6 +26,16 @@
 
 - (void) setRowColumn: (SignCoord) rowColumn {
     _rowColumn = rowColumn;
+}
+
+// Is this station currently streaming data
+- (bool) isBkgStreaming {
+    if (_recordingStream != nil &&
+	!_recordingStream.shuttingDown) {
+	return true;
+    } else {
+	return false;
+    }
 }
 
 - (SignStation *) init {

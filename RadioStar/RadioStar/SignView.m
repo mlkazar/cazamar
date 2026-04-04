@@ -530,6 +530,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [_allStations addObject: station];
 }
 
+- (bool) shouldIndicateStreaming: (SignStation *) station {
+    if (station == _playingStation) {
+	return (_stream != nil && !_stream.shuttingDown);
+    } else {
+	return [station isBkgStreaming];
+    }
+}
+
 - (void) redraw {
     id<CAMetalDrawable> drawable = [_metalLayer nextDrawable];
     id<MTLTexture> texture;
@@ -585,7 +593,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	    if (_playingStation == station)
 		signInfop->_selectedId = signCount;
-	    if (station.isRecording)
+
+	    if ([self shouldIndicateStreaming: station])
 		signInfop->_flags[signCount] |= SIGNVIEW_METAL_FLAG_RECORDING;
 	    else
 		signInfop->_flags[signCount] &= ~SIGNVIEW_METAL_FLAG_RECORDING;
@@ -662,7 +671,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (_displayLink == nil) {
 	_displayLink = [CADisplayLink displayLinkWithTarget:self
 						   selector:@selector(displayLinkFired:)];
-	_displayLink.preferredFramesPerSecond = 10;
+	_displayLink.preferredFramesPerSecond = 8;
 	[_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     }
 }
@@ -672,7 +681,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     BOOL keepAnimating = false;
 
     for(station in _allStations) {
-	if (station.isRecording) {
+	if ([self shouldIndicateStreaming:station]) {
 	    keepAnimating = YES;
 	    break;
 	}
@@ -1159,6 +1168,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
     [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+
+    [self animationOn];
 }
 
 - (void) restartStationWithStream: (id) stream {
@@ -1194,6 +1205,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		} else {
 		    [self showPopStatus];
 		}
+		[self animationOn];
 		return;
 	    }
 
@@ -1209,11 +1221,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		[self startStation: station];
 		_playingStation = station;
 	    }
-	    [self animationOn];
 	} else {
 	    // random press
 	    [self showPopStatus];
 	}
+	[self animationOn];
     }
 }
 
