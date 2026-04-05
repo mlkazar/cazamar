@@ -965,7 +965,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     action = [UIAlertAction actionWithTitle:@"Help"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
-	    [[HelpView alloc] initWithFile:@"help-main" viewCont: self->_vc];
+	    (void) [[HelpView alloc] initWithFile:@"help-main" viewCont: self->_vc];
 	}];
     [alert addAction: action];
 
@@ -1044,7 +1044,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) dragPressed: (UIPanGestureRecognizer *) sender {
-    NSLog(@"drag pan state %d", sender.state);
+    NSLog(@"drag pan state %ld", (long) sender.state);
     CGPoint point = [sender locationInView: self];
     uint32_t count = [_allStations count];
 
@@ -1154,7 +1154,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     // and create a stream if necessary.
     if (_stream == nil) {
-	_stream = [[MFANAqStream alloc] initWithUrl:station.streamUrl];
+	[station.recordingBuffer allowReaders];
+	_stream = [[MFANAqStream alloc] initWithUrl: station.streamUrl
+					     buffer: station.recordingBuffer];
 	[_stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
     }
 

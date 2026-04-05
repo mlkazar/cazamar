@@ -26,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property uint16_t signIndex;
 @property (nullable) UIImage *iconImage;
 @property (nullable) MFANAqStream *recordingStream;
+@property (nullable) MFANAqStreamBuffer *recordingBuffer;
 @property uint64_t recordingPosition;
 
 - (bool) isBkgStreaming;

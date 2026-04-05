@@ -19,6 +19,7 @@
     bool _isLoaded;		// image is loaded
 
     MFANAqStream *_recordingStream;	// stream being recorded
+    MFANAqStreamBuffer *_recordingBuffer; // recorded data from stream.
     uint64_t _recordingPosition;	// ms currently coming out the speaker
 
     CGPoint _origin;
@@ -44,6 +45,7 @@
 	self.isRecording = NO;
 	self.isSelected = NO;
 	self.isLoaded = NO;
+	self.recordingBuffer = [[MFANAqStreamBuffer alloc] init];
     }
     return self;
 }

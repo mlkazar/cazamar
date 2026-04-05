@@ -6,6 +6,7 @@
 #import <CoreFoundation/CoreFoundation.h>
 
 #import "MFANAqStream.h"
+#import "MFANAqStreamBuffer.h"
 #import "MFANCGUtil.h"
 #import "MFANSocket.h"
 
@@ -18,225 +19,12 @@
 
 #define _showIo false
 
-@implementation MFANAqStreamPacket {
-    // probably useless since sender may have buffered up a lot of
-    // audio
-    uint64_t _startMs;
-    uint32_t _durationMs;
+static int _streamStaticSetup = 0;
+static pthread_mutex_t _streamMutex;
 
-    std::string _data;
-    bool _read;
-    NSString *_playingSong;
-    AudioStreamPacketDescription _descr;
-}
-
-- (MFANAqStreamPacket *) init {
-    self = [super init];
-    if (self != nil) {
-	_read = NO;
-    }
-    return self;
-}
-
-- (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr {
-    _data.append(data, descr->mDataByteSize);
-    _descr = *descr;
-
-    return 0;
-}
-
-// *not* null terminated
-- (char *) getData {
-    return (char *) _data.data();
-}
-
-- (uint64_t) getLength {
-    return _data.length();
-}
-
-- (void) getDescr: (AudioStreamPacketDescription *) descr {
-    *descr = _descr;
-}
-
-@end
-
-@implementation MFANAqStreamReader {
-    MFANAqStream *_aqStream;
-    uint64_t _packetStreamVersion;	// increment whenever index of existing packet changes.
-    uint64_t _recordMs;			// current position in the stream
-    uint64_t _ix;			// if version matches, the index of the next packet to read
-    bool _closed;
-}
-
-- (MFANAqStreamReader *) initWithStream: (MFANAqStream *) stream {
-    self = [super init];
-    if (self != nil) {
-	_aqStream = stream;
-	MFANAqStreamPacket *packet;
-	uint64_t recordCount = [stream.packetArray count];
-
-	NSLog(@"AqStream attaching reader after %lld stream packets", recordCount);
-
-	// start past the last record already in the stream
-	if (recordCount > 0) {
-	    packet = [stream.packetArray lastObject];
-	    _recordMs = packet.startMs + packet.durationMs;
-	} else {
-	    _recordMs = 0;
-	}
-
-	_ix = recordCount;
-	_packetStreamVersion = stream.packetStreamVersion;
-	_closed = NO;
-    }
-
-    return self;
-}
-
-// Called with aq mutex held.
-- ( bool) indexIsValid {
-    return (_packetStreamVersion == _aqStream.packetStreamVersion);
-}
-
-// Called with aq mutex held
-- (uint64_t) findPacketIx: (uint64_t) ms {
-    // TODO: replace with binary search.
-    //
-    // Find first packet with a
-    // time stamp >= the input parameter.
-    uint64_t ix;
-
-    MFANAqStreamPacket *packet;
-    for(ix = 0; ix < [_aqStream.packetArray count]; ix++) {
-	packet = [_aqStream.packetArray objectAtIndex: ix];
-	if (packet.startMs >= ms)
-	    break;
-    }
-
-    NSLog(@"findPacketIx for %lld ms returns %lld", ms, ix);
-
-    return ix;
-}
-
-- (uint64_t) seek: (uint64_t) ms whence: (int) how {
-    pthread_mutex_lock([MFANAqStream streamMutex]);
-    _ix = [self findPacketIx: ms];
-    _recordMs = ms;
-    NSLog(@"==>seek to ms=%lld index=%lld", ms, _ix);
-    pthread_mutex_unlock([MFANAqStream streamMutex]);
-
-    // wakeup any pending read
-    pthread_cond_broadcast([_aqStream packetArrayCv]);
-    return _ix;
-}
-
-- (uint64_t) tell {
-    uint64_t rval;
-    pthread_mutex_lock([MFANAqStream streamMutex]);
-    rval = _recordMs;
-    pthread_mutex_unlock([MFANAqStream streamMutex]);
-    return rval;
-}
-
-// Check to see if there are at least targetMs of audio queued in the
-// stream.  If wait is set, wait until there is.  Return true if there
-// is, otherwise false.
-- (bool) waitForAtLeast: (uint64_t) targetBytes {
-    bool rval;
-    pthread_mutex_lock([MFANAqStream streamMutex]);
-
-    rval = false;
-    while(true) {
-	if (_aqStream.shuttingDown || _closed) {
-	    rval = false;
-	    break;
-	}
-
-	if (!self.indexIsValid) {
-	    _ix = [self findPacketIx: _recordMs];
-	    _packetStreamVersion = _aqStream.packetStreamVersion;
-	}
-
-	uint64_t totalPackets = [_aqStream.packetArray count] - _ix;
-	uint64_t totalBytes = 0;
-	if (totalPackets > 0) {
-	    // assume one packet's length is a good estimator of the
-	    // average packet size.  This function is rarely called
-	    // and so could also work by just adding up the # of
-	    // bytes, stopping when the target is reached.
-	    totalBytes = [_aqStream.packetArray[_ix] getLength] * totalPackets;
-	} else {
-	    totalBytes = 0;;
-	}
-	if (totalBytes >= targetBytes) {
-	    rval = true;
-	    break;
-	}
-
-	pthread_cond_wait([_aqStream packetArrayCv], [MFANAqStream streamMutex]);
-	continue;
-    }
-
-    pthread_mutex_unlock([MFANAqStream streamMutex]);
-
-    return rval;
-}
-
-- (bool) hasData {
-    bool rval;
-
-    pthread_mutex_lock([MFANAqStream streamMutex]);
-
-    if (!self.indexIsValid) {
-	_ix = [self findPacketIx: _recordMs];
-	_packetStreamVersion = _aqStream.packetStreamVersion;
-    }
-
-    rval = (_ix < [_aqStream.packetArray count]);
-
-    pthread_mutex_unlock([MFANAqStream streamMutex]);
-
-    return rval;
-}
-
-- (void) close {
-    pthread_mutex_lock([MFANAqStream streamMutex]);
-    _closed = YES;
-    pthread_cond_broadcast([_aqStream packetArrayCv]);
-    pthread_mutex_unlock([MFANAqStream streamMutex]);
-}
-
-- (MFANAqStreamPacket *) read {
-    MFANAqStreamPacket *packet = nil;
-
-    pthread_mutex_lock([MFANAqStream streamMutex]);
-    while(true) {
-	if (_aqStream.shuttingDown || _closed) {
-	    pthread_mutex_unlock([MFANAqStream streamMutex]);
-	    return nil;
-	}
-
-	if (!self.indexIsValid) {
-	    _ix = [self findPacketIx: _recordMs];
-	    _packetStreamVersion = _aqStream.packetStreamVersion;
-	}
-
-	if (_ix >= [_aqStream.packetArray count]) {
-	    pthread_cond_wait([_aqStream packetArrayCv], [MFANAqStream streamMutex]);
-	    continue;
-	}
-
-	packet = _aqStream.packetArray[_ix];
-	_recordMs = packet.startMs + packet.durationMs;
-	_ix++;
-	break;
-    }
-    pthread_mutex_unlock([MFANAqStream streamMutex]);
-    packet.read = YES;
-    return packet;
-}
-
-@end
+// ---------------------------------------------------------------------------
+// MFANAqStream — downloader
+// ---------------------------------------------------------------------------
 
 @implementation MFANAqStream {
     BOOL _shuttingDown;
@@ -246,25 +34,19 @@
     AudioFileStreamID _audioStreamHandle;
     RadioStream *_radioStreamp;
 
-    // number of active upcalls from the parser
+    // Number of active upcalls from the audio-stream parser.
     uint32_t _activeParseCalls;
 
-    BOOL _haveProperties;
     FILE *_recordingFilep;
 
-    // This is the string of the song currently playing.
+    // The song title currently being broadcast by the station.
     NSString *_currentPlaying;
 
-    /* tracking playing; the stupid AudioQueue property listener
-     * doesn't notice if you actually pause playing (another Apple
-     * POS).
-     */
-    float _dataRate;		/* estimated data rate */
+    float _dataRate;            /* estimated data rate */
 
     BOOL _pthreadWaiters;
     NSThread *_radioStreamThread;
 
-    // counter incremented on each detach
     uint32_t _streamAttachCounter;
 
     uint64_t _lastDataBytes;
@@ -272,30 +54,25 @@
 
     NSString *_urlString;
 
-    uint64_t _packetStreamVersion;
-
-    uint64_t _lastPacketEndMs;
-
-    AudioStreamBasicDescription _dataFormat;
+    pthread_mutex_t _streamMutex;
 
     id _failureCallbackObj;
     SEL _failureCallbackSel;
 
-    // failure tracking state to see if we got too many failures in a
-    // short period.
     bool _failed;
-    uint32_t _failedWindowMs;		// # of milliseconds for hard failure detect
-    uint32_t _failedWindowCount;	// # of failures in that window past which stream is dead
+    uint32_t _failedWindowMs;       // window size for hard-failure detection
+    uint32_t _failedWindowCount;    // max failures within the window
 
-    // Figures for computing how much time packet represents.
-    float _packetDuration;
-    float _frameDuration;
+    // The buffer that accumulates decoded packets.
+    MFANAqStreamBuffer *_buffer;
+}
 
-    // an array of MFANAqStreamPacket objects.
-    // can't use a dictionary, because there's no way to search for
-    // next entry GE than a search key.
-    NSMutableOrderedSet *_packetArray;
-    pthread_cond_t _packetArrayCv;
+- (MFANAqStreamBuffer *) buffer {
+    return _buffer;
+}
+
+- (float) packetDuration {
+    return _buffer.packetDuration;
 }
 
 - (void) setFailureCallback: (id) callbackObj sel: (SEL) callbackSel {
@@ -303,74 +80,20 @@
     _failureCallbackSel = callbackSel;
 }
 
-static int _staticSetup = 0;
-static pthread_mutex_t _streamMutex;
+// ---------------------------------------------------------------------------
+// Audio-stream parser callbacks
+//
+// These are static C functions registered with AudioFileStreamOpen.  They are
+// called from within rsDataProc (which holds +streamMutex), so they do not
+// need to acquire the mutex themselves.
+// ---------------------------------------------------------------------------
 
-- (void) shutdown {
-    NSLog(@"in MFAqStream shutdown");
-    pthread_mutex_lock(&_streamMutex);
-    /* check if we've started a shutdown procedure */
-    if (_shuttingDown && _pthreadDone) {
-	pthread_mutex_unlock(&_streamMutex);
-	NSLog(@"- shutdownAudio for stopped player %p", self);
-	return;
-    }
-
-    /* if we're called on the wrong thread, move to the right one.  If we don't
-     * do this, the NSTimer stuff doesn't work.
-     */
-    if (![NSThread isMainThread]) {
-	pthread_mutex_unlock(&_streamMutex);
-	NSLog(@" - shutdownAudio bouncing to main thread");
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[self shutdown];
-	    });
-	return;
-    }
-
-    _shuttingDown = YES;
-
-    // terminate any reads or waits for data
-    pthread_cond_broadcast(&_packetArrayCv);
-
-    // this is safe to call on any thread, because all it does is set
-    // a flag that tells RST to shutdown on the next packet of data.
-    if (_radioStreamp != nullptr) {
-	_radioStreamp->close();
-	_radioStreamp = nullptr;
-    }
-
-    // calls to the record parser generate upcalls, and we want to wait for them
-    while(!_pthreadDone) {
-	_pthreadWaiters = YES;
-	pthread_cond_wait(&_pthreadIdleCv, &_streamMutex);
-    }
-
-    // once the pthread is done, we can safely close this.
-    if (_audioStreamHandle != 0) {
-	AudioFileStreamClose(_audioStreamHandle);
-	_audioStreamHandle = 0;
-    }
-
-    pthread_mutex_unlock(&_streamMutex);
-
-    // At this point, with the reference from pthread and any pthread
-    // upcalls all removed, the only ARC references should be from
-    // whoever created the AqStream, and it can safely be freed
-    // whenever they're done with it.
-}
-
-/* this function is called by the AudioFileStreamParsePackets
- * function, once enough data has been received that we can parse the
- * packet info.  Since the radiostream data proc grabs the
- * streamMutex, we don't have to do it here, since our caller is
- * holding it for us.
- */
+/* Called once the parser has determined the stream's encoding parameters. */
 void
 MFANAqStream_PropertyProc( void *contextp,
-			   AudioFileStreamID audioFilep,
-			   AudioFileStreamPropertyID propertyId,
-			   UInt32 * ioFlags)
+                            AudioFileStreamID audioFilep,
+                            AudioFileStreamPropertyID propertyId,
+                            UInt32 * ioFlags)
 {
     MFANAqStream *aqp = (__bridge MFANAqStream *) contextp;
     OSStatus osStatus;
@@ -378,142 +101,93 @@ MFANAqStream_PropertyProc( void *contextp,
 
     NSLog(@"in AqStream property proc");
 
-    /* this callback is made as soon as the parser has figured out the encoding
-     * parameters of the stream.  Until this time, it is really too early to create
-     * a lot of the player data structures, since they depend upon the type of
-     * stream we're receiving.
-     */
     if (propertyId == kAudioFileStreamProperty_ReadyToProducePackets) {
-	dataFormatSize = sizeof(aqp->_dataFormat);
-	osStatus = AudioFileStreamGetProperty ( aqp->_audioStreamHandle,
-						kAudioFilePropertyDataFormat,
-						(UInt32 *) &dataFormatSize,
-						&aqp->_dataFormat);
+        AudioStreamBasicDescription fmt;
+        dataFormatSize = sizeof(fmt);
+        osStatus = AudioFileStreamGetProperty( aqp->_audioStreamHandle,
+                                               kAudioFilePropertyDataFormat,
+                                               (UInt32 *) &dataFormatSize,
+                                               &fmt);
 
-	NSLog(@"PropertyProc has properties");
-	aqp->_haveProperties = YES;
-	aqp->_packetDuration = (1 / aqp->_dataFormat.mSampleRate) *
-	    aqp->_dataFormat.mFramesPerPacket;
-	aqp->_frameDuration = (1 / aqp->_dataFormat.mSampleRate);
+        NSLog(@"PropertyProc has properties");
 
-	// Sample rate gives the # of frames per second.  So,
-	// duration of a packet is frames per packet / (frames/second) = seconds/packet
-	aqp->_packetDuration = aqp->_dataFormat.mFramesPerPacket / aqp->_dataFormat.mSampleRate;
+        aqp->_buffer.dataFormat    = fmt;
+        aqp->_buffer.haveProperties = YES;
 
-	NSLog(@"packet duration=%f frame duration=%f packetDuration=%f",
-	      aqp->_packetDuration, aqp->_frameDuration, aqp->_packetDuration);
+        float frameDuration  = 1.0f / fmt.mSampleRate;
+        float packetDuration = fmt.mFramesPerPacket / fmt.mSampleRate;
+
+        aqp->_buffer.frameDuration  = frameDuration;
+        aqp->_buffer.packetDuration = packetDuration;
+
+        NSLog(@"frame duration=%f packetDuration=%f",
+              frameDuration, packetDuration);
     }
 }
 
-// Must be called with lock held; currently that happens since this is
-// called from code called from rsDataProc, which grabs that lock.
-- (void) pruneOldestMs: (uint64_t) pruneLength {
-    uint64_t startMs;	// time before which we prune everything.
-
-    if (pruneLength > _lastPacketEndMs)
-	return;
-    else
-	startMs = _lastPacketEndMs - pruneLength;
-
-    while(true) {
-	MFANAqStreamPacket *packet;
-	packet = [_packetArray firstObject];
-	if (packet == nil)
-	    break;
-	if (packet.startMs >= startMs)
-	    break;
-
-	// packet exists before the prune time, remove it.
-	// osp_assert(packet.read);
-	NSLog(@"pruning packet with startMs=%lld (startMs=%lld)", packet.startMs, startMs);
-	[_packetArray removeObject: packet];
-    }
-
-    // readers' cached indices are now wrong
-    _packetStreamVersion++;
-}
-
-/* this function is called by the parser when a non-zero set of
- * records is available.  We upcall it, and save it to
- * any open file.
- *
- * This is called back from the rsDataProc, so it is rsDataProc that
- * gets the streamMutex
- *
- * NB: if we need to do upcalls after releasing the stream mutex, we
- * should do a retain / release on the NSObject under the lock and
- * around the upcall, so that the object can't be freed during the
- * upcall.
- */
+/* Called when one or more decoded audio packets are available. */
 void
 MFANAqStream_PacketsProc( void *contextp,
-			  UInt32 numBytes,
-			  UInt32 numPackets,
-			  const void *inDatap,
-			  AudioStreamPacketDescription *packetsp)
+                           UInt32 numBytes,
+                           UInt32 numPackets,
+                           const void *inDatap,
+                           AudioStreamPacketDescription *packetsp)
 {
     MFANAqStream *aqp = (__bridge MFANAqStream *) contextp;
     uint32_t bytesCopied;
     uint32_t packetsCopied;
+    uint32_t durationMs;
 
-    if (!aqp->_haveProperties) {
-	NSLog(@"! MFANAqStream data received before properties callback");
-	return;
+    if (!aqp->_buffer.haveProperties) {
+        NSLog(@"! MFANAqStream data received before properties callback");
+        return;
     }
 
     if (numPackets == 0) {
-	NSLog(@"- PacketsProc shutting down audioqueue due to no packets");
-	return;
+        NSLog(@"- PacketsProc shutting down audioqueue due to no packets");
+        return;
     }
 
     if (_showIo) {
-	NSLog(@"AqStream parser received %d bytes w %d packets", numBytes, numPackets);
+        NSLog(@"AqStream parser received %d bytes w %d packets", numBytes, numPackets);
     }
 
     packetsCopied = 0;
     bytesCopied = 0;
-    for(uint32_t i=0;i<numPackets;i++) {
-	int64_t packetOffset = packetsp[i].mStartOffset;
-	int64_t packetSize = packetsp[i].mDataByteSize;
-	int64_t framesInPacket = packetsp[i].mVariableFramesInPacket;
+    for(uint32_t i = 0; i < numPackets; i++) {
+        int64_t packetOffset        = packetsp[i].mStartOffset;
+        int64_t packetSize          = packetsp[i].mDataByteSize;
+        int64_t framesInPacket      = packetsp[i].mVariableFramesInPacket;
 
-	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
+        MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
 
-	// adjust time stamps
-	packet.startMs = aqp->_lastPacketEndMs;
-	if (framesInPacket > 0) {
-	    packet.durationMs = (uint32_t) (framesInPacket * aqp->_frameDuration * 1000.0);
-	} else {
-	    packet.durationMs = (uint32_t)(aqp->_packetDuration * 1000);
-	}
-	aqp->_lastPacketEndMs = packet.startMs + packet.durationMs;
+        if (framesInPacket > 0) {
+            durationMs = (uint32_t)(framesInPacket * aqp->_buffer.frameDuration * 1000.0);
+        } else {
+            durationMs = (uint32_t)(aqp->_buffer.packetDuration * 1000);
+        }
 
-	[packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
-	packet.playingSong = aqp->_currentPlaying;
-	if (framesInPacket > 0)
-	    NSLog(@"packet framesInPacket=%lld duration=%f generic packet duration=%f",
-		  framesInPacket, framesInPacket * aqp->_frameDuration, aqp->_packetDuration);
-	[aqp->_packetArray addObject: packet];
+        [packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
+        packet.playingSong = aqp->_currentPlaying;
 
-	packetsCopied++;
-	bytesCopied += packetSize;
+        if (framesInPacket > 0)
+            NSLog(@"packet framesInPacket=%lld duration=%f generic packet duration=%f",
+                  framesInPacket, framesInPacket * aqp->_buffer.frameDuration, aqp->_buffer.packetDuration);
+
+	[aqp->_buffer addPacket: packet withDuration: durationMs];
+
+        packetsCopied++;
+        bytesCopied += packetSize;
     }
 
-    // NB: if you make this smaller than the implicit delay from the
-    // stream player being behind the incoming stream, this may
-    // trigger pruning of data before the player actually gets to see
-    // it the first time.  Right now, we queue about 256K of data in
-    // the stream player, or about 32 seconds at 64Kbits (a shorter
-    // duration at higher rates of course).  So, you should keep this
-    // above 32000.
-    [aqp pruneOldestMs: 1800000];	// should be 10-15 minutes in milliseconds
-
-    // and wakeup any readers
-    pthread_cond_broadcast(&aqp->_packetArrayCv);
+    // NB: keep this well above the implicit delay from the stream player's
+    // audio queue (~32 seconds at 64 Kbps) to avoid pruning data before the
+    // player has had a chance to read it for the first time.
+    [aqp->_buffer pruneOldestMs: 1800000];  // 30 minutes in ms
 }
 
-// Called by radiostream with unparsed data.  Add it in and send it to the parser.
-/* static */ int32_t 
+/* Called by RadioStream with raw (unparsed) data from the HTTP connection. */
+/* static */ int32_t
 MFANAqStream_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int32_t nbytes)
 {
     OSStatus osStatus;
@@ -525,91 +199,65 @@ MFANAqStream_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int3
 
     pthread_mutex_lock(&_streamMutex);
     if (radiop->isClosed()) {
-	pthread_mutex_unlock(&_streamMutex);
-	return -1;
+        pthread_mutex_unlock(&_streamMutex);
+        return -1;
     }
 
-    // This adds a reference to the stream.  Do this after the
-    // isClosed check, to ensure that we don't add an ARC reference to
-    // a freed block of memory.
     MFANAqStream *aqp = (__bridge MFANAqStream *) contextp;
 
     if (aqp->_shuttingDown) {
-	pthread_mutex_unlock(&_streamMutex);
-	return -1;
+        pthread_mutex_unlock(&_streamMutex);
+        return -1;
     }
 
-    /* update the rate, by dropping it by 50% and adding in half of the new rate;
-     * provides exponential decay.
-     */
+    /* update the estimated data rate using exponential decay */
     now = osp_time_ms();
     delta = now - aqp->_lastDataMs;
     if (delta > 2000) {
-	updateRate = ((aqp->_lastDataBytes + nbytes) * 1000.0) / delta;
-	aqp->_dataRate = aqp->_dataRate * 0.8 +  updateRate * 0.2;
-	/* reset stats to indicate starting counting again now */
-	aqp->_lastDataMs = now;
-	aqp->_lastDataBytes = 0;
+        updateRate = ((aqp->_lastDataBytes + nbytes) * 1000.0) / delta;
+        aqp->_dataRate = aqp->_dataRate * 0.8 + updateRate * 0.2;
+        aqp->_lastDataMs = now;
+        aqp->_lastDataBytes = 0;
     }
     else {
-	/* just increment usage, and wait longer to compute rate to get a better
-	 * denominator.
-	 */
-	aqp->_lastDataBytes += nbytes;
+        aqp->_lastDataBytes += nbytes;
     }
 
-    /* we wait until data is streaming in, at which point the
-     * radiostream module must know the content type, which we need to
-     * create the AudiofileStream parser.
-     */
+    /* create the AudioFileStream parser once we know the content type */
     if (aqp->_audioStreamHandle == 0) {
-	/* register callbacks for parsed audiostream data; the PacketsProc
-	 * callback will feed the data into the audio queue player.  The
-	 * PropertyProc is called first, and provides parameters detected
-	 * about the audiostream that we will need to send data to the
-	 * audio queue.
-	 */
-	contentTypep = aqp->_radioStreamp->getContentType();
-	fileType = kAudioFileMP3Type;
-	if (contentTypep != NULL) {
-	    if ( contentTypep->compare(0,8,"audio/mp") == 0) {
-		/* includes audio/mpeg and audio/mp3 */
-		fileType = kAudioFileMP3Type;
-	    }
-	    else if (contentTypep->compare(0,9,"audio/aac") == 0) {
-		/* includes audio/aac and audio/aacp */
-		fileType = kAudioFileAAC_ADTSType;
-	    }
-	}
+        contentTypep = aqp->_radioStreamp->getContentType();
+        fileType = kAudioFileMP3Type;
+        if (contentTypep != NULL) {
+            if (contentTypep->compare(0,8,"audio/mp") == 0) {
+                fileType = kAudioFileMP3Type;
+            }
+            else if (contentTypep->compare(0,9,"audio/aac") == 0) {
+                fileType = kAudioFileAAC_ADTSType;
+            }
+        }
 
-	// We already have an ARC reference from the bridge_transfer
-	// above, so just make a copy of the pointer
-	osStatus = AudioFileStreamOpen ( (__bridge void *) aqp,
-					 MFANAqStream_PropertyProc,
-					 MFANAqStream_PacketsProc,
-					 fileType,
-					 &aqp->_audioStreamHandle);
+        osStatus = AudioFileStreamOpen( (__bridge void *) aqp,
+                                        MFANAqStream_PropertyProc,
+                                        MFANAqStream_PacketsProc,
+                                        fileType,
+                                        &aqp->_audioStreamHandle);
     }
 
     if (aqp->_shuttingDown) {
-	pthread_mutex_unlock(&_streamMutex);
-	return 0;
+        pthread_mutex_unlock(&_streamMutex);
+        return 0;
     }
 
-    // For shutdown code that wants to shutdown the stream, we want to
-    // be able to check that there are no pending upcalls.  It looks like
-    // we actually just wait for the whole pthread to terminate, so
-    // we aren't actually checking this yet.
     aqp->_activeParseCalls++;
     if (nbytes > 0) {
-	osStatus = AudioFileStreamParseBytes(aqp->_audioStreamHandle, nbytes, bufferp, 0);
+        osStatus = AudioFileStreamParseBytes(aqp->_audioStreamHandle, nbytes, bufferp, 0);
     }
     else {
-	NSLog(@"- shutting down audiostream %p due to incoming EOF indicator", aqp);
-	if (aqp->_audioStreamHandle) {
-	    AudioFileStreamClose(aqp->_audioStreamHandle);
-	    aqp->_audioStreamHandle = NULL;
-	}
+        NSLog(@"- shutting down audiostream %p due to incoming EOF indicator", aqp);
+        if (aqp->_audioStreamHandle) {
+            AudioFileStreamClose(aqp->_audioStreamHandle);
+            aqp->_audioStreamHandle = NULL;
+        }
     }
     aqp->_activeParseCalls--;
 
@@ -617,132 +265,101 @@ MFANAqStream_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int3
     return 0;
 }
 
-// Upcalled from radiosteram when the song being played changes.
+/* Called by RadioStream when the currently-playing song title changes. */
 int32_t
 MFANAqStream_rsControlProc( void *contextp,
-			    RadioStream *radiop,
-			    RadioStream::EvType event,
-			    void *evDatap)
+                              RadioStream *radiop,
+                              RadioStream::EvType event,
+                              void *evDatap)
 {
     MFANAqStream *aqp;
     NSString *newSong;
 
-    /* watch for upcall arriving after we've been deleted; must return without using
-     * any of the memory pointed to be *contextp (that's why _aqMutex is global).
-     */
     pthread_mutex_lock(&_streamMutex);
     if (radiop->isClosed()) {
-	pthread_mutex_unlock(&_streamMutex);
-	return -1;
+        pthread_mutex_unlock(&_streamMutex);
+        return -1;
     }
 
-    // adds an ARC reference.  Note that context may have been freed,
-    // and this is a spurious upcall from a closed radiostream, so
-    // don't do arc-related operations on the pointer until we've
-    // passed the test above.
     aqp = (__bridge MFANAqStream *) contextp;
 
     if (event == RadioStream::eventSongChanged) {
-	RadioStream::EvSongChangedData *songp = (RadioStream::EvSongChangedData *) evDatap;
-	if (songp->_song.length() > 0) {
-	    newSong = [NSString stringWithUTF8String: songp->_song.c_str()];
-	    aqp->_currentPlaying = newSong;
-	} else {
-	    aqp->_currentPlaying = nil;
-	}
+        RadioStream::EvSongChangedData *songp = (RadioStream::EvSongChangedData *) evDatap;
+        if (songp->_song.length() > 0) {
+            newSong = [NSString stringWithUTF8String: songp->_song.c_str()];
+            aqp->_currentPlaying = newSong;
+        } else {
+            aqp->_currentPlaying = nil;
+        }
     }
     else if (event == RadioStream::eventResync) {
-	// nothing to do here, but this event occurs if the
-	// radiostream connection was reset (it automatically
-	// restarts).
-	//
-	// [aqp shutdown];
+        // nothing to do here
     }
 
     pthread_mutex_unlock(&_streamMutex);
     return 0;
 }
 
-// This data stream format information should be available before the
-// first upcall of data records.
+// ---------------------------------------------------------------------------
+// MFANAqStream — data format helpers (forwarded to the buffer)
+// ---------------------------------------------------------------------------
+
 - (NSString *) getDataFormatString {
-    NSString *rstr;
-
-    if (_dataFormat.mFormatID == 'aac ')
-	rstr = @"AAC";
-    else if (_dataFormat.mFormatID == '.mp3')
-	rstr = @"MP3";
-    else {
-	/* unknown, just use the raw encoding as characters */
-	rstr = [NSString stringWithFormat: @"%c%c%c%c",
-			 (int) (_dataFormat.mFormatID>>24) & 0xFF,
-			 (int) (_dataFormat.mFormatID>>16) & 0xFF,
-			 (int) (_dataFormat.mFormatID>>8) & 0xFF,
-			 (int) _dataFormat.mFormatID & 0xFF];
-    }
-    return rstr;
+    return [_buffer getDataFormatString];
 }
 
-// Caller should have already read a packet from a reader before using
-// this, since the data format is only known after we've received the
-// first bytes of data from the HTTP stream.
 - (void) getDataFormat: (AudioStreamBasicDescription *) format {
-    *format = _dataFormat;
+    [_buffer getDataFormat: format];
 }
 
-- (MFANAqStream *) initWithUrl: (NSString *) url {
+// ---------------------------------------------------------------------------
+// MFANAqStream — lifecycle
+// ---------------------------------------------------------------------------
+
+- (MFANAqStream *) initWithUrl: (NSString *) url buffer:(MFANAqStreamBuffer *) buffer {
     self = [super init];
     if (self) {
-	NSLog(@"- AqStream init starts for %p", self);
+        NSLog(@"- AqStream init starts for %p", self);
 
-	_lastPacketEndMs = 0;
+        if (!_streamStaticSetup) {
+            _streamStaticSetup = YES;
+            pthread_mutex_init(&_streamMutex, NULL);
+        }
 
-	_shuttingDown = NO;
-	_audioStreamHandle = 0;
-	_radioStreamp = nullptr;
+        // Create the buffer first; it initialises the shared mutex.
+        _buffer = buffer;
 
-	if (!_staticSetup) {
-	    _staticSetup = YES;
-	    pthread_mutex_init(&_streamMutex, NULL);
-	}
-	pthread_cond_init(&_pthreadIdleCv, NULL);
-	pthread_cond_init(&_packetArrayCv, NULL);
-	_urlString = url;
+        _shuttingDown = NO;
+        _audioStreamHandle = 0;
+        _radioStreamp = nullptr;
 
-	_packetArray = [[NSMutableOrderedSet alloc] init];
+        pthread_cond_init(&_pthreadIdleCv, NULL);
+        _urlString = url;
 
-	_pthreadDone = NO;
-	_recordingFilep = NULL;
+        _pthreadDone = NO;
+        _recordingFilep = NULL;
 
-	_haveProperties = NO;
+        _dataRate = 0.0;
+        _lastDataMs = osp_time_ms();
+        _lastDataBytes = 0;
 
-	_dataRate = 0.0;
-	_lastDataMs = osp_time_ms();
-	_lastDataBytes = 0;
+        _activeParseCalls = 0;
+        _streamAttachCounter = 0;
+        _pthreadWaiters = 0;
 
-	_activeParseCalls = 0;
+        _failed = NO;
+        _failedWindowMs = 4000;
+        _failedWindowCount = 6;
 
-	_streamAttachCounter = 0;
-
-	_packetStreamVersion = 1;
-
-	_pthreadWaiters = 0;
-
-	_failed = NO;
-	_failedWindowMs = 4000;
-	_failedWindowCount = 6;
-
-	_radioStreamThread = [[NSThread alloc] initWithTarget: self
-					       selector: @selector(playAsync:)
-					       object: nil];
-	[_radioStreamThread start];
-
+        _radioStreamThread = [[NSThread alloc] initWithTarget: self
+                                                      selector: @selector(playAsync:)
+                                                        object: nil];
+        [_radioStreamThread start];
     }
     return self;
 }
 
-// The async thread that processes the RadioStream invokes this method
-// after the thread is created.
+/* The async thread that drives the RadioStream download. */
 - (void) playAsync: (id) junk
 {
     MFANSocketFactory socketFactory;
@@ -750,74 +367,102 @@ MFANAqStream_rsControlProc( void *contextp,
 
     NSLog(@"in playAsync");
     {
-	/* initialize basics */
-	pthread_mutex_lock(&_streamMutex);
-	_radioStreamp = new RadioStream();
-	pthread_mutex_unlock(&_streamMutex);
-	_radioStreamp->init( &socketFactory,
-			     (char *) [_urlString cStringUsingEncoding: NSUTF8StringEncoding],
-			     MFANAqStream_rsDataProc,
-			     MFANAqStream_rsControlProc,
-			     (__bridge void *) self);
-	NSLog(@"****- aqplayer %p radioplayer done", self);
+        pthread_mutex_lock(&_streamMutex);
+        _radioStreamp = new RadioStream();
+        pthread_mutex_unlock(&_streamMutex);
 
-	// stop upcalls from this instance and release our reference to it.
-	pthread_mutex_lock(&_streamMutex);
-	if (_radioStreamp != nullptr) {
-	    _radioStreamp->close();
-	    _radioStreamp = nullptr;
-	}
+        _radioStreamp->init( &socketFactory,
+                             (char *) [_urlString cStringUsingEncoding: NSUTF8StringEncoding],
+                             MFANAqStream_rsDataProc,
+                             MFANAqStream_rsControlProc,
+                             (__bridge void *) self);
+        NSLog(@"****- aqplayer %p radioplayer done", self);
 
-	// This will force the stream to resynchronize with the file
-	// parser.
-	if (_audioStreamHandle) {
-	    NSLog(@"****aqstream closes audiofile");
-	    AudioFileStreamClose(_audioStreamHandle);
-	    _audioStreamHandle = nullptr;
-	}
+        pthread_mutex_lock(&_streamMutex);
+        if (_radioStreamp != nullptr) {
+            _radioStreamp->close();
+            _radioStreamp = nullptr;
+        }
 
-	pthread_mutex_unlock(&_streamMutex);
+        if (_audioStreamHandle) {
+            NSLog(@"****aqstream closes audiofile");
+            AudioFileStreamClose(_audioStreamHandle);
+            _audioStreamHandle = nullptr;
+        }
+
+        pthread_mutex_unlock(&_streamMutex);
     }
 
-    // lock still held
     _pthreadDone = YES;
-    pthread_mutex_unlock(&_streamMutex);
 
-    // if we're being shutdown, don't upcall with a request to restart things.
     if (!_shuttingDown && _failureCallbackObj != nil) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->_failureCallbackObj performSelector: self->_failureCallbackSel
-						withObject: self];
-	    });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self->_failureCallbackObj performSelector: self->_failureCallbackSel
+                                            withObject: self];
+        });
     }
 #pragma clang diagnostic pop
 
     pthread_cond_broadcast(&_pthreadIdleCv);
 
-    // this is probably unnecessary, since a local ARC reference
-    // should drop the reference count on the target once we leave the
-    // scope of the local.
     threadReference = nil;
-
     pthread_exit(NULL);
 }
 
-+ (pthread_mutex_t *) streamMutex {
-    return &_streamMutex;
-}
+- (void) shutdown {
+    NSLog(@"in MFAqStream shutdown");
+    pthread_mutex_lock(&_streamMutex);
 
-- (pthread_cond_t *) packetArrayCv {
-    return &_packetArrayCv;
+    if (_shuttingDown && _pthreadDone) {
+        pthread_mutex_unlock(&_streamMutex);
+        NSLog(@"- shutdownAudio for stopped player %p", self);
+        return;
+    }
+
+    if (![NSThread isMainThread]) {
+        pthread_mutex_unlock(&_streamMutex);
+        NSLog(@" - shutdownAudio bouncing to main thread");
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self shutdown];
+        });
+        return;
+    }
+
+    _shuttingDown = YES;
+
+    // abort any readers, so that the streamplayer can be shutdown and
+    // deleted.
+    [_buffer abortReaders];
+
+    if (_radioStreamp != nullptr) {
+        _radioStreamp->close();
+        _radioStreamp = nullptr;
+    }
+
+    while(!_pthreadDone) {
+        _pthreadWaiters = YES;
+        pthread_cond_wait(&_pthreadIdleCv, &_streamMutex);
+    }
+
+    if (_audioStreamHandle != 0) {
+        AudioFileStreamClose(_audioStreamHandle);
+        _audioStreamHandle = 0;
+    }
+
+    pthread_mutex_unlock(&_streamMutex);
+
+    // At this point the pthread has exited.  The buffer (and its packet array)
+    // remains alive for as long as any holder retains a reference to it.
 }
 
 - (NSString *) getFinalUrl {
     if (_radioStreamp != nullptr) {
-	std::string finalUrl = "http://" + *(_radioStreamp->getStreamUrl());
-	return [NSString stringWithUTF8String: finalUrl.c_str()];
+        std::string finalUrl = "http://" + *(_radioStreamp->getStreamUrl());
+        return [NSString stringWithUTF8String: finalUrl.c_str()];
     } else {
-	return @"[No data]";
+        return @"[No data]";
     }
 }
 

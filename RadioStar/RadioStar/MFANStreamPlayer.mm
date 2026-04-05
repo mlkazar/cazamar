@@ -334,7 +334,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_aqStream = stream;
 
 	// Create a reader
-	_streamReader = [[MFANAqStreamReader alloc] initWithStream: _aqStream];
+	_streamReader = [[MFANAqStreamReader alloc] initWithBuffer: _aqStream.buffer];
 	if (ms != ~0ULL) {
 	    [_streamReader seek: ms whence: 0];
 	}
