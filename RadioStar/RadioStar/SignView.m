@@ -1174,6 +1174,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [self animationOn];
 }
 
+// used after a stream failure to restart the stream.
 - (void) restartStationWithStream: (id) stream {
     // we really don't want to reset the stream, but we need recreate
     // the stream after a stream failure.
@@ -1249,13 +1250,17 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [_popStatus removeFromSuperview];
  }
 
-// doReset is true if we should force a stream close even if we're recording
-// the station.
+// doReset is true if we should force a stream closed even if we're
+// recording the station.
 - (void) stopRadioResetStream: (BOOL) doReset {
     NSLog(@"in restartradio");
-    uint64_t currentTimestamp = ~0ULL;
+    uint64_t currentTimestamp;
+
     if (_player != nil) {
 	currentTimestamp = [_player getSeekTarget: 0.0];
+	if (_playingStation != nil)
+	    _playingStation.recordingPosition = currentTimestamp;
+
 	[_player shutdown];
 	_player = nil;
     }
@@ -1267,7 +1272,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// keep downloading, but remember where to resume playing if we go
 	// back to this stream.
 	_playingStation.recordingStream = _stream;
-	_playingStation.recordingPosition = currentTimestamp;
     } else {
 	if (_stream != nil) {
 	    [_stream shutdown];
