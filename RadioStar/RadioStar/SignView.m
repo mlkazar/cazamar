@@ -677,7 +677,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     SignStation *station;
     BOOL keepAnimating = false;
 
-    // TODO:remove
     // forceOff = true;
 
     for(station in _allStations) {

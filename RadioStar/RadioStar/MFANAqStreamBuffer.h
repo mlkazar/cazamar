@@ -82,6 +82,8 @@ typedef struct _MFANAqStreamFile {
 @property BOOL dirty;
 @property BOOL ioRunning;
 @property BOOL sealed;
+@property BOOL inLru;
+@property uint32_t pinCount;
 
 - (BOOL) validContents;
 
@@ -196,6 +198,12 @@ typedef struct _MFANAqStreamFile {
 
 - (MFANAqStreamBlock *) findBlockAtMs: (uint64_t) ms
 			     setIndex: (uint32_t *) indexp;
+
+- (void) fixLru: (MFANAqStreamBlock *) block;
+
+- (void) unpin: (MFANAqStreamBlock *) block;
+
+- (MFANAqStreamBlock *) pin: (MFANAqStreamBlock *) block;
 
 - (BOOL) blockIx: (uint32_t) blockIx
 	packetIx: (uint32_t) packetIx

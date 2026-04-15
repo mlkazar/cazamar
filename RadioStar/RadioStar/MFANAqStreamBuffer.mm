@@ -80,6 +80,15 @@
     uint32_t _blockIx;
     uint32_t _packetIx;                   // index of the next packet to read
     bool _closed;
+    MFANAqStreamBlock *_pinned;		// pinned block
+}
+
+- (void) dealloc {
+    // special cleanup required for pinned blocks
+    if (_pinned != nil) {
+	[_streamBuffer unpin: _pinned];
+	_pinned = nil;
+    }
 }
 
 - (MFANAqStreamReader *) initWithBuffer: (MFANAqStreamBuffer *) buffer {
@@ -90,6 +99,7 @@
         MFANAqStreamPacket *packet;
 
 	MFANAqStreamBlock *block = [buffer lastBlockSetIndex:&_blockIx];
+	_pinned = [buffer pin: _pinned];
 
         uint32_t packetCount;
 
@@ -137,6 +147,14 @@
     return ix;
 }
 
+- (void) updatePinnedBlock: (MFANAqStreamBlock *) block {
+    if (block != _pinned) {
+	if (_pinned != nil)
+	    [_streamBuffer unpin: _pinned];
+	_pinned = [_streamBuffer pin: block];
+    }
+}
+
 - (void) seek: (uint64_t) ms whence: (int) how {
     MFANAqStreamBlock *block;
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
@@ -145,6 +163,8 @@
     _recordMs = ms;
     NSLog(@"==>seek to ms=%lld bix=%d pix=%d", ms, _blockIx, _packetIx);
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+
+    [self updatePinnedBlock: block];
 
     // wake up any pending read
     pthread_cond_broadcast([_streamBuffer packetArrayCv]);
@@ -306,14 +326,12 @@
 	    block = _streamBuffer.streamFile->_blocks[_blockIx];
 	}
 
-	// move to end of LRU queue.
-	[_streamBuffer.streamFile->_lru removeObject: block];
-	[_streamBuffer.streamFile->_lru addObject: block];
-
 	if (![block validContents]) {
 	    [_streamBuffer fillBlock: block];
 	    continue;
 	}
+
+	[self updatePinnedBlock: block];
 
 	packetCount = (uint32_t) [block.packetArray count];
 	lastBlockIx = (uint32_t) [_streamBuffer.streamFile->_blocks count] - 1;
@@ -359,6 +377,7 @@
     BOOL _sealed;
     BOOL _ioRunning;		// either filling or cleaning
     BOOL _inLru;		// are we in the LRU queue
+    uint32_t _pinCount;		// how many pins there are
 }
 
 - (MFANAqStreamBlock *) initWithBuffer: (MFANAqStreamBuffer *) buffer {
@@ -372,6 +391,7 @@
 	_diskBytesUsed = 0;
 	_durationMs = 0;
 	_inLru = false;
+	_pinCount = 0;
 	_packetArray = [[NSMutableArray alloc] init];
 
 	// gets marked dirty and valid when it gets sealed
@@ -530,6 +550,23 @@ static const uint32_t _kMaxValidBlocks = 16;
 	// revalidate.
 	[self fillBlock: block];
     }
+}
+
+- (void) unpin: (MFANAqStreamBlock *) block {
+    if (block==nil)
+	return;
+
+    osp_assert(block.pinCount > 0);
+    block.pinCount--;
+    [self fixLru: block];
+}
+
+- (MFANAqStreamBlock *) pin: (MFANAqStreamBlock *) block {
+    if (block == nil)
+	return nil;
+    block.pinCount++;
+    [self fixLru: block];
+    return block;
 }
 
 NSString *fileNameForFileId(uint32_t fileId) {
@@ -874,7 +911,7 @@ NSString *fileNameForFileId(uint32_t fileId) {
     osp_assert(!block.valid);
     block.valid = true;
     _validBlocks++;
-    [_streamFile->_lru addObject: block];
+    [self fixLru: block];
     pthread_cond_broadcast(&_blockIoCv);
 }
 
@@ -928,10 +965,10 @@ NSString *fileNameForFileId(uint32_t fileId) {
 			osp_assert(block.valid);
 			osp_assert(!block.dirty);
 			[block.packetArray removeAllObjects];
-			[_streamFile->_lru removeObject: block];
 			block.valid = false;
 			osp_assert(_validBlocks > 0);
 			_validBlocks--;
+			[self fixLru: block];
 			NSLog(@"invalidated block at %llx", block.fileOffset);
 		    }
 		}
@@ -1018,9 +1055,9 @@ NSString *fileNameForFileId(uint32_t fileId) {
 		// someone other thread may have a reference to block,
 		// so make sure we mark it as invalid and clean.
 		if (block.valid) {
-		    [_streamFile->_lru removeObject: block];
 		    _validBlocks--;
 		    block.valid = false;
+		    [self fixLru: block];
 		}
 		if (block.dirty) {
 		    _dirtyBlocks--;
@@ -1054,10 +1091,10 @@ NSString *fileNameForFileId(uint32_t fileId) {
     // note that there's always a prevBlock since we initialize this
     // with an empty block and we never delete the last block.
     prevBlock.sealed = true;
-    [_streamFile->_lru addObject: prevBlock];
     osp_assert(!prevBlock.valid);
     prevBlock.valid = true;
     _validBlocks++;
+    [self fixLru: prevBlock];
 
     // mark the sealed block as dirty
     osp_assert(!prevBlock.dirty);
@@ -1069,6 +1106,23 @@ NSString *fileNameForFileId(uint32_t fileId) {
     _fileSize += _kBytesPerBlock;
 
     return newBlock;
+}
+
+- (void) fixLru: (MFANAqStreamBlock *) block {
+    bool needLru;
+    if (block.pinCount > 0)
+	needLru = false;
+    else if (block.valid) {
+	needLru = true;
+    }
+
+    if (needLru && !block.inLru) {
+	[_streamFile->_lru addObject: block];
+	block.inLru = true;
+    } else if (!needLru && block.inLru) {
+	[_streamFile->_lru removeObject: block];
+	block.inLru = false;
+    }
 }
 
 - (void) addPacket: (MFANAqStreamPacket *) packet withDuration: (uint32_t) durationMs {
