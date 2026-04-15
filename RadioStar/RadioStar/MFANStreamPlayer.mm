@@ -370,7 +370,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_currentPlaying = MFANStreamPlayer_getUnknownString();
 	_songCount++;
 
-	_maxBufferSize = 0x4000;
+	_maxBufferSize = 0x8000;
 	_maxPacketCount = 512;
 
         _packetsp = ((AudioStreamPacketDescription *)

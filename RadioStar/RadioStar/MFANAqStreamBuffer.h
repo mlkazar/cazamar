@@ -8,20 +8,31 @@
 // metadata needed to schedule and seek it.
 // ---------------------------------------------------------------------------
 
+@class MFANAqStreamBlock;
+
+typedef struct _MFANAqStreamFile {
+    NSMutableArray<MFANAqStreamBlock *> *_blocks;
+    NSMutableOrderedSet<MFANAqStreamBlock *> *_lru;
+    uint32_t _fileId;
+} MFANAqStreamFile;
+
 @interface MFANAqStreamPacket : NSObject
 
 @property NSString *playingSong;
 @property uint64_t startMs;
 @property uint32_t durationMs;
 @property bool read;
+@property AudioStreamPacketDescription descr;
 
 - (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr;
+
+- (AudioStreamPacketDescription *) getDescrAddr;
 
 - (char *) getData;
 
 - (void) getDescr: (AudioStreamPacketDescription *) descr;
 
-- (uint64_t) getLength;
+- (uint32_t) getLength;
 
 - (MFANAqStreamPacket *) init;
 @end
@@ -37,6 +48,9 @@
 
 @interface MFANAqStreamReader : NSObject
 @property MFANAqStreamBuffer *streamBuffer;
+@property uint32_t packetStreamVersion;
+@property uint64_t recordMs;
+@property AudioStreamPacketDescription descr;
 
 - (MFANAqStreamPacket *) read;
 
@@ -46,7 +60,7 @@
 
 // Returns the absolute seek position (packet index).
 // whence is currently unused; pass 0 for an absolute-ms seek.
-- (uint64_t) seek:(uint64_t) ms whence: (int) whence;
+- (void) seek:(uint64_t) ms whence: (int) whence;
 
 - (uint64_t) tell;
 
@@ -55,6 +69,22 @@
 - (MFANAqStreamReader *) initWithBuffer: (MFANAqStreamBuffer *) buffer;
 
 - (void) close;
+@end
+
+@interface MFANAqStreamBlock : NSObject
+@property uint64_t baseMs;
+@property NSMutableArray<MFANAqStreamPacket *> *packetArray;
+@property uint64_t durationMs;
+@property uint64_t fileOffset;
+@property uint64_t diskBytesUsed;
+@property uint16_t lfuCount;
+@property BOOL valid;
+@property BOOL dirty;
+@property BOOL ioRunning;
+@property BOOL sealed;
+
+- (BOOL) validContents;
+
 @end
 
 // ---------------------------------------------------------------------------
@@ -77,7 +107,7 @@
 
 // Incremented whenever a packet is removed so that readers can detect that
 // their cached index into packetArray has been invalidated.
-@property uint64_t packetStreamVersion;
+@property uint32_t packetStreamVersion;
 
 // Set to YES when the buffer itself is being torn down.  Any pending reads
 // or waits will abort immediately and return nil / false.
@@ -85,6 +115,18 @@
 
 // Seconds per audio packet, derived from the stream's data format.
 @property float packetDuration;
+
+// pointer to file descriptor.
+@property MFANAqStreamFile *streamFile;
+
+// the end timestamp of last packet in the last block
+@property uint64_t lastPacketEndMs;
+
+@property uint64_t fileSize;
+
+@property uint32_t validBlocks;
+
+@property uint32_t dirtyBlocks;
 
 // -------------------------------------------------------------------
 // Fields written by the downloader's audio-stream parser callbacks.
@@ -95,10 +137,6 @@
 @property float frameDuration;
 @property AudioStreamBasicDescription dataFormat;
 
-// End-time (in ms) of the most recently appended packet.  Used by the
-// downloader when stamping new packets and by pruneOldestMs:.
-@property uint64_t lastPacketEndMs;
-
 // -------------------------------------------------------------------
 // Synchronisation primitives (shared across all buffer instances).
 // -------------------------------------------------------------------
@@ -106,13 +144,12 @@
 // add a packet, updating global time information in buffer.
 - (void) addPacket: (MFANAqStreamPacket *) packet withDuration: (uint32_t) durationMs;
 
-// Global mutex that guards packetArray, packetStreamVersion, and the
-// condition variable.  A single mutex is shared so that a mutex is
-// not required in every reader in order to access the stream.
-// Actually, Claude code made up that reason -- the real reason is
-// that if we have a callback upcalled from multiple threads, it's
-// nice to be able to get a lock on an object that might have been
-// deleted.
+// Global mutex that guards packetArray and the condition variable.  A
+// single mutex is shared so that a mutex is not required in every
+// reader in order to access the stream.  Actually, Claude code made
+// up that reason -- the real reason is that if we have a callback
+// upcalled from multiple threads, it's nice to be able to get a lock
+// on an object that might have been deleted.
 + (pthread_mutex_t *) bufferMutex;
 
 // Per-instance condition variable.  Signalled when:
@@ -149,4 +186,18 @@
 
 - (MFANAqStreamBuffer *) init;
 
+- (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block;
+
+- (void) fillBlock: (MFANAqStreamBlock *) block;
+
+- (void) cleanBlock: (MFANAqStreamBlock *) block;
+
+- (MFANAqStreamBlock *) lastBlockSetIndex: (uint32_t *) indexp;
+
+- (MFANAqStreamBlock *) findBlockAtMs: (uint64_t) ms
+			     setIndex: (uint32_t *) indexp;
+
+- (BOOL) blockIx: (uint32_t) blockIx
+	packetIx: (uint32_t) packetIx
+      containsMs: (uint64_t) ms;
 @end

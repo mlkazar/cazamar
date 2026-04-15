@@ -551,9 +551,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// compute factor to multiply Y coordinate by
 	float aspect = drawableSize.width / drawableSize.height;
 
-	NSLog(@"in redraw with drawableSize %f x %f",
-	      drawableSize.width, drawableSize.height);
-
 	_rotationRadians = 0.0;
 
 	// if we're visible, get the frame buffer (called a texture for some
@@ -679,6 +676,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) animationOff: (BOOL) forceOff {
     SignStation *station;
     BOOL keepAnimating = false;
+
+    // TODO:remove
+    // forceOff = true;
 
     for(station in _allStations) {
 	if ([self shouldIndicateStreaming:station]) {

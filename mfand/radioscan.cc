@@ -1495,7 +1495,7 @@ RadioScanQuery::verifyStations() {
     int32_t code;
 
     _verifying = true;
-    _verifyingCount = _unverifiedStations.count();
+    _verifyingCount = (uint32_t) _unverifiedStations.count();
     _verifyingIndex = 0;
 
     RadioScanStation *stationp;

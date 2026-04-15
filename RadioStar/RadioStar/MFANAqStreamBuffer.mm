@@ -2,9 +2,15 @@
 #import <Foundation/Foundation.h>
 
 #import "MFANAqStreamBuffer.h"
+#import "MFANCGUtil.h"
+
+#include "osp.h"
+
+#include <fcntl.h>
+#include <pthread.h>
+#include <stdio.h>
 
 #include <string>
-#include <pthread.h>
 
 // ---------------------------------------------------------------------------
 // MFANAqStreamPacket
@@ -28,19 +34,31 @@
     return self;
 }
 
+- (AudioStreamPacketDescription *) getDescrAddr {
+    return &_descr;
+}
+
 - (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr {
     _data.append(data, descr->mDataByteSize);
     _descr = *descr;
     return 0;
 }
 
-// *not* null terminated
 - (char *) getData {
+    return _data.data();
+}
+
+- (void) setData: (std::string ) inData {
+    _data = inData;
+}
+
+// *not* null terminated
+- (char *) getDataBytes {
     return (char *) _data.data();
 }
 
-- (uint64_t) getLength {
-    return _data.length();
+- (uint32_t) getLength {
+    return (uint32_t) _data.length();
 }
 
 - (void) getDescr: (AudioStreamPacketDescription *) descr {
@@ -58,9 +76,9 @@
 
 @implementation MFANAqStreamReader {
     MFANAqStreamBuffer *_streamBuffer;
-    uint64_t _packetStreamVersion;  // detects when cached index is stale
     uint64_t _recordMs;             // current position in the stream (ms)
-    uint64_t _ix;                   // index of the next packet to read
+    uint32_t _blockIx;
+    uint32_t _packetIx;                   // index of the next packet to read
     bool _closed;
 }
 
@@ -70,20 +88,24 @@
         _streamBuffer = buffer;
 	pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
         MFANAqStreamPacket *packet;
-        uint64_t recordCount = [buffer.packetArray count];
 
-        NSLog(@"AqStream attaching reader after %lld stream packets", recordCount);
+	MFANAqStreamBlock *block = [buffer lastBlockSetIndex:&_blockIx];
 
-        // start past the last record already in the stream
+        uint32_t packetCount;
+
+	// Last block is always valid.  Start past the last record
+	// already in the stream
+	packetCount = (uint32_t) [block.packetArray count];
 	packet = [buffer.packetArray lastObject];
-	if (packet != nil)
+	if (packet != nil) {
 	    _recordMs = packet.startMs + packet.durationMs;
-	else
-	    _recordMs = 0;
+	    _packetIx = packetCount;
+	} else {
+	    _recordMs = block.baseMs;
+	    _packetIx = 0;
+	}
 
-        _ix = recordCount;
-        _packetStreamVersion = buffer.packetStreamVersion;
-        _closed = NO;
+	_closed = NO;
 
 	pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
     }
@@ -93,35 +115,39 @@
 
 // Called with bufferMutex held.
 - (bool) indexIsValid {
-    return (_packetStreamVersion == _streamBuffer.packetStreamVersion);
+    return ([_streamBuffer blockIx: _blockIx packetIx: _packetIx containsMs: _recordMs]);
 }
 
 // Called with bufferMutex held.
 // Returns the index of the first packet with startMs >= ms.
-- (uint64_t) findPacketIx: (uint64_t) ms {
-    uint64_t ix;
+- (uint32_t) findPacketIx: (uint64_t) ms inBlock: (MFANAqStreamBlock *) block {
+    uint32_t ix;
     MFANAqStreamPacket *packet;
 
-    for(ix = 0; ix < [_streamBuffer.packetArray count]; ix++) {
-        packet = [_streamBuffer.packetArray objectAtIndex: ix];
+    // caller should have done this for us
+    osp_assert([block validContents]);
+
+    for(ix = 0; ix < [block.packetArray count]; ix++) {
+        packet = block.packetArray[ix];
         if (packet.startMs >= ms)
             break;
     }
 
-    NSLog(@"findPacketIx for %lld ms returns %lld", ms, ix);
+    NSLog(@"findPacketIx for %lld ms returns %u", ms, ix);
     return ix;
 }
 
-- (uint64_t) seek: (uint64_t) ms whence: (int) how {
+- (void) seek: (uint64_t) ms whence: (int) how {
+    MFANAqStreamBlock *block;
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
-    _ix = [self findPacketIx: ms];
+    block = [_streamBuffer findBlockAtMs: ms setIndex:&_blockIx];
+    _packetIx = [self findPacketIx: ms inBlock: block];
     _recordMs = ms;
-    NSLog(@"==>seek to ms=%lld index=%lld", ms, _ix);
+    NSLog(@"==>seek to ms=%lld bix=%d pix=%d", ms, _blockIx, _packetIx);
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
 
     // wake up any pending read
     pthread_cond_broadcast([_streamBuffer packetArrayCv]);
-    return _ix;
 }
 
 - (uint64_t) tell {
@@ -136,52 +162,116 @@
 // read position.  Blocks until there is, or until the buffer is torn down /
 // the downloader finishes.  Returns YES if the target was met.
 - (bool) waitForAtLeast: (uint64_t) targetBytes {
-    bool rval;
+    uint32_t blockIx;
+    uint32_t packetIx;
+    uint32_t blockCount;
+    uint32_t startIx;
+    uint32_t packetCount;
+    MFANAqStreamBlock *block;
+    uint64_t totalBytes;
+    MFANAqStreamPacket *packet;
+
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
 
-    rval = false;
+    bool firstBlock;
     while(true) {
         if (_streamBuffer.shuttingDown || _closed) {
-            rval = false;
+	    // failed, so return false
             break;
         }
+
+	blockCount = (uint32_t) [_streamBuffer.streamFile->_blocks count];
 
         if (!self.indexIsValid) {
-            _ix = [self findPacketIx: _recordMs];
-            _packetStreamVersion = _streamBuffer.packetStreamVersion;
-        }
-
-        uint64_t totalPackets = [_streamBuffer.packetArray count] - _ix;
-        uint64_t totalBytes = 0;
-        if (totalPackets > 0) {
-            totalBytes = [_streamBuffer.packetArray[_ix] getLength] * totalPackets;
+	    block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&blockIx];
+	    packetIx = [self findPacketIx: _recordMs inBlock: block];
         } else {
-            totalBytes = 0;
-        }
-        if (totalBytes >= targetBytes) {
-            rval = true;
-            break;
-        }
+	    blockIx = _blockIx;
+	    packetIx = _packetIx;
+	    if (blockIx >= blockCount)
+		blockIx = blockCount - 1;
+	    block = _streamBuffer.streamFile->_blocks[blockIx];
+	}
 
+	packetCount = (uint32_t) [block.packetArray count];
+	firstBlock = true;
+	totalBytes = 0;
+	while(true) {
+	    if (firstBlock) {
+		startIx = packetIx;
+	    } else {
+		startIx = 0;
+	    }
+
+	    if (firstBlock) {
+		for(uint32_t i=startIx; i<packetCount; i++) {
+		    packet = block.packetArray[i];
+		    totalBytes += [packet getLength];
+		    if (totalBytes >= targetBytes) {
+			pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+			return true;
+		    }
+		}
+	    } else {
+		totalBytes += block.diskBytesUsed;
+		if (totalBytes >= targetBytes) {
+		    pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+		    return true;
+		}
+	    }
+
+	    blockIx++;
+	    if (blockIx >= blockCount) {
+		break;
+	    }
+	    block = _streamBuffer.streamFile->_blocks[blockIx];
+	    firstBlock = false;
+	}
+
+	// if we make it here without returning, we have to wait for more data to
+	// get added.
         pthread_cond_wait([_streamBuffer packetArrayCv], [MFANAqStreamBuffer bufferMutex]);
         continue;
     }
 
+    // if we get here, we ran into a problem and should return false.
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
-    return rval;
+    return false;
 }
 
 - (bool) hasData {
     bool rval;
+    MFANAqStreamBlock *block;
+    uint32_t blockIx;
+    uint32_t packetIx;
+    uint32_t blockCount;
 
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
 
+    blockCount = (uint32_t) [_streamBuffer.streamFile->_blocks count];
+
     if (!self.indexIsValid) {
-        _ix = [self findPacketIx: _recordMs];
-        _packetStreamVersion = _streamBuffer.packetStreamVersion;
+	block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&blockIx];
+	packetIx = [self findPacketIx: _recordMs inBlock: block];
+    } else {
+	blockIx = _blockIx;
+	packetIx = _packetIx;
+	if (blockIx >= blockCount)
+	    blockIx = blockCount - 1;
+	block = _streamBuffer.streamFile->_blocks[blockIx];
     }
 
-    rval = (_ix < [_streamBuffer.packetArray count]);
+    if (packetIx < (uint32_t) [block.packetArray count]) {
+	// more packets in this current block
+	rval = true;
+    }
+    else if (blockIx < blockCount) {
+	// more blocks in file after this point.
+	rval = true;
+    } else {
+	// neither one, we don't have data to return now.
+	rval = false;
+    }
 
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
 
@@ -197,34 +287,103 @@
 
 - (MFANAqStreamPacket *) read {
     MFANAqStreamPacket *packet = nil;
+    MFANAqStreamBlock *block = nil;
+    uint32_t packetCount;
+    uint32_t lastBlockIx;
 
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
     while(true) {
-        // Abort if the buffer itself is being torn down or the reader was closed.
+        // Abort if the buffer itself is being shutdown or the reader
+        // was closed.
         if (_streamBuffer.shuttingDown || _closed) {
             pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
             return nil;
         }
 
         if (!self.indexIsValid) {
-            _ix = [self findPacketIx: _recordMs];
-            _packetStreamVersion = _streamBuffer.packetStreamVersion;
-        }
+	    block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&_blockIx];
+        } else {
+	    block = _streamBuffer.streamFile->_blocks[_blockIx];
+	}
 
-        if (_ix >= [_streamBuffer.packetArray count]) {
+	// move to end of LRU queue.
+	[_streamBuffer.streamFile->_lru removeObject: block];
+	[_streamBuffer.streamFile->_lru addObject: block];
+
+	if (![block validContents]) {
+	    [_streamBuffer fillBlock: block];
+	    continue;
+	}
+
+	packetCount = (uint32_t) [block.packetArray count];
+	lastBlockIx = (uint32_t) [_streamBuffer.streamFile->_blocks count] - 1;
+        if ( _blockIx > lastBlockIx ||
+	     (_blockIx == lastBlockIx &&
+	      _packetIx >= (uint32_t) [block.packetArray count])) {
             // No packet at the current index.
             pthread_cond_wait([_streamBuffer packetArrayCv], [MFANAqStreamBuffer bufferMutex]);
             continue;
         }
 
-        packet = _streamBuffer.packetArray[_ix];
+	// it's possible that we've read all the packets from a block
+	// and just need to get to the next block.
+	if (_packetIx >= packetCount) {
+	    // if we're here, _blockIx must not have been the last block's
+	    // index, or we'd have gone to sleep above.
+	    _blockIx++;
+	    _packetIx = 0;
+	    continue;
+	}
+
+	// otherwise we can actually return a packet
+        packet = block.packetArray[_packetIx];
         _recordMs = packet.startMs + packet.durationMs;
-        _ix++;
+        _packetIx++;
         break;
     }
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
     packet.read = YES;
     return packet;
+}
+
+@end
+
+@implementation MFANAqStreamBlock {
+    uint64_t _baseMs;		// time stamp of first record
+    NSMutableArray<MFANAqStreamPacket *> *_packetArray;
+    uint64_t _durationMs;
+    uint64_t _fileOffset;	// offset in file where data is located.
+    uint64_t _diskBytesUsed;	// disk space used
+    BOOL _valid;		// packet data is present in memory
+    BOOL _dirty;		// packet data needs to be written to file
+    BOOL _sealed;
+    BOOL _ioRunning;		// either filling or cleaning
+    BOOL _inLru;		// are we in the LRU queue
+}
+
+- (MFANAqStreamBlock *) initWithBuffer: (MFANAqStreamBuffer *) buffer {
+    self = [super init];
+    if (self != nil) {
+	_valid = false;
+	_dirty = false;
+	_sealed = false;
+	_ioRunning = false;
+	_fileOffset = 0;
+	_diskBytesUsed = 0;
+	_durationMs = 0;
+	_inLru = false;
+	_packetArray = [[NSMutableArray alloc] init];
+
+	// gets marked dirty and valid when it gets sealed
+	[buffer.streamFile->_blocks addObject: self];
+    }
+
+    return self;
+}
+
+- (BOOL) validContents {
+    // valid is never set on the unsealed block at the end.
+    return _valid || !_sealed;
 }
 
 @end
@@ -235,14 +394,374 @@
 
 static int _bufferStaticSetup = 0;
 static pthread_mutex_t _bufferMutex;
+static const uint32_t _kBytesPerBlock = 16*1024;
+static const uint32_t _kTrailerBytes = 2;
+static const uint16_t _kMagic = 0x0301;
+static const uint16_t _kTrailerMagic = 0x0924;
+static const uint32_t _kMaxValidBlocks = 16;
 
 @implementation MFANAqStreamBuffer {
-    pthread_cond_t _packetArrayCv;
+    pthread_cond_t _packetArrayCv;	// data arrival CV
+    pthread_cond_t _pthreadReqCv;	// pthread should look for work CV
+    pthread_cond_t _pthreadDoneCv;	// waiting for pthread exit.
+    pthread_cond_t _blockIoCv;		// block fill / clean wait/completed
+    MFANAqStreamFile *_streamFile;
+    uint64_t _lastPacketEndMs;
+    uint64_t _fileSize;
+
+    // The valid blocks may be anywhere in the file's _blocks array.
+    // The dirty blocks are supposed to be all at the end of the
+    // array, although some race conditions might violate that.
+    //
+    // Note that these counters don't include the current open block at the
+    // end of the file.
+    uint32_t _validBlocks;		// number of blocks with valid packet contents
+    uint32_t _dirtyBlocks;		// number of blocks not written to backing file
+
+    NSThread *_streamBufferThread;
+    BOOL _pthreadDoWork;
+    BOOL _pthreadDone;
 }
 
 + (pthread_mutex_t *) bufferMutex {
     return &_bufferMutex;
 }
+
+// The format of a packet on disk consists of:
+//
+// 2 bytes magic # (0xaa for regular data, 0xee for end record)
+//
+// 2 bytes length of packet data
+//
+// <n> bytes of packet data
+//
+// 4 bytes of packet duration in ms
+//
+// 2 bytes of descriptor length
+//
+// <n> bytes of descriptor in binary
+//
+// 2 bytes of song name
+//
+// <n> bytes of song data
+- (uint32_t) packetDiskSize: (MFANAqStreamPacket *) packet {
+    return (uint32_t) (8 + [packet getLength] + [packet.playingSong length] +
+		       sizeof(AudioStreamPacketDescription));
+}
+
+- (BOOL) blockIx: (uint32_t) blockIx packetIx: (uint32_t) packetIx containsMs: (uint64_t) ms {
+    MFANAqStreamBlock *block = _streamFile->_blocks[blockIx];
+    MFANAqStreamBlock *nextBlock;
+    uint32_t packetCount;
+    MFANAqStreamPacket *packet;
+    MFANAqStreamPacket *nextPacket;
+
+    if (blockIx >= [_streamFile->_blocks count] - 1)
+	nextBlock = nil;
+    else
+	nextBlock = _streamFile->_blocks[blockIx+1];
+    if ((blockIx == 0 || ms >= block.baseMs) &&
+	(nextBlock == nil || ms < nextBlock.baseMs)) {
+	// in range of this block, which may have no packets, but only
+	// at the time before any packets have been added
+	packetCount = (uint32_t) [block.packetArray count];
+	if (packetCount == 0) {
+	    if (packetIx == 0)
+		return true;
+	} else if (packetIx == packetCount) {
+	    packet = block.packetArray[packetCount-1];
+	    // packetIx can't be 0 in this path.
+	    if (ms >= packet.startMs)
+		return true;
+	} else if (packetIx < packetCount) {
+	    packet = block.packetArray[packetIx];
+	    if (packetIx >= [block.packetArray count]-1)
+		nextPacket = nil;
+	    else 
+		nextPacket = block.packetArray[packetIx+1];
+	    if (ms >= packet.startMs &&
+		(nextPacket == nil || ms < nextPacket.startMs))
+		return true;
+	}
+    }
+
+    return false;
+}
+
+// these functions not only return a block, but ensure that its
+// contents are valid.  The last block is special; it isn't marked as
+// valid, but it is always valid and never in the LRU queue.
+- (MFANAqStreamBlock *) lastBlockSetIndex: (uint32_t *) indexp {
+    // last block is always valid
+    uint32_t blockIndex = (uint32_t) [_streamFile->_blocks count] - 1;
+    if (indexp != nullptr)
+	*indexp = blockIndex;
+    return _streamFile->_blocks[blockIndex];
+}
+
+// Called with the buffer lock held, returns the block (and sets
+// its index) and valid.
+- (MFANAqStreamBlock *) findBlockAtMs: (uint64_t) ms
+			     setIndex: (uint32_t *) indexp {
+    uint32_t i;
+    MFANAqStreamBlock *block;
+    uint32_t blockCount;
+    uint32_t ix;
+
+    // remember we need to validate the block is still valid
+    // after reading it.
+    while(true) {
+	blockCount = (uint32_t) [_streamFile->_blocks count];
+	for(i=0;i<blockCount;i++) {
+	    block = _streamFile->_blocks[i];
+	    if (ms <= block.baseMs)
+		break;
+	}
+	// block is set to last one if none match condition, which is
+	// what we want.  Note that the last block can't be reclaimed,
+	// and isn't marked as valid, but it has valid contents.
+	ix = (i<blockCount? i : i-1);
+	if ([block validContents]) {
+	    *indexp = ix;
+	    return block;
+	}
+
+	// fill block, but since may have dropped lock, need to
+	// revalidate.
+	[self fillBlock: block];
+    }
+}
+
+NSString *fileNameForFileId(uint32_t fileId) {
+    NSString *entryName = [NSString stringWithFormat: @"station-download-%d.dat", fileId];
+    NSString *fileName = fileNameForFile(entryName);
+
+    return fileName;
+}
+
+- (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block {
+    NSString *fileName = fileNameForFileId(_streamFile->_fileId);
+    FILE *filep;
+    size_t code;
+    uint16_t shortTemp;
+    uint32_t longTemp;
+    char *tdatap;
+    uint32_t packetCount=0;
+    uint64_t packetStartMs;
+
+    NSLog(@"reading block at offset %llx", block.fileOffset);
+    osp_assert(block.sealed && !block.dirty);
+    filep = fopen([fileName cStringUsingEncoding: NSUTF8StringEncoding], "r");
+    if (!filep)
+	return -1;
+    fseek(filep, block.fileOffset, SEEK_SET);
+
+    packetStartMs = block.baseMs;
+    while(true) {
+	code = fread(&shortTemp, 2, 1, filep);
+	if (code != 1) {
+	    NSLog(@"read inconsistency after %d packets A", packetCount);
+	    fclose(filep);
+	    return -1;
+	}
+
+	if (shortTemp == _kTrailerMagic) {
+	    // block should end with a trailer magic
+	    fclose(filep);
+	    NSLog(@"read success (no inconsistency) with packetcount=%d B", packetCount);
+	    return 0;
+	}
+
+	if (shortTemp != _kMagic) {
+	    NSLog(@"read inconsistency after %d packets C", packetCount);
+	    fclose(filep);
+	    return -2;
+	}
+
+	// packet data count
+	code = fread(&shortTemp, 2, 1, filep);
+	if (code != 1) {
+	    NSLog(@"read inconsistency after %d packets D", packetCount);
+	    fclose(filep);
+	    return -1;
+	}
+
+	if (shortTemp > _kBytesPerBlock) {
+	    NSLog(@"read inconsistency after %d packets E", packetCount);
+	    fclose(filep);
+	    return -2;
+	}
+
+	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
+
+	tdatap = (char *) malloc(shortTemp);
+	code = fread(tdatap, shortTemp, 1, filep);
+	if (code != 1) {
+	    NSLog(@"read inconsistency after %d packets F", packetCount);
+	    free(tdatap);
+	    fclose(filep);
+	    return -1;
+	}
+
+	[packet setData: std::string(tdatap, shortTemp)];
+	free(tdatap);
+
+	code = fread(&longTemp, 4, 1, filep);
+	if (code != 1) {
+	    NSLog(@"read inconsistency after %d packets K", packetCount);
+	    fclose(filep);
+	    return -1;
+	}
+
+	// we know where the block started (and keep a rolling update
+	// of the packet start times in packetStartMs).  Update the
+	// next packet start time based on this packet's duration.
+	packet.startMs = packetStartMs;
+	packet.durationMs = longTemp;
+	packetStartMs += longTemp;
+
+	code = fread(&shortTemp, 2, 1, filep);
+	if (code != 1) {
+	    NSLog(@"read inconsistency after %d packets G", packetCount);
+	    fclose(filep);
+	    return -1;
+	}
+
+	code = fread([packet getDescrAddr], sizeof(packet.descr), 1, filep);
+	if (code != 1) {
+	    NSLog(@"read inconsistency after %d packets H", packetCount);
+	    return -2;
+	}
+
+	// Now read the playing song
+	code = fread(&shortTemp, 2, 1, filep);
+	if (code != 1) {
+	    NSLog(@"read inconsistency after %d packets I", packetCount);
+	    fclose(filep);
+	    return -1;
+	}
+
+	if (shortTemp > 0) {
+	    tdatap = (char *) malloc(shortTemp+1);	// extra for added null termination
+	    code = fread(tdatap, shortTemp, 1, filep);
+	    if (code != 1) {
+		NSLog(@"read inconsistency after %d packets J", packetCount);
+		free(tdatap);
+		fclose(filep);
+		return -1;
+	    }
+	    tdatap[shortTemp] = 0;	// null terminate
+	    packet.playingSong = [NSString stringWithUTF8String: tdatap];
+	    free(tdatap);
+	} else {
+	    packet.playingSong = @"";
+	}
+
+	// we have a complete packet, now append it; timestamps are
+	// already present.
+	[block.packetArray addObject: packet];
+	packetCount++;
+    } // loop over all packets
+}
+
+- (int32_t) writePacketsToBlock: (MFANAqStreamBlock *) block {
+    NSString *fileName = fileNameForFileId(_streamFile->_fileId);
+    FILE *filep;
+    size_t code;
+    uint16_t shortTemp;
+    uint32_t longTemp;
+
+    NSLog(@"writing block at offset %llx", block.fileOffset);
+    // opens an existing file for read and write without truncating it
+    filep = fopen([fileName cStringUsingEncoding: NSUTF8StringEncoding], "r+");
+    if (!filep) {
+	NSLog(@"write failure!");
+	return -1;
+    }
+    fseek(filep, block.fileOffset, SEEK_SET);
+
+    MFANAqStreamPacket *packet;
+    for(packet in block.packetArray) {
+	shortTemp = _kMagic;
+	code = fwrite(&shortTemp, 2, 1, filep);
+	if (code != 1) {	// returns # of 2 byte items, not # of bytes
+	    NSLog(@"write failure!");
+	    fclose(filep);
+	    return -1;
+	}
+
+	shortTemp = [packet getLength];
+	code = fwrite(&shortTemp, 2, 1, filep);
+	if (code != 1) {
+	    NSLog(@"write failure!");
+	    fclose(filep);
+	    return -1;
+	}
+
+	code = fwrite([packet getData], shortTemp, 1, filep);
+	if (code != 1) {
+	    NSLog(@"write failure!");
+	    fclose(filep);
+	    return -1;
+	}
+
+	longTemp = (uint32_t) packet.durationMs;
+	code = fwrite(&longTemp, 4, 1, filep);
+	if (code != 1) {
+	    NSLog(@"write failure");
+	    fclose(filep);
+	    return -1;
+	}
+
+	shortTemp = sizeof(AudioStreamPacketDescription);
+	code = fwrite(&shortTemp, 2, 1, filep);
+	if (code != 1) {
+	    NSLog(@"write failure!");
+	    fclose(filep);
+	    return -1;
+	}
+
+	code = fwrite([packet getDescrAddr], shortTemp, 1, filep);
+	if (code != 1) {
+	    NSLog(@"write failure!");
+	    fclose(filep);
+	    return -1;
+	}
+
+	shortTemp = (uint16_t) [packet.playingSong length];
+	code = fwrite(&shortTemp, 2, 1, filep);
+	if (code != 1) {
+	    NSLog(@"write failure!");
+	    fclose(filep);
+	    return -1;
+	}
+
+	if (shortTemp > 0) {
+	    code = fwrite([packet.playingSong cStringUsingEncoding: NSUTF8StringEncoding],
+			  shortTemp, 1, filep);
+	    if (code != 1) {
+		NSLog(@"write failure!");
+		fclose(filep);
+		return -1;
+	    }
+	}
+    } // loop over all records in this block
+
+    // write end
+    shortTemp = _kTrailerMagic;
+    code = fwrite(&shortTemp, 2, 1, filep);
+    if (code != 1) {
+	NSLog(@"write failure!");
+	fclose(filep);
+	return -1;
+    }
+
+    code = fclose(filep);
+    if(code != 0) {
+	NSLog(@"write failure -- close!");
+    }
+    return 0;
+ }
 
 - (pthread_cond_t *) packetArrayCv {
     return &_packetArrayCv;
@@ -251,7 +770,7 @@ static pthread_mutex_t _bufferMutex;
 - (uint32_t) packetCount {
     uint32_t count;
     pthread_mutex_lock(&_bufferMutex);
-    count = [_packetArray count];
+    count = (uint32_t) [_packetArray count];
     pthread_mutex_unlock(&_bufferMutex);
 
     return count;
@@ -270,23 +789,182 @@ static pthread_mutex_t _bufferMutex;
 }
 
 - (MFANAqStreamBuffer *) init {
+    static uint32_t fileIdGenerator = 1;
     self = [super init];
     if (self != nil) {
+	MFANAqStreamBlock *block;
+
         if (!_bufferStaticSetup) {
             _bufferStaticSetup = YES;
             pthread_mutex_init(&_bufferMutex, NULL);
         }
         pthread_cond_init(&_packetArrayCv, NULL);
+	pthread_cond_init(&_pthreadReqCv, NULL);
+	pthread_cond_init(&_pthreadDoneCv, NULL);
+	pthread_cond_init(&_blockIoCv, NULL);
 
         _packetArray = [[NSMutableOrderedSet alloc] init];
-        _packetStreamVersion = 1;
         _shuttingDown = NO;
         _haveProperties = NO;
         _lastPacketEndMs = 0;
         _packetDuration = 0.0;
         _frameDuration = 0.0;
+	_shuttingDown = false;
+	_pthreadDone = false;
+	_pthreadDoWork = false;
+	_validBlocks = 0;
+	_dirtyBlocks = 0;
+	_fileSize = _kBytesPerBlock;
+
+	_streamFile = new MFANAqStreamFile();
+	_streamFile->_blocks = [[NSMutableArray alloc] init];
+	_streamFile->_lru = [[NSMutableOrderedSet alloc] init];
+	_streamFile->_fileId = fileIdGenerator++;
+
+	// and create the backing file
+	int fd = open([fileNameForFileId(_streamFile->_fileId)
+			  cStringUsingEncoding: NSUTF8StringEncoding],
+		      O_CREAT | O_WRONLY | O_TRUNC, 0666);
+	osp_assert(fd >= 0);
+	close(fd);
+
+	// create first block so we have somewhere to put data.
+	// Invariant is that this block always exists, but isn't in
+	// the LRU and isn't marked as dirty until it is complete.
+	block = [[MFANAqStreamBlock alloc] initWithBuffer: self];
+
+        _streamBufferThread = [[NSThread alloc] initWithTarget: self
+                                                      selector: @selector(ioAsync:)
+                                                        object: nil];
+        [_streamBufferThread start];
     }
     return self;
+}
+
+- (void) dealloc {
+    // cleanup c++ allocated structures
+    if (_streamFile) {
+	// ARC doesn't know to walk into streamFile to find references
+	// to release.
+	_streamFile->_blocks = nil;
+	_streamFile->_lru = nil;
+	delete _streamFile;
+	_streamFile = nullptr;
+    }
+}
+
+- (void) fillBlock: (MFANAqStreamBlock *) block {
+    while(true) {
+	if (!block.ioRunning)
+	    break;
+	pthread_cond_wait(&_blockIoCv, &_bufferMutex);
+    }
+
+    if ([block validContents])
+	return;
+
+    block.ioRunning = true;
+
+    // do the IO without the lock, after setting ioRunning flag.
+    pthread_mutex_unlock(&_bufferMutex);
+    [self readPacketsFromBlock: block];
+    pthread_mutex_lock(&_bufferMutex);
+
+    block.ioRunning = false;
+    osp_assert(!block.valid);
+    block.valid = true;
+    _validBlocks++;
+    [_streamFile->_lru addObject: block];
+    pthread_cond_broadcast(&_blockIoCv);
+}
+
+- (void) cleanBlock: (MFANAqStreamBlock *) block {
+    while(block.ioRunning) {
+	pthread_cond_wait(&_blockIoCv, &_bufferMutex);
+    }
+    if (!block.dirty)
+	return;
+
+    // once we set ioRunning, no one else should turn off _dirty
+    block.ioRunning = true;
+    pthread_mutex_unlock(&_bufferMutex);
+    [self writePacketsToBlock: block];
+    pthread_mutex_lock(&_bufferMutex);
+
+    // allow new IOs to start
+    block.ioRunning = false;
+    block.dirty = false;
+    osp_assert(_dirtyBlocks > 0);
+    _dirtyBlocks--;
+    pthread_cond_broadcast(&_blockIoCv);
+}
+
+- (void) ioAsync: (id) junk {
+    MFANAqStreamBlock *block;
+
+    pthread_mutex_lock(&_bufferMutex);
+    while(true) {
+	@autoreleasepool {
+	    if (_shuttingDown)
+		break;
+
+	    if (_pthreadDoWork) {
+		// clear flag telling us there's work to do.
+		_pthreadDoWork = false;
+
+		// see if we should pull some buffers from the LRU queue
+		// and remove their data.
+		while (_validBlocks > _kMaxValidBlocks) {
+		    block = _streamFile->_lru[0];
+		    if (block.dirty) {
+			[self cleanBlock: block];
+			NSLog(@"cleaned block for invalidation at %llx", block.fileOffset);
+		    }
+
+		    // cleaning drops lock, so buffer might no longer be
+		    // valid
+		    osp_assert(block.sealed);
+		    if (block.valid) {
+			osp_assert(block.valid);
+			osp_assert(!block.dirty);
+			[block.packetArray removeAllObjects];
+			[_streamFile->_lru removeObject: block];
+			block.valid = false;
+			osp_assert(_validBlocks > 0);
+			_validBlocks--;
+			NSLog(@"invalidated block at %llx", block.fileOffset);
+		    }
+		}
+
+		// see if we can find dirty blocks near the end of the
+		// file, and clean them.  Don't clean the last one, since
+		// it is still accumulating new packets, and of course
+		// don't wait for the last one to get cleaned, either.
+		uint32_t blockCount = (uint32_t) [_streamFile->_blocks count];
+		while(_dirtyBlocks > 1) {
+		    bool foundAny = false;
+		    for(int32_t i=blockCount - 2; i >= 0; i--) {
+			block = _streamFile->_blocks[i];
+			if (block.dirty) {
+			    [self cleanBlock: block];
+			    foundAny = true;
+			    NSLog(@"cleaned block in background at %llx", block.fileOffset);
+			}
+		    }
+
+		    // in case dirtyBlocks is incorrect
+		    if (!foundAny)
+			break;
+		}
+	    } else {
+		// wait for new request
+		pthread_cond_wait(&_pthreadReqCv, &_bufferMutex);
+	    }
+	}
+    }
+    _pthreadDone = true;
+    pthread_mutex_unlock(&_bufferMutex);
+    pthread_cond_broadcast(&_pthreadDoneCv);
 }
 
 - (void) abortReaders {
@@ -311,6 +989,7 @@ static pthread_mutex_t _bufferMutex;
 // the last appended packet get deleted.
 - (void) pruneOldestMs: (uint64_t) pruneLength {
     uint64_t startMs;
+    MFANAqStreamBlock *block;
 
     pthread_mutex_lock(&_bufferMutex);
     if (pruneLength > _lastPacketEndMs) {
@@ -319,34 +998,105 @@ static pthread_mutex_t _bufferMutex;
     } else
         startMs = _lastPacketEndMs - pruneLength;
 
-    while(true) {
-        MFANAqStreamPacket *packet = [_packetArray firstObject];
-        if (packet == nil)
-            break;
-        if (packet.startMs >= startMs)
-            break;
+    // Remove whole blocks, since each block is perhaps 0.5 - 2.0 seconds, and
+    // that's good enough.
+    while (true) {
+	// be careful never to remove the last block, since the code
+	// in this module assumes there's always at least one block in
+	// the array.
+	uint32_t blockCount = (uint32_t) [_streamFile->_blocks count];
+	if (blockCount > 1) {
+	    block = _streamFile->_blocks[0];
+	    while(block.ioRunning) {
+		pthread_cond_wait(&_blockIoCv, &_bufferMutex);
+	    }
+	    if (block.baseMs < startMs) {
+		// this will free all the data in memory, but the disk
+		// file will still need to be compacted eventually.
+		[_streamFile->_blocks removeObjectAtIndex: 0];
 
-        // packet exists before the prune time, remove it.
-        NSLog(@"pruning packet with startMs=%lld (startMs=%lld)", packet.startMs, startMs);
-        [_packetArray removeObject: packet];
+		// someone other thread may have a reference to block,
+		// so make sure we mark it as invalid and clean.
+		if (block.valid) {
+		    [_streamFile->_lru removeObject: block];
+		    _validBlocks--;
+		    block.valid = false;
+		}
+		if (block.dirty) {
+		    _dirtyBlocks--;
+		    block.dirty = false;
+		}
+	    } else {
+		break;
+	    }
+	} else
+	    break;
     }
-
-    // readers' cached indices are now wrong
-    _packetStreamVersion++;
 
     pthread_mutex_unlock(&_bufferMutex);
 }
 
+// Finalize the info for the block that was being appended to, by
+// adding it to the LRU queue.  Then initialize the new block from
+// info in the previous.
+//
+// Note that this creates a new unselaed block at the end which isn't
+// marked as valid or dirty, nor counted as either.  Because it isn't
+// valid, it isn't in the _lru.  But it *is* at the end of the _blocks
+// array.
+- (MFANAqStreamBlock *) addBlockAndSealPrev {
+    MFANAqStreamBlock *newBlock;
+    MFANAqStreamBlock *prevBlock;
+    prevBlock = [_streamFile->_blocks lastObject];
+
+    newBlock = [[MFANAqStreamBlock alloc] initWithBuffer: self];
+
+    // note that there's always a prevBlock since we initialize this
+    // with an empty block and we never delete the last block.
+    prevBlock.sealed = true;
+    [_streamFile->_lru addObject: prevBlock];
+    osp_assert(!prevBlock.valid);
+    prevBlock.valid = true;
+    _validBlocks++;
+
+    // mark the sealed block as dirty
+    osp_assert(!prevBlock.dirty);
+    prevBlock.dirty = true;
+    _dirtyBlocks++;
+
+    newBlock.baseMs = prevBlock.durationMs + prevBlock.baseMs;
+    newBlock.fileOffset = prevBlock.fileOffset + _kBytesPerBlock;
+    _fileSize += _kBytesPerBlock;
+
+    return newBlock;
+}
+
 - (void) addPacket: (MFANAqStreamPacket *) packet withDuration: (uint32_t) durationMs {
+    MFANAqStreamBlock *block;
+    uint32_t packetBytesUsed;
+
     packet.startMs = _lastPacketEndMs;
     packet.durationMs = durationMs;
+    packetBytesUsed = [self packetDiskSize: packet];
 
     pthread_mutex_lock(&_bufferMutex);
     _lastPacketEndMs = packet.startMs + durationMs;
-    [_packetArray addObject: packet];
+    block = [self lastBlockSetIndex: nullptr];
+    if (block.diskBytesUsed + packetBytesUsed > _kBytesPerBlock - _kTrailerBytes) {
+	block = [self addBlockAndSealPrev];
+
+	// wakeup cleaner and pruner
+	pthread_cond_broadcast(&_pthreadReqCv);
+    }
+
+    [block.packetArray addObject: packet];
+
+    block.diskBytesUsed += packetBytesUsed;
+    block.durationMs += packet.durationMs;
+    _pthreadDoWork = true;
     pthread_mutex_unlock(&_bufferMutex);
 
-    // wakeup anyone waiting
+    // wakeup anyone waiting for more data to read
     pthread_cond_broadcast(&_packetArrayCv);
 }
 
@@ -366,6 +1116,16 @@ static pthread_mutex_t _bufferMutex;
                  (int) _dataFormat.mFormatID & 0xFF];
     }
     return rstr;
+}
+
+- (void) shutdown {
+    pthread_mutex_lock(&_bufferMutex);
+    _shuttingDown = true;
+    while(true) {
+	if (_pthreadDone) break;
+	pthread_cond_wait(&_pthreadDoneCv, &_bufferMutex);
+    }
+    pthread_mutex_unlock(&_bufferMutex);
 }
 
 - (void) getDataFormat: (AudioStreamBasicDescription *) format {
