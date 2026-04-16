@@ -465,7 +465,7 @@ static const uint32_t _kMaxValidBlocks = 16;
 //
 // <n> bytes of song data
 - (uint32_t) packetDiskSize: (MFANAqStreamPacket *) packet {
-    return (uint32_t) (8 + [packet getLength] + [packet.playingSong length] +
+    return (uint32_t) (12 + [packet getLength] + [packet.playingSong length] +
 		       sizeof(AudioStreamPacketDescription));
 }
 
