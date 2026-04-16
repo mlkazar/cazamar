@@ -54,6 +54,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void) stopRecording;
 
 - (void) startRecording;
+
+- (void) stopRadioResumeAtEnd;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -1173,6 +1173,23 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [self animationOn];
 }
 
+// Stop playing the station, turn off recording in background flag,
+// and position resume point after everything recorded already.  When
+// we hit play again, new stream will start and we'll start playing
+// the new stuff, but you'll be able to hit the back button to listen
+// to older audio.
+- (void) stopRadioResumeAtEnd {
+    uint64_t newResumePoint;
+    if (_playingStation != nil) {
+	[self stopRadioResetStream: YES];
+	newResumePoint = _playingStation.recordingBuffer.lastPacketEndMs;
+	_playingStation.recordingPosition = newResumePoint;
+	_playingStation.isRecording = false;
+
+	[self animationOn];
+    }
+}
+
 // used after a stream failure to restart the stream.
 - (void) restartStationWithStream: (id) stream {
     // we really don't want to reset the stream, but we need recreate
