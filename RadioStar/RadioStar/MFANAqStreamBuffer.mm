@@ -72,6 +72,17 @@
 //
 // This is really part of MFANAqStreamBuffer in the sense that it
 // grabs locks and examines its internal state.
+//
+// It caches a _blockIx and _packetIx field that represent indices
+// into the streamFile->_blocks array and packet->packetArray
+// respectively.  These indices point to the next packet to be read by
+// the streamReader.  A packetIx equal to the count in any block means
+// the beginning of the next block.  This means no data is present if
+// the blockIx is the last block in the streamBuffer.
+//
+// Note that one invariant is that there is always one block in the
+// buffer: the buffer is created with one, and the last block is never
+// deleted.
 // ---------------------------------------------------------------------------
 
 @implementation MFANAqStreamReader {
@@ -123,8 +134,10 @@
     return self;
 }
 
-// Called with bufferMutex held.
-- (bool) indexIsValid {
+// Called with bufferMutex held.  Returns true if the recordMs field
+// is present in the packet pointed to by the blockIx / packetIx
+// parameters.
+- (bool) indicesAreValid {
     return ([_streamBuffer blockIx: _blockIx packetIx: _packetIx containsMs: _recordMs]);
 }
 
@@ -143,7 +156,8 @@
             break;
     }
 
-    NSLog(@"findPacketIx for %lld ms returns %u", ms, ix);
+    NSLog(@"findPacketIx for %lld ms returns ix=%u/%u ms=%lld",
+	  ms, ix, (uint32_t) [block.packetArray count], packet.startMs);
     return ix;
 }
 
@@ -157,10 +171,21 @@
 
 - (void) seek: (uint64_t) ms whence: (int) how {
     MFANAqStreamBlock *block;
+    uint32_t packetCount;
+
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
     block = [_streamBuffer findBlockAtMs: ms setIndex:&_blockIx];
     _packetIx = [self findPacketIx: ms inBlock: block];
-    _recordMs = ms;
+    packetCount = [block.packetArray count];
+
+    // seek to last packet available near our seek point.
+    if (packetCount == 0) {
+	_recordMs = block.baseMs;
+    } else if (_packetIx >= packetCount)
+	_recordMs = block.packetArray[packetCount-1].startMs;
+    else
+	_recordMs = block.packetArray[_packetIx].startMs;
+
     NSLog(@"==>seek to ms=%lld bix=%d pix=%d", ms, _blockIx, _packetIx);
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
 
@@ -193,6 +218,7 @@
 
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
 
+    NSLog(@"waitforatleast starts");
     bool firstBlock;
     while(true) {
         if (_streamBuffer.shuttingDown || _closed) {
@@ -202,14 +228,16 @@
 
 	blockCount = (uint32_t) [_streamBuffer.streamFile->_blocks count];
 
-        if (!self.indexIsValid) {
+        if (!self.indicesAreValid) {
 	    block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&blockIx];
 	    packetIx = [self findPacketIx: _recordMs inBlock: block];
         } else {
 	    blockIx = _blockIx;
 	    packetIx = _packetIx;
-	    if (blockIx >= blockCount)
-		blockIx = blockCount - 1;
+	    if (blockIx >= blockCount) {
+		pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+		return false;
+	    }
 	    block = _streamBuffer.streamFile->_blocks[blockIx];
 	}
 
@@ -224,11 +252,17 @@
 	    }
 
 	    if (firstBlock) {
+		// if the first block isn't valid, we'll see a zero
+		// packetCount, and we won't count the contents of
+		// this block as available data.  That shouldn't
+		// happen often and shouldn't matter much when it does
+		// occur.
 		for(uint32_t i=startIx; i<packetCount; i++) {
 		    packet = block.packetArray[i];
 		    totalBytes += [packet getLength];
 		    if (totalBytes >= targetBytes) {
 			pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+			NSLog(@"waitforatleast ends");
 			return true;
 		    }
 		}
@@ -236,6 +270,7 @@
 		totalBytes += block.diskBytesUsed;
 		if (totalBytes >= targetBytes) {
 		    pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+		    NSLog(@"waitforatleast ends");
 		    return true;
 		}
 	    }
@@ -256,6 +291,7 @@
 
     // if we get here, we ran into a problem and should return false.
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+    NSLog(@"waitforatleast ends with failure");
     return false;
 }
 
@@ -266,31 +302,39 @@
     uint32_t packetIx;
     uint32_t blockCount;
 
+    // remember that blockIx, packetIx points to the next packet to
+    // return.
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
 
+    NSLog(@"hasData starts");
     blockCount = (uint32_t) [_streamBuffer.streamFile->_blocks count];
 
-    if (!self.indexIsValid) {
+    if (!self.indicesAreValid) {
 	block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&blockIx];
 	packetIx = [self findPacketIx: _recordMs inBlock: block];
     } else {
 	blockIx = _blockIx;
 	packetIx = _packetIx;
 	if (blockIx >= blockCount)
-	    blockIx = blockCount - 1;
-	block = _streamBuffer.streamFile->_blocks[blockIx];
+	    block = nil;
+	else
+	    block = _streamBuffer.streamFile->_blocks[blockIx];
     }
 
-    if (packetIx < (uint32_t) [block.packetArray count]) {
-	// more packets in this current block
+    if (blockIx < blockCount - 1) {
+	// there's at least a whole unprocessed block after blockIx
 	rval = true;
-    }
-    else if (blockIx < blockCount) {
-	// more blocks in file after this point.
-	rval = true;
-    } else {
-	// neither one, we don't have data to return now.
+    } if (blockIx >= blockCount) {
+	// no block at all, so no data
 	rval = false;
+    } else {
+	// blockIx points to the last block more packets in this
+	// current block.  If packetIx points at a record in this
+	// block, return true
+	if (packetIx < [block.packetArray count])
+	    rval = true;
+	else
+	    rval = false;
     }
 
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
@@ -309,36 +353,53 @@
     MFANAqStreamPacket *packet = nil;
     MFANAqStreamBlock *block = nil;
     uint32_t packetCount;
+    uint32_t blockCount;
     uint32_t lastBlockIx;
 
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
+    NSLog(@"read starts");
     while(true) {
         // Abort if the buffer itself is being shutdown or the reader
         // was closed.
         if (_streamBuffer.shuttingDown || _closed) {
             pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+	    NSLog(@"read done --> closed");
             return nil;
         }
 
-        if (!self.indexIsValid) {
+        if (!self.indicesAreValid) {
 	    block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&_blockIx];
+	    _packetIx = [self findPacketIx: _recordMs inBlock: block];
+	    NSLog(@"read index not valid, using bix=%d pix=%d baseMs=%lld for recordMs=%lld",
+		  _blockIx, _packetIx, block.baseMs, _recordMs);
         } else {
 	    block = _streamBuffer.streamFile->_blocks[_blockIx];
+	    NSLog(@"read index valid using bix=%d baseMs=%lld for recordMs=%lld",
+		  _blockIx, block.baseMs, _recordMs);
 	}
 
 	if (![block validContents]) {
 	    [_streamBuffer fillBlock: block];
+	    NSLog(@"read filling block ms=%ld", block.baseMs);
 	    continue;
 	}
 
+	// prevent block we're reading from being recycled
 	[self updatePinnedBlock: block];
 
+	// get count after making sure block is valid
 	packetCount = (uint32_t) [block.packetArray count];
-	lastBlockIx = (uint32_t) [_streamBuffer.streamFile->_blocks count] - 1;
+	blockCount = [_streamBuffer.streamFile->_blocks count];
+
+	// blockCount is never 0; it is one upon creation and we never
+	// get rid of the block at the end collecting packets.
+	lastBlockIx = blockCount - 1;
+
         if ( _blockIx > lastBlockIx ||
 	     (_blockIx == lastBlockIx &&
-	      _packetIx >= (uint32_t) [block.packetArray count])) {
+	      _packetIx >= packetCount)) {
             // No packet at the current index.
+	    NSLog(@"read waiting for more data bix=%d pix=%d", _blockIx, _packetIx);
             pthread_cond_wait([_streamBuffer packetArrayCv], [MFANAqStreamBuffer bufferMutex]);
             continue;
         }
@@ -346,8 +407,9 @@
 	// it's possible that we've read all the packets from a block
 	// and just need to get to the next block.
 	if (_packetIx >= packetCount) {
-	    // if we're here, _blockIx must not have been the last block's
-	    // index, or we'd have gone to sleep above.
+	    // if we're here, _blockIx must not have been the last
+	    // block's index, or we'd have gone to sleep and looped
+	    // around above.
 	    _blockIx++;
 	    _packetIx = 0;
 	    continue;
@@ -361,6 +423,7 @@
     }
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
     packet.read = YES;
+    NSLog(@"read returned packet with start=%lld", packet.startMs);
     return packet;
 }
 
@@ -461,9 +524,9 @@ static const uint32_t _kMaxValidBlocks = 16;
 //
 // <n> bytes of descriptor in binary
 //
-// 2 bytes of song name
+// 2 bytes of song name length
 //
-// <n> bytes of song data
+// <n> bytes of song name
 - (uint32_t) packetDiskSize: (MFANAqStreamPacket *) packet {
     return (uint32_t) (12 + [packet getLength] + [packet.playingSong length] +
 		       sizeof(AudioStreamPacketDescription));
@@ -476,11 +539,16 @@ static const uint32_t _kMaxValidBlocks = 16;
     MFANAqStreamPacket *packet;
     MFANAqStreamPacket *nextPacket;
 
+    // index isn't valid if it points beyond end of array
+    if (blockIx >= [_streamFile->_blocks count])
+	return false;
+
     if (blockIx >= [_streamFile->_blocks count] - 1)
 	nextBlock = nil;
     else
 	nextBlock = _streamFile->_blocks[blockIx+1];
-    if ((blockIx == 0 || ms >= block.baseMs) &&
+
+    if (ms >= block.baseMs &&
 	(nextBlock == nil || ms < nextBlock.baseMs)) {
 	// in range of this block, which may have no packets, but only
 	// at the time before any packets have been added
@@ -490,8 +558,9 @@ static const uint32_t _kMaxValidBlocks = 16;
 		return true;
 	} else if (packetIx == packetCount) {
 	    packet = block.packetArray[packetCount-1];
-	    // packetIx can't be 0 in this path.
-	    if (ms >= packet.startMs)
+	    // packetIx can't be 0 in this branch.
+	    if ( ms >= packet.startMs &&
+		 ms < packet.startMs + packet.durationMs)
 		return true;
 	} else if (packetIx < packetCount) {
 	    packet = block.packetArray[packetIx];
@@ -499,8 +568,8 @@ static const uint32_t _kMaxValidBlocks = 16;
 		nextPacket = nil;
 	    else 
 		nextPacket = block.packetArray[packetIx+1];
-	    if (ms >= packet.startMs &&
-		(nextPacket == nil || ms < nextPacket.startMs))
+	    if ( ms >= packet.startMs &&
+		 (nextPacket == nil || ms < nextPacket.startMs))
 		return true;
 	}
     }
@@ -955,7 +1024,8 @@ NSString *fileNameForFileId(uint32_t fileId) {
 		    block = _streamFile->_lru[0];
 		    if (block.dirty) {
 			[self cleanBlock: block];
-			NSLog(@"cleaned block for invalidation at %llx", block.fileOffset);
+			NSLog(@"cleaned block for invalidation at %llx ms=%lld",
+			      block.fileOffset, block.baseMs);
 		    }
 
 		    // cleaning drops lock, so buffer might no longer be
@@ -969,7 +1039,8 @@ NSString *fileNameForFileId(uint32_t fileId) {
 			osp_assert(_validBlocks > 0);
 			_validBlocks--;
 			[self fixLru: block];
-			NSLog(@"invalidated block at %llx", block.fileOffset);
+			NSLog(@"invalidated block at off=%llx ms=%lld",
+			      block.fileOffset, block.baseMs);
 		    }
 		}
 
@@ -1103,6 +1174,10 @@ NSString *fileNameForFileId(uint32_t fileId) {
 
     newBlock.baseMs = prevBlock.durationMs + prevBlock.baseMs;
     newBlock.fileOffset = prevBlock.fileOffset + _kBytesPerBlock;
+    // caller will add newBLock to array at count offset
+    NSLog(@"addBlockAndSeal sealed block startMs=%lld %d packets newBlock startMs=%lld bix=%llu",
+	  prevBlock.baseMs, [prevBlock.packetArray count],
+	  newBlock.baseMs, [_streamFile->_blocks count]);
     _fileSize += _kBytesPerBlock;
 
     return newBlock;
@@ -1114,6 +1189,8 @@ NSString *fileNameForFileId(uint32_t fileId) {
 	needLru = false;
     else if (block.valid) {
 	needLru = true;
+    } else {
+	needLru = false;
     }
 
     if (needLru && !block.inLru) {
@@ -1134,10 +1211,12 @@ NSString *fileNameForFileId(uint32_t fileId) {
     packetBytesUsed = [self packetDiskSize: packet];
 
     pthread_mutex_lock(&_bufferMutex);
+    NSLog(@"add packet at start=%lld", packet.startMs);
     _lastPacketEndMs = packet.startMs + durationMs;
     block = [self lastBlockSetIndex: nullptr];
     if (block.diskBytesUsed + packetBytesUsed > _kBytesPerBlock - _kTrailerBytes) {
 	block = [self addBlockAndSealPrev];
+	NSLog(@"addpacket new block");
 
 	// wakeup cleaner and pruner
 	pthread_cond_broadcast(&_pthreadReqCv);

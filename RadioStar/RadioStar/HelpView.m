@@ -6,6 +6,8 @@
 //  Copyright (c) 2014 Mike Kazar. All rights reserved.
 //
 
+@import WebKit;
+
 #import "MFANIconButton.h"
 #import "ViewController.h"
 #import "MFANCGUtil.h"
@@ -28,7 +30,7 @@
 
     MFANIconButton *_doneButton;
     MFANIconButton *_backButton;
-    UIWebView *_webView;
+    WKWebView *_webView;
 }
 
 - (HelpView *) initWithFile: (NSString *) fileName viewCont: (ViewController *) vc;

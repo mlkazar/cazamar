@@ -235,10 +235,6 @@
 	CGContextFillRect(cx, rect);
 
 	insetRect = CGRectInset(rect, strokeWidth, strokeWidth);
-	self.titleEdgeInsets = UIEdgeInsetsMake(strokeWidth,
-						strokeWidth,
-						strokeWidth,
-						strokeWidth);
 	CGContextSetLineWidth(cx, strokeWidth);
 	CGContextSetFillColorWithColor(cx, _backgroundColor.CGColor);
 	CGContextSetStrokeColorWithColor(cx, _color.CGColor);

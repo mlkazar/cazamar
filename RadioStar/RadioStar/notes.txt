@@ -12,6 +12,16 @@ Ideas for Radio app
 
 ========Todo========
 
+-- popup after changing highlights or background streaming
+
+-- slider for scrobbing in popup, showing time and current song
+
+-- reanimate song bar after switching back to main screen
+
+-- finish help text for search and main help files
+
+-- check out warnings and obsolete interfaces used.
+
 ** improve recording status visibility by flashing?
 
 ** reorder by drag and drop
