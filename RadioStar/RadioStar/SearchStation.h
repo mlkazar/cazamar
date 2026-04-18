@@ -1,18 +1,22 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import "SignStation.h"
-
-@class ViewController;
+#import "ViewController.h"
 
 @interface SearchStation : UIView<UITextViewDelegate,
     UITableViewDelegate,
     UITableViewDataSource,
     UISearchBarDelegate,
     UIPickerViewDataSource,
-    UIPickerViewDelegate>
+    UIPickerViewDelegate,
+    TopViewInt>
 
 @property bool canceled;
 @property NSMutableArray *signStations;
+
+- (void) activateTopView;
+
+- (void) deactivateTopView;
 
 - (SearchStation *) initWithFrame:(CGRect) frame ViewCont: (ViewController *) vc;
 

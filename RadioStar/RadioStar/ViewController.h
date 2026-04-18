@@ -7,12 +7,18 @@
 
 #import <UIKit/UIKit.h>
 
+@protocol TopViewInt<NSObject>
+- (void) activateTopView;
+
+- (void) deactivateTopView;
+@end
+
 @interface ViewController : UIViewController
 
 @property float topMargin;
 @property UIColor *backgroundColor;
 
-- (void) pushTopView: (UIView *) view;
+- (void) pushTopView: (UIView<TopViewInt> *) view;
 
 - (void) popTopView;
 

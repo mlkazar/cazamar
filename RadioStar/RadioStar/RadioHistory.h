@@ -7,8 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
-
-@class ViewController;
+#import "ViewController.h"
 @class MFANSetList;
 @class RadioHistory;
 
@@ -28,7 +27,7 @@
 
 @end /* RadioListHistory */
 
-@interface RadioHistory : UIView<UITextViewDelegate> {
+@interface RadioHistory : UIView<UITextViewDelegate,TopViewInt> {
 }
 
 @property MFANSetList *setList;
@@ -36,6 +35,10 @@
 @property BOOL changesMade;
 
 @property BOOL helpMode;
+
+- (void) deactivateTopView;
+
+- (void) activateTopView;
 
 - (id)initWithViewController: (ViewController *) viewCont;
 

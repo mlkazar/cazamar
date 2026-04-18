@@ -368,6 +368,14 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
     return self;
 }
 
+- (void) activateTopView {
+    return;
+}
+
+- (void) deactivateTopView {
+    return;
+}
+
 - (NSMutableArray *) histItems
 {
     return _histItems;

@@ -9,7 +9,7 @@
 #import "TopView.h"
 
 @implementation ViewController {
-    NSMutableArray *_oldViews;	// of UIView objects
+    NSMutableArray<UIView<TopViewInt> *> *_oldViews;	// of UIView objects
     float _topMargin;
     UIColor *_backgroundColor;
 }
@@ -35,15 +35,31 @@
     self.view.backgroundColor = _backgroundColor;
 }
 
-- (void) pushTopView: (UIView *) view {
+- (void) pushTopView: (UIView<TopViewInt> *) view {
+    UIView<TopViewInt> *oldView;
+
+    oldView = [_oldViews lastObject];
+    if (oldView != nil)
+	[oldView deactivateTopView];
+
     [_oldViews addObject: self.view];
+
+    [view activateTopView];
+
     self.view = view;
     view.backgroundColor = _backgroundColor;
 }
 
 - (void) popTopView {
-    self.view = [_oldViews lastObject];
+    UIView<TopViewInt> *newActiveView;
+    UIView<TopViewInt> *oldView;
+
+    self.view = oldView = [_oldViews lastObject];
     [_oldViews removeLastObject];
+    newActiveView = [_oldViews lastObject];
+
+    if (oldView != nil)
+	[oldView activateTopView];
 }
 
 @end

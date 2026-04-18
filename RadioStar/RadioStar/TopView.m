@@ -228,6 +228,14 @@
     [self playInternal];
 }
 
+- (void) activateTopView {
+    [_marquee restartLabel];
+}
+
+- (void) deactivateTopView {
+    return;
+}
+
 - (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
     NSLog(@"- remotecontrolev = %d", (int) receivedEvent.type);
     if (receivedEvent.type == UIEventTypeRemoteControl) {

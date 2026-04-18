@@ -678,6 +678,14 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     return self;
 }
 
+- (void) activateTopView {
+    return;
+}
+
+- (void) deactivateTopView {
+    return;
+}
+
 // returns nil when out of entries
 - (SignStation *) getNext {
     NSMutableArray *stations = _searchStation.signStations;
