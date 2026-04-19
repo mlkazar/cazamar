@@ -1256,15 +1256,15 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _popStatus = [[PopStatus alloc] initWithFrame: childFrame
 					 viewCont: _vc
 					 signView: self];
-    [self addSubview: _popStatus];
-    [_popStatus setCallback: self withSel: @selector(popStatusDone:withData:)];
+    [_popStatus setCallback: self
+		    withSel:@selector(popStatusDone)];
 }
 
-- (void) popStatusDone:(id) j1 withData:(id) j2 {
+- (void) popStatusDone {
+    _popStatus = nil;
+    [_vc popTopView];
     [self addRecognizers];
-    [_popStatus shutdown];
-    [_popStatus removeFromSuperview];
- }
+}
 
 // doReset is true if we should force a stream closed even if we're
 // recording the station.

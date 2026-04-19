@@ -661,6 +661,14 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     NSLog(@"in picker select %d", (int) row);
 }
 
+- (void) activateTopView {
+    return;
+}
+
+- (void) deactivateTopView {
+    return;
+}
+
 @end
 
 @implementation SearchStationResults {
@@ -676,14 +684,6 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     }
 
     return self;
-}
-
-- (void) activateTopView {
-    return;
-}
-
-- (void) deactivateTopView {
-    return;
 }
 
 // returns nil when out of entries

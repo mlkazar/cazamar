@@ -168,4 +168,12 @@
     return YES;
 }
 
+- (void) activateTopView {
+    return;
+}
+
+- (void) deactivateTopView {
+    return;
+}
+
 @end

@@ -54,12 +54,11 @@
 	return;
     _didNotify = true;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
     if (_callbackObj != nil) {
-	[_callbackObj  performSelector: _callbackSel withObject: nil];
+	[_callbackObj  performSelectorOnMainThread: _callbackSel
+					withObject: nil
+				     waitUntilDone: true];
     }
-#pragma clang diagnostic pop
 }
 
 - (PopStatus *) initWithFrame: (CGRect) frame
@@ -70,6 +69,9 @@
     CGRect boxFrame;
     CGRect labelFrame;
     CGRect buttonFrame;
+
+    self.frame = vc.view.frame;
+    frame = vc.view.frame;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
@@ -83,7 +85,7 @@
 	UIColor *screenColor = [UIColor colorWithRed: 0.3
 					       green: 0.3
 						blue: 0.3
-					       alpha: 0.75];
+					       alpha: 1.0];
 
 	UIColor *textColor = [UIColor blackColor];
 	UIColor *labelColor = [UIColor colorWithRed: 0.9
@@ -100,6 +102,8 @@
 	float labelHeight = boxHeight;
 	float labelWidth = frame.size.width * 0.35;
 	float buttonWidth = frame.size.width * 0.80;
+	float okButtonWidth = labelHeight;
+
 	// indent things so that we center the label and text box in
 	//the frame.
 	float indent = (frame.size.width - labelWidth - boxWidth) / 2;
@@ -206,13 +210,25 @@
 		     withAction: @selector(highlightPressed:withData:)];
 	[self addSubview: recordButton];
 
-	[self addTarget: self
-	     action:@selector(donePressed:withEvent:)
-	     forControlEvents: UIControlEventTouchUpInside];
+	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
+	buttonFrame.origin.x = frame.size.width/2 - okButtonWidth/2;
+	buttonFrame.size.width = okButtonWidth;
+	_doneButton = [[MFANIconButton alloc] initWithFrame: buttonFrame
+					      title: @"Done"
+					      color: [UIColor colorWithHue: 0.3
+							      saturation: 1.0
+							      brightness: 1.0
+							      alpha: 1.0]
+					      file: @"icon-done.png"];
+	[self addSubview: _doneButton];
+	[_doneButton addCallback: self withAction:@selector(donePressed:)];
+
 
 	_startTimeMs = osp_time_ms();
 
 	_didNotify = false;
+
+	[_vc pushTopView: self];
 
 	_timer = [NSTimer scheduledTimerWithTimeInterval: 1.0
 						  target: self
@@ -235,14 +251,9 @@
     [_speedAndTypeView setText: satString];
 
     // have the status disappear on its own after a minute
-    if (osp_time_ms() - _startTimeMs > 60000) {
+    if (osp_time_ms() - _startTimeMs > 10000) {
 	[self doNotify];
     }
-}
-
-- (void) shutdown {
-    [_timer invalidate];
-    _timer = nil;
 }
 
 - (void) highlightPressed: (id) junk1 withData:(id) junk2 {
@@ -261,8 +272,19 @@
     [self doNotify];
 }
 
-- (void) donePressed: (id) junk1 withEvent: (UIEvent *) junk2 {
+- (void) donePressed: (id) junk1 {
+    [_timer invalidate];
+    _timer = nil;
+
     [self doNotify];
+}
+
+- (void) activateTopView {
+    return;
+}
+
+- (void) deactivateTopView {
+    return;
 }
 
 @end

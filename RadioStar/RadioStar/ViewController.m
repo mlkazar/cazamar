@@ -11,6 +11,7 @@
 @implementation ViewController {
     NSMutableArray<UIView<TopViewInt> *> *_oldViews;	// of UIView objects
     float _topMargin;
+    float _bottomMargin;
     UIColor *_backgroundColor;
 }
 
@@ -23,6 +24,7 @@
     _oldViews = [[NSMutableArray alloc] init];
 
     _topMargin = 50;
+    _bottomMargin = 50;
 
     self.view = [[TopView alloc] initWithFrame: rect ViewCont: self];
 

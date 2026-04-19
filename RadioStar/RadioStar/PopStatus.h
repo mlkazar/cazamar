@@ -7,15 +7,13 @@
 #import "ViewController.h"
 #import "SignView.h"
 
-@interface PopStatus : UIButton
+@interface PopStatus : UIView<TopViewInt>
 
 - (PopStatus *) initWithFrame: (CGRect) frame
 		     viewCont: (ViewController *) vc
 		     signView: (SignView *) signView;
 
 - (void) setCallback: (id) obj withSel: (SEL) sel;
-
-- (void) shutdown;
 
 @end
 

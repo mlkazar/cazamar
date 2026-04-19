@@ -125,6 +125,14 @@
     return self;
 }
 
+- (void) activateTopView {
+    return;
+}
+
+- (void) deactivateTopView {
+    return;
+}
+
 - (void) donePressed: (id) junk
 {
     [_vc popTopView];
