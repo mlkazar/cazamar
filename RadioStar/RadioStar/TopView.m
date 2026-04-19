@@ -11,7 +11,6 @@
     MFANCoreButton *_skipFwdButton;
     MFANCoreButton *_skipBackButton;
     MFANCoreButton *_startButton;
-    UIView *_backgroundView;
     SignView *_signView;
     RadioHistory *_history;
     ViewController *_vc;
@@ -22,26 +21,23 @@
     self = [super initWithFrame: frame];
     if (self != nil) {
 	CGRect screenFrame = self.frame;
+	screenFrame.origin.y = 0;	// because these are relative to parent view
 
 	NSLog(@"FRANE TOPVIEW %fx%f@%f.%f",
 	      screenFrame.size.width, screenFrame.size.height,
 	      screenFrame.origin.x, screenFrame.origin.y);
 
-	CGRect signFrame;
-
-	float vertMargin = vc.topMargin;
-
 	_vc = vc;
+
+	CGRect signFrame;
 
 	// We reserve vertMargin at the top and bottom of the screen.
 	// Then the signFrame gets 90% of the remaining space, the
 	// marquee gets the next 5% and the control buttons get the
 	// last 10%
-	float usableHeight = screenFrame.size.height - 2*vertMargin;
-	float usableOriginY = screenFrame.origin.y + vertMargin;
+	float usableHeight = screenFrame.size.height;
 
 	signFrame = screenFrame;
-	signFrame.origin.y = usableOriginY;
 	signFrame.size.height = usableHeight * 0.85;
 	SignView *signView = [[SignView alloc] initWithFrame: signFrame ViewCont: vc];
 	_signView = signView;
@@ -54,15 +50,8 @@
 	[signView setSongCallback: self sel:@selector(songChanged:)];
 	[signView setStateCallback: self sel:@selector(stateChanged:)];
 
-	CGRect backgroundFrame = screenFrame;
-	backgroundFrame.origin.y = signFrame.origin.y + signFrame.size.height;
-	backgroundFrame.size.height = usableHeight * 0.15;
-	_backgroundView = [[UIView alloc] initWithFrame: backgroundFrame];
-	[_backgroundView setBackgroundColor: [UIColor whiteColor]];
-	[self addSubview: _backgroundView];
-
 	CGRect startFrame = screenFrame;
-	startFrame.origin.y = 0;
+	startFrame.origin.y = signFrame.size.height;
 	startFrame.size.height = usableHeight * .0466;
 	MFANCoreButton *_startButton= [[MFANCoreButton alloc]
 					  initWithFrame: startFrame
@@ -76,7 +65,7 @@
 				   alpha: 1.0]];
 	[_startButton setClearText: @"Main Menu"];
 	[_startButton addCallback: self withAction: @selector(startPressed:)];
-	[_backgroundView addSubview: _startButton];
+	[self addSubview: _startButton];
 
 	CGRect marqueeFrame = screenFrame;
 	marqueeFrame.origin.y = startFrame.origin.y + startFrame.size.height;
@@ -86,7 +75,7 @@
 	[marquee setTextColor: [UIColor blackColor]];
 	[marquee setTextAlignment: NSTextAlignmentCenter];
 	[marquee setFont: [UIFont fontWithName: @"Arial-BoldMT" size: 30]];
-	[_backgroundView addSubview: marquee];
+	[self addSubview: marquee];
 	NSLog(@"setting marquee frame to y=%f height=%f",
 	      marqueeFrame.origin.y, marqueeFrame.size.height);
 
@@ -108,7 +97,7 @@
 				      color: [UIColor blackColor]];
 	[_skipBackButton addCallback: self withAction:@selector(skipBackPressed:withData:)];
 	[_skipBackButton setClearText: @"-20"];
-	[_backgroundView addSubview: _skipBackButton];
+	[self addSubview: _skipBackButton];
 
 	buttonFrame.size.width = smallButtonWidth;
 	buttonFrame.origin.x = 2*screenFrame.size.width/5 - smallButtonWidth/2;
@@ -118,7 +107,7 @@
 						      color: [UIColor blackColor]];
 	_playButton = playButton;
 	[playButton addCallback: self withAction:@selector(playPressed:withData:)];
-	[_backgroundView addSubview: playButton];
+	[self addSubview: playButton];
 
 	buttonFrame.size.width = smallButtonWidth;
 	buttonFrame.origin.x = 3*screenFrame.size.width/5 - smallButtonWidth/2;
@@ -128,7 +117,7 @@
 				  color: [UIColor blackColor]
 				   file:@"icon-stop.png"];
 	[_stopButton addCallback: self withAction: @selector(stopPressed:withData:)];
-	[_backgroundView addSubview: _stopButton];
+	[self addSubview: _stopButton];
 
 	buttonFrame.size.width = largeButtonWidth;
 	buttonFrame.origin.x = 4*screenFrame.size.width/5 - largeButtonWidth/2;
@@ -138,14 +127,14 @@
 				      color: [UIColor blackColor]];
 	[_skipFwdButton addCallback: self withAction:@selector(skipFwdPressed:withData:)];
 	[_skipFwdButton setClearText: @"+20"];
-	[_backgroundView addSubview: _skipFwdButton];
+	[self addSubview: _skipFwdButton];
 
 	_history = [[RadioHistory alloc] initWithViewController:vc];
 	[_history setCallback: self WithSel: @selector(historyDone:)];
 
 	[signView setRadioHistory: _history];
 
-	[self setBackgroundColor: [UIColor blackColor]];
+	[self setBackgroundColor: [UIColor whiteColor]];
 
 	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }

@@ -15,7 +15,6 @@
     ViewController *_vc;
     UISearchBar *_searchBar;
     UITableView *_stationTable;
-    UIView *_backgroundView;
     float _rowHeight;
     UIImage *_genericImage;
     UIImage *_scaledGenericImage;
@@ -67,8 +66,8 @@
     CGRect tableFrame;
 
     // TODO: we shouldn't have frame as a parameter -- just confusing.
-    self.frame = vc.view.frame;
-    frame = vc.view.frame;
+    self.frame = vc.activeFrame;
+    frame = vc.activeFrame;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
@@ -78,14 +77,10 @@
 
 	_vc = vc;
 
-	_backgroundView = [[UIView alloc] initWithFrame: vc.activeFrame];
-	[_backgroundView setBackgroundColor: [UIColor whiteColor]];
-	[self addSubview: _backgroundView];
-
 	_signStations = [[NSMutableArray alloc] init];
 	searchFrame = vc.activeFrame;
-	searchFrame.size.width = vc.activeFrame.size.width * searchBarWidthPct;
 	searchFrame.origin.y = 0;
+	searchFrame.size.width = vc.activeFrame.size.width * searchBarWidthPct;
 	searchFrame.size.height = verticalViewSize;
 
 	CGRect textFrame;
@@ -104,7 +99,7 @@
 	_searchBar.delegate = self;
 	_searchBar.searchBarStyle = UISearchBarStyleMinimal;
 	_searchBar.showsCancelButton = YES;
-	[_backgroundView addSubview: _searchBar];
+	[self addSubview: _searchBar];
 	_searchBar. searchTextField.backgroundColor = [UIColor colorWithRed: 0.7
 								     green: 0.7
 								      blue: 0.7
@@ -112,7 +107,7 @@
 	_searchBar.barTintColor = [UIColor whiteColor];
 
 	_pickerView = [[UIPickerView alloc] initWithFrame: textFrame];
-	[_backgroundView addSubview: _pickerView];
+	[self addSubview: _pickerView];
 	_pickerView.delegate = self;
 	_pickerView.dataSource = self;
 	_pickerView.backgroundColor = [UIColor whiteColor];
@@ -148,7 +143,7 @@
 	[_stationTable setBackgroundColor: [UIColor whiteColor]];
 	_stationTable.sectionIndexBackgroundColor = [UIColor clearColor];
 	[_stationTable setSeparatorStyle: UITableViewCellSeparatorStyleNone];
-	[_backgroundView addSubview: _stationTable];
+	[self addSubview: _stationTable];
 
 	// layout cancel and done buttons
 	CGRect cancelFrame;
@@ -170,7 +165,7 @@
 				     file: @"icon-cancel.png"];
         [_cancelButton addCallback: self
 		      withAction: @selector(cancelPressed:withData:)];
-        [_backgroundView addSubview: _cancelButton];
+        [self addSubview: _cancelButton];
 
 	helpFrame = cancelFrame;
 	helpFrame.origin.x = vc.activeFrame.size.width*(2.0/4.0) - verticalViewSize/2;
@@ -181,7 +176,7 @@
 			    backgroundColor: [UIColor clearColor]];
 	[_helpButton addCallback: self withAction:@selector(helpPressed:withData:)];
 	[_helpButton setClearText: @"?"];
-	[_backgroundView addSubview: _helpButton];
+	[self addSubview: _helpButton];
 
 	doneFrame = cancelFrame;
 	doneFrame.origin.x = vc.activeFrame.size.width*(3.0/4.0) - verticalViewSize/2;
@@ -196,13 +191,13 @@
 				   file: @"icon-done.png"];
         [_doneButton addCallback: self
 		      withAction: @selector(donePressed:withData:)];
-        [_backgroundView addSubview: _doneButton];
+        [self addSubview: _doneButton];
 
 	_canceled = NO;
 
 	[vc pushTopView: self];
 
-	[self setBackgroundColor: [UIColor blackColor]];
+	[self setBackgroundColor: [UIColor whiteColor]];
     }
 
     return self;

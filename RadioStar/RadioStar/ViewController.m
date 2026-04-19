@@ -14,7 +14,13 @@
     float _bottomMargin;
     UIColor *_backgroundColor;
     CGRect _activeFrame;
+    UIView<TopViewInt> *_activeView;
 }
+
+// The view in self.view is a whole screen view painted black.  It
+// will be given child views with top and bottom margins, that will
+// typically be white.  The _oldViews array is a stack of previously
+// active views that can be restored as popup views terminate.
 
 - (void)viewDidLoad {
     CGRect rect = self.view.frame;
@@ -27,44 +33,49 @@
     _topMargin = 50;
     _bottomMargin = 50;
 
-    self.view = [[TopView alloc] initWithFrame: rect ViewCont: self];
+    self.view = [[UIView alloc] initWithFrame: rect];
+    self.view.backgroundColor = [UIColor blackColor];
 
     _activeFrame = rect;
     _activeFrame.origin.y += _topMargin;
     _activeFrame.size.height -= _topMargin + _bottomMargin;
+    _activeView = [[TopView alloc] initWithFrame: _activeFrame
+					ViewCont: self];
 
-#if 0
-    // Do any additional setup after loading the view.
-    _backgroundColor = [UIColor blackColor];
-    self.view.backgroundColor = _backgroundColor;
-#endif
+    [self.view addSubview: _activeView];
 }
 
 - (void) pushTopView: (UIView<TopViewInt> *) view {
     UIView<TopViewInt> *oldView;
 
-    oldView = [_oldViews lastObject];
-    if (oldView != nil)
-	[oldView deactivateTopView];
+    // notify old view that it isn't active any more and remove it
+    // from view chain.
+    [_activeView deactivateTopView];
+    [_oldViews addObject: _activeView];
+    [_activeView removeFromSuperview];
 
-    [_oldViews addObject: self.view];
-
+    // notify new view it is active, and save it in _activeView.
+    [self.view addSubview: view];
     [view activateTopView];
-
-    self.view = view;
-    view.backgroundColor = _backgroundColor;
+    _activeView = view;
 }
 
 - (void) popTopView {
-    UIView<TopViewInt> *newActiveView;
-    UIView<TopViewInt> *oldView;
+    UIView<TopViewInt> *prevView;
 
-    self.view = oldView = [_oldViews lastObject];
+    // deactivate current view and remove from chain
+    [_activeView removeFromSuperview];
+    [_activeView deactivateTopView];
+
+    // find previous view to reactivate
+    prevView = [_oldViews lastObject];
     [_oldViews removeLastObject];
-    newActiveView = [_oldViews lastObject];
 
-    if (oldView != nil)
-	[oldView activateTopView];
+    // remember it activeView and put it in the view chain, and
+    // then notify it.
+    _activeView = prevView;
+    [self.view addSubview: _activeView];
+    [prevView activateTopView];
 }
 
 @end

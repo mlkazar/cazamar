@@ -23,6 +23,7 @@
 		7FC015EF2F33E0A4002BADD4 /* MFANCoreButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FC015EE2F33E0A4002BADD4 /* MFANCoreButton.m */; };
 		7FC015F12F33E161002BADD4 /* MFANCGUtil.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FC015F02F33E161002BADD4 /* MFANCGUtil.m */; };
 		7FC015F82F33ECDA002BADD4 /* MarqueeLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FC015F72F33ECDA002BADD4 /* MarqueeLabel.m */; };
+		7FCC6AD32F95704300E6F64D /* MFANWarn.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FCC6AD22F95704300E6F64D /* MFANWarn.m */; };
 		7FCF3DE52F3E38B8001E34E6 /* MFANFileWriter.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7FCF3DE42F3E38B8001E34E6 /* MFANFileWriter.mm */; };
 		7FD578002F1EF853002187FA /* cthread.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7FD577FF2F1EF853002187FA /* cthread.cc */; };
 		7FE4340A2F4DC34E000BC7A4 /* MFANIconButton.m in Sources */ = {isa = PBXBuildFile; fileRef = 7FE434092F4DC34E000BC7A4 /* MFANIconButton.m */; };
@@ -65,6 +66,8 @@
 		7FC015F02F33E161002BADD4 /* MFANCGUtil.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MFANCGUtil.m; path = ../MusicFan/MusicFan/MFANCGUtil.m; sourceTree = SOURCE_ROOT; };
 		7FC015F62F33ECDA002BADD4 /* MarqueeLabel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MarqueeLabel.h; path = ../MusicFan/MusicFan/MarqueeLabel.h; sourceTree = SOURCE_ROOT; };
 		7FC015F72F33ECDA002BADD4 /* MarqueeLabel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MarqueeLabel.m; path = ../MusicFan/MusicFan/MarqueeLabel.m; sourceTree = SOURCE_ROOT; };
+		7FCC6AD12F95704300E6F64D /* MFANWarn.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANWarn.h; path = ../MusicFan/MusicFan/MFANWarn.h; sourceTree = SOURCE_ROOT; };
+		7FCC6AD22F95704300E6F64D /* MFANWarn.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MFANWarn.m; path = ../MusicFan/MusicFan/MFANWarn.m; sourceTree = SOURCE_ROOT; };
 		7FCF3DE32F3E38B8001E34E6 /* MFANFileWriter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANFileWriter.h; path = ../MusicFan/MusicFan/MFANFileWriter.h; sourceTree = SOURCE_ROOT; };
 		7FCF3DE42F3E38B8001E34E6 /* MFANFileWriter.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = MFANFileWriter.mm; path = ../MusicFan/MusicFan/MFANFileWriter.mm; sourceTree = SOURCE_ROOT; };
 		7FD577FF2F1EF853002187FA /* cthread.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = cthread.cc; path = ../rpc/cthread.cc; sourceTree = SOURCE_ROOT; };
@@ -110,6 +113,8 @@
 		7F1E14B82ED6A80D00D08908 = {
 			isa = PBXGroup;
 			children = (
+				7FCC6AD12F95704300E6F64D /* MFANWarn.h */,
+				7FCC6AD22F95704300E6F64D /* MFANWarn.m */,
 				7FE434082F4DC34E000BC7A4 /* MFANIconButton.h */,
 				7FE434092F4DC34E000BC7A4 /* MFANIconButton.m */,
 				7FCF3DE32F3E38B8001E34E6 /* MFANFileWriter.h */,
@@ -257,6 +262,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7FC015F82F33ECDA002BADD4 /* MarqueeLabel.m in Sources */,
+				7FCC6AD32F95704300E6F64D /* MFANWarn.m in Sources */,
 				7F8417FB2F1EF40E00B497E8 /* bufsocket.cc in Sources */,
 				7FAB24522F3AA22500D99D4A /* xgml.cc in Sources */,
 				7FAB244C2F3AA19200D99D4A /* radioscan.cc in Sources */,

@@ -251,12 +251,15 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
     CGFloat defaultSat = 0.7;
     CGRect frame;
 
-    frame = viewCont.view.frame;
+    frame = viewCont.activeFrame;
 
     self = [super initWithFrame:frame];
     if (self) {
-        // Initialization code
+        // Initialization code.  Frame is now 0-based so we can use it to layout
+	// children relative to the RadioHistory view.
 	self.frame = frame;
+	frame.origin.y = 0;
+
 	NSLog(@"radiohistory %fx%f@%f.%f",
 	      frame.size.width, frame.size.height, frame.origin.x, frame.origin.y);
 	_viewCont = viewCont;
@@ -364,6 +367,8 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 
 	/* and read in the file */
 	[self restoreEdits];
+
+	[self setBackgroundColor: [UIColor whiteColor]];
     }
     return self;
 }

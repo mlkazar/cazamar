@@ -29,14 +29,20 @@
 - (ManualStation *) initWithViewCont: (ViewController *) vc {
     // we get the frame from the view controller
     _vc = vc;
-    self.frame = vc.view.frame;
-    CGRect frame = vc.view.frame;
+    self.frame = vc.activeFrame;
+    CGRect frame = vc.activeFrame;
     CGRect boxFrame;
     CGRect buttonFrame;
     CGRect labelFrame;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
+	// since all the children are relative to ManualStation view.
+	float topIndent = 2.0;
+
+	frame.origin.y += topIndent;
+	frame.size.height -= topIndent;
+
 	float boxHeight = frame.size.height * 0.06;
 	float boxWidth = frame.size.width * 0.65;
 	float labelHeight = boxHeight;
@@ -47,7 +53,6 @@
 
 	labelFrame = frame;
 	labelFrame.origin.x = indent;
-	labelFrame.origin.y += vc.topMargin;
 	labelFrame.size.width = labelWidth;
 	labelFrame.size.height = labelHeight;
 
@@ -59,7 +64,6 @@
 	[self addSubview: _nameLabel];
 
 	boxFrame = frame;
-	boxFrame.origin.y += vc.topMargin;
 	boxFrame.origin.x += indent + labelWidth;
 	boxFrame.size.width = boxWidth;
 	boxFrame.size.height = boxHeight;

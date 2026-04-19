@@ -45,16 +45,18 @@
     CGFloat nextButtonY;
     CGRect frame;
 
-    self.frame = vc.view.frame;
-    frame = vc.view.frame;
+    self.frame = vc.activeFrame;
+    frame = vc.activeFrame;
 
     self = [super initWithFrame:frame];
     if (self != nil) {
-	frame = vc.view.frame;
+	// from here down, this is relative to usable area of the screen
+	frame.origin.y = 0;
+
         // Initialization code
 	_vc = vc;
 
-	_appVMargin = vc.topMargin;
+	_appVMargin = 2.0;
 	_appHMargin = 2.0;
 
 	_appFrame = frame;
@@ -115,7 +117,7 @@
 
 	[_webView loadRequest: urlRequest];
 
-	[self setBackgroundColor: [UIColor clearColor]];
+	[self setBackgroundColor: [UIColor whiteColor]];
 
 	// easier than using return callbacks, which we can avoid
 	// because we're not returning any useful data from the help

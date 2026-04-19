@@ -2,6 +2,7 @@
 #import "MFANCGUtil.h"
 #import "MFANCoreButton.h"
 #import "MFANIconButton.h"
+#import "MFANWarn.h"
 #import "SignView.h"
 #import "ViewController.h"
 #import "MarqueeLabel.h"
@@ -70,8 +71,8 @@
     CGRect labelFrame;
     CGRect buttonFrame;
 
-    self.frame = vc.view.frame;
-    frame = vc.view.frame;
+    self.frame = vc.activeFrame;
+    frame = vc.activeFrame;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
@@ -92,7 +93,7 @@
 					      green: 0.9
 					       blue: 0.9
 					      alpha: 1.0];
-	UIColor *valueColor = [UIColor whiteColor];
+	UIColor *valueColor = labelColor;
 
 	self.backgroundColor = screenColor;
 
@@ -119,6 +120,8 @@
 	_stationNameLabel.text = @"Station name";
 	_stationNameLabel.textColor = [UIColor blackColor];
 	_stationNameLabel.textAlignment = NSTextAlignmentLeft;
+	//_stationNameLabel.layer.borderWidth = 1.0;
+	//_stationNameLabel.layer.borderColor = [UIColor blackColor].CGColor;
 	[self addSubview: _stationNameLabel];
 
 	boxFrame = frame;
@@ -132,6 +135,8 @@
 	[_stationNameView setTextColor: textColor];
 	[_stationNameView setBackgroundColor: valueColor];
 	[_stationNameView setText: _station.stationName];
+	_stationNameView.layer.borderWidth = 1.0;
+	_stationNameView.layer.borderColor = [UIColor blackColor].CGColor;
 	[self addSubview: _stationNameView];
 
 	
@@ -141,6 +146,8 @@
 	_speedAndTypeLabel.text = @"Stream rate";
 	_speedAndTypeLabel.textColor = [UIColor blackColor];
 	_speedAndTypeLabel.textAlignment = NSTextAlignmentLeft;
+	//_speedAndTypeLabel.layer.borderWidth = 1.0;
+	//_speedAndTypeLabel.layer.borderColor = [UIColor blackColor].CGColor;
 	[self addSubview: _speedAndTypeLabel];
 
 	/* add second text box */
@@ -148,6 +155,8 @@
 	_speedAndTypeView = [[UILabel alloc] initWithFrame: boxFrame];
 	[_speedAndTypeView setTextColor: textColor];
 	[_speedAndTypeView setBackgroundColor: valueColor];
+	_speedAndTypeView.layer.borderWidth = 1.0;
+	_speedAndTypeLabel.layer.borderColor = [UIColor blackColor].CGColor;
 	NSString *satString;
 	if (_player == nil)
 	    satString = @"No data";
@@ -165,6 +174,8 @@
 	_publicUrlLabel.text = @"Public URL";
 	_publicUrlLabel.textColor = [UIColor blackColor];
 	_publicUrlLabel.textAlignment = NSTextAlignmentLeft;
+	//_publicUrlLabel.layer.borderWidth = 1.0;
+	//_publicUrlLabel.layer.borderColor = [UIColor blackColor].CGColor;
 	[self addSubview: _publicUrlLabel];
 
 	boxFrame.origin.y += boxHeight;
@@ -172,6 +183,8 @@
 	[_publicUrlView setTextColor: textColor];
 	[_publicUrlView setBackgroundColor: valueColor];
 	[_publicUrlView setText: [_player getPublicUrl]];
+	_publicUrlView.layer.borderWidth = 1.0;
+	_publicUrlView.layer.borderColor = [UIColor blackColor].CGColor;
 	[self addSubview: _publicUrlView];
 
 	// Align each button in the full width, assuming we remove
@@ -186,8 +199,8 @@
 	recordButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 						       title: @"Border"
 						       color: [UIColor blackColor]
-					     backgroundColor: [UIColor whiteColor]];
-	[recordButton setFillColor: [UIColor clearColor]];
+					     backgroundColor: labelColor];
+	[recordButton setFillColor: labelColor];
 	if (_station.isRecording)
 	    [recordButton setClearText: @"No stream in background"];
 	else
@@ -200,8 +213,8 @@
 	recordButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
 						       title: @"Border"
 						       color: [UIColor blackColor]
-					     backgroundColor: [UIColor whiteColor]];
-	[recordButton setFillColor: [UIColor clearColor]];
+					     backgroundColor: labelColor];
+	[recordButton setFillColor: labelColor];
 	if ([_signView.history isHighlighted])
 	    [recordButton setClearText: @"Unhighlight"];
 	else
@@ -210,7 +223,7 @@
 		     withAction: @selector(highlightPressed:withData:)];
 	[self addSubview: recordButton];
 
-	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
+	buttonFrame.origin.y = frame.size.height - labelHeight;
 	buttonFrame.origin.x = frame.size.width/2 - okButtonWidth/2;
 	buttonFrame.size.width = okButtonWidth;
 	_doneButton = [[MFANIconButton alloc] initWithFrame: buttonFrame
@@ -253,23 +266,41 @@
     [_speedAndTypeView setText: satString];
 
     // have the status disappear on its own after a minute
-    if (osp_time_ms() - _startTimeMs > 10000) {
+    if (osp_time_ms() - _startTimeMs > 60000) {
 	[self doNotify];
     }
 }
 
 - (void) highlightPressed: (id) junk1 withData:(id) junk2 {
+    NSString *notice;
+
     NSLog(@"highlight pressed");
+
     [_signView.history toggleHighlight];
+
     [self doNotify];
+
+    if ([_signView.history isHighlighted]) {
+	notice = @"Hightlighted last song for later";
+    } else {
+	notice = @"Removed highlighting for current song";
+    }
+
+    [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 2.0];
 }
 
 - (void) recordPressed: (id) junk1 withData:(id) junk2 {
+    NSString *notice;
     NSLog(@"record pressed");
-    if (_station.isRecording)
+    if (_station.isRecording) {
 	[_signView stopRecording];
-    else
+	notice = @"Will stop recording upon switching stations";
+    } else {
 	[_signView startRecording];
+	notice = @"Will keep recording even after switching stations";
+    }
+
+    [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 2.0];
 
     [self doNotify];
 }
