@@ -131,11 +131,9 @@
 		       withAction: @selector(cancelPressed:withData:)];
 	[self addSubview: _cancelButton];
 
+	[vc pushTopView: self];
 
-	[self setBackgroundColor: [UIColor colorWithHue:0.0
-					   saturation: 0.0
-					   brightness: 0.0
-					   alpha: 0.6]];
+	[self setBackgroundColor: [UIColor whiteColor]];
     }
 
     return self;

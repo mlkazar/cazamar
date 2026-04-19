@@ -957,7 +957,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 					    initWithViewCont: self->_vc];
 	    [self removeRecognizers];
 	    [self->_manualStation setCallback: self withSel: @selector(manualDone:)];
-	    [self->_vc pushTopView: self->_manualStation];
 	}];
     [alert addAction: action];
 
@@ -1092,7 +1091,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 						      station: station
 						     viewCont: _vc];
 	    [_editStation setCallback: self withSel: @selector(editDone:)];
-	    [_vc pushTopView: _editStation];
 	}
     }
 }

@@ -15,6 +15,7 @@
     ViewController *_vc;
     UISearchBar *_searchBar;
     UITableView *_stationTable;
+    UIView *_backgroundView;
     float _rowHeight;
     UIImage *_genericImage;
     UIImage *_scaledGenericImage;
@@ -72,29 +73,25 @@
     self = [super initWithFrame: frame];
     if (self != nil) {
 	// size for search bar and bottom buttons
-	float verticalViewSize = frame.size.height * 0.1;
+	float verticalViewSize = vc.activeFrame.size.height * 0.1;
 	float searchBarWidthPct = 0.6;
 
 	_vc = vc;
+
+	_backgroundView = [[UIView alloc] initWithFrame: vc.activeFrame];
+	[_backgroundView setBackgroundColor: [UIColor whiteColor]];
+	[self addSubview: _backgroundView];
+
 	_signStations = [[NSMutableArray alloc] init];
-	searchFrame = frame;
-	searchFrame.size.width = frame.size.width * searchBarWidthPct;
-	searchFrame.origin.y = vc.topMargin;
+	searchFrame = vc.activeFrame;
+	searchFrame.size.width = vc.activeFrame.size.width * searchBarWidthPct;
+	searchFrame.origin.y = 0;
 	searchFrame.size.height = verticalViewSize;
-
-	NSLog(@"FRAME searchstation %f x %f at %f.%f",
-	      self.frame.size.width, self.frame.size.height,
-	      self.frame.origin.x, self.frame.origin.y);
-
-	NSLog(@"FRAME searchframe %f x %f at %f.%f",
-	      frame.size.width, frame.size.height, frame.origin.x, frame.origin.y);
 
 	CGRect textFrame;
 	textFrame = searchFrame;
 	textFrame.origin.x = searchFrame.size.width;
 	textFrame.size.width = frame.size.width * (1 - searchBarWidthPct);
-
-	self.backgroundColor = vc.backgroundColor;
 
 	// for UITableView
 	_rowHeight = 72.0;
@@ -107,28 +104,28 @@
 	_searchBar.delegate = self;
 	_searchBar.searchBarStyle = UISearchBarStyleMinimal;
 	_searchBar.showsCancelButton = YES;
-	[self addSubview: _searchBar];
+	[_backgroundView addSubview: _searchBar];
 	_searchBar. searchTextField.backgroundColor = [UIColor colorWithRed: 0.7
 								     green: 0.7
 								      blue: 0.7
 								     alpha: 1.0];
-	_searchBar.barTintColor = vc.backgroundColor;
+	_searchBar.barTintColor = [UIColor whiteColor];
 
 	_pickerView = [[UIPickerView alloc] initWithFrame: textFrame];
-	[self addSubview: _pickerView];
+	[_backgroundView addSubview: _pickerView];
 	_pickerView.delegate = self;
 	_pickerView.dataSource = self;
-	_pickerView.backgroundColor = vc.backgroundColor;
+	_pickerView.backgroundColor = [UIColor whiteColor];
 	[_pickerView setValue: [UIColor blackColor] forKey: @"textColor"];
 
 	_pickerRow = 0;
 
 	tableFrame.origin.x = 0;
 	tableFrame.origin.y = searchFrame.origin.y + searchFrame.size.height;
-	tableFrame.size.width = frame.size.width;
+	tableFrame.size.width = vc.activeFrame.size.width;
 	// use the rest of the vertical space, but reserve one
 	// verticalViewSize for buttons at the bottom.
-	tableFrame.size.height = (frame.size.height - tableFrame.origin.y
+	tableFrame.size.height = (vc.activeFrame.size.height - tableFrame.origin.y
 				  - verticalViewSize);
 
 	_genericImage = [UIImage imageNamed: @"radio-icon.png"];
@@ -144,21 +141,20 @@
 	_stationTable = [[UITableView alloc] initWithFrame: tableFrame
 						     style:UITableViewStylePlain];
 	[_stationTable setAllowsMultipleSelection: YES];
-	[self addSubview: _stationTable];
 	[_stationTable setDataSource: self];
 	[_stationTable setDelegate: self];
 	[_stationTable setRowHeight: _rowHeight];
 	[_stationTable setSectionIndexMinimumDisplayRowCount: 20];
-	[_stationTable setBackgroundColor: vc.backgroundColor];
+	[_stationTable setBackgroundColor: [UIColor whiteColor]];
 	_stationTable.sectionIndexBackgroundColor = [UIColor clearColor];
 	[_stationTable setSeparatorStyle: UITableViewCellSeparatorStyleNone];
-	[self addSubview: _stationTable];
+	[_backgroundView addSubview: _stationTable];
 
 	// layout cancel and done buttons
 	CGRect cancelFrame;
 	CGRect doneFrame;
 	CGRect helpFrame;
-	cancelFrame.origin.y = frame.size.height - verticalViewSize;
+	cancelFrame.origin.y = vc.activeFrame.size.height - verticalViewSize;
 	cancelFrame.size.height = verticalViewSize;
 	cancelFrame.size.width = verticalViewSize; // make it square
 	// center button 1/3 of way across
@@ -174,10 +170,10 @@
 				     file: @"icon-cancel.png"];
         [_cancelButton addCallback: self
 		      withAction: @selector(cancelPressed:withData:)];
-        [self addSubview: _cancelButton];
+        [_backgroundView addSubview: _cancelButton];
 
 	helpFrame = cancelFrame;
-	helpFrame.origin.x = frame.size.width*(2.0/4.0) - verticalViewSize/2;
+	helpFrame.origin.x = vc.activeFrame.size.width*(2.0/4.0) - verticalViewSize/2;
 	_helpButton = [[MFANCoreButton alloc]
 			      initWithFrame: helpFrame
 				      title: @"Circle"
@@ -185,10 +181,10 @@
 			    backgroundColor: [UIColor clearColor]];
 	[_helpButton addCallback: self withAction:@selector(helpPressed:withData:)];
 	[_helpButton setClearText: @"?"];
-	[self addSubview: _helpButton];
+	[_backgroundView addSubview: _helpButton];
 
 	doneFrame = cancelFrame;
-	doneFrame.origin.x = frame.size.width*(3.0/4.0) - verticalViewSize/2;
+	doneFrame.origin.x = vc.activeFrame.size.width*(3.0/4.0) - verticalViewSize/2;
 
         _doneButton = [[MFANIconButton alloc]
 			  initWithFrame: doneFrame
@@ -200,11 +196,13 @@
 				   file: @"icon-done.png"];
         [_doneButton addCallback: self
 		      withAction: @selector(donePressed:withData:)];
-        [self addSubview: _doneButton];
+        [_backgroundView addSubview: _doneButton];
 
 	_canceled = NO;
 
 	[vc pushTopView: self];
+
+	[self setBackgroundColor: [UIColor blackColor]];
     }
 
     return self;

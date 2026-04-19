@@ -13,6 +13,7 @@
     float _topMargin;
     float _bottomMargin;
     UIColor *_backgroundColor;
+    CGRect _activeFrame;
 }
 
 - (void)viewDidLoad {
@@ -28,13 +29,15 @@
 
     self.view = [[TopView alloc] initWithFrame: rect ViewCont: self];
 
-    _backgroundColor = [UIColor colorWithRed: 0.8
-				       green:0.8
-					blue:0.8
-				       alpha:1.0];
+    _activeFrame = rect;
+    _activeFrame.origin.y += _topMargin;
+    _activeFrame.size.height -= _topMargin + _bottomMargin;
 
+#if 0
     // Do any additional setup after loading the view.
+    _backgroundColor = [UIColor blackColor];
     self.view.backgroundColor = _backgroundColor;
+#endif
 }
 
 - (void) pushTopView: (UIView<TopViewInt> *) view {

@@ -230,6 +230,8 @@
 
 	[_vc pushTopView: self];
 
+	[self setBackgroundColor: [UIColor whiteColor]];
+
 	_timer = [NSTimer scheduledTimerWithTimeInterval: 1.0
 						  target: self
 						selector: @selector(updateStats:)

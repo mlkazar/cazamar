@@ -41,6 +41,9 @@
     CGRect buttonFrame;
     CGRect labelFrame;
 
+    self.frame = vc.view.frame;
+    frame = vc.view.frame;
+
     self = [super initWithFrame: frame];
     if (self != nil) {
 	float boxHeight = frame.size.height * 0.06;
@@ -186,16 +189,9 @@
 	[self addSubview: _cancelButton];
 
 
-	[self setBackgroundColor: [UIColor colorWithRed: 0.6
-						  green: 0.6
-						   blue: 0.6
-						  alpha: 0.6]];
-#if 0
-	[self setBackgroundColor: [UIColor colorWithHue:0.0
-					   saturation: 0.0
-					   brightness: 0.0
-					   alpha: 0.6]];
-#endif
+	[vc pushTopView: self];
+
+	[self setBackgroundColor: [UIColor whiteColor]];
     }
 
     return self;

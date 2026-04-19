@@ -18,6 +18,7 @@
 @property float topMargin;
 @property float bottomMargin;
 @property UIColor *backgroundColor;
+@property CGRect activeFrame;
 
 - (void) pushTopView: (UIView<TopViewInt> *) view;
 
