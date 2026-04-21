@@ -1,3 +1,4 @@
+#import "BufferSlider.h"
 #import "TopView.h"
 #import "MFANCoreButton.h"
 #import "MFANIconButton.h"
@@ -15,6 +16,7 @@
     RadioHistory *_history;
     ViewController *_vc;
     NSMutableDictionary *_nowPlayingInfo;
+    BufferSlider *_sliderView;
 }
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc {
@@ -38,7 +40,11 @@
 	float usableHeight = screenFrame.size.height;
 
 	signFrame = screenFrame;
-	signFrame.size.height = usableHeight * 0.85;
+	signFrame.size.height = usableHeight * 0.80;
+
+	// remainder from signFrame height, divided by # of bars
+	float barHeight = (1.0-0.80) / 4;
+
 	SignView *signView = [[SignView alloc] initWithFrame: signFrame ViewCont: vc];
 	_signView = signView;
 	[self addSubview: signView];
@@ -52,7 +58,7 @@
 
 	CGRect startFrame = screenFrame;
 	startFrame.origin.y = signFrame.size.height;
-	startFrame.size.height = usableHeight * .0466;
+	startFrame.size.height = usableHeight * barHeight;
 	MFANCoreButton *_startButton= [[MFANCoreButton alloc]
 					  initWithFrame: startFrame
 						  title: @"None"
@@ -69,7 +75,7 @@
 
 	CGRect marqueeFrame = screenFrame;
 	marqueeFrame.origin.y = startFrame.origin.y + startFrame.size.height;
-	marqueeFrame.size.height = usableHeight * 0.0466;
+	marqueeFrame.size.height = usableHeight * barHeight;
 	MarqueeLabel *marquee = [[MarqueeLabel alloc] initWithFrame: marqueeFrame];
 	_marquee = marquee;
 	[marquee setTextColor: [UIColor blackColor]];
@@ -82,8 +88,18 @@
 	// and put something there.
 	[marquee setNeedsDisplay];
 
-	CGRect buttonFrame = marqueeFrame;
-	buttonFrame.origin.y += usableHeight * 0.0466;
+	CGRect sliderFrame;
+	sliderFrame = marqueeFrame;
+	sliderFrame.origin.y = marqueeFrame.origin.y + marqueeFrame.size.height;
+	sliderFrame.size.height = usableHeight * barHeight;
+
+	_sliderView = [[BufferSlider alloc] initWithFrame: (CGRect) sliderFrame
+						 viewCont: (ViewController *) vc
+						 signView: (SignView *) signView];
+	[self addSubview: _sliderView];
+
+	CGRect buttonFrame = sliderFrame;
+	buttonFrame.origin.y += usableHeight * barHeight;
 
 	float smallButtonWidth = buttonFrame.size.height;
 	float largeButtonWidth = 2*buttonFrame.size.height;

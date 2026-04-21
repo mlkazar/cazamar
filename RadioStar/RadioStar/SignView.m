@@ -1310,6 +1310,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) seek: (float) distance relative: (bool) isRelative {
     uint64_t seekTargetMs = (uint64_t) (distance * 1000);
 
+    if (_stream == nil)
+	return;
+
     if (_player != nil) {
 	if (isRelative)
 	    seekTargetMs = [_player getSeekTarget:distance];
@@ -1339,6 +1342,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (float) getCurrentBufferTimestamp {
+    if (_player == nil)
+	return 0.0;
+
     uint64_t  currentTimestamp = [_player getSeekTarget: 0.0];
     return (currentTimestamp / 1000.0);
 }

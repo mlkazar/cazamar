@@ -280,7 +280,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     /* push the buffer for reuse */
     pthread_mutex_lock(&_playerMutex);
     aqp->_queuedPackets -= bufRefp->mPacketDescriptionCount;
-    NSLog(@"==> buffer %p returned with %d packets, %lld still queued",
+    NSLog(@"buffer %p returned with %d packets, %lld still queued",
 	  bufRefp, bufRefp->mPacketDescriptionCount, aqp->_queuedPackets);
     if (_showIo) {
 	NSLog(@"buffer with %d packets returned, leaving %lld in audio queue",
@@ -730,7 +730,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 		    NSLog(@"StreamPlayer out of stream data, enqueued %d bytes avail=%d",
 			  bytesCopied, _availCount);
 		}
-		NSLog(@"==> buffer %p(%p) queued with %d packets, %lld now queued",
+		NSLog(@"buffer %p(%p) queued with %d packets, %lld now queued",
 		      bufRefp, bufRefp->mAudioData,
 		      bufRefp->mPacketDescriptionCount,
 		      _queuedPackets + packetsCopied);
@@ -841,7 +841,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 		}
 
 		pthread_mutex_lock(&_playerMutex);
-		NSLog(@"==> buffer %p(%p) queued with %d packets, %lld now queued",
+		NSLog(@"buffer %p(%p) queued with %d packets, %lld now queued",
 		      bufRefp, bufRefp->mAudioData,
 		      bufRefp->mPacketDescriptionCount,
 		      _queuedPackets + packetsCopied);
@@ -1021,7 +1021,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
     seekTarget = (int64_t) (nextRecordMs + 1000*offset - 1000*queuedSecs);
 
-    NSLog(@"==>seek target %lld queuedSecs=%f nextRecordMs=%f",
+    NSLog(@"seek target %lld queuedSecs=%f nextRecordMs=%f",
 	  seekTarget, queuedSecs, nextRecordMs);
 
     return (seekTarget < 0? 0 : seekTarget);
