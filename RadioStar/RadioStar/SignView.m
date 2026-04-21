@@ -1307,10 +1307,12 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     NSLog(@"shutdown of mfanaqstream done");
 }
 
-- (void) seek: (float) distance {
-    uint64_t seekTargetMs = 0;
+- (void) seek: (float) distance relative: (bool) isRelative {
+    uint64_t seekTargetMs = (uint64_t) (distance * 1000);
+
     if (_player != nil) {
-	seekTargetMs = [_player getSeekTarget:distance];
+	if (isRelative)
+	    seekTargetMs = [_player getSeekTarget:distance];
 	[_player shutdown];
 	_player = nil;
     }
@@ -1334,6 +1336,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (MFANStreamPlayer *) getCurrentPlayer {
     return _player;
+}
+
+- (float) getCurrentBufferTimestamp {
+    uint64_t  currentTimestamp = [_player getSeekTarget: 0.0];
+    return (currentTimestamp / 1000.0);
 }
 
 - (MFANAqStream *) getCurrentStream {
@@ -1364,6 +1371,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_playingStation.isRecording = false;
     }
     [self animationOn];
+}
+
+- (float) getStationBufferDuration: (SignStation *) station {
+    MFANAqStreamBuffer *buffer = station.recordingBuffer;
+    return (buffer.lastPacketEndMs / 1000.0);
 }
 
 - (void) setRadioHistory: (RadioHistory *) history {

@@ -1387,11 +1387,11 @@ void
 RadioScanQuery::addWord(std::string newWord) {
     const char *tp = newWord.c_str();
     if (strncmp(tp, "c:", 2) == 0) {
-        _countryList.push_back(newWord);
+        _countryList.push_back(newWord.substr(2));
     } else if (strncmp(tp, "t:", 2) == 0) {
-        _cityList.push_back(newWord);
+        _cityList.push_back(newWord.substr(2));
     } else if (strncmp(tp, "g:", 2) == 0) {
-        _genreList.push_back(newWord);
+        _genreList.push_back(newWord.substr(2));
     } else {
         _nameList.push_back(newWord);
     }

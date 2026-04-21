@@ -7,6 +7,13 @@
 #import "ViewController.h"
 #import "SignView.h"
 
+@interface BufferSlider : UIView
+- (BufferSlider *) initWithFrame: (CGRect) frame
+			viewCont: (ViewController *) vc
+			signView: (SignView *) signView;
+- (void) shutdown;
+@end
+
 @interface PopStatus : UIView<TopViewInt>
 
 - (PopStatus *) initWithFrame: (CGRect) frame
@@ -14,6 +21,5 @@
 		     signView: (SignView *) signView;
 
 - (void) setCallback: (id) obj withSel: (SEL) sel;
-
 @end
 

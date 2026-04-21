@@ -9,6 +9,117 @@
 
 #include "osp.h"
 
+@implementation BufferSlider {
+    UISlider *_slider;
+    UILabel *_sliderLabel;
+    UILabel *_middleLabel;
+    uint64_t _lastMusicSampleTime;
+    ViewController *_vc;
+    SignView *_signView;
+    SignStation *_station;
+    NSTimer *_updateTimer;
+}
+- (BufferSlider *) initWithFrame: (CGRect) frame
+			viewCont: (ViewController *) vc
+			signView: (SignView *) signView {
+    float currentPosition;
+    float currentEndPosition;
+    CGRect sliderFrame;
+    CGRect labelFrame;
+
+    self = [super initWithFrame: frame];
+    if (self != nil) {
+	_signView = signView;
+	_vc = vc;
+	_station = [_signView getCurrentStation];
+
+	currentPosition = [_signView getCurrentBufferTimestamp];
+
+	sliderFrame = frame;
+	sliderFrame.origin.y = 0;
+	sliderFrame.size.height = frame.size.height / 2;
+
+	// 10 - 80 - 10 split
+	sliderFrame.origin.x = frame.size.width * 0.1;
+	sliderFrame.size.width = frame.size.width * 0.8;
+
+	_slider = [[UISlider alloc] initWithFrame: sliderFrame];
+	_slider.minimumValue = 0;
+	_slider.continuous = true;
+	_lastMusicSampleTime = 0;
+	[_slider addTarget:self
+		    action:@selector(sliderValue:)
+	  forControlEvents:UIControlEventValueChanged];
+	[self addSubview: _slider];
+
+	labelFrame.origin.x = frame.size.width * 0.7;
+	labelFrame.origin.y = frame.size.height / 2;
+	labelFrame.size.width = frame.size.width * 0.25;
+	labelFrame.size.height = frame.size.height / 2;
+
+	currentEndPosition = [_signView getStationBufferDuration: _station];
+
+	_sliderLabel = [[UILabel alloc] initWithFrame:labelFrame];
+	_sliderLabel.text = [NSString stringWithFormat:@"%.f secs",
+				      currentEndPosition];
+	[_sliderLabel setTextColor: [UIColor blackColor]];
+	[self addSubview: _sliderLabel];
+
+	labelFrame.origin.x = frame.size.width * 0.45;
+	_middleLabel = [[UILabel alloc] initWithFrame:labelFrame];
+	_middleLabel.text = [NSString stringWithFormat:@"%.f secs",
+				      currentPosition];
+	[_middleLabel setTextColor: [UIColor blackColor]];
+	[self addSubview: _middleLabel];
+
+	_slider.maximumValue = currentEndPosition;
+	_slider.value = currentPosition;
+
+	_updateTimer = [NSTimer scheduledTimerWithTimeInterval: 0.6
+							target: self
+						      selector: @selector(updateStats:)
+						      userInfo: nil
+						       repeats: YES];
+    }
+
+    return self;
+}
+
+- (void) updateStats: (id) junk {
+    float currentPosition;
+    float currentEndPosition;
+
+    _station = [_signView getCurrentStation];
+    currentPosition = [_signView getCurrentBufferTimestamp];
+    currentEndPosition = [_signView getStationBufferDuration: _station];
+
+    _sliderLabel.text = [NSString stringWithFormat: @"%.f secs", currentEndPosition];
+    _middleLabel.text = [NSString stringWithFormat: @"%.f secs", currentPosition];
+}
+
+- (void) shutdown {
+    // clear out back references
+    [_updateTimer invalidate];
+    _updateTimer = nil;
+
+    _vc = nil;
+    _signView = nil;
+    _station = nil;
+}
+
+- (void) sliderValue:(UISlider *) slider {
+    float val = slider.value;
+    uint64_t now = osp_time_ms();
+
+    NSLog(@"slider value %f at %lld ms", val, now);
+
+    if (now - _lastMusicSampleTime > 200) {
+	[_signView seek: val relative: false];
+    }
+}
+
+@end
+
 @implementation PopStatus {
     ViewController *_vc;
     MFANIconButton *_doneButton;
@@ -16,6 +127,7 @@
     MFANAqStream *_stream;
     SignStation *_station;
     SignView *_signView;
+    BufferSlider *_seekSlider;
 
     uint64_t _startTimeMs;
 
@@ -135,8 +247,8 @@
 	[_stationNameView setTextColor: textColor];
 	[_stationNameView setBackgroundColor: valueColor];
 	[_stationNameView setText: _station.stationName];
-	_stationNameView.layer.borderWidth = 1.0;
-	_stationNameView.layer.borderColor = [UIColor blackColor].CGColor;
+	//_stationNameView.layer.borderWidth = 1.0;
+	//_stationNameView.layer.borderColor = [UIColor blackColor].CGColor;
 	[self addSubview: _stationNameView];
 
 	
@@ -155,8 +267,8 @@
 	_speedAndTypeView = [[UILabel alloc] initWithFrame: boxFrame];
 	[_speedAndTypeView setTextColor: textColor];
 	[_speedAndTypeView setBackgroundColor: valueColor];
-	_speedAndTypeView.layer.borderWidth = 1.0;
-	_speedAndTypeLabel.layer.borderColor = [UIColor blackColor].CGColor;
+	//_speedAndTypeView.layer.borderWidth = 1.0;
+	//_speedAndTypeLabel.layer.borderColor = [UIColor blackColor].CGColor;
 	NSString *satString;
 	if (_player == nil)
 	    satString = @"No data";
@@ -183,8 +295,8 @@
 	[_publicUrlView setTextColor: textColor];
 	[_publicUrlView setBackgroundColor: valueColor];
 	[_publicUrlView setText: [_player getPublicUrl]];
-	_publicUrlView.layer.borderWidth = 1.0;
-	_publicUrlView.layer.borderColor = [UIColor blackColor].CGColor;
+	//_publicUrlView.layer.borderWidth = 1.0;
+	//_publicUrlView.layer.borderColor = [UIColor blackColor].CGColor;
 	[self addSubview: _publicUrlView];
 
 	// Align each button in the full width, assuming we remove
@@ -223,6 +335,13 @@
 		     withAction: @selector(highlightPressed:withData:)];
 	[self addSubview: recordButton];
 
+	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
+	_seekSlider = [[BufferSlider alloc] initWithFrame: buttonFrame
+						 viewCont: _vc
+						 signView: _signView];
+	[self addSubview: _seekSlider];
+
+
 	buttonFrame.origin.y = frame.size.height - labelHeight;
 	buttonFrame.origin.x = frame.size.width/2 - okButtonWidth/2;
 	buttonFrame.size.width = okButtonWidth;
@@ -235,7 +354,6 @@
 					      file: @"icon-done.png"];
 	[self addSubview: _doneButton];
 	[_doneButton addCallback: self withAction:@selector(donePressed:)];
-
 
 	_startTimeMs = osp_time_ms();
 
@@ -317,6 +435,8 @@
 }
 
 - (void) deactivateTopView {
+    [_seekSlider shutdown];
+    _seekSlider = nil;
     return;
 }
 

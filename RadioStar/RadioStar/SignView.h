@@ -39,9 +39,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (SignStation *) getCurrentStation;
 
+- (float) getCurrentBufferTimestamp;
+
 - (void) setRadioHistory: (RadioHistory *) history;
 
-- (void) seek: (float) distance;
+- (void) seek: (float) distance relative: (bool) isRelative;
 
 - (void) stopRadioResetStream: (BOOL) doReset;
 
@@ -56,6 +58,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void) startRecording;
 
 - (void) stopRadioResumeAtEnd;
+
+- (float) getStationBufferDuration: (SignStation *) station;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -12,31 +12,94 @@
   <body>
     <h1>RadioStar</h1>
     <p>
-      <a href="#Playing">Playing Stations</a><br>
+      <a href="#Basic">Basic Operation</a><br>
       <a href="#AddingStations">Adding and Editing Stations</a><br>
-      <a href="#Settings">Settings</a><br>
+      <a href="#MenuOps">Menu operations</a><br>
+      <a href="#Acks">Acknowledgements</a><br>
       <a href="#Contact">Contact us</a><br>
     </p>
     <p>
       The RadioStar player lets you search for and play Internet Radio
       stations.  When playing a station, RadioStar remembers the last
-      30 minutes (by default) played on that station, and you can use
+      120 minutes (by default) played on that station, and you can use
       the back ("-20") and forward ("+20") buttons to navigate within
-      the already streamed music.
+      the already streamed music by adding or subtracting 20 seconds
+      from the current playing location, or you can use the slider
+      instead.
     </p>
     <p>
-      By default, the downloaded cotents of a station are discarded
-      when you select a different station to play.  However, if you
-      select "Stream in background" option from the player options
-      while playing a station, RadioStar will continue to stream music
-      while you are playing other stations.
+      By default, the downloading of a station stops when you select a
+      different station to play, and resumes when you switch back.
+      However, if you select "Stream in background" option from the
+      player options while playing a station, RadioStar will continue
+      to stream music while you are playing other stations.  When you
+      switch between stations, RadioStar remembers where in the stream
+      you were listening, and resumes from that point when you switch
+      back to that station.
     </p>
-    <a id="Playing"><h2><Playing Music></h2></a>
-    <a id="Settings"><h2>Settings</h2></a>
-    <a id="Searching"><h2>Searching for Stations</h2></a>
-    <a id="Playing"><h2><Station Options></h2></a>
-    <a id="Playing"><h2><Editing Station Definitions></h2></a>
-    <a id="Credits"><h2>Credits</h2></a>
+    <a id="Basic"><h2>Basic Operation</h2></a>
+    <p>
+      There are four control buttons at the bottom of the screen.  The
+      "-20" button moves back 20 seconds in the downloaded stream, and
+      "+20" moves forward 20 seconds.  The Play/Pause button pauses or
+      resumes the current station, but the station keeps downloading
+      while the playing is paused.  The Stop (square shaped) button
+      stops the player and stops the download as well.
+    </p>
+    <p> Pressing a station's icon will play or resume the station.  If
+      the trim around a station's icon is orange, it is the currently
+      selected station, otherwise it is green.  If the icon is
+      flashing, it means that the station is currently downloading
+      music, even if it isn't the currently selected station.
+    </p>
+    <p>
+      Pressing the station's icon while it is already playing will
+      bring up the station details, including the station's full name,
+      the stream's currently transfer rate and type of stream (AAC or
+      MP3), and the station's URL.  The navigator also has a button
+      labeled "Stream in background", which, if pressed, sets the
+      station to continue downloading even when another station is
+      active.  Another navigator button tells RadioStar to highlight
+      the currently playing song in the history list, so you can later
+      review music you found interesting.
+    </p>
+    <a id="AddingStations"><h2>Adding and Editing Station Details</h2></a>
+    <p>
+      The first menu item in the Main Menu (the green button on the
+      screen) is "Search for Station."  If pressed, you can search for
+      stations by name or properties.  The search page has its own
+      help pages that describe in detail how to search for and add
+      radio stations, but you can search by name, tag, country code,
+      city and/or genre.
+    </p>
+    <p>
+      If you long press a station's icon, you can edit the station's
+      parameters, including its name, description and the station's
+      stream URL There are also buttons to cancel the update, end the
+      editing session and a button to remove the station from
+      RadioStar entirely.
+    </p>
+    <h2<a id="Menu Ops">Menu Operations</h2></a>
+    <p>
+      If you press the green menu bar under the station icons, it pops
+      up a list of functions RadioStar can perform.
+      <ul>
+	<li>Search for stations</li> Selecting this operation brings
+	up a page you can use to search our directory providers for a
+	station.  The Search page has its own more detailed help page
+	on how to add a new station.
+	<li>Manually add station</li> If a station is missing from all
+	of our databases, you can still add a station in manually as
+	long as you know its stream URL.
+	<li>Help</li>Displays this text.
+	<li>Show history</li>RadioStar tracks each song played on a
+	station, and logs it in a history file.  You can highlight
+	songs to remember by swiping on the entry.  When you erase all
+	the songs in the history, all the highlighted songs are
+	preserved untouched.
+      </ul>
+    </p>
+    <a id="Acks"<h2>Acknowledgements</h2></a>
     <p>
       Thanks to Dan N. and John A. for being a great testers, and
       thanks to user zy0rg

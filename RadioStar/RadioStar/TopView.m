@@ -152,12 +152,12 @@
 
 - (void) skipFwdPressed:(id) junk withData: junk2 {
     NSLog(@"+20");
-    [_signView seek: +20.0];
+    [_signView seek: +20.0 relative: true];
 }
 
 - (void) skipBackPressed:(id) junk withData: junk2 {
     NSLog(@"-20");
-    [_signView seek: -20.0];
+    [_signView seek: -20.0 relative: true];
 }
 
 - (void) stopPressed:(id) junk withData: junk2 {
