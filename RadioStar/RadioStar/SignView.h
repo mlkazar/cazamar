@@ -59,7 +59,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) stopRadioResumeAtEnd;
 
-- (float) getStationBufferDuration: (SignStation *) station;
+- (float) getStationBufferEnd: (SignStation *) station;
+
+- (float) getStationBufferStart: (SignStation *) station;
 @end
 
 NS_ASSUME_NONNULL_END

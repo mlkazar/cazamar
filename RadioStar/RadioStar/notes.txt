@@ -12,27 +12,25 @@ Ideas for Radio app
 
 ========Todo========
 
-** popup after changing highlights or background streaming
-
--- slider for scrobbing in popup, showing time and current song
-
-** reanimate song bar after switching back to main screen
-
--- finish help text for search and main help files
-
--- check out warnings and obsolete interfaces used.
-
-** provide visual indication of object being dragged
-
--- generic help and context sensitive (for search) help
-
--- double check that songs are labelled properly esp. when seeking
-   around
-
 -- replace all dispatch_async calls with performSelectorOnMainThread
    calls instead.
 
--- keep playing silent noise when downloading and nothing else playing
+-- check out warnings and obsolete interfaces used.
+
+** popup after changing highlights or background streaming
+
+** slider for scrobbing in popup, showing time and current song
+
+** reanimate song bar after switching back to main screen
+
+** finish help text for search and main help files
+
+** provide visual indication of object being dragged
+
+** generic help and context sensitive (for search) help
+
+** double check that songs are labelled properly esp. when seeking
+   around
 
 ** improve recording status visibility by flashing?
 
@@ -104,6 +102,8 @@ name as well)
 ** doesn't reconnect after a failiure.
 
 Longer term items
+
+-- keep playing silent noise when downloading and nothing else playing
 
 -- alarm clock functionality?
 

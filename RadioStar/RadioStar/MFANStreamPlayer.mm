@@ -1020,10 +1020,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     float nextRecordMs = (float) [_streamReader tell];
 
     seekTarget = (int64_t) (nextRecordMs + 1000*offset - 1000*queuedSecs);
-
-    NSLog(@"seek target %lld queuedSecs=%f nextRecordMs=%f",
-	  seekTarget, queuedSecs, nextRecordMs);
-
     return (seekTarget < 0? 0 : seekTarget);
 }
 

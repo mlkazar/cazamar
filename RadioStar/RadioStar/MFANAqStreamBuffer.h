@@ -124,6 +124,9 @@ typedef struct _MFANAqStreamFile {
 // the end timestamp of last packet in the last block
 @property uint64_t lastPacketEndMs;
 
+// the start timestamp of first packet in the first block
+@property uint64_t firstPacketStartMs;
+
 @property uint64_t fileSize;
 
 @property uint32_t validBlocks;

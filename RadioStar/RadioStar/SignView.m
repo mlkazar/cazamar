@@ -1379,9 +1379,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [self animationOn];
 }
 
-- (float) getStationBufferDuration: (SignStation *) station {
+- (float) getStationBufferEnd: (SignStation *) station {
     MFANAqStreamBuffer *buffer = station.recordingBuffer;
     return (buffer.lastPacketEndMs / 1000.0);
+}
+
+- (float) getStationBufferStart: (SignStation *) station {
+    MFANAqStreamBuffer *buffer = station.recordingBuffer;
+    return (buffer.firstPacketStartMs / 1000.0);
 }
 
 - (void) setRadioHistory: (RadioHistory *) history {

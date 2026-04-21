@@ -490,6 +490,7 @@ static const uint32_t _kMaxValidBlocks = 16;
     pthread_cond_t _blockIoCv;		// block fill / clean wait/completed
     MFANAqStreamFile *_streamFile;
     uint64_t _lastPacketEndMs;
+    uint64_t _firstPacketStartMs;
     uint64_t _fileSize;
 
     // The valid blocks may be anywhere in the file's _blocks array.
@@ -1098,6 +1099,7 @@ NSString *fileNameForFileId(uint32_t fileId) {
 - (void) pruneOldestMs: (uint64_t) pruneLength {
     uint64_t startMs;
     MFANAqStreamBlock *block;
+    uint32_t blockCount;
 
     pthread_mutex_lock(&_bufferMutex);
     if (pruneLength > _lastPacketEndMs) {
@@ -1112,7 +1114,7 @@ NSString *fileNameForFileId(uint32_t fileId) {
 	// be careful never to remove the last block, since the code
 	// in this module assumes there's always at least one block in
 	// the array.
-	uint32_t blockCount = (uint32_t) [_streamFile->_blocks count];
+	blockCount = (uint32_t) [_streamFile->_blocks count];
 	if (blockCount > 1) {
 	    block = _streamFile->_blocks[0];
 	    while(block.ioRunning) {
@@ -1139,6 +1141,14 @@ NSString *fileNameForFileId(uint32_t fileId) {
 	    }
 	} else
 	    break;
+    }
+
+    blockCount = [_streamFile->_blocks count];
+    if (blockCount <= 0)
+	_firstPacketStartMs = 0;
+    else {
+	block = _streamFile->_blocks[0];
+	_firstPacketStartMs = block.baseMs;
     }
 
     pthread_mutex_unlock(&_bufferMutex);
@@ -1211,7 +1221,6 @@ NSString *fileNameForFileId(uint32_t fileId) {
     packetBytesUsed = [self packetDiskSize: packet];
 
     pthread_mutex_lock(&_bufferMutex);
-    NSLog(@"add packet at start=%lld", packet.startMs);
     _lastPacketEndMs = packet.startMs + durationMs;
     block = [self lastBlockSetIndex: nullptr];
     if (block.diskBytesUsed + packetBytesUsed > _kBytesPerBlock - _kTrailerBytes) {
