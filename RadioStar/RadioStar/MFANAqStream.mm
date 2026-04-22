@@ -395,15 +395,15 @@ MFANAqStream_rsControlProc( void *contextp,
 
     _pthreadDone = YES;
 
+    NSLog(@"===aqstream shutting down %p failureCallback=%p", self, self->_failureCallbackObj);
     if (!_shuttingDown && _failureCallbackObj != nil) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self->_failureCallbackObj performSelector: self->_failureCallbackSel
-                                            withObject: self];
-        });
+	NSLog(@"====about to dispatch to failure callback");
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[self->_failureCallbackObj performSelectorOnMainThread: self->_failureCallbackSel
+							    withObject: self
+							 waitUntilDone: true];
+	    });
     }
-#pragma clang diagnostic pop
 
     pthread_cond_broadcast(&_pthreadIdleCv);
 

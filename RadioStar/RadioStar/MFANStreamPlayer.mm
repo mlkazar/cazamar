@@ -406,15 +406,13 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_lastUpcalledIsPlaying != _isPlaying) {
 	_lastUpcalledIsPlaying = _isPlaying;
 	pthread_mutex_unlock(&_playerMutex);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->_stateCallbackObj performSelector: self->_stateCallbackSel
-					      withObject: self];
+		[self->_stateCallbackObj performSelectorOnMainThread: self->_stateCallbackSel
+							  withObject: self
+						       waitUntilDone: true];
 	    });
 	pthread_mutex_lock(&_playerMutex);
     }
-#pragma clang diagnostic pop
 }
 
 /* called on main thread to see if the music is actually playing, i.e. if buffers
@@ -659,13 +657,11 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 - (void) checkUpcalledSong: (NSString *) playingSong {
     if (_lastUpcalledSong != playingSong) {
 	_lastUpcalledSong = playingSong;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->_songCallbackObj performSelector: self->_songCallbackSel
-					     withObject: playingSong];
+		[self->_songCallbackObj performSelectorOnMainThread: self->_songCallbackSel
+							 withObject: playingSong
+						      waitUntilDone: true];
 	    });
-#pragma clang diagnostic pop
     }
 }
 

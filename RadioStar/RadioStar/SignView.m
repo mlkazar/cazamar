@@ -1139,6 +1139,17 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     return nil;
 }
 
+- (MFANAqStream *) startStationStream: (SignStation *) station {
+    MFANAqStream *stream;
+
+    [station.recordingBuffer allowReaders];
+    stream = [[MFANAqStream alloc] initWithUrl: station.streamUrl
+					buffer: station.recordingBuffer];
+    [stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
+
+    return stream;
+}
+
 - (void) startStation: (SignStation *) station {
     _stream = station.recordingStream;
     if (_stream != nil) {
@@ -1153,12 +1164,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     // and create a stream if necessary.
     if (_stream == nil) {
-	[station.recordingBuffer allowReaders];
-	_stream = [[MFANAqStream alloc] initWithUrl: station.streamUrl
-					     buffer: station.recordingBuffer];
-	[_stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
+	_stream = [self startStationStream: station];
     }
 
+    // and now bind a player to the stream
     if (_resumeAtEnd) {
 	_player = [[MFANStreamPlayer alloc] initWithStream: _stream
 							ms: ~0ULL];
@@ -1197,9 +1206,37 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     //
     // TODO: separate out recorded
     // stream from downloader.
-    [self stopRadioResetStream: YES];
-    [NSThread sleepForTimeInterval: 3.0];
-    [self startCurrentStation];
+    if (_stream == stream) {
+	// interruption occurred in currently playing station, so
+	// rebuild the player on top of the rebuilt stream.
+	NSLog(@"=== in restartstationwithstream self=%p", self);
+	[self stopRadioResetStream: YES];
+	NSLog(@"====back from restart");
+	[NSThread sleepForTimeInterval: 3.0];
+	[self startCurrentStation];
+	NSLog(@"====back from start again");
+    } else {
+	SignStation *station;
+	// could use a weak back pointer, but this is a rare event and
+	// doing a search among 10-20 items on a network failure seems
+	// harmless.
+	for(station in _allStations) {
+	    if (station.recordingStream == stream)
+		break;
+	}
+	if (station == nil) {
+	    NSLog(@"can't find station for stream %p", stream);
+	    return;
+	}
+	NSLog(@"===in restartStationWithStream just to get the stream running again");
+	[stream shutdown];
+	NSLog(@"=== station shutdown done for station=%p", station);
+	station.recordingStream = nil;
+
+	station.recordingStream = [self startStationStream: station];
+	NSLog(@"===station only start for station=%p", station);
+	[self animationOn];
+    }
 }
 
 - (void) startCurrentStation {
@@ -1296,14 +1333,12 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
     [self animationOn];
     if (_stateCallbackObj != nil) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
 	NSLog(@"player upcalls state shutdown");
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->_stateCallbackObj performSelector: self->_stateCallbackSel
-					      withObject: nil];
+		[self->_stateCallbackObj performSelectorOnMainThread: self->_stateCallbackSel
+							  withObject: nil
+						       waitUntilDone: true];
 	    });
-#pragma clang diagnostic pop
 	
     }
     NSLog(@"shutdown of mfanaqstream done");

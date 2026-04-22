@@ -198,12 +198,11 @@
 }
 
 - (void) doNotify {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
     if (_callbackObj != nil) {
-	[_callbackObj  performSelector: _callbackSel withObject: nil];
+	[_callbackObj performSelectorOnMainThread: _callbackSel
+				       withObject: nil
+				    waitUntilDone: true];
     }
-#pragma clang diagnostic pop
 }
 
 - (void) removePressed: (id) junk1 withData: (id) junk2 {

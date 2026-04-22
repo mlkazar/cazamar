@@ -53,12 +53,11 @@
 }
 
 - (void) doNotify {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
     if (_callbackObj != nil) {
-	[_callbackObj  performSelector: _callbackSel withObject: _searchBar];
+	[_callbackObj  performSelectorOnMainThread: _callbackSel
+					withObject: _searchBar
+				     waitUntilDone: true];
     }
-#pragma clang diagnostic pop
 }
 
 - (SearchStation *) initWithFrame:(CGRect) frame ViewCont: (ViewController *) vc {

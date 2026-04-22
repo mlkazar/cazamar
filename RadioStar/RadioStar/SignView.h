@@ -62,6 +62,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (float) getStationBufferEnd: (SignStation *) station;
 
 - (float) getStationBufferStart: (SignStation *) station;
+
+- (MFANAqStream *) startStationStream: (SignStation *) station;
 @end
 
 NS_ASSUME_NONNULL_END

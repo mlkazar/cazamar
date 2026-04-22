@@ -15,7 +15,18 @@ Ideas for Radio app
 -- replace all dispatch_async calls with performSelectorOnMainThread
    calls instead.
 
--- check out warnings and obsolete interfaces used.
+-- if we're not the current station and there's a network failure,
+   restartRadio tries to shutdown the currently playing station, not
+   the one that had the failure.  Leaves the stream's pthread exited,
+   but the stream isn't shutdown.  Should cleanly shutdown the stream,
+   and make a callback to something that just restarts the station's
+   stream with the station's existing buffer.
+
+   Add a weak pointer from the AqStream to the SignStation.  On
+   callback, if it isn't the playing station, just restart the
+   station's stream (new function).
+
+** check out warnings and obsolete interfaces used.
 
 ** popup after changing highlights or background streaming
 
