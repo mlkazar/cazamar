@@ -46,8 +46,6 @@
 }
 
 - (void) pushTopView: (UIView<TopViewInt> *) view {
-    UIView<TopViewInt> *oldView;
-
     // notify old view that it isn't active any more and remove it
     // from view chain.
     [_activeView deactivateTopView];

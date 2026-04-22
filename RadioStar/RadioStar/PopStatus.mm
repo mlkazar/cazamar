@@ -307,7 +307,7 @@
 	notice = @"Will keep recording even after switching stations";
     }
 
-    (void) [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 2.0];
+    (void) [[MFANWarn alloc] initWithTitle: @"Streaming" message: notice secs: 2.0];
 
     [self doNotify];
 }

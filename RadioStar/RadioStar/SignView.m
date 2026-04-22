@@ -730,7 +730,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     CGContextRef context = CGBitmapContextCreate
 	(rawData, width, height,
 	 bitsPerComponent, bytesPerRow, colorRef,
-	 kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+	 (int) kCGImageAlphaPremultipliedLast | (int) kCGBitmapByteOrder32Big);
     CGColorSpaceRelease(colorRef);
 
     // Flip the context so the positive Y axis points down
@@ -1044,7 +1044,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) dragPressed: (UIPanGestureRecognizer *) sender {
     NSLog(@"drag pan state %ld", (long) sender.state);
     CGPoint point = [sender locationInView: self];
-    uint32_t count = [_allStations count];
 
     NSLog(@"drag point is %f.%f", point.x, point.y);
     if (sender.state == UIGestureRecognizerStateBegan) {
@@ -1371,7 +1370,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) stopRecording {
-    MFANAqStream *stream;
     if (_playingStation != nil) {
 	_playingStation.recordingStream = nil;
 	_playingStation.isRecording = false;

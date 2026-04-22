@@ -4,7 +4,7 @@
 
 @interface SignSave : NSObject
 
-typedef void (^CompletionBlock)();
+typedef void (^CompletionBlock)(void);
 
 - (int32_t) initSaveToFile: (NSMutableOrderedSet *) allStations;
 

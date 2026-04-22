@@ -59,7 +59,8 @@
 	text = @"??";
     }
 
-    size = [text sizeWithFont: [UIFont systemFontOfSize: size.height]];
+    size = [text sizeWithAttributes:
+		     @{NSFontAttributeName:[UIFont systemFontOfSize: size.height]}];
     size.width *= 1.2;
 
     UIGraphicsBeginImageContext(size);

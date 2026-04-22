@@ -244,7 +244,7 @@
 }
 
 - (void) helpPressed: (id) sender withData: (NSNumber *) number {
-    [[HelpView alloc] initWithFile: @"help-search" viewCont: _vc];
+    (void) [[HelpView alloc] initWithFile: @"help-search" viewCont: _vc];
 }
 
 // All done with the search process.
@@ -585,7 +585,8 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     // 1. Ensure the UIKit context is pushed (necessary if not in drawRect:)
     //    If you are in a UIView's drawRect:, this is already handled.
 
-    size = [text sizeWithFont: [UIFont systemFontOfSize: size.height]];
+    size = [text sizeWithAttributes:
+		     @{NSFontAttributeName: [UIFont systemFontOfSize: size.height]}];
     size.width *= 1.2;
 
     UIGraphicsBeginImageContext(size);

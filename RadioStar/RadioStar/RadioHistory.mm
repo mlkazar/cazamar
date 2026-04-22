@@ -119,6 +119,7 @@ static UIColor *_backgroundColor;
     [_tableView reloadData];
 }
 
+#if 0
 - (NSArray *) tableView: (UITableView *) tview
 editActionsForRowAtIndexPath: (NSIndexPath *) path
 {
@@ -157,6 +158,53 @@ editActionsForRowAtIndexPath: (NSIndexPath *) path
 
     return @[hlAction, deleteAction];
 }
+#else
+- (UISwipeActionsConfiguration *) tableView: (UITableView *) tview
+trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
+{
+    long row;
+    NSMutableArray *histItemArray;
+    MFANHistoryItem *hist;
+    NSString *hlString;
+
+    row = [path row];
+    histItemArray = [_topHist histItems];
+    hist = [histItemArray objectAtIndex: row];
+
+    // Pretty cool that the handler in the delete action captures the
+    // value of the path variable, so that our caller can use
+    // deleteAction long after path no longer exists on the stack.
+    UIContextualAction *deleteAction =
+	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+						title:@"Delete"
+					      handler:^(UIContextualAction *action,
+							UIView *sourceView,
+							void (^complete)(BOOL)) {
+		[self removeRowAtPath: path];
+		complete(true);
+	    }];
+
+    deleteAction.backgroundColor = [UIColor redColor];
+
+    if (hist.highlighted)
+	hlString = @"Unhighlight";
+    else
+	hlString = @"Highlight";
+
+    UIContextualAction *hlAction =
+	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+						title:hlString
+					      handler:^(UIContextualAction *action,
+							UIView *sourceView,
+							void (^complete)(BOOL)) {
+		[self highlightRowAtPath: path];
+		complete(true);
+	    }];
+    hlAction.backgroundColor = [UIColor blueColor];
+
+    return [UISwipeActionsConfiguration configurationWithActions: @[hlAction, deleteAction]];
+}
+#endif
 
 - (NSInteger) tableView: (UITableView *)tview numberOfRowsInSection: (NSInteger) section
 {
