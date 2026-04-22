@@ -165,7 +165,10 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
     static const float SA = 0.35;	// side alpha
     // static const float FA = 0.10;	// front alpha
 
-    static const float GLev = 0.6;	// green level for border
+    // Note that Sign.metal reserves {0.2, 1, 0} for green screen
+    static const float RLev = 0.1;
+    static const float GLev = 0.8;	// green level for border
+    static const float BLev = 0.0;
 
     // Should be 6 sides, 12 triangles, 36 vertices,
     // but we want the side panels to look the same no matter
@@ -185,86 +188,86 @@ static matrix_float4x4 matrixRotateAndTranslate(float radians, CGPoint origin) {
 	{._position = {LX, BY, BZ, 1}, ._color={.2, 1, 0, 1}, ._normal = {0, 0, -1} },
 
 	// left side, top back triangle
-	{._position = {LX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
-	{._position = {LX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
-	{._position = {LX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
 
 	// left side, bottom front triangle
-	{._position = {LX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
-	{._position = {LX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
-	{._position = {LX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
 
 	// left side, top back triangle / alt winding
-	{._position = {LX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {LX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {LX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
 
 	// left side, bottom front triangle / alt winding
-	{._position = {LX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {LX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {LX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
 
 	// right side, top back triangle (same as left, but diff x,
 	// winding and normal)
-	{._position = {RX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {RX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {RX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
 
 	// right side, bottom front triangle
-	{._position = {RX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {RX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
-	{._position = {RX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {-1, 0, 0} },
 
 	// right side, top back triangle (same as left, but diff x,
 	// winding and normal) / alt winding
-	{._position = {RX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
-	{._position = {RX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
-	{._position = {RX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
 
 	// right side, bottom front triangle / alt winding
-	{._position = {RX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
-	{._position = {RX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
-	{._position = {RX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {1, 0, 0} },
 
 	// top side, front right triangle
-	{._position = {LX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
-	{._position = {RX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
-	{._position = {RX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
 
 	// top side, back left triangle
-	{._position = {RX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
-	{._position = {LX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
-	{._position = {LX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
 
 	// top side, front right triangle / alt winding
-	{._position = {LX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
-	{._position = {RX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
-	{._position = {RX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
 
 	// top side, back left triangle / alt winding
-	{._position = {RX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
-	{._position = {LX, TY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
-	{._position = {LX, TY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, TY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
 
 	// bottom side, front right triangle
-	{._position = {LX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
-	{._position = {RX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
-	{._position = {RX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
 
 	// bottom side, back left triangle
-	{._position = {RX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
-	{._position = {LX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
-	{._position = {LX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, 1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, 1, 0} },
 
 	// bottom side, front right triangle / alt winding
-	{._position = {LX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
-	{._position = {RX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
-	{._position = {RX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
 
 	// bottom side, back left triangle / alt winding
-	{._position = {RX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
-	{._position = {LX, BY, BZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
-	{._position = {LX, BY, FZ, 1}, ._color={0, GLev, 0, SA}, ._normal = {0, -1, 0} },
+	{._position = {RX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, BZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
+	{._position = {LX, BY, FZ, 1}, ._color={RLev, GLev, BLev, SA}, ._normal = {0, -1, 0} },
 
 #if 0
 	// front side, top left triangle
@@ -560,7 +563,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	MTLRenderPassDescriptor *descr = [MTLRenderPassDescriptor renderPassDescriptor];
 	descr.colorAttachments[0].texture = texture;
 	// I always search for UIColor or RGB to find the next line
-	descr.colorAttachments[0].clearColor = MTLClearColorMake(.50, 0.50, 0.50, 1.0);
+	descr.colorAttachments[0].clearColor = MTLClearColorMake(0.6, 0.6, 0.6, 1.0);
 	descr.colorAttachments[0].storeAction = MTLStoreActionStore;
 	descr.colorAttachments[0].loadAction = MTLLoadActionClear;
 
