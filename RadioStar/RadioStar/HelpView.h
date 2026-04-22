@@ -8,10 +8,9 @@
 
 #import <UIKit/UIKit.h>
 #import "HelpView.h"
+#import "ViewController.h"
 
-@class ViewController;
-
-@interface HelpView : UIView
+@interface HelpView : UIView<TopViewInt>
 
 - (HelpView *) initWithFile: (NSString *) file viewCont: (ViewController *) vc;
 

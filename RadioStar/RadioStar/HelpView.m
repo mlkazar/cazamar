@@ -106,7 +106,7 @@
 	_webFrame.size.width = _appFrame.size.width;
 	_webFrame.size.height = _appFrame.size.height - _buttonHeight - buttonMargin;
 
-	_webView = [[UIWebView alloc] initWithFrame:_webFrame];
+	_webView = [[WKWebView alloc] initWithFrame:_webFrame];
 	_webView.layer.borderColor = [UIColor greenColor].CGColor;
 	_webView.layer.borderWidth = 2.0;
 	[self addSubview: _webView];

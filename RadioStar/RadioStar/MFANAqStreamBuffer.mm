@@ -176,7 +176,7 @@
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
     block = [_streamBuffer findBlockAtMs: ms setIndex:&_blockIx];
     _packetIx = [self findPacketIx: ms inBlock: block];
-    packetCount = [block.packetArray count];
+    packetCount = (uint32_t) [block.packetArray count];
 
     // seek to last packet available near our seek point.
     if (packetCount == 0) {
@@ -380,7 +380,7 @@
 
 	if (![block validContents]) {
 	    [_streamBuffer fillBlock: block];
-	    NSLog(@"read filling block ms=%ld", block.baseMs);
+	    NSLog(@"read filling block ms=%lld", block.baseMs);
 	    continue;
 	}
 
@@ -389,7 +389,7 @@
 
 	// get count after making sure block is valid
 	packetCount = (uint32_t) [block.packetArray count];
-	blockCount = [_streamBuffer.streamFile->_blocks count];
+	blockCount = (uint32_t) [_streamBuffer.streamFile->_blocks count];
 
 	// blockCount is never 0; it is one upon creation and we never
 	// get rid of the block at the end collecting packets.
@@ -1143,7 +1143,7 @@ NSString *fileNameForFileId(uint32_t fileId) {
 	    break;
     }
 
-    blockCount = [_streamFile->_blocks count];
+    blockCount = (uint32_t) [_streamFile->_blocks count];
     if (blockCount <= 0)
 	_firstPacketStartMs = 0;
     else {
@@ -1185,9 +1185,9 @@ NSString *fileNameForFileId(uint32_t fileId) {
     newBlock.baseMs = prevBlock.durationMs + prevBlock.baseMs;
     newBlock.fileOffset = prevBlock.fileOffset + _kBytesPerBlock;
     // caller will add newBLock to array at count offset
-    NSLog(@"addBlockAndSeal sealed block startMs=%lld %d packets newBlock startMs=%lld bix=%llu",
-	  prevBlock.baseMs, [prevBlock.packetArray count],
-	  newBlock.baseMs, [_streamFile->_blocks count]);
+    NSLog(@"addBlockAndSeal sealed block startMs=%lld %lld packets newBlock startMs=%lld bix=%llu",
+	  prevBlock.baseMs, (uint64_t) [prevBlock.packetArray count],
+	  newBlock.baseMs, (uint64_t) [_streamFile->_blocks count]);
     _fileSize += _kBytesPerBlock;
 
     return newBlock;

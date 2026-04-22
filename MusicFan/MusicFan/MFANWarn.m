@@ -7,7 +7,7 @@
 //
 
 #import "MFANWarn.h"
-#import "MFANCGutil.h"
+#import "MFANCGUtil.h"
 
 @implementation MFANWarn {
     NSTimer *_timer;
@@ -24,11 +24,15 @@
 			 alertControllerWithTitle: title
 					  message: message
 				   preferredStyle:UIAlertControllerStyleAlert];
+#if 0
+	// in case we want this back
 	UIAlertAction* defaultAction =
 	    [UIAlertAction actionWithTitle:@"OK"
 				     style:UIAlertActionStyleDefault
 				   handler:^(UIAlertAction * action) {}];
-	// [_alert addAction: defaultAction];
+	[_alert addAction: defaultAction];
+#endif
+
 
 	_timer = [NSTimer scheduledTimerWithTimeInterval: secs
 			  target:self

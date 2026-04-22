@@ -293,7 +293,7 @@
 	notice = @"Removed highlighting for current song";
     }
 
-    [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 2.0];
+    (void) [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 2.0];
 }
 
 - (void) recordPressed: (id) junk1 withData:(id) junk2 {
@@ -307,7 +307,7 @@
 	notice = @"Will keep recording even after switching stations";
     }
 
-    [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 2.0];
+    (void) [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 2.0];
 
     [self doNotify];
 }

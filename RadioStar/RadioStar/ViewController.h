@@ -7,11 +7,7 @@
 
 #import <UIKit/UIKit.h>
 
-@protocol TopViewInt
-- (void) activateTopView;
-
-- (void) deactivateTopView;
-@end
+#import "TopViewInt.h"
 
 @interface ViewController : UIViewController
 

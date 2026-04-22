@@ -2,10 +2,9 @@
 #import <Foundation/Foundation.h>
 
 #import "SignStation.h"
+#import "ViewController.h"
 
-@class ViewController;
-
-@interface EditStation : UIView<UITextFieldDelegate>
+@interface EditStation : UIView<UITextFieldDelegate,TopViewInt>
 
 @property NSString *stationName;
 @property NSString *shortDescr;
