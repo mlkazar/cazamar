@@ -8,6 +8,8 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 @interface MFANStreamPlayer : NSObject
 
+@property BOOL muted;
+
 - (MFANStreamPlayer *) initWithStream : (MFANAqStream *) stream ms: (uint64_t) ms;
 
 - (void) resume;
@@ -35,5 +37,11 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 - (NSString *) getPublicUrl;
 
 - (uint64_t) getSeekTarget: (float) offset;
+
+- (void) mute;
+
+- (void) unmute;
+
+- (void) setupAudioSession: (BOOL) mix;
 
 @end

@@ -64,6 +64,7 @@
     // Called as the scene transitions from the background to the foreground.
     // Use this method to undo the changes made on entering the background.
     NSLog(@"scene willEnterForground");
+    [_vc leaveBackground];
 }
 
 
@@ -72,6 +73,7 @@
     // Use this method to save data, release shared resources, and store enough scene-specific state information
     // to restore the scene back to its current state.
     NSLog(@"scene didEnterBackground");
+    [_vc enterBackground];
 }
 
 

@@ -209,6 +209,7 @@ MFANStreamPlayer_getUnknownString()
     BOOL _availEmptyWaiter;		/* parser is waiting for available buffers */
     uint64_t _queuedPackets;		// # of packetsin queue for player
 
+    BOOL _muted;
     BOOL _shutdown;
     BOOL _paused;
     BOOL _pthreadDone;
@@ -358,6 +359,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_lastUpcalledSong = @"[Junk xyzzy]";	// won't match
 	_upcalledShutdownState = NO;
 	_isPlaying= YES;
+	_muted = NO;
 	_stateCallbackObj = nil;
 
 	_availIx = 0;
@@ -396,6 +398,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	[self setupAudioSession: NO];	// don't mix with other audio
 
 	[self checkUpcalledState];
+
+	// setup remote comtrol stuff.  Must be done for every player
+	// that gets created.
+	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }
     return self;
 }
@@ -1017,6 +1023,41 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
     seekTarget = (int64_t) (nextRecordMs + 1000*offset - 1000*queuedSecs);
     return (seekTarget < 0? 0 : seekTarget);
+}
+
+- (void) unmute {
+    /* turn up the volume; it is nice that this poorly documented
+     * interface defaults to playing silently, so that if you forget
+     * this step, you won't hear anything, or have a clue why.
+     * Thanks, Apple.
+     */
+    OSStatus osStatus;
+
+    float gain = 1.0;
+    osStatus = AudioQueueSetParameter ( _audioQueue,
+					kAudioQueueParam_Volume,
+					gain);
+    _muted = false;
+}
+
+- (void) mute {
+    /* turn up the volume; it is nice that this poorly documented
+     * interface defaults to playing silently, so that if you forget
+     * this step, you won't hear anything, or have a clue why.
+     * Thanks, Apple.
+     *
+     * When muted, we turn on 'mix with others' so that the player won't
+     * stop if we play a video in a separate app.  This will allow our player
+     * to keep running which will keep IOS from killing us if we're doing
+     * a download in the background.
+     */
+    OSStatus osStatus;
+
+    float gain = 0.0;
+    osStatus = AudioQueueSetParameter ( _audioQueue,
+					kAudioQueueParam_Volume,
+					gain);
+    _muted = true;
 }
 
 - (void) setupAudioSession: (BOOL) mix

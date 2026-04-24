@@ -7,14 +7,15 @@
 
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
-#import "RadioHistory.h"
-#import "ViewController.h"
+#import "AudioInt.h"
 #import "MFANStreamPlayer.h"
+#import "RadioHistory.h"
 #import "SignStation.h"
+#import "ViewController.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface SignView : UIView
+@interface SignView : UIView<AudioInt>
 
 @property RadioHistory *history;
 @property ViewController *vc;
@@ -64,6 +65,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (float) getStationBufferStart: (SignStation *) station;
 
 - (MFANAqStream *) startStationStream: (SignStation *) station;
+
+- (void) setupAudioSession: (BOOL) mix;
+
 @end
 
 NS_ASSUME_NONNULL_END

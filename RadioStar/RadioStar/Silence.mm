@@ -3,6 +3,8 @@
 #import "MFANCGUtil.h"
 #import "Silence.h"
 
+#include "osp.h"
+
 @implementation Silence {
     NSData *_silentData;
     AVAudioPlayer *_silentPlayer;
@@ -27,10 +29,13 @@
 }
 
 - (void) start {
+    bool started;
     if (_isPlaying)
 	return;
 
-    [_silentPlayer play];
+    started = [_silentPlayer play];
+    osp_assert(started);
+
     _isPlaying = true;
 }
 

@@ -7,6 +7,7 @@
 
 #import <UIKit/UIKit.h>
 
+#import "AudioInt.h"
 #import "TopViewInt.h"
 
 @interface ViewController : UIViewController
@@ -20,5 +21,10 @@
 
 - (void) popTopView;
 
-@end
+- (void) setRemoteReceiver: (UIView<AudioInt> *) remoteReceiver;
 
+- (void) enterBackground;
+
+- (void) leaveBackground;
+
+@end

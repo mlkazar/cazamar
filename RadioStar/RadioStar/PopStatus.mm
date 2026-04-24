@@ -225,11 +225,24 @@
 	[self addSubview: recordButton];
 
 	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
+	recordButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
+						       title: @"Border"
+						       color: [UIColor blackColor]
+					     backgroundColor: labelColor];
+	[recordButton setFillColor: labelColor];
+	if (_player == nil || !_player.muted)
+	    [recordButton setClearText: @"Mute"];
+	else
+	    [recordButton setClearText: @"Unmute"];
+	[recordButton addCallback: self
+		     withAction: @selector(mutePressed:withData:)];
+	[self addSubview: recordButton];
+
+	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
 	_seekSlider = [[BufferSlider alloc] initWithFrame: buttonFrame
 						 viewCont: _vc
 						 signView: _signView];
 	[self addSubview: _seekSlider];
-
 
 	buttonFrame.origin.y = frame.size.height - labelHeight;
 	buttonFrame.origin.x = frame.size.width/2 - okButtonWidth/2;
@@ -293,7 +306,7 @@
 	notice = @"Removed highlighting for current song";
     }
 
-    (void) [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 2.0];
+    (void) [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 1.2];
 }
 
 - (void) recordPressed: (id) junk1 withData:(id) junk2 {
@@ -307,7 +320,26 @@
 	notice = @"Will keep recording even after switching stations";
     }
 
-    (void) [[MFANWarn alloc] initWithTitle: @"Streaming" message: notice secs: 2.0];
+    (void) [[MFANWarn alloc] initWithTitle: @"Streaming" message: notice secs: 1.2];
+
+    [self doNotify];
+}
+
+- (void) mutePressed: (id) junk1 withData:(id) junk2 {
+    NSString *notice;
+    NSLog(@"mutepressed");
+    if (_player == nil)
+	return;
+
+    if (_player.muted) {
+	[_player unmute];
+	notice = @"Mute off";
+    } else {
+	[_player mute];
+	notice = @"Muted";
+    }
+
+    (void) [[MFANWarn alloc] initWithTitle: @"Mute" message: notice secs: 1.2];
 
     [self doNotify];
 }

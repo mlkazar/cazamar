@@ -842,6 +842,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 						 selector:@selector(sceneDidBecomeActive:)
 						     name:UISceneDidActivateNotification
 						   object:nil];
+
+	[vc setRemoteReceiver: self];
     }
 
     return self;
@@ -1429,6 +1431,58 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _history = history;
 }
 
-@end
+- (void) setupAudioSession: (BOOL) mix {
+    NSError *setError;
+    if (_player != nil) {
+	[_player setupAudioSession: mix];
+    } else if (mix) {
+	// can't setup callbacks, but setup the session
+	[[AVAudioSession sharedInstance]
+            setCategory: AVAudioSessionCategoryPlayback
+            withOptions: AVAudioSessionCategoryOptionMixWithOthers
+		  error: &setError];
+    } else {
+        [[AVAudioSession sharedInstance]
+            setCategory: AVAudioSessionCategoryPlayback
+            withOptions: 0
+            error: &setError];
+    }
+}
 
 NS_ASSUME_NONNULL_END
+
+- (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
+   NSLog(@"- remotecontrolev = %d", (int) receivedEvent.type);
+    if (receivedEvent.type == UIEventTypeRemoteControl) {
+        switch (receivedEvent.subtype) {
+            case UIEventSubtypeRemoteControlPlay:
+            case UIEventSubtypeRemoteControlPause:
+            case UIEventSubtypeRemoteControlTogglePlayPause:
+		if (_playingStation != nil) {
+		    if (_player == nil) {
+			[self startStation: _playingStation];
+		    } else if ([_player isPaused]) {
+			[_player resume];
+		    } else {
+			[_player pause];
+		    }
+		}
+                break;
+
+            case UIEventSubtypeRemoteControlPreviousTrack:
+		[self changeStationBy: -1];
+                break;
+
+            case UIEventSubtypeRemoteControlNextTrack:
+		[self changeStationBy: +1];
+                break;
+
+            default:
+                NSLog(@"!RMT mystery pressed %d", (int) receivedEvent.subtype);
+                break;
+        }
+
+        [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+    }
+}
+@end

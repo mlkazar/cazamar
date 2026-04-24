@@ -7,6 +7,13 @@
 
 #import "ViewController.h"
 #import "TopView.h"
+#import "Silence.h"
+
+// This class depends upon two classes by name:
+//
+// TopView is the top level view that gets plugged in.  It really
+// seems that the view plugged into the ViewController will always
+// have the full screen dimensions, and 
 
 @implementation ViewController {
     NSMutableArray<UIView<TopViewInt> *> *_oldViews;	// of UIView objects
@@ -15,6 +22,8 @@
     UIColor *_backgroundColor;
     CGRect _activeFrame;
     UIView<TopViewInt> *_activeView;
+    UIView<AudioInt> *_remoteReceiver;
+    Silence *_silence;
 }
 
 // The view in self.view is a whole screen view painted black.  It
@@ -28,6 +37,7 @@
     NSLog(@"In viewDidLoad");
     [super viewDidLoad];
 
+    // setup views and viewable areas
     _oldViews = [[NSMutableArray alloc] init];
 
     _topMargin = 50;
@@ -43,6 +53,8 @@
 					ViewCont: self];
 
     [self.view addSubview: _activeView];
+
+    _silence = [[Silence alloc] init];
 }
 
 - (void) pushTopView: (UIView<TopViewInt> *) view {
@@ -74,6 +86,39 @@
     _activeView = prevView;
     [self.view addSubview: _activeView];
     [prevView activateTopView];
+}
+
+- (void) enterBackground {
+    if (_remoteReceiver != nil) {
+	// this will typically be SignView in the RadioStar app
+	[_remoteReceiver setupAudioSession: true];
+	[_silence start];
+    }
+}
+
+- (void) leaveBackground {
+    if (_remoteReceiver != nil) {
+	[_silence stop];
+	[_remoteReceiver setupAudioSession: false];
+    }
+}
+
+// There are two things to know about receiving events from other applications
+// The lock screen and carplay controls show up as remote controlevents, delivered
+// to remoteCotrolReceivedWithEvent below in the active viewcontroller.
+//
+// The notification center also must be integrated with, in order to stop playing when
+// another audio source takes over, like when a phone call arrives.
+
+- (void) setRemoteReceiver: (UIView<AudioInt> *) remoteReceiver {
+    _remoteReceiver = remoteReceiver;
+    [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+}
+
+- (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
+    if (_remoteReceiver != nil) {
+	[_remoteReceiver remoteControlReceivedWithEvent: receivedEvent];
+    }
 }
 
 @end

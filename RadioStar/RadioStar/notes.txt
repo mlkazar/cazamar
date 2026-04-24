@@ -12,10 +12,10 @@ Ideas for Radio app
 
 ========Todo========
 
--- replace all dispatch_async calls with performSelectorOnMainThread
+** replace all dispatch_async calls with performSelectorOnMainThread
    calls instead.
 
--- if we're not the current station and there's a network failure,
+** if we're not the current station and there's a network failure,
    restartRadio tries to shutdown the currently playing station, not
    the one that had the failure.  Leaves the stream's pthread exited,
    but the stream isn't shutdown.  Should cleanly shutdown the stream,
@@ -124,6 +124,6 @@ Longer term items
 
 -- export recordings somehow
 
--- use backing file for large streams
+** use backing file for large streams
 
 -- shazam button to identify playing song.
