@@ -434,13 +434,13 @@
     NSMutableArray<MFANAqStreamPacket *> *_packetArray;
     uint64_t _durationMs;
     uint64_t _fileOffset;	// offset in file where data is located.
-    uint64_t _diskBytesUsed;	// disk space used
+    uint32_t _diskBytesUsed;	// disk space used
     BOOL _valid;		// packet data is present in memory
     BOOL _dirty;		// packet data needs to be written to file
     BOOL _sealed;
     BOOL _ioRunning;		// either filling or cleaning
     BOOL _inLru;		// are we in the LRU queue
-    uint32_t _pinCount;		// how many pins there are
+    uint8_t _pinCount;		// how many pins there are
 }
 
 - (MFANAqStreamBlock *) initWithBuffer: (MFANAqStreamBuffer *) buffer {

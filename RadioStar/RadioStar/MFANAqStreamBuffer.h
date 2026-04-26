@@ -76,14 +76,13 @@ typedef struct _MFANAqStreamFile {
 @property NSMutableArray<MFANAqStreamPacket *> *packetArray;
 @property uint64_t durationMs;
 @property uint64_t fileOffset;
-@property uint64_t diskBytesUsed;
-@property uint16_t lfuCount;
+@property uint32_t diskBytesUsed;
+@property uint8_t pinCount;
 @property BOOL valid;
 @property BOOL dirty;
 @property BOOL ioRunning;
 @property BOOL sealed;
 @property BOOL inLru;
-@property uint32_t pinCount;
 
 - (BOOL) validContents;
 

@@ -90,9 +90,12 @@
 
 - (void) enterBackground {
     if (_remoteReceiver != nil) {
-	// this will typically be SignView in the RadioStar app
-	[_remoteReceiver setupAudioSession: true];
+	// this will typically call into SignView in the RadioStar
+	// app.  if 'mix' is true, remote control and lockscreen won't
+	// work to control this.  Note sure if we have to do the
+	// setupAudioSession again.
 	[_silence start];
+	[_remoteReceiver setupAudioSession: true];
     }
 }
 

@@ -12,6 +12,10 @@ Ideas for Radio app
 
 ========Todo========
 
+-- try not to play silence when music is playing
+
+-- garbage collect free space from large 
+
 ** replace all dispatch_async calls with performSelectorOnMainThread
    calls instead.
 
