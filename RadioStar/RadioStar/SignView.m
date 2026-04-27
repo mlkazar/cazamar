@@ -19,10 +19,11 @@
 #import "MFANFileWriter.h"
 #import "PopStatus.h"
 #import "RadioHistory.h"
-#import "SignView.h"
-#import "SignViewInt.h"
 #import "SearchStation.h"
+#import "SignView.h"
 #import "SignSave.h"
+#import "SignViewInt.h"
+#import "Silence.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -40,6 +41,7 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLFunction> _fragmentProc;
     id<MTLRenderPipelineState> _pipeline;
     CADisplayLink *_displayLink;
+    Silence *_silence;
 
     NSMutableOrderedSet *_allStations;
 
@@ -74,14 +76,19 @@ NS_ASSUME_NONNULL_BEGIN
 
     PopStatus *_popStatus;
 
+    BOOL _isPlaying;
+    BOOL _isBackground;
+
     UIGestureRecognizer *_pressRecognizer;
     UIGestureRecognizer *_longPressRecognizer;
     UIGestureRecognizer *_dragRecognizer;
 
-    id _stateCallbackObj;
+    // state to add for our users every time we create a new
+    // player.
+    NSObject *_stateCallbackObj;
     SEL _stateCallbackSel;
 
-    id _songCallbackObj;
+    NSObject *_songCallbackObj;
     SEL _songCallbackSel;
 
     // when we switch back to a recording station, should we resume at
@@ -671,7 +678,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (_displayLink == nil) {
 	_displayLink = [CADisplayLink displayLinkWithTarget:self
 						   selector:@selector(displayLinkFired:)];
-	_displayLink.preferredFramesPerSecond = 8;
+	_displayLink.preferredFramesPerSecond = 4;
 	[_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     }
 }
@@ -836,6 +843,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		   rowColumn: SignCoordMake(1,0)];
 	}
 
+
 	[self computeLayout];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self
@@ -844,6 +852,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 						   object:nil];
 
 	[vc setRemoteReceiver: self];
+
+	_silence = [[Silence alloc] init];
     }
 
     return self;
@@ -1179,7 +1189,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
-    [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+    [_player addStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+    [_player addStateCallback: self sel: @selector(playerStateChanged:)];
 
     [self animationOn];
 }
@@ -1362,7 +1373,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     // and start a new player at the selected time code
     _player = [[MFANStreamPlayer alloc] initWithStream: _stream ms:seekTargetMs];
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
-    [_player setStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+    [_player addStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+    [_player addStateCallback: self sel: @selector(playerStateChanged:)];
     [self animationOn];
 }
 
@@ -1371,7 +1383,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _songCallbackObj = callbackObj;
 }
 
-- (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel {
+- (void) setStateCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel {
     _stateCallbackSel = callbackSel;
     _stateCallbackObj = callbackObj;
 }
@@ -1431,6 +1443,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _history = history;
 }
 
+////////////////////////////////////////////////////////////////
+// Operations for AudioInt
+////////////////////////////////////////////////////////////////
+
 - (void) setupAudioSession: (BOOL) mix {
     NSError *setError;
     if (_player != nil) {
@@ -1446,6 +1462,49 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
             setCategory: AVAudioSessionCategoryPlayback
             withOptions: 0
             error: &setError];
+    }
+}
+
+- (void) playerStateChanged: (id) aplayer {
+    MFANStreamPlayer *player = (MFANStreamPlayer *) aplayer;
+    NSLog(@"in state changed player=%p isPlaying=%d", player, [player isPlaying]);
+
+    _isPlaying = [player isPlaying];
+    NSLog(@"====player state changed to %d for player %p", _isPlaying, player);
+    // handle cases like if a player stops because of a route change,
+    // make sure we start the silence player again.
+    [self processBackgroundState];
+}
+
+- (void) enterBackground {
+    NSLog(@"====enter background");
+    _isBackground = true;
+    [self processBackgroundState];
+    [self animationOff: YES];
+}
+
+- (void) leaveBackground {
+    _isBackground = false;
+    NSLog(@"====leave background");
+    [self processBackgroundState];
+    [self animationOn];
+}
+
+- (void) processBackgroundState {
+    if (_isBackground) {
+	if (!_isPlaying) {
+	    [_silence start];
+	    [self setupAudioSession: true];
+	} else {
+	    // playing, so we don't need more things playing in order
+	    // to keep our process around
+	    [_silence stop];
+	    [self setupAudioSession: false];
+	}
+    } else {
+	// foreground, don't have to worry about being killed
+	[_silence stop];
+	[self setupAudioSession: false];
     }
 }
 

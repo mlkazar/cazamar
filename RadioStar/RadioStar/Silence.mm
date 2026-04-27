@@ -30,6 +30,7 @@
 
 - (void) start {
     bool started;
+    NSLog(@"====starting bkg");
     if (_isPlaying)
 	return;
 
@@ -40,6 +41,7 @@
 }
 
 - (void) stop {
+    NSLog(@"====stopping bkg");
     if(!_isPlaying)
 	return;
     [_silentPlayer stop];

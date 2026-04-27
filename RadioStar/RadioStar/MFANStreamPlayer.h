@@ -6,6 +6,16 @@
 
 NSString *MFANStreamPlayer_getUnknownString(void);
 
+@interface Callback : NSObject
+@property NSObject *callbackObj;
+@property SEL callbackSel;
+
+- (Callback *) init;
+
+- (Callback *) initWithObj: (NSObject *) obj sel:(SEL) sel;
+
+@end
+
 @interface MFANStreamPlayer : NSObject
 
 @property BOOL muted;
@@ -22,7 +32,7 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 - (BOOL) isPlaying;
 
-- (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel;
+- (void) addStateCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel;
 
 - (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel;
 

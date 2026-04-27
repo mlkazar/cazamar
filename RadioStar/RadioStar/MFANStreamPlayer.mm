@@ -31,7 +31,7 @@
  * The stop function stops the player in a way that it can't be
  * restarted, but can of course be released.
  *
- * The setStateCallback and setSongCallback set callbacks for state
+ * The addStateCallback and setSongCallback set callbacks for state
  * changes and new song indications (from those stations that provide
  * icecast information).
  *
@@ -146,6 +146,24 @@ MFANStreamPlayer_getUnknownString()
 
 #define _showIo false
 
+@implementation Callback {
+    NSObject *_callbackObj;
+    SEL _calbackSel;
+}
+- (Callback *) init {
+    self = [super init];
+    return self;
+}
+- (Callback *) initWithObj: (NSObject *) obj sel:(SEL) sel {
+    self = [super init];
+    if (self) {
+	_callbackObj = obj;
+	_callbackSel = sel;
+    }
+    return self;
+}
+@end
+
 @implementation MFANStreamPlayer {
     AudioQueueRef _audioQueue;
     AudioStreamBasicDescription _dataFormat;	/* detailed data format info from parser */
@@ -180,8 +198,8 @@ MFANStreamPlayer_getUnknownString()
     BOOL _isPlaying;
 
     BOOL _upcalledShutdownState;
-    SEL _stateCallbackSel;	/* who to notify, if anyone */
-    id _stateCallbackObj;	/* ditto */
+
+    NSMutableArray<Callback *> *_stateCallbacks;
 
     SEL _songCallbackSel;	/* who to notify, if anyone */
     id _songCallbackObj;	/* ditto */
@@ -210,7 +228,7 @@ MFANStreamPlayer_getUnknownString()
     uint64_t _queuedPackets;		// # of packetsin queue for player
 
     BOOL _muted;
-    BOOL _shutdown;
+    BOOL _shutdown;			// started shutdown
     BOOL _paused;
     BOOL _pthreadDone;
 
@@ -346,8 +364,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	}
 
 	pthread_cond_init(&_aqCond, NULL);
-	pthread_cond_init(&_pthreadDoneCond, NULL)
-;
+	pthread_cond_init(&_pthreadDoneCond, NULL);
+
 	_spyTimer = nil;
 	_shutdownTimer = nil;
 
@@ -360,7 +378,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_upcalledShutdownState = NO;
 	_isPlaying= YES;
 	_muted = NO;
-	_stateCallbackObj = nil;
+	_stateCallbacks = [[NSMutableArray alloc] init];
 
 	_availIx = 0;
 	_availCount = 0;
@@ -397,7 +415,9 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 	[self setupAudioSession: NO];	// don't mix with other audio
 
-	[self checkUpcalledState];
+	pthread_mutex_lock(&_playerMutex);
+	[self checkUpcalledState: NO];
+	pthread_mutex_unlock(&_playerMutex);
 
 	// setup remote comtrol stuff.  Must be done for every player
 	// that gets created.
@@ -406,17 +426,21 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return self;
 }
 
-- (void) checkUpcalledState {
-    if (!_shutdown &&
-	_stateCallbackObj != nil &&
-	_lastUpcalledIsPlaying != _isPlaying) {
+// flag says to upcall shutdown players
+- (void) checkUpcalledState: (BOOL) upcallShutdown {
+    Callback *tcallback;
+    if ( (!_shutdown || upcallShutdown) &&
+	 [_stateCallbacks count] > 0 &&
+	 _lastUpcalledIsPlaying != _isPlaying) {
 	_lastUpcalledIsPlaying = _isPlaying;
 	pthread_mutex_unlock(&_playerMutex);
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->_stateCallbackObj performSelectorOnMainThread: self->_stateCallbackSel
-							  withObject: self
-						       waitUntilDone: true];
-	    });
+	for(tcallback in _stateCallbacks) {
+	    dispatch_async(dispatch_get_main_queue(), ^{
+		    [tcallback.callbackObj performSelectorOnMainThread: tcallback.callbackSel
+							    withObject: self
+							 waitUntilDone: true];
+		});
+	} // for
 	pthread_mutex_lock(&_playerMutex);
     }
 }
@@ -439,7 +463,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	}
     }
 
-    [self checkUpcalledState];
+    [self checkUpcalledState: NO];
     pthread_mutex_unlock(&_playerMutex);
 }
 
@@ -546,9 +570,13 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_spyTimer = nil;
     }
 
-    pthread_mutex_unlock(&_playerMutex);
-
     pthread_cond_broadcast(&_aqCond);	/* just in case */
+
+    // let observers know that there's no player any more
+    _isPlaying = false;
+    [self checkUpcalledState: YES];
+
+    pthread_mutex_unlock(&_playerMutex);
 
     NSLog(@"- done with shutdown audio for aqp=%p", self);
 }
@@ -567,7 +595,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     _paused = YES;
     _isPlaying = NO;
     _lastManualChange = osp_time_ms();
-    [self checkUpcalledState];
+    [self checkUpcalledState: NO];
     pthread_mutex_unlock(&_playerMutex);
 }
 
@@ -587,14 +615,16 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     _paused = NO;
     _isPlaying = YES;
     _lastManualChange = osp_time_ms();
-    [self checkUpcalledState];
+    [self checkUpcalledState: NO];
     pthread_mutex_unlock(&_playerMutex);
 }
 
-- (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel {
+- (void) addStateCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel {
+    Callback *temp;
+    temp = [[Callback alloc] initWithObj: callbackObj sel: callbackSel];
+
     pthread_mutex_lock(&_playerMutex);
-    _stateCallbackObj = callbackObj;
-    _stateCallbackSel = callbackSel;
+    [_stateCallbacks addObject: temp];
     pthread_mutex_unlock(&_playerMutex);
 }
 
@@ -995,7 +1025,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	    NSLog(@"- resuming audio player");
 	    if (_isPlaying) {
 		[self resume];
-		[self checkUpcalledState];
+		[self checkUpcalledState: NO];
 	    }
 	}
     }
@@ -1003,7 +1033,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	NSLog(@"- audio interruption began");
 	if (_isPlaying) {
 	    [self pause];
-	    [self checkUpcalledState];
+	    [self checkUpcalledState: NO];
 	}
     }
     else {

@@ -28,9 +28,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (CALayer *) makeBackingLayer;
 
-- (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel;
+- (void) setSongCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel;
 
-- (void) setStateCallback: (id) callbackObj  sel: (SEL) callbackSel;
+- (void) setStateCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel;
 
 - (NSString *) getPlayingStationName;
 

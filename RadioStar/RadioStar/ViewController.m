@@ -7,7 +7,6 @@
 
 #import "ViewController.h"
 #import "TopView.h"
-#import "Silence.h"
 
 // This class depends upon two classes by name:
 //
@@ -23,7 +22,6 @@
     CGRect _activeFrame;
     UIView<TopViewInt> *_activeView;
     UIView<AudioInt> *_remoteReceiver;
-    Silence *_silence;
 }
 
 // The view in self.view is a whole screen view painted black.  It
@@ -53,8 +51,6 @@
 					ViewCont: self];
 
     [self.view addSubview: _activeView];
-
-    _silence = [[Silence alloc] init];
 }
 
 - (void) pushTopView: (UIView<TopViewInt> *) view {
@@ -94,15 +90,15 @@
 	// app.  if 'mix' is true, remote control and lockscreen won't
 	// work to control this.  Note sure if we have to do the
 	// setupAudioSession again.
-	[_silence start];
-	[_remoteReceiver setupAudioSession: true];
+	if (_remoteReceiver != nil) {
+	    [_remoteReceiver enterBackground];
+	}
     }
 }
 
 - (void) leaveBackground {
     if (_remoteReceiver != nil) {
-	[_silence stop];
-	[_remoteReceiver setupAudioSession: false];
+	[_remoteReceiver leaveBackground];
     }
 }
 
