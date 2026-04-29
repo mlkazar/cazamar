@@ -156,8 +156,9 @@
             break;
     }
 
-    NSLog(@"findPacketIx for %lld ms returns ix=%u/%u ms=%lld",
-	  ms, ix, (uint32_t) [block.packetArray count], packet.startMs);
+    NSLog(@"findPacketIx for %lld ms off=%llx returns pix=%u/%u ms=%lld",
+	  ms, block.fileOffset, ix, (uint32_t) [block.packetArray count],
+	  packet.startMs);
     return ix;
 }
 
@@ -357,7 +358,7 @@
     uint32_t lastBlockIx;
 
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
-    NSLog(@"read starts");
+    NSLog(@"read starts for recordMs=%lld", _recordMs);
     while(true) {
         // Abort if the buffer itself is being shutdown or the reader
         // was closed.
@@ -370,8 +371,8 @@
         if (!self.indicesAreValid) {
 	    block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&_blockIx];
 	    _packetIx = [self findPacketIx: _recordMs inBlock: block];
-	    NSLog(@"read index not valid, using bix=%d pix=%d baseMs=%lld for recordMs=%lld",
-		  _blockIx, _packetIx, block.baseMs, _recordMs);
+	    NSLog(@"read index !valid, using bix=%d pix=%d baseMs=%lld o=%llx (recordMs=%lld)",
+		  _blockIx, _packetIx, block.baseMs, block.fileOffset, _recordMs);
         } else {
 	    block = _streamBuffer.streamFile->_blocks[_blockIx];
 	    NSLog(@"read index valid using bix=%d baseMs=%lld for recordMs=%lld",
@@ -423,11 +424,31 @@
     }
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
     packet.read = YES;
-    NSLog(@"read returned packet with start=%lld", packet.startMs);
+    NSLog(@"returned packet for recordMs=%lld w/start=%lld block start=%lld:%lld",
+	  _recordMs, packet.startMs, block.baseMs, block.durationMs);
     return packet;
 }
 
 @end
+
+// Design for pruning the stremFile:
+//
+// Create a second file.  This file will contain the new blocks.
+// Decide how many blocks will be removed, and put that value in the
+// streamFile.
+//
+// A flag in the streamFile, protected by the buffer mutex, indicates
+// that a GC is in progress, and new blocks should be allocated from
+// the secondary file as they're allocated by addPacket.
+//
+// At this time, we kick off a migration thread that iterates over all
+// the blocks, setting the ioRunning flag for the block, and then
+// copying the block to the secondary file, and then clearing the
+// ioRunning flag.
+//
+// Once all the blocks in the file has been migrated, we grab the
+// mutex lock, rename the secondary file to be primary, and clear the
+// per-block bit indicating the block resides in the secondary file.
 
 @implementation MFANAqStreamBlock {
     uint64_t _baseMs;		// time stamp of first record
@@ -440,6 +461,7 @@
     BOOL _sealed;
     BOOL _ioRunning;		// either filling or cleaning
     BOOL _inLru;		// are we in the LRU queue
+    BOOL _useGCFile;		// use the new file during a GC
     uint8_t _pinCount;		// how many pins there are
 }
 
@@ -454,6 +476,7 @@
 	_diskBytesUsed = 0;
 	_durationMs = 0;
 	_inLru = false;
+	_useGCFile = false;
 	_pinCount = 0;
 	_packetArray = [[NSMutableArray alloc] init];
 
@@ -482,6 +505,7 @@ static const uint32_t _kTrailerBytes = 2;
 static const uint16_t _kMagic = 0x0301;
 static const uint16_t _kTrailerMagic = 0x0924;
 static const uint32_t _kMaxValidBlocks = 16;
+static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before reclaim
 
 @implementation MFANAqStreamBuffer {
     pthread_cond_t _packetArrayCv;	// data arrival CV
@@ -505,6 +529,9 @@ static const uint32_t _kMaxValidBlocks = 16;
     NSThread *_streamBufferThread;
     BOOL _pthreadDoWork;
     BOOL _pthreadDone;
+
+    NSThread *_gcBufferThread;
+    BOOL _gcRunning;
 }
 
 + (pthread_mutex_t *) bufferMutex {
@@ -534,7 +561,7 @@ static const uint32_t _kMaxValidBlocks = 16;
 }
 
 - (BOOL) blockIx: (uint32_t) blockIx packetIx: (uint32_t) packetIx containsMs: (uint64_t) ms {
-    MFANAqStreamBlock *block = _streamFile->_blocks[blockIx];
+    MFANAqStreamBlock *block;
     MFANAqStreamBlock *nextBlock;
     uint32_t packetCount;
     MFANAqStreamPacket *packet;
@@ -543,6 +570,9 @@ static const uint32_t _kMaxValidBlocks = 16;
     // index isn't valid if it points beyond end of array
     if (blockIx >= [_streamFile->_blocks count])
 	return false;
+
+    // otherwise this is the block to check
+    block = _streamFile->_blocks[blockIx];
 
     if (blockIx >= [_streamFile->_blocks count] - 1)
 	nextBlock = nil;
@@ -604,7 +634,8 @@ static const uint32_t _kMaxValidBlocks = 16;
 	blockCount = (uint32_t) [_streamFile->_blocks count];
 	for(i=0;i<blockCount;i++) {
 	    block = _streamFile->_blocks[i];
-	    if (ms <= block.baseMs)
+	    if ( ms >= block.baseMs &&
+		 ms < block.baseMs + block.durationMs)
 		break;
 	}
 	// block is set to last one if none match condition, which is
@@ -618,6 +649,8 @@ static const uint32_t _kMaxValidBlocks = 16;
 
 	// fill block, but since may have dropped lock, need to
 	// revalidate.
+	NSLog(@"findBlockAtMs baseMs=%lld needs to fill block at index %d (%d)",
+	      block.baseMs, i, blockCount);
 	[self fillBlock: block];
     }
 }
@@ -641,6 +674,13 @@ static const uint32_t _kMaxValidBlocks = 16;
 
 NSString *fileNameForFileId(uint32_t fileId) {
     NSString *entryName = [NSString stringWithFormat: @"station-download-%d.dat", fileId];
+    NSString *fileName = fileNameForFile(entryName);
+
+    return fileName;
+}
+
+NSString *altFileNameForFileId(uint32_t fileId) {
+    NSString *entryName = [NSString stringWithFormat: @"station-gc-%d.dat", fileId];
     NSString *fileName = fileNameForFile(entryName);
 
     return fileName;
@@ -918,6 +958,7 @@ NSString *fileNameForFileId(uint32_t fileId) {
         _frameDuration = 0.0;
 	_shuttingDown = false;
 	_pthreadDone = false;
+	_gcRunning = false;
 	_pthreadDoWork = false;
 	_validBlocks = 0;
 	_dirtyBlocks = 0;
@@ -977,6 +1018,7 @@ NSString *fileNameForFileId(uint32_t fileId) {
     [self readPacketsFromBlock: block];
     pthread_mutex_lock(&_bufferMutex);
 
+    NSLog(@"fill done baseMs=%lld o=%llx", block.baseMs, block.fileOffset);
     block.ioRunning = false;
     osp_assert(!block.valid);
     block.valid = true;
@@ -1004,6 +1046,100 @@ NSString *fileNameForFileId(uint32_t fileId) {
     osp_assert(_dirtyBlocks > 0);
     _dirtyBlocks--;
     pthread_cond_broadcast(&_blockIoCv);
+}
+
+- (void) gcAsync: (id) junk {
+    int32_t code;
+    MFANAqStreamBlock *block;
+
+    pthread_mutex_lock(&_bufferMutex);
+
+    _gcRunning = true;
+    int newFd = open([altFileNameForFileId(_streamFile->_fileId)
+			 cStringUsingEncoding: NSUTF8StringEncoding],
+		     O_CREAT | O_WRONLY | O_TRUNC, 0666);
+    osp_assert(newFd >= 0);
+    close(newFd);
+
+    NSString *oldFileName = fileNameForFileId (_streamFile->_fileId);
+    FILE *oldFilep = fopen([oldFileName cStringUsingEncoding: NSUTF8StringEncoding], "r");
+    NSString *newFileName = altFileNameForFileId (_streamFile->_fileId);
+    FILE *newFilep = fopen([newFileName cStringUsingEncoding: NSUTF8StringEncoding], "r+");
+
+
+    uint64_t gcByteShift = _streamFile->_blocks[0].fileOffset;
+    _streamFile->_gcBlockShift = (uint32_t) gcByteShift / _kBytesPerBlock;
+
+    for(block in _streamFile->_blocks) {
+	block.useGCFile = false;
+    }
+
+    NSLog(@"====starting GC block count=%ld removing %d blocks",
+	  (long) [_streamFile->_blocks count], _streamFile->_gcBlockShift);
+
+    char *diskBufferp = (char *) malloc(_kBytesPerBlock);
+    BOOL failed = false;
+    for(block in _streamFile->_blocks) {
+	while (block.ioRunning) {
+	    pthread_cond_wait(&_blockIoCv, &_bufferMutex);
+	}
+	block.ioRunning = true;
+
+	// block.valid won't change while ioRunning is set.
+	if (block.valid) {
+	    pthread_mutex_unlock(&_bufferMutex);
+
+	    // now copy the block
+	    fseek(oldFilep, block.fileOffset, SEEK_SET);
+	    code = (int32_t) fread(diskBufferp, _kBytesPerBlock, 1, oldFilep);
+	    if (code != 1) {
+		failed = true;
+		break;
+	    }
+	    fseek(newFilep, block.fileOffset - gcByteShift, SEEK_SET);
+	    code = (int32_t) fwrite(diskBufferp, _kBytesPerBlock, 1, newFilep);
+	    if (code != 1) {
+		failed = true;
+		break;
+	    }
+
+	    pthread_mutex_lock(&_bufferMutex);
+	}
+	block.ioRunning = false;
+	block.fileOffset = block.fileOffset - gcByteShift;
+	block.useGCFile = true;
+	pthread_cond_broadcast(&_blockIoCv);
+    }
+    free(diskBufferp);
+
+    // At this point, all we have left to do is a rename and turning off the useGcFile
+    // flag on all of the blocks.
+
+    // we're done with the open files.
+    fflush(oldFilep);
+    fsync(fileno(oldFilep));
+    fclose(oldFilep);
+
+    fflush(newFilep);
+    fsync(fileno(newFilep));
+    fclose(newFilep);
+
+    _gcRunning = false;
+
+    code = rename([oldFileName cStringUsingEncoding: NSUTF8StringEncoding],
+		  [newFileName cStringUsingEncoding: NSUTF8StringEncoding]);
+    osp_assert(code == 0);
+
+    NSLog(@"====GC done");
+
+    for(block in _streamFile->_blocks) {
+	// offsets in GC file are correct for offsets in regular file after
+	// rename of GC file to be the main file.
+	block.useGCFile = false;
+    }
+
+    pthread_mutex_unlock(&_bufferMutex);
+    pthread_cond_broadcast(&_pthreadDoneCv);
 }
 
 - (void) ioAsync: (id) junk {
@@ -1121,6 +1257,8 @@ NSString *fileNameForFileId(uint32_t fileId) {
 		pthread_cond_wait(&_blockIoCv, &_bufferMutex);
 	    }
 	    if (block.baseMs < startMs) {
+		NSLog(@"prune removing block %lld/%lld o=%llx bix=0",
+		      block.baseMs, block.durationMs, block.fileOffset);
 		// this will free all the data in memory, but the disk
 		// file will still need to be compacted eventually.
 		[_streamFile->_blocks removeObjectAtIndex: 0];
@@ -1151,6 +1289,18 @@ NSString *fileNameForFileId(uint32_t fileId) {
 	_firstPacketStartMs = block.baseMs;
     }
 
+    // Now check to see if we need to start a GC.  We start one if the file is more
+    // than 50% garbage.  We can tell by seeing how many blocks are in the file,
+    // and where the first block's file offset is.
+    if ( !_streamFile->_gcRunning && !_shuttingDown &&
+	 (100 * (_streamFile->_blocks[0].fileOffset / _kBytesPerBlock) / blockCount >
+	  _kMaxDiskPct)) {
+	_streamFile->_gcRunning = true;
+        _gcBufferThread = [[NSThread alloc] initWithTarget: self
+						  selector: @selector(gcAsync:)
+						    object: nil];
+	
+    }
     pthread_mutex_unlock(&_bufferMutex);
 }
 
@@ -1264,7 +1414,7 @@ NSString *fileNameForFileId(uint32_t fileId) {
     pthread_mutex_lock(&_bufferMutex);
     _shuttingDown = true;
     while(true) {
-	if (_pthreadDone) break;
+	if (_pthreadDone && !_gcRunning) break;
 	pthread_cond_wait(&_pthreadDoneCv, &_bufferMutex);
     }
     pthread_mutex_unlock(&_bufferMutex);

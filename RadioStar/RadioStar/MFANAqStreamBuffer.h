@@ -14,6 +14,8 @@ typedef struct _MFANAqStreamFile {
     NSMutableArray<MFANAqStreamBlock *> *_blocks;
     NSMutableOrderedSet<MFANAqStreamBlock *> *_lru;
     uint32_t _fileId;
+    BOOL _gcRunning;
+    uint32_t _gcBlockShift;
 } MFANAqStreamFile;
 
 @interface MFANAqStreamPacket : NSObject
@@ -83,6 +85,7 @@ typedef struct _MFANAqStreamFile {
 @property BOOL ioRunning;
 @property BOOL sealed;
 @property BOOL inLru;
+@property BOOL useGCFile;
 
 - (BOOL) validContents;
 

@@ -1023,18 +1023,14 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	NSLog(@"- audio interruption ended");
 	if ([optKey longValue] & AVAudioSessionInterruptionOptionShouldResume) {
 	    NSLog(@"- resuming audio player");
-	    if (_isPlaying) {
-		[self resume];
-		[self checkUpcalledState: NO];
-	    }
+	    // also calls checkUpcallState
+	    [self resume];
 	}
     }
     else if (intType == AVAudioSessionInterruptionTypeBegan) {
 	NSLog(@"- audio interruption began");
-	if (_isPlaying) {
-	    [self pause];
-	    [self checkUpcalledState: NO];
-	}
+	// also calls checkUpcallState
+	[self pause];
     }
     else {
 	NSLog(@"! audio interruption unknown type %ld", intType);
