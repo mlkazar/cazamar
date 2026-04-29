@@ -1299,7 +1299,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
         _gcBufferThread = [[NSThread alloc] initWithTarget: self
 						  selector: @selector(gcAsync:)
 						    object: nil];
-	
     }
     pthread_mutex_unlock(&_bufferMutex);
 }
