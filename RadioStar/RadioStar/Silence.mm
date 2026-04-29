@@ -30,20 +30,15 @@
 
 - (void) start {
     bool started;
-    NSLog(@"====starting bkg");
-    if (_isPlaying)
-	return;
+    NSLog(@"starting bkg, prev state isPlaying=%d", _isPlaying);
 
     started = [_silentPlayer play];
-    osp_assert(started);
 
     _isPlaying = true;
 }
 
 - (void) stop {
-    NSLog(@"====stopping bkg");
-    if(!_isPlaying)
-	return;
+    NSLog(@"stopping bkg, prev state isPlaying=%d", _isPlaying);
     [_silentPlayer stop];
     _isPlaying = false;
 }
