@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7F1E14C02ED6A80D00D08908"
-               BuildableName = "RadioStar.app"
-               BlueprintName = "RadioStar"
-               ReferencedContainer = "container:RadioStar.xcodeproj">
+               BuildableName = "RadioGalaxy.app"
+               BlueprintName = "RadioGalaxy"
+               ReferencedContainer = "container:RadioGalaxy.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -46,9 +46,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7F1E14C02ED6A80D00D08908"
-            BuildableName = "RadioStar.app"
-            BlueprintName = "RadioStar"
-            ReferencedContainer = "container:RadioStar.xcodeproj">
+            BuildableName = "RadioGalaxy.app"
+            BlueprintName = "RadioGalaxy"
+            ReferencedContainer = "container:RadioGalaxy.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -63,9 +63,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7F1E14C02ED6A80D00D08908"
-            BuildableName = "RadioStar.app"
-            BlueprintName = "RadioStar"
-            ReferencedContainer = "container:RadioStar.xcodeproj">
+            BuildableName = "RadioGalaxy.app"
+            BlueprintName = "RadioGalaxy"
+            ReferencedContainer = "container:RadioGalaxy.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

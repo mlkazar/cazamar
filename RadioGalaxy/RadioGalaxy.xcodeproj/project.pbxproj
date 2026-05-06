@@ -30,7 +30,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		7F1E14C12ED6A80D00D08908 /* RadioStar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RadioStar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7F1E14C12ED6A80D00D08908 /* RadioGalaxy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RadioGalaxy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F40AC9E2F1EF70D001B1EE8 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		7F40ACA02F1EF716001B1EE8 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		7F8417F32F1EF39200B497E8 /* MFANCGUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANCGUtil.h; path = ../MusicFan/MusicFan/MFANCGUtil.h; sourceTree = SOURCE_ROOT; };
@@ -71,18 +71,18 @@
 		7FCF3DE32F3E38B8001E34E6 /* MFANFileWriter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANFileWriter.h; path = ../MusicFan/MusicFan/MFANFileWriter.h; sourceTree = SOURCE_ROOT; };
 		7FCF3DE42F3E38B8001E34E6 /* MFANFileWriter.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = MFANFileWriter.mm; path = ../MusicFan/MusicFan/MFANFileWriter.mm; sourceTree = SOURCE_ROOT; };
 		7FD577FF2F1EF853002187FA /* cthread.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = cthread.cc; path = ../rpc/cthread.cc; sourceTree = SOURCE_ROOT; };
-		7FE434052F4DC32C000BC7A4 /* RadioStar.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = RadioStar.xcodeproj; sourceTree = SOURCE_ROOT; };
+		7FE434052F4DC32C000BC7A4 /* RadioGalaxy.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = RadioGalaxy.xcodeproj; sourceTree = SOURCE_ROOT; };
 		7FE434082F4DC34E000BC7A4 /* MFANIconButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANIconButton.h; path = ../MusicFan/MusicFan/MFANIconButton.h; sourceTree = SOURCE_ROOT; };
 		7FE434092F4DC34E000BC7A4 /* MFANIconButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = MFANIconButton.m; path = ../MusicFan/MusicFan/MFANIconButton.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		7F1E14D82ED6A80D00D08908 /* Exceptions for "RadioStar" folder in "RadioStar" target */ = {
+		7F1E14D82ED6A80D00D08908 /* Exceptions for "RadioStar" folder in "RadioGalaxy" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 7F1E14C02ED6A80D00D08908 /* RadioStar */;
+			target = 7F1E14C02ED6A80D00D08908 /* RadioGalaxy */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -90,7 +90,7 @@
 		7F1E14C32ED6A80D00D08908 /* RadioStar */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				7F1E14D82ED6A80D00D08908 /* Exceptions for "RadioStar" folder in "RadioStar" target */,
+				7F1E14D82ED6A80D00D08908 /* Exceptions for "RadioStar" folder in "RadioGalaxy" target */,
 			);
 			path = RadioStar;
 			sourceTree = "<group>";
@@ -120,7 +120,7 @@
 				7FCF3DE32F3E38B8001E34E6 /* MFANFileWriter.h */,
 				7FCF3DE42F3E38B8001E34E6 /* MFANFileWriter.mm */,
 				7FAB244D2F3AA21000D99D4A /* json.h */,
-				7FE434052F4DC32C000BC7A4 /* RadioStar.xcodeproj */,
+				7FE434052F4DC32C000BC7A4 /* RadioGalaxy.xcodeproj */,
 				7FAB244E2F3AA21000D99D4A /* json.cc */,
 				7FAB24502F3AA22500D99D4A /* xgml.h */,
 				7FAB24512F3AA22500D99D4A /* xgml.cc */,
@@ -163,7 +163,7 @@
 		7F1E14C22ED6A80D00D08908 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7F1E14C12ED6A80D00D08908 /* RadioStar.app */,
+				7F1E14C12ED6A80D00D08908 /* RadioGalaxy.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -177,17 +177,12 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		7F6DC4462F4EF866004ED68D /* Products */ = {
-			isa = PBXGroup;
-			name = Products;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7F1E14C02ED6A80D00D08908 /* RadioStar */ = {
+		7F1E14C02ED6A80D00D08908 /* RadioGalaxy */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7F1E14D92ED6A80D00D08908 /* Build configuration list for PBXNativeTarget "RadioStar" */;
+			buildConfigurationList = 7F1E14D92ED6A80D00D08908 /* Build configuration list for PBXNativeTarget "RadioGalaxy" */;
 			buildPhases = (
 				7F1E14BD2ED6A80D00D08908 /* Sources */,
 				7F1E14BE2ED6A80D00D08908 /* Frameworks */,
@@ -200,11 +195,11 @@
 			fileSystemSynchronizedGroups = (
 				7F1E14C32ED6A80D00D08908 /* RadioStar */,
 			);
-			name = RadioStar;
+			name = RadioGalaxy;
 			packageProductDependencies = (
 			);
 			productName = RadioStar;
-			productReference = 7F1E14C12ED6A80D00D08908 /* RadioStar.app */;
+			productReference = 7F1E14C12ED6A80D00D08908 /* RadioGalaxy.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -221,7 +216,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 7F1E14BC2ED6A80D00D08908 /* Build configuration list for PBXProject "RadioStar" */;
+			buildConfigurationList = 7F1E14BC2ED6A80D00D08908 /* Build configuration list for PBXProject "RadioGalaxy" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -233,15 +228,9 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7F1E14C22ED6A80D00D08908 /* Products */;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = 7F6DC4462F4EF866004ED68D /* Products */;
-					ProjectRef = 7FE434052F4DC32C000BC7A4 /* RadioStar.xcodeproj */;
-				},
-			);
 			projectRoot = "";
 			targets = (
-				7F1E14C02ED6A80D00D08908 /* RadioStar */,
+				7F1E14C02ED6A80D00D08908 /* RadioGalaxy */,
 			);
 		};
 /* End PBXProject section */
@@ -460,7 +449,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7F1E14BC2ED6A80D00D08908 /* Build configuration list for PBXProject "RadioStar" */ = {
+		7F1E14BC2ED6A80D00D08908 /* Build configuration list for PBXProject "RadioGalaxy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7F1E14DC2ED6A80D00D08908 /* Debug */,
@@ -469,7 +458,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7F1E14D92ED6A80D00D08908 /* Build configuration list for PBXNativeTarget "RadioStar" */ = {
+		7F1E14D92ED6A80D00D08908 /* Build configuration list for PBXNativeTarget "RadioGalaxy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7F1E14DA2ED6A80D00D08908 /* Debug */,
