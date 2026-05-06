@@ -216,15 +216,26 @@
 
 - (void) songChanged: (id) asong {
     NSString *song = (NSString *) asong;
+    NSString *stationName = [_signView getPlayingStationName];
+    NSString *displayName;
+
     if (song != nil) {
 	[self updateIOSCenter: song];
-	[_marquee setText: song];
-	[_history addHistoryStation: [_signView getPlayingStationName]
+	[_history addHistoryStation: stationName
 			   withSong: song];
     } else {
 	[self updateIOSCenter: @"[Unknown song"];
-	[_marquee setText: @"[Unknown]"];
+	song = @"[Unknown]";
     }
+
+    if ([stationName length] > 18) {
+	displayName = [NSString stringWithFormat: @"%@ - %@",
+				[stationName substringToIndex: 18],
+				song];
+    } else {
+	displayName = [NSString stringWithFormat: @"%@ - %@", stationName, song];
+    }
+    [_marquee setText: displayName];
 }
 
 - (void) playInternal {

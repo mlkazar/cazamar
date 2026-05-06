@@ -119,46 +119,6 @@ static UIColor *_backgroundColor;
     [_tableView reloadData];
 }
 
-#if 0
-- (NSArray *) tableView: (UITableView *) tview
-editActionsForRowAtIndexPath: (NSIndexPath *) path
-{
-    long row;
-    NSMutableArray *histItemArray;
-    MFANHistoryItem *hist;
-    NSString *hlString;
-    
-    row = [path row];
-    histItemArray = [_topHist histItems];
-    hist = [histItemArray objectAtIndex: row];
-
-    UITableViewRowAction *deleteAction =
-	[UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
-					   title:@"Delete"
-					 handler:^(UITableViewRowAction *action,
-						   NSIndexPath *path) {
-		[self removeRowAtPath: path];
-	    }];
-
-    deleteAction.backgroundColor = [UIColor redColor];
-
-    if (hist.highlighted)
-	hlString = @"Unhighlight";
-    else
-	hlString = @"Highlight";
-
-    UITableViewRowAction *hlAction =
-	[UITableViewRowAction rowActionWithStyle:UITableViewRowActionStyleNormal
-					   title:hlString
-					 handler:^(UITableViewRowAction *action,
-						   NSIndexPath *path) {
-		[self highlightRowAtPath: path];
-	    }];
-    hlAction.backgroundColor = [UIColor blueColor];
-
-    return @[hlAction, deleteAction];
-}
-#else
 - (UISwipeActionsConfiguration *) tableView: (UITableView *) tview
 trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 {
@@ -204,7 +164,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     return [UISwipeActionsConfiguration configurationWithActions: @[hlAction, deleteAction]];
 }
-#endif
 
 - (NSInteger) tableView: (UITableView *)tview numberOfRowsInSection: (NSInteger) section
 {
@@ -739,8 +698,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     }
 
     /* suppress duplicates */
-    if (count >= 1) {
-	prev = [_histItems objectAtIndex: count-1];
+    for(uint64_t i=1;i<12;i++) {
+	ix = count - i;
+	if (ix < 0)
+	    break;
+
+	prev = [_histItems objectAtIndex: ix];
 	if ( [prev.station isEqualToString: station] &&
 	     [prev.song isEqualToString: song]) {
 	    return;
