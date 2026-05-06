@@ -1005,6 +1005,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     reason = [reasonKey longValue];
     if ( reason == AVAudioSessionRouteChangeReasonOldDeviceUnavailable) {
 	[self pause];
+    } else if ( reason == AVAudioSessionRouteChangeReasonNewDeviceAvailable) {
+	[self resume];
     }
 }
 

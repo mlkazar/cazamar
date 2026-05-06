@@ -1490,16 +1490,54 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [self animationOn];
 }
 
+// Generally, we want the silence player running if we aren't playing
+// music, so that *something* is playing at all times, to avoid our
+// app being killed for lack of using the audio channels.
+//
+// Also, our app won't get killed if it is in the foreground (no lock
+// screen).
+//
+// Note that the lock screen / car play controls only work with mix
+// false.  If mix is false, however, a route change stops all audio,
+// and we eventually get killed, so we want to start a mix == true
+// player when we get interrupted with a route change.
+//
+// One problem we encounter is if we switch to a dead station, it
+// looks like we're not playing any more, we start the silence player
+// in mix mode and lose access to car play controls.  So, if we're not
+// playing but didn't hit pause, we leave the controls in place and
+// hope the jammed up player will continue before we get killed.
+//
+// In general, we can have mix set, in which case we can keep playing
+// music or keep the app running with silence, but car play controls
+// don't work.
 - (void) processBackgroundState {
     if (_isBackground) {
-	if (!_isPlaying) {
+	// We want a stalled player (not playing but not paused) to
+	// keep the controls around (use mix == false) .  Such a
+	// player will timeout in 15 seconds or so, so we'll get a
+	// chance to start the silence player going before we get
+	// killed (hopefully).
+	if (!_isPlaying && (_player == nil || [_player isPaused])) {
 	    [_silence start];
 	    [self setupAudioSession: true];
 	} else {
 	    // playing, so we don't need more things playing in order
-	    // to keep our process around
-	    [_silence stop];
-	    [self setupAudioSession: false];
+	    // to keep our process around.  Or we're not playing
+	    // because of a stall, which hopefully won't last long.
+	    if (!_isPlaying) {
+		// not playing, but not paused, use silence to keep us
+		// alive.  Keep controls visible.  Because mix is
+		// false, someone else starting audio during this time
+		// will probably stop our silence player.  We'll
+		// continue after the player wakes up again and either
+		// plays again or pauses.
+		[_silence start];
+		[self setupAudioSession: false];
+	    } else {
+		[_silence stop];
+		[self setupAudioSession: false];
+	    }
 	}
     } else {
 	// foreground, don't have to worry about being killed
