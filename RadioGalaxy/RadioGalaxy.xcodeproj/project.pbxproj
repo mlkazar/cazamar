@@ -77,7 +77,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		7F1E14D82ED6A80D00D08908 /* Exceptions for "RadioStar" folder in "RadioGalaxy" target */ = {
+		7F1E14D82ED6A80D00D08908 /* Exceptions for "RadioGalaxy" folder in "RadioGalaxy" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -87,12 +87,12 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		7F1E14C32ED6A80D00D08908 /* RadioStar */ = {
+		7F1E14C32ED6A80D00D08908 /* RadioGalaxy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				7F1E14D82ED6A80D00D08908 /* Exceptions for "RadioStar" folder in "RadioGalaxy" target */,
+				7F1E14D82ED6A80D00D08908 /* Exceptions for "RadioGalaxy" folder in "RadioGalaxy" target */,
 			);
-			path = RadioStar;
+			path = RadioGalaxy;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -154,7 +154,7 @@
 				7F8417F32F1EF39200B497E8 /* MFANCGUtil.h */,
 				7F8417F42F1EF3BD00B497E8 /* MFANSocket.h */,
 				7F8417F52F1EF3BD00B497E8 /* MFANSocket.cc */,
-				7F1E14C32ED6A80D00D08908 /* RadioStar */,
+				7F1E14C32ED6A80D00D08908 /* RadioGalaxy */,
 				7F40AC9D2F1EF70D001B1EE8 /* Frameworks */,
 				7F1E14C22ED6A80D00D08908 /* Products */,
 			);
@@ -198,7 +198,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				7F1E14C32ED6A80D00D08908 /* RadioStar */,
+				7F1E14C32ED6A80D00D08908 /* RadioGalaxy */,
 			);
 			name = RadioGalaxy;
 			packageProductDependencies = (
@@ -294,7 +294,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = RadioStar/Info.plist;
+				INFOPLIST_FILE = RadioGalaxy/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarStyle = "";
@@ -321,7 +321,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = RadioStar/Info.plist;
+				INFOPLIST_FILE = RadioGalaxy/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIStatusBarStyle = "";
