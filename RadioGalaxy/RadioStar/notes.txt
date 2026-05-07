@@ -138,3 +138,19 @@ Longer term items
 ** use backing file for large streams
 
 -- shazam button to identify playing song.
+
+================================================================
+
+Stations:
+WYEP
+WMFO http://webstream.wmfo.org/;type=http
+WERS
+Acid Flashback
+WSUM
+KKUP
+Jaxx Radio Black Music
+North East Radio Scotlandf
+WESU
+WESA
+KQED
+J.S.Bach Classical Radio
