@@ -203,9 +203,9 @@
 					     backgroundColor: labelColor];
 	[recordButton setFillColor: labelColor];
 	if (_station.isRecording)
-	    [recordButton setClearText: @"No stream in background"];
+	    [recordButton setClearText: @"Stream only while playing"];
 	else
-	    [recordButton setClearText: @"Stream in background"];
+	    [recordButton setClearText: @"Stream always"];
 	[recordButton addCallback: self
 		     withAction: @selector(recordPressed:withData:)];
 	[self addSubview: recordButton];
@@ -217,9 +217,9 @@
 					     backgroundColor: labelColor];
 	[recordButton setFillColor: labelColor];
 	if ([_signView.history isHighlighted])
-	    [recordButton setClearText: @"Unhighlight"];
+	    [recordButton setClearText: @"Unhighlight song"];
 	else
-	    [recordButton setClearText: @"Highlight"];
+	    [recordButton setClearText: @"Highlight song"];
 	[recordButton addCallback: self
 		     withAction: @selector(highlightPressed:withData:)];
 	[self addSubview: recordButton];
@@ -231,9 +231,9 @@
 					     backgroundColor: labelColor];
 	[recordButton setFillColor: labelColor];
 	if (_player == nil || !_player.muted)
-	    [recordButton setClearText: @"Mute"];
+	    [recordButton setClearText: @"Mute station"];
 	else
-	    [recordButton setClearText: @"Unmute"];
+	    [recordButton setClearText: @"Unmute station"];
 	[recordButton addCallback: self
 		     withAction: @selector(mutePressed:withData:)];
 	[self addSubview: recordButton];

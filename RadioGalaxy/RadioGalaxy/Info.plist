@@ -23,5 +23,9 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
