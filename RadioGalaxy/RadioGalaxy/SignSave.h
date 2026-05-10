@@ -11,5 +11,7 @@ typedef void (^CompletionBlock)(void);
 - (int32_t) initRestoreFromFile: (NSMutableOrderedSet *) allStatons
 		     completion: (CompletionBlock) block;
 
+- (void) initCheckImages: (NSMutableOrderedSet *) allStations
+	      completion: (CompletionBlock) block;
 @end
 

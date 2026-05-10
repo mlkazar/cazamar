@@ -1,5 +1,7 @@
 #import "SignStation.h"
 
+#define FORCE_LOGO 0
+
 @implementation SignStation {
     NSString *_stationName;
     NSString *_shortDescr;
@@ -16,7 +18,7 @@
 
     bool _isRecording;		// so don't stop stream if switch away
     bool _isSelected;		// selected as part of search operation
-    bool _isLoaded;		// image is loaded
+    bool _isLoaded;		// image is loaded from URL, not string
 
     MFANAqStream *_recordingStream;	// stream being recorded
     MFANAqStreamBuffer *_recordingBuffer; // recorded data from stream.
@@ -127,6 +129,17 @@
 }
 
 - (void) setIconImageFromUrl: (bool) doLoad {
+#if FORCE_LOGO
+    UIImage *image;
+    CGSize nameSize;
+    NSString *logoName;
+
+    logoName = [NSString stringWithFormat: @"Logo %d", _signIndex % 10];
+    nameSize.width = 100;
+    nameSize.height = 30;
+    image = [SignStation imageFromText: logoName Size: nameSize];
+    _iconImage = [self fixupImage: image];
+#else
     UIImage *image;
     NSString *nameToUse;
     static const uint32_t maxChars = 6;
@@ -139,6 +152,10 @@
     // try URL
     if (doLoad && [_iconUrl length] > 0) {
 	[self tryLoadFromUrl];
+	if (_iconImage != nil) {
+	    // we loaded it
+	    return;
+	}
     }
 
     // generate image from text of first few characters of station name
@@ -157,6 +174,7 @@
 
     // Now fix the image by turning any transparent pixels into white pixels
     _iconImage = [self fixupImage: image];
+#endif
 }
 
 @end

@@ -86,6 +86,16 @@
     return code;
 }
 
+- (void) initCheckImages: (NSMutableOrderedSet *) allStations
+	      completion: (CompletionBlock) block {
+    _completionBlock = block;
+
+    NSThread *thr = [[NSThread alloc] initWithTarget: self
+					    selector: @selector(loadAsync:)
+					      object: allStations];
+    [thr start];
+}
+
 - (int32_t) initRestoreFromFile: (NSMutableOrderedSet *) allStations
 		     completion: (CompletionBlock) block {
     Json json;

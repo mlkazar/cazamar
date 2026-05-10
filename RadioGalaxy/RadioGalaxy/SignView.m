@@ -42,6 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLRenderPipelineState> _pipeline;
     CADisplayLink *_displayLink;
     Silence *_silence;
+    UIAlertController *_introAlert;
 
     NSMutableOrderedSet *_allStations;
 
@@ -553,9 +554,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     id<MTLTexture> texture;
 
     if (drawable != nil ) {
-	if ([_allStations count] == 0)
-	    return;
-
 	CGSize drawableSize = _metalLayer.drawableSize;
 
 	// compute factor to multiply Y coordinate by
@@ -642,12 +640,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	// draw the whole box; encoder may do the triangles in order
 	// listed.
-	[backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
-				indexCount:[_indexBuffer length] / sizeof(SignIndex)
-				 indexType: MTLIndexTypeUInt16
-			       indexBuffer: _indexBuffer
-			 indexBufferOffset: 0
-			     instanceCount: signCount];
+	if (signCount > 0) {
+	    [backEncoder drawIndexedPrimitives: MTLPrimitiveTypeTriangle
+				    indexCount:[_indexBuffer length] / sizeof(SignIndex)
+				     indexType: MTLIndexTypeUInt16
+				   indexBuffer: _indexBuffer
+			     indexBufferOffset: 0
+				 instanceCount: signCount];
+	}
 
 	// all done encoding command
         [backEncoder endEncoding];
@@ -768,6 +768,23 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     return texture;
 }
 
+- (void) showIntroAlert: (id) junk {
+    _introAlert = [UIAlertController
+		      alertControllerWithTitle: @"RadioStar"
+				       message: @"Use Main Menu / Search for Station to "
+		      "add station(s) to play, select station from search results"
+		      "and press station's icon to play"
+				preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK"
+                                                     style: UIAlertActionStyleDefault
+                                                   handler:^(UIAlertAction *act) {
+	}];
+    [_introAlert addAction: action];
+
+    [_vc presentViewController: _introAlert animated:YES completion: nil];
+}
+
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc {
     self = [super initWithFrame: frame];
     if (self != nil) {
@@ -830,6 +847,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    }];
 
 	if ([_allStations count] == 0) {
+#if 0
 	    [self addStation: @"WYEP"
 		  shortDescr: @"Where music matters"
 		   streamUrl: @"https://ais-sa3.cdnstream1.com/2557_128.mp3"
@@ -841,8 +859,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		   streamUrl: @"https://ais-sa3.cdnstream1.com/2556_128.mp3"
 		     iconUrl: @"https://wesa.org/apple-touch-icon.png"
 		   rowColumn: SignCoordMake(1,0)];
+#else
+	    [NSTimer scheduledTimerWithTimeInterval: 0.5
+					     target: self
+					   selector: @selector(showIntroAlert:)
+					   userInfo: nil
+					    repeats: NO];
+#endif
 	}
-
 
 	[self computeLayout];
 
@@ -912,6 +936,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _searchStation = nil;
 
     [[SignSave alloc] initSaveToFile: _allStations];
+
+    // These days, this must happen on an async thread.
+    [[SignSave alloc] initCheckImages: _allStations
+			   completion: ^() {
+	    [self animationOn];
+	}];
+
 
     // force a redraw
     [self animationOn];
@@ -1054,6 +1085,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [self computeLayout];
 
     [[SignSave alloc] initSaveToFile: _allStations];
+
+    [self animationOn];
 }
 
 - (void) dragPressed: (UIPanGestureRecognizer *) sender {
@@ -1120,7 +1153,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    _stationToEdit.shortDescr = _editStation.shortDescr;
 	    _stationToEdit.streamUrl = _editStation.streamUrl;
 	    _stationToEdit.iconImage = nil;	// force regeneration
-	    [_stationToEdit setIconImageFromUrl: NO];
+	    [_stationToEdit setIconImageFromUrl: YES];
 	}
 	[[SignSave alloc] initSaveToFile: _allStations];
 	[self animationOn];
