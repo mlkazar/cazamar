@@ -838,6 +838,7 @@ RadioScanQuery::browseFile(RadioScan::ScanType scanType) {
     Json jsonSys;
     RadioScanStation *stationp;
     std::string tstr;
+    bool first;
 
     std::string url = ("http://all.api.radio-browser.info/json/stations/search?");
     if (_countryList.size() > 0) {
@@ -856,15 +857,35 @@ RadioScanQuery::browseFile(RadioScan::ScanType scanType) {
         url.append(std::string("city=") + tstr + "&");
     }
 
-    for(it = _nameList.begin(); it != _nameList.end(); ++it) {
-        tstr = *it;
-        if (scanType == RadioScan::useTag)
-            url.append(std::string("tag=") + tstr + "&");
-        else if (scanType == RadioScan::useName)
-            url.append(std::string("name=") + tstr + "&");
+    if (!_nameList.empty()) {
+        if (scanType == RadioScan::useTag) {
+            first = true;
+            for(it = _nameList.begin(); it != _nameList.end(); ++it) {
+                tstr = *it;
+                if (first)
+                    url.append("tag=");
+                else
+                    url.append(",");
+                url.append(tstr);
+                first = false;
+            }
+        } else {
+            first = true;
+            for(it = _nameList.begin(); it != _nameList.end(); ++it) {
+                if (first)
+                    url.append("name=");
+                else
+                    url.append("%20");
+
+                tstr = *it;
+                url.append(tstr);
+                first = false;
+            }
+        }
+        url.append("&");
     }
 
-    url.append("limit=10000");
+    url.append("limit=1000");
 
     code = _scanp->retrieveContents(url, &queryResults);
     if (code)
@@ -1135,7 +1156,7 @@ RadioScanQuery::searchShoutcast(RadioScan::ScanType scanType)
         return 0;
 
     snprintf(tbuffer, sizeof(tbuffer),
-             "http://api.shoutcast.com/legacy/genresearch?k=%s&limit=100&search=",
+             "http://api.shoutcast.com/legacy/stationsearch?k=%s&limit=100&search=",
              keyStringp);
 
     totalCount = _nameList.size();

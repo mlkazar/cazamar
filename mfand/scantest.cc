@@ -70,22 +70,24 @@ main(int argc, char **argv)
     RadioScan *scanp;
     RadioScanQuery *queryp;
     BufSocketFactory socketFactory;
+    RadioScan::ScanType scanType;
     QueryMonitor *monitorp;
     CThreadHandle *chp;
 
     if (argc < 2) {
-        printf("usage: scantest lookup <name>\n");
+        printf("usage: scantest name|tag <name>\n");
         return -1;
     }
 
     scanp = new RadioScan();
     scanp->init(&socketFactory, "");
+    scanp->setStrictLicense();
     printf("back from init\n");
 
     monitorp = new QueryMonitor();
     chp = new CThreadHandle();
 
-    if (strcmp(argv[1], "lookup") == 0) {
+    if (strcmp(argv[1], "name") == 0 || strcmp(argv[1], "tag") == 0) {
         queryp = new RadioScanQuery();
         queryp->initSmart(scanp, std::string(argv[2]));
 
@@ -93,7 +95,11 @@ main(int argc, char **argv)
         chp->init((CThread::StartMethod) &QueryMonitor::start, monitorp, queryp);
 
         // start the actual search
-        scanp->searchStation(queryp);
+        if (strcmp(argv[1], "name") == 0)
+            scanType = RadioScan::useName;
+        else
+            scanType = RadioScan::useTag;
+        scanp->searchStation(queryp, scanType);
 
         printf("\nAll done with query=%p for string='%s'\n", queryp, queryp->_query.c_str());
 
