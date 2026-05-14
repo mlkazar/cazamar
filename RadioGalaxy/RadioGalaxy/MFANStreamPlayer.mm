@@ -1077,7 +1077,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
      * When muted, we turn on 'mix with others' so that the player won't
      * stop if we play a video in a separate app.  This will allow our player
      * to keep running which will keep IOS from killing us if we're doing
-     * a download in the background.
+     * streaming in the background.
      */
     OSStatus osStatus;
 

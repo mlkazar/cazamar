@@ -12,6 +12,12 @@ Ideas for Radio app
 
 ========Todo========
 
+-- change default to always record
+
+-- use keyword searches to do AND not OR
+
+-- highlight  should search back in history  for right station
+
 -- settings for how much music to keep / whether to restore after
    restart / whether to automatically record playing stations in background
 

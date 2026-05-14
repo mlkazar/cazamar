@@ -206,7 +206,7 @@
 
 // Check whether at least targetBytes of audio is queued ahead of the current
 // read position.  Blocks until there is, or until the buffer is torn down /
-// the downloader finishes.  Returns YES if the target was met.
+// the streamer finishes.  Returns YES if the target was met.
 - (bool) waitForAtLeast: (uint64_t) targetBytes {
     uint32_t blockIx;
     uint32_t packetIx;
@@ -673,7 +673,7 @@ static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before re
 }
 
 NSString *fileNameForFileId(uint32_t fileId) {
-    NSString *entryName = [NSString stringWithFormat: @"station-download-%d.dat", fileId];
+    NSString *entryName = [NSString stringWithFormat: @"station-stream-%d.dat", fileId];
     NSString *fileName = fileNameForFile(entryName);
 
     return fileName;

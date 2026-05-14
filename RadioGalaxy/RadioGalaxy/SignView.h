@@ -54,9 +54,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) displayAppOptions;
 
-- (void) stopRecording;
+- (void) stopRecording: (SignStation *) station;
 
-- (void) startRecording;
+- (void) startRecording: (SignStation *) station;
 
 - (void) stopRadioResumeAtEnd;
 

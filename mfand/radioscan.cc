@@ -32,6 +32,7 @@ RadioScan::init(BufGenFactory *factoryp, std::string dirPrefix)
     _stwBufp->init(const_cast<char *>("playerservices.streamtheworld.com"), 80);
     _stwBufp->setTimeoutMs(15000);
     _stwConnp = _xapip->addClientConn(_stwBufp);
+    _strictLicense = false;
 }
 
 /* start with the object at the URL, and resolve it until we get to an
@@ -695,6 +696,7 @@ RadioScanStation::upperCase(std::string name)
     return result;
 }
 
+#if 0
 // We're going to put the first word in the name and use the others as tags
 int32_t
 RadioScanQuery::searchFile() {
@@ -778,6 +780,7 @@ RadioScanQuery::searchFile() {
 
     return 0;
 }
+#endif
 
 /* static */ void
 RadioScan::scanSort(int32_t *datap, int32_t count)
@@ -1443,13 +1446,15 @@ RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
     // Most stations have no entries, but some have a whole bunch.
     //
     // TODO: Not clear if it is worth it, but perhaps limit to first 4 results
-    if (resp->_nameList.size() >= 1) {
-        name = resp->_nameList.front();
-        if (name.size() <= 4) {
-            resp->_baseStatus = std::string("Searching StreamTheWorld (1/5)");
-            resp->searchStreamTheWorld(scanType);
-            if (resp->isAborted())
-                return;
+    if (!_strictLicense) {
+        if (resp->_nameList.size() >= 1) {
+            name = resp->_nameList.front();
+            if (name.size() <= 4) {
+                resp->_baseStatus = std::string("Searching StreamTheWorld (1/5)");
+                resp->searchStreamTheWorld(scanType);
+                if (resp->isAborted())
+                    return;
+            }
         }
     }
 
@@ -1464,18 +1469,21 @@ RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
 
     // TODO: this can return a whole bunch of things, so search for
     // the query string in the name before doing more work.
-    resp->_baseStatus = std::string("Searching RadioTime (3/5)");
-    resp->searchRadioTime(scanType);
-    if (resp->isAborted())
-        return;
+    if (!_strictLicense) {
+        resp->_baseStatus = std::string("Searching RadioTime (3/5)");
+        resp->searchRadioTime(scanType);
+        if (resp->isAborted())
+            return;
 
-    // TODO: sometimes really slow; only use uberstation URL
-    // Get rid of this
-    /* add entries from DAR.fm */
-    resp->_baseStatus = std::string("Searching dar.fm (4/5)");
-    resp->searchDar(scanType);
-    if (resp->isAborted())
-        return;
+        // TODO: sometimes really slow; only use uberstation URL
+        // Get rid of this
+        /* add entries from DAR.fm */
+        resp->_baseStatus = std::string("Searching dar.fm (4/5)");
+        resp->searchDar(scanType);
+        if (resp->isAborted()) {
+            return;
+        }
+    }
 
     // doesn't seem to work for station names, just genres
     resp->_baseStatus = std::string("Searching Shoutcast (5/5)");

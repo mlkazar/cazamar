@@ -1024,6 +1024,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
     [alert addAction: action];
 
+    action = [UIAlertAction actionWithTitle:@"Legal"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+	    (void) [[HelpView alloc] initWithFile:@"help-legal" viewCont: self->_vc];
+	}];
+    [alert addAction: action];
+
     action = [UIAlertAction actionWithTitle:@"Cancel"
                                       style: UIAlertActionStyleDefault
                                     handler:^(UIAlertAction *act) {
@@ -1130,12 +1137,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateBegan) {
 	SignStation *station = [self findStationByTouch: point];
-	if (station == nil)
-	    station = _playingStation;
 	if (station != nil) {
 	    _stationToEdit = station;
 	    _editStation = [[EditStation alloc] initWithFrame: self.frame
 						      station: station
+						     signView: self
 						     viewCont: _vc];
 	    [_editStation setCallback: self withSel: @selector(editDone:)];
 	}
@@ -1448,17 +1454,18 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	return @"[Unknown station]";
 }
 
-- (void) startRecording {
-    if (_playingStation != nil)
-	_playingStation.isRecording = true;
+- (void) startRecording: (SignStation *)station {
+    station.isRecording = true;
     [self animationOn];
 }
 
-- (void) stopRecording {
-    if (_playingStation != nil) {
-	_playingStation.recordingStream = nil;
-	_playingStation.isRecording = false;
+- (void) stopRecording: (SignStation *) station {
+    MFANAqStream *stream = station.recordingStream;
+    if (stream != nil) {
+	[stream shutdown];
+	station.recordingStream = nil;
     }
+    station.isRecording = false;
     [self animationOn];
 }
 

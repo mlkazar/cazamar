@@ -44,7 +44,7 @@
 - (SignStation *) init {
     self = [super init];
     if (self) {
-	self.isRecording = NO;
+	self.isRecording = YES;
 	self.isSelected = NO;
 	self.isLoaded = NO;
 	self.recordingBuffer = [[MFANAqStreamBuffer alloc] init];

@@ -672,6 +672,9 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     int64_t ix;
     NSString *unknownString;
 
+    if ([song length] == 0)
+	return;
+
     /* prune from the head */
     ix = 0;
     while (1) {
@@ -724,32 +727,43 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     [self saveEdits];
 }
 
-- (void) toggleHighlight
-{
+- (uint64_t) findLastItemInStation: (NSString *) stationName {
     uint64_t count;
+    int64_t ix;
+    MFANHistoryItem *item;
+
+    count = [_histItems count];
+    for(ix = count - 1; ix >= 0; ix--) {
+	item = _histItems[ix];
+	if ( [item.station isEqualToString: stationName])
+	    return ix;
+    }
+
+    return ~0ULL;
+}
+
+- (void) toggleHighlightInStation: (NSString *) stationName;
+{
     uint64_t ix;
     MFANHistoryItem *lastItem;
 
-    count = [_histItems count];
-    if (count < 1)
+    ix = [self findLastItemInStation: stationName];
+    if (ix == ~0ULL)
 	return;
-    ix = count-1;	// dealing with the last item
 
     lastItem = [_histItems objectAtIndex: ix];
     lastItem.highlighted = !lastItem.highlighted;
     [_histItems replaceObjectAtIndex: ix withObject: lastItem];
 }
 
-- (BOOL) isHighlighted
+- (BOOL) isHighlightedInStation: (NSString *) stationName
 {
-    uint64_t count;
     uint64_t ix;
     MFANHistoryItem *lastItem;
 
-    count = [_histItems count];
-    if (count < 1)
-	return NO;
-    ix = count-1;	// dealing with the last item
+    ix = [self findLastItemInStation: stationName];
+    if (ix == ~0ULL)
+	return false;
 
     lastItem = [_histItems objectAtIndex: ix];
     return lastItem.highlighted;

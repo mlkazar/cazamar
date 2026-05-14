@@ -27,6 +27,7 @@ class RadioScanStation;
 class RadioScan {
     dqueue<RadioScanQuery> _activeQueries;
     static CThreadMutex _lock;
+    bool _strictLicense;
 
  public:
     /* max # of 301 redirects before we call it quits */
@@ -61,6 +62,10 @@ class RadioScan {
     static void scanSort(int32_t *datap, int32_t count);
 
     int32_t retrieveContents(std::string url , std::string *strp);
+
+    void setStrictLicense() {
+        _strictLicense = true;
+    }
 };
 
 class RadioScanQuery {

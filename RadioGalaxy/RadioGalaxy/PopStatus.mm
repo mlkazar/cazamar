@@ -216,7 +216,7 @@
 						       color: [UIColor blackColor]
 					     backgroundColor: labelColor];
 	[recordButton setFillColor: labelColor];
-	if ([_signView.history isHighlighted])
+	if ([_signView.history isHighlightedInStation: _station.stationName])
 	    [recordButton setClearText: @"Unhighlight song"];
 	else
 	    [recordButton setClearText: @"Highlight song"];
@@ -237,12 +237,6 @@
 	[recordButton addCallback: self
 		     withAction: @selector(mutePressed:withData:)];
 	[self addSubview: recordButton];
-
-	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
-	_seekSlider = [[BufferSlider alloc] initWithFrame: buttonFrame
-						 viewCont: _vc
-						 signView: _signView];
-	[self addSubview: _seekSlider];
 
 	buttonFrame.origin.y = frame.size.height - labelHeight;
 	buttonFrame.origin.x = frame.size.width/2 - okButtonWidth/2;
@@ -296,11 +290,11 @@
 
     NSLog(@"highlight pressed");
 
-    [_signView.history toggleHighlight];
+    [_signView.history toggleHighlightInStation:_station.stationName];
 
     [self doNotify];
 
-    if ([_signView.history isHighlighted]) {
+    if ([_signView.history isHighlightedInStation:_station.stationName]) {
 	notice = @"Hightlighted last song for later";
     } else {
 	notice = @"Removed highlighting for current song";
@@ -313,10 +307,10 @@
     NSString *notice;
     NSLog(@"record pressed");
     if (_station.isRecording) {
-	[_signView stopRecording];
+	[_signView stopRecording: _station];
 	notice = @"Will stop recording upon switching stations";
     } else {
-	[_signView startRecording];
+	[_signView startRecording: _station];
 	notice = @"Will keep recording even after switching stations";
     }
 

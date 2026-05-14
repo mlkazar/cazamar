@@ -131,6 +131,7 @@
 
 	_scanp = new RadioScan();
 	_scanp->init(_factory, dirPrefix);
+	_scanp->setStrictLicense();
 
 	_stationTable = [[UITableView alloc] initWithFrame: tableFrame
 						     style:UITableViewStylePlain];
@@ -388,6 +389,7 @@
 	    SignCoord rowColumn = {0, 0};
 	    [newStation setRowColumn: rowColumn];
 	    newStation.isRecording = NO;
+	    [newStation setIconImageFromUrl: YES];
 
 	    // TODO: find best stream to use
 	    RadioScanStation::Entry *ep;
@@ -563,7 +565,6 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     else
 	cell.accessoryType = UITableViewCellAccessoryNone;
 
-    [station setIconImageFromUrl: YES];
     UIImage *scaledImage = resizeImage(station.iconImage, 60);
 
     [[cell imageView] setImage: scaledImage];

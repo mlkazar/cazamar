@@ -2,6 +2,7 @@
 #import <Foundation/Foundation.h>
 
 #import "SignStation.h"
+#import "SignView.h"
 #import "ViewController.h"
 
 @interface EditStation : UIView<UITextFieldDelegate,TopViewInt>
@@ -14,6 +15,7 @@
 
 - (EditStation *) initWithFrame: (CGRect) frame
 			station: (SignStation *) station
+		       signView: (SignView *) signView
 		       viewCont: (ViewController *) vc;
 
 - (void) setCallback: (id) obj withSel: (SEL) sel;

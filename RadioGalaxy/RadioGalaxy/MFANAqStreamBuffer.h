@@ -67,7 +67,7 @@ typedef struct _MFANAqStreamFile {
 - (uint64_t) tell;
 
 // Create a new reader positioned just past the last packet currently
-// in the buffer (i.e. it will read only newly downloaded packets).
+// in the buffer (i.e. it will read only newly streamed packets).
 - (MFANAqStreamReader *) initWithBuffer: (MFANAqStreamBuffer *) buffer;
 
 - (void) close;
@@ -94,10 +94,10 @@ typedef struct _MFANAqStreamFile {
 // ---------------------------------------------------------------------------
 // MFANAqStreamBuffer
 //
-// Stores the sequence of downloaded audio packets (MFANAqStreamPacket).
-// Its lifetime is independent from MFANAqStream (the downloader): callers
-// may retain the buffer and continue reading already-downloaded data after
-// the downloader has been released or shut down.
+// Stores the sequence of streamed audio packets (MFANAqStreamPacket).
+// Its lifetime is independent from MFANAqStream (the streamer): callers
+// may retain the buffer and continue reading already-streamed data after
+// the streamer has been released or shut down.
 //
 // Thread-safety: all mutations and reads of packetArray and the version/
 // timestamp fields must be done with +streamMutex held.  The condition
@@ -136,7 +136,7 @@ typedef struct _MFANAqStreamFile {
 @property uint32_t dirtyBlocks;
 
 // -------------------------------------------------------------------
-// Fields written by the downloader's audio-stream parser callbacks.
+// Fields written by the streamer's audio-stream parser callbacks.
 // Exposed as properties so the static C callbacks in MFANAqStream.mm
 // can access them without needing to reach into private ivars.
 // -------------------------------------------------------------------
@@ -161,7 +161,6 @@ typedef struct _MFANAqStreamFile {
 
 // Per-instance condition variable.  Signalled when:
 //   • new packets are appended,
-//   • downloadComplete changes to YES, or
 //   • shuttingDown changes to YES.
 - (pthread_cond_t *) packetArrayCv;
 

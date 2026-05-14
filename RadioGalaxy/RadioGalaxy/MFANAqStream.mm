@@ -23,7 +23,7 @@ static int _streamStaticSetup = 0;
 static pthread_mutex_t _streamMutex;
 
 // ---------------------------------------------------------------------------
-// MFANAqStream — downloader
+// MFANAqStream — streamer
 // ---------------------------------------------------------------------------
 
 @implementation MFANAqStream {
@@ -359,7 +359,7 @@ MFANAqStream_rsControlProc( void *contextp,
     return self;
 }
 
-/* The async thread that drives the RadioStream download. */
+/* The async thread that drives the RadioStream stream. */
 - (void) playAsync: (id) junk
 {
     MFANSocketFactory socketFactory;

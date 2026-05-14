@@ -2,6 +2,8 @@
 #import "MFANCGUtil.h"
 #import "MFANIconButton.h"
 #import "MFANCoreButton.h"
+#import "MFANWarn.h"
+#import "SignView.h"
 #import "ViewController.h"
 
 @implementation EditStation {
@@ -12,10 +14,13 @@
     UILabel *_nameLabel;
     UILabel *_descrLabel;
     UILabel *_urlLabel;
+    SignStation *_station;
+    SignView *_signView;
 
     MFANIconButton *_doneButton;
     MFANIconButton *_cancelButton;
     MFANCoreButton *_removeButton;
+    MFANCoreButton *_recordButton;
 
     // properties
     NSString *_stationName;
@@ -36,6 +41,7 @@
 
 - (EditStation *) initWithFrame: (CGRect) frame
 			station: (SignStation *) station
+		       signView: (SignView *) signView
 		       viewCont: (ViewController *) vc {
     CGRect boxFrame;
     CGRect buttonFrame;
@@ -53,8 +59,14 @@
 	// indent things so that we center the label and text box in
 	//the frame.
 	float indent = (frame.size.width - labelWidth - boxWidth) / 2;
+	UIColor *labelColor = [UIColor colorWithRed: 0.9
+					      green: 0.9
+					       blue:0.9
+					      alpha: 1.0];
 
 	_vc = vc;
+	_station = station;
+	_signView = signView;
 	_stationName = [NSString stringWithString: station.stationName];
 	_shortDescr = [NSString stringWithString: station.shortDescr];
 	_streamUrl = [NSString stringWithString: station.streamUrl];
@@ -142,6 +154,24 @@
 	[_urlView setBackgroundColor: [UIColor clearColor]];
 	[self addSubview: _urlView];
 
+	boxFrame.origin.y += boxHeight + frame.size.height * 0.05;
+	boxFrame.origin.x = indent;
+	boxFrame.size.width = frame.size.width - 2*indent;
+	MFANCoreButton *recordButton;
+	recordButton = [[MFANCoreButton alloc] initWithFrame: boxFrame
+						       title: @"Border"
+						       color: [UIColor blackColor]
+					     backgroundColor: labelColor];
+	[recordButton setFillColor: labelColor];
+	if (_station.isRecording)
+	    [recordButton setClearText: @"Stream only while playing"];
+	else
+	    [recordButton setClearText: @"Stream always"];
+	[recordButton addCallback: self
+		     withAction: @selector(recordPressed:)];
+	[self addSubview: recordButton];
+
+
 	/* now add Done button */
 	float buttonWidth = frame.size.width/8;
 	float removeButtonWidth = frame.size.width/3;
@@ -228,6 +258,22 @@
     [alert addAction: action];
 
     [_vc presentViewController: alert animated:YES completion: nil];
+}
+
+- (void) recordPressed: (id) junk1 {
+    NSString *notice;
+    NSLog(@"record pressed");
+    if (_station.isRecording) {
+	[_signView stopRecording: _station];
+	notice = @"Will stop recording upon switching stations";
+    } else {
+	[_signView startRecording: _station];
+	notice = @"Will keep recording even after switching stations";
+    }
+
+    (void) [[MFANWarn alloc] initWithTitle: @"Streaming" message: notice secs: 1.2];
+
+    [self doNotify];
 }
 
 - (void) donePressed: (id) junk1 withData: (id) junk2 {
