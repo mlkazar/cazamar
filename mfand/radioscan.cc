@@ -1488,14 +1488,14 @@ RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
     if (resp->isAborted())
         return;
 
-    // TODO: this can return a whole bunch of things, so search for
+    resp->_baseStatus = std::string("Searching RadioTime (3/5)");
+    resp->searchRadioTime(scanType);
+    if (resp->isAborted())
+        return;
+
+    // This can return a whole bunch of things, so search for
     // the query string in the name before doing more work.
     if (!_strictLicense) {
-        resp->_baseStatus = std::string("Searching RadioTime (3/5)");
-        resp->searchRadioTime(scanType);
-        if (resp->isAborted())
-            return;
-
         // TODO: sometimes really slow; only use uberstation URL
         // Get rid of this
         /* add entries from DAR.fm */
