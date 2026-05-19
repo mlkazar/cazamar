@@ -1,3 +1,4 @@
+#import "HelpLabel.h"
 #import "PopStatus.h"
 #import "MFANCGUtil.h"
 #import "MFANCoreButton.h"
@@ -17,6 +18,7 @@
     SignStation *_station;
     SignView *_signView;
     BufferSlider *_seekSlider;
+    EditStation *_editStation;
 
     uint64_t _startTimeMs;
 
@@ -64,6 +66,8 @@
 }
 
 - (PopStatus *) initWithFrame: (CGRect) frame
+		  editStation: (EditStation *) editStation
+		      station: (SignStation *) station
 		     viewCont: (ViewController *) vc
 		     signView: (SignView *) signView
 {
@@ -78,10 +82,21 @@
     self = [super initWithFrame: frame];
     if (self != nil) {
 	_vc = vc;
+	_editStation = editStation;
 	_signView = signView;
 	_player = [signView getCurrentPlayer];
-	_stream = [signView getCurrentStream];
-	_station = [signView getCurrentStation];
+	if (station != nil)
+	    _station = station;
+	else
+	    _station = [signView getCurrentStation];
+
+	if (_station.recordingStream != nil)
+	    _stream = station.recordingStream;
+	else if (_station == [signView getCurrentStation])
+	    _stream = [signView getCurrentStream];
+	else
+	    _stream = nil;
+
 	_vc = vc;
 	
 	UIColor *screenColor = [UIColor colorWithRed: 0.3
@@ -103,7 +118,6 @@
 	float boxWidth = frame.size.width * 0.60;
 	float labelHeight = boxHeight;
 	float labelWidth = frame.size.width * 0.35;
-	float buttonWidth = frame.size.width * 0.80;
 	float okButtonWidth = labelHeight;
 
 	// indent things so that we center the label and text box in
@@ -189,12 +203,72 @@
 	[self addSubview: _publicUrlView];
 
 	// Align each button in the full width, assuming we remove
-	// buttonIndent from each end
-	buttonFrame = labelFrame;
-	buttonFrame.origin.y += labelHeight + frame.size.height * 0.05;
-	buttonFrame.origin.x = frame.size.width/2 - buttonWidth/2;
+	// indent from each end
+	float textLabelWidth = (2.0/3.0 * (frame.size.width - 2*indent));
+	float switchWidth = (frame.size.width - 2*indent) - textLabelWidth;
+	CGRect recordTextFrame;
+	CGRect recordSwitchFrame;
+	HelpLabel *recordHelpLabel;
+	UISwitch *recordSwitch;
+
+	// Stream in background switch
+	recordTextFrame = frame;
+	recordTextFrame.origin.y += labelFrame.origin.y + labelHeight + frame.size.height * 0.03;
+	recordTextFrame.origin.x = indent;
+	recordTextFrame.size.height = labelHeight;
+	recordTextFrame.size.width = textLabelWidth;
+
+	recordHelpLabel = [[HelpLabel alloc]
+			     initWithFrame: recordTextFrame
+				    target: self
+				  selector: @selector(recordHelp:)];
+	[recordHelpLabel setTitle: @"Stream even in background"
+			forState: UIControlStateNormal];
+
+	[self addSubview: recordHelpLabel];
+
+	recordSwitchFrame = recordTextFrame;
+	recordSwitchFrame.origin.x = recordTextFrame.origin.x + recordTextFrame.size.width;
+	recordSwitchFrame.size.width = switchWidth;
+	recordSwitch = [[UISwitch alloc] initWithFrame: recordSwitchFrame];
+	recordSwitch.onTintColor = [UIColor greenColor];
+	[recordSwitch setOn: _station.isRecording animated: false];
+	NSLog(@"set recordswitch to %d / %p",_station.isRecording, _station);
+	[recordSwitch addTarget: self
+			 action:@selector(recordPressed:)
+	       forControlEvents: UIControlEventValueChanged];
+	[self addSubview: recordSwitch];
+
+
+	// Highlight switch
+	recordTextFrame.origin.y += labelHeight + frame.size.height * 0.03;
+	recordHelpLabel = [[HelpLabel alloc]
+			     initWithFrame: recordTextFrame
+				    target: self
+				  selector: @selector(highlightHelp:)];
+	[recordHelpLabel setTitle: @"Highlight song in history"
+			forState: UIControlStateNormal];
+
+	[self addSubview: recordHelpLabel];
+
+	recordSwitchFrame = recordTextFrame;
+	recordSwitchFrame.origin.x = recordTextFrame.origin.x + recordTextFrame.size.width;
+	recordSwitchFrame.size.width = switchWidth;
+	recordSwitch = [[UISwitch alloc] initWithFrame: recordSwitchFrame];
+	recordSwitch.onTintColor = [UIColor greenColor];
+	[recordSwitch
+	    setOn: [_signView.history isHighlightedInStation:_station.stationName]
+	    animated: false];
+	NSLog(@"toggle highlight for station %@", _station.stationName);
+	[recordSwitch addTarget: self
+			 action:@selector(highlightPressed:)
+	       forControlEvents: UIControlEventValueChanged];
+	[self addSubview: recordSwitch];
+
+	buttonFrame.origin.x = frame.size.width / 5;
+	buttonFrame.size.width = frame.size.width * 3 / 5;
+	buttonFrame.origin.y = recordTextFrame.origin.y + labelHeight + frame.size.height * 0.03;
 	buttonFrame.size.height = labelHeight;
-	buttonFrame.size.width = buttonWidth;
 
 	MFANCoreButton *recordButton;
 	recordButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
@@ -202,45 +276,15 @@
 						       color: [UIColor blackColor]
 					     backgroundColor: labelColor];
 	[recordButton setFillColor: labelColor];
-	if (_station.isRecording)
-	    [recordButton setClearText: @"Stream only while playing"];
-	else
-	    [recordButton setClearText: @"Stream always"];
+	[recordButton setClearText: @"Edit station"];
 	[recordButton addCallback: self
-		     withAction: @selector(recordPressed:withData:)];
-	[self addSubview: recordButton];
-
-	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
-	recordButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
-						       title: @"Border"
-						       color: [UIColor blackColor]
-					     backgroundColor: labelColor];
-	[recordButton setFillColor: labelColor];
-	if ([_signView.history isHighlightedInStation: _station.stationName])
-	    [recordButton setClearText: @"Unhighlight song"];
-	else
-	    [recordButton setClearText: @"Highlight song"];
-	[recordButton addCallback: self
-		     withAction: @selector(highlightPressed:withData:)];
-	[self addSubview: recordButton];
-
-	buttonFrame.origin.y += labelHeight + frame.size.height * 0.03;
-	recordButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
-						       title: @"Border"
-						       color: [UIColor blackColor]
-					     backgroundColor: labelColor];
-	[recordButton setFillColor: labelColor];
-	if (_player == nil || !_player.muted)
-	    [recordButton setClearText: @"Mute station"];
-	else
-	    [recordButton setClearText: @"Unmute station"];
-	[recordButton addCallback: self
-		     withAction: @selector(mutePressed:withData:)];
+		       withAction: @selector(editPressed:withData:)];
 	[self addSubview: recordButton];
 
 	buttonFrame.origin.y = frame.size.height - labelHeight;
 	buttonFrame.origin.x = frame.size.width/2 - okButtonWidth/2;
 	buttonFrame.size.width = okButtonWidth;
+	buttonFrame.size.height = okButtonWidth;
 	_doneButton = [[MFANIconButton alloc] initWithFrame: buttonFrame
 					      title: @"Done"
 					      color: [UIColor colorWithHue: 0.3
@@ -255,8 +299,6 @@
 
 	_didNotify = false;
 
-	[_vc pushTopView: self];
-
 	[self setBackgroundColor: [UIColor whiteColor]];
 
 	_timer = [NSTimer scheduledTimerWithTimeInterval: 1.0
@@ -267,6 +309,44 @@
     }
 
     return self;
+}
+
+- (void) recordHelp: (id) junk {
+    UIAlertController *alert =
+	[UIAlertController
+	    alertControllerWithTitle: @"RadioGalaxy"
+			     message:@"Keep streaming data this station even after "
+	    "switching to other stations."
+		      preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction
+				actionWithTitle: @"OK"
+					  style:UIAlertActionStyleDefault
+					handler:^(UIAlertAction *act) {
+	    NSLog(@"blah");
+	}];
+    [alert addAction: action];
+    [_vc presentViewController: alert animated: YES completion: nil];
+}
+
+- (void) editPressed: (id) junk1 withData: (id) junk2 {
+    [_vc pushTopView: _editStation];
+}
+
+- (void) highlightHelp: (id) junk {
+    UIAlertController *alert =
+	[UIAlertController
+	    alertControllerWithTitle: @"RadioGalaxy"
+			     message:@"Toggle whether the latest song for this station"
+	    @" is highlighted in the history"
+		      preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction
+				actionWithTitle: @"OK"
+					  style:UIAlertActionStyleDefault
+					handler:^(UIAlertAction *act) {
+	    NSLog(@"blah");
+	}];
+    [alert addAction: action];
+    [_vc presentViewController: alert animated: YES completion: nil];
 }
 
 - (void) updateStats: (id) junk {
@@ -285,40 +365,34 @@
     }
 }
 
-- (void) highlightPressed: (id) junk1 withData:(id) junk2 {
+- (void) highlightPressed: (id) junk1 {
     NSString *notice;
 
     NSLog(@"highlight pressed");
 
     [_signView.history toggleHighlightInStation:_station.stationName];
 
-    [self doNotify];
-
     if ([_signView.history isHighlightedInStation:_station.stationName]) {
-	notice = @"Hightlighted last song for later";
+	notice = @"Highlighted last song for later";
     } else {
 	notice = @"Removed highlighting for current song";
     }
-
-    (void) [[MFANWarn alloc] initWithTitle: @"Highlight" message: notice secs: 1.2];
 }
 
-- (void) recordPressed: (id) junk1 withData:(id) junk2 {
+- (void) recordPressed: (UISwitch *) s {
     NSString *notice;
     NSLog(@"record pressed");
-    if (_station.isRecording) {
-	[_signView stopRecording: _station];
-	notice = @"Will stop recording upon switching stations";
-    } else {
+    if (s.isOn) {
 	[_signView startRecording: _station];
 	notice = @"Will keep recording even after switching stations";
+    } else {
+	[_signView stopRecording: _station];
+	notice = @"Will stop recording upon switching stations";
     }
-
-    (void) [[MFANWarn alloc] initWithTitle: @"Streaming" message: notice secs: 1.2];
-
-    [self doNotify];
 }
 
+#if 0
+// Is this really useful?
 - (void) mutePressed: (id) junk1 withData:(id) junk2 {
     NSString *notice;
     NSLog(@"mutepressed");
@@ -332,11 +406,8 @@
 	[_player mute];
 	notice = @"Muted";
     }
-
-    (void) [[MFANWarn alloc] initWithTitle: @"Mute" message: notice secs: 1.2];
-
-    [self doNotify];
 }
+#endif
 
 - (void) donePressed: (id) junk1 {
     [_timer invalidate];

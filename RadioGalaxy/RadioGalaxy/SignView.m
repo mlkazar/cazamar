@@ -1137,14 +1137,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     CGPoint point = [sender locationInView:self];
     if (sender.state == UIGestureRecognizerStateBegan) {
 	SignStation *station = [self findStationByTouch: point];
-	if (station != nil) {
-	    _stationToEdit = station;
-	    _editStation = [[EditStation alloc] initWithFrame: self.frame
-						      station: station
-						     signView: self
-						     viewCont: _vc];
-	    [_editStation setCallback: self withSel: @selector(editDone:)];
+	if (station == nil) {
+	    station = _playingStation;
 	}
+	if (station == nil)
+	    return;
+
+	[self showPopStatus: station];
     }
 }
 
@@ -1311,7 +1310,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		} else if ([_player isPaused]) {
 		    [_player resume];
 		} else {
-		    [self showPopStatus];
+		    [self showPopStatus: station];
 		}
 		[self animationOn];
 		return;
@@ -1331,22 +1330,38 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    }
 	} else {
 	    // random press
-	    [self showPopStatus];
+	    [self showPopStatus: _playingStation];
 	}
 	[self animationOn];
     }
 }
 
-- (void) showPopStatus {
+- (void) showPopStatus: (SignStation *) station {
+    if (station == nil)
+	return;
+
     [self removeRecognizers];
     CGRect childFrame = self.frame;
     childFrame.origin.x = 0;
     childFrame.origin.y = 0;
+
+    // setup editStation request in case popStatus needs it
+    _stationToEdit = station;
+    _editStation = [[EditStation alloc] initWithFrame: childFrame
+					      station: station
+					     signView: self
+					     viewCont: _vc];
+    [_editStation setCallback: self withSel: @selector(editDone:)];
+
     _popStatus = [[PopStatus alloc] initWithFrame: childFrame
+				      editStation: _editStation
+					  station: station
 					 viewCont: _vc
 					 signView: self];
     [_popStatus setCallback: self
 		    withSel:@selector(popStatusDone)];
+
+    [_vc pushTopView: _popStatus];
 }
 
 - (void) popStatusDone {

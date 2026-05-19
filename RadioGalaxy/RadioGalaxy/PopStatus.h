@@ -2,6 +2,7 @@
 #import <Foundation/Foundation.h>
 
 #import "BufferSlider.h"
+#import "EditStation.h"
 #import "MFANAqStream.h"
 #import "MFANStreamPlayer.h"
 #import "SignStation.h"
@@ -11,6 +12,8 @@
 @interface PopStatus : UIView<TopViewInt>
 
 - (PopStatus *) initWithFrame: (CGRect) frame
+		  editStation: (EditStation *) editStation
+		      station: (SignStation *) station
 		     viewCont: (ViewController *) vc
 		     signView: (SignView *) signView;
 

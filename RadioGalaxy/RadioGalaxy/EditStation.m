@@ -59,10 +59,6 @@
 	// indent things so that we center the label and text box in
 	//the frame.
 	float indent = (frame.size.width - labelWidth - boxWidth) / 2;
-	UIColor *labelColor = [UIColor colorWithRed: 0.9
-					      green: 0.9
-					       blue:0.9
-					      alpha: 1.0];
 
 	_vc = vc;
 	_station = station;
@@ -154,24 +150,6 @@
 	[_urlView setBackgroundColor: [UIColor clearColor]];
 	[self addSubview: _urlView];
 
-	boxFrame.origin.y += boxHeight + frame.size.height * 0.05;
-	boxFrame.origin.x = indent;
-	boxFrame.size.width = frame.size.width - 2*indent;
-	MFANCoreButton *recordButton;
-	recordButton = [[MFANCoreButton alloc] initWithFrame: boxFrame
-						       title: @"Border"
-						       color: [UIColor blackColor]
-					     backgroundColor: labelColor];
-	[recordButton setFillColor: labelColor];
-	if (_station.isRecording)
-	    [recordButton setClearText: @"Stream only while playing"];
-	else
-	    [recordButton setClearText: @"Stream always"];
-	[recordButton addCallback: self
-		     withAction: @selector(recordPressed:)];
-	[self addSubview: recordButton];
-
-
 	/* now add Done button */
 	float buttonWidth = frame.size.width/8;
 	float removeButtonWidth = frame.size.width/3;
@@ -217,9 +195,6 @@
 	[_cancelButton addCallback: self
 		       withAction: @selector(cancelPressed:withData:)];
 	[self addSubview: _cancelButton];
-
-
-	[vc pushTopView: self];
 
 	[self setBackgroundColor: [UIColor whiteColor]];
     }

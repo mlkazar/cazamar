@@ -219,14 +219,8 @@
     NSString *stationName = [_signView getPlayingStationName];
     NSString *displayName;
 
-    if (song != nil) {
-	[self updateIOSCenter: song];
-	[_history addHistoryStation: stationName
-			   withSong: song];
-    } else {
-	[self updateIOSCenter: @"[Unknown song"];
+    if (song == nil)
 	song = @"[Unknown]";
-    }
 
     if ([stationName length] > 18) {
 	displayName = [NSString stringWithFormat: @"%@ - %@",
@@ -235,7 +229,12 @@
     } else {
 	displayName = [NSString stringWithFormat: @"%@ - %@", stationName, song];
     }
-    [_marquee setText: displayName];
+
+    [self updateIOSCenter: displayName];
+    [_history addHistoryStation: stationName
+		       withSong: song];
+
+    [_marquee setText: song];
 }
 
 - (void) playInternal {
