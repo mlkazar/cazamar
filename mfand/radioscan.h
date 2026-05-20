@@ -237,6 +237,8 @@ class RadioScanStation {
 
     ~RadioScanStation();
 
+    static std::string trimToFirst(std::string url);
+
     static std::string extractFields(std::string tags, int32_t fields);
 
     static int queryMatch(const char *a, const char *b);

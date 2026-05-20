@@ -696,92 +696,6 @@ RadioScanStation::upperCase(std::string name)
     return result;
 }
 
-#if 0
-// We're going to put the first word in the name and use the others as tags
-int32_t
-RadioScanQuery::searchFile() {
-    std::string queryResults;
-    char *datap;
-    int32_t code;
-    Json::Node *rootNodep = nullptr;
-    Json::Node *stationNodep = nullptr;
-    Json::Node *urlNodep = nullptr;
-    Json::Node *iconNodep = nullptr;
-    Json::Node *nameNodep = nullptr;
-    Json::Node *tagNodep = nullptr;
-    Json jsonSys;
-    RadioScanStation *stationp;
-
-    if (isAborted())
-        return -1;
-
-    // other options replace 'all' with fi1, de1, de2
-    std::string url = ("http://all.api.radio-browser.info/json/stations/byname/" + _query);
-    code = _scanp->retrieveContents(url, &queryResults);
-    if (code)
-        return code;
-
-    datap = const_cast<char *>(queryResults.c_str());
-    code = jsonSys.parseJsonChars(&datap, &rootNodep);
-    if (!rootNodep) {
-        printf("json parse failed '%s'\n", datap);
-        return -1;
-    }
-
-    // queryResults in an array of station descriptors
-    for(stationNodep = rootNodep->_children.head();
-        stationNodep != nullptr;
-        stationNodep = stationNodep->_dqNextp) {
-        urlNodep = stationNodep->searchForChild("url");
-        if (isAborted()) {
-            printf("searchFile aborted\n");
-            return -1;
-        }
-        if (urlNodep == nullptr)
-            continue;
-        url = urlNodep->_children.head()->_name;
-
-        std::string name;
-        nameNodep = stationNodep->searchForChild("name");
-        if (nameNodep != nullptr) {
-            name = nameNodep->_children.head()->_name;
-        } else {
-            name = RadioScanStation::upperCase(_query);
-        }
-
-        std::string urlResolved;
-        urlNodep = stationNodep->searchForChild("url_resolved");
-        if (urlNodep != nullptr)
-            urlResolved = urlNodep->_children.head()->_name;
-        
-
-        stationp = new RadioScanStation();
-        stationp->init(this);
-
-        std::string iconUrl;
-        iconNodep = stationNodep->searchForChild("favicon");
-        if (iconNodep != nullptr)
-            iconUrl = iconNodep->_children.head()->_name;
-        stationp->_iconUrl = iconUrl;
-
-        tagNodep = stationNodep->searchForChild("tags");
-        if (tagNodep != nullptr) {
-            stationp->_stationShortDescr = std::string("Playing ") +
-                RadioScanStation::extractFields(tagNodep->_children.head()->_name, 2);
-        }
-
-        /* set these so that addStreamEntry has some useful defaults */
-        stationp->_stationName = name;
-        stationp->_stationSource = std::string("radio-browser");
-        stationp->_sourceUrl = url;
-        stationp->_altSourceUrl = urlResolved;
-        considerStation(stationp);
-    }
-
-    return 0;
-}
-#endif
-
 /* static */ void
 RadioScan::scanSort(int32_t *datap, int32_t count)
 {
@@ -957,7 +871,7 @@ RadioScanQuery::browseFile(RadioScan::ScanType scanType) {
         /* set these so that addStreamEntry has some useful defaults */
         stationp->_stationName = name;
         stationp->_stationSource = std::string("radio-browser");
-        stationp->_sourceUrl = url;
+        stationp->_sourceUrl = RadioScanStation::trimToFirst(url);
         stationp->_iconUrl = iconUrl;
         // these are defaults if the stream doesn't have a header
         stationp->_streamRateKb = bitRate;
@@ -1121,7 +1035,7 @@ RadioScanQuery::searchRadioTime(RadioScan::ScanType scanType)
         stationp->_stationShortDescr = textString;
         stationp->_stationSource = std::string("radio time");
         stationp->_iconUrl = imageUrl;
-        stationp->_sourceUrl = data.c_str();
+        stationp->_sourceUrl = RadioScanStation::trimToFirst(data);
 
         considerStation(stationp);
     }
@@ -1228,7 +1142,7 @@ RadioScanQuery::searchShoutcast(RadioScan::ScanType scanType)
             if (iconUrlp != nullptr)
                 stationp->_iconUrl = std::string(iconUrlp);
             stationp->_stationSource = std::string("shoutcast");
-            stationp->_sourceUrl = std::string(tbuffer);
+            stationp->_sourceUrl = RadioScanStation::trimToFirst(std::string(tbuffer));
 
             considerStation(stationp);
         } /* this is a station record */
@@ -1286,10 +1200,22 @@ RadioScanQuery::searchDar(RadioScan::ScanType scanType)
     stationp->_stationName = RadioScanStation::upperCase(_nameList.front());
     stationp->_stationShortDescr = stationShortDescr;
     stationp->_stationSource = std::string("dar.fm");
-    stationp->_sourceUrl = url;
+    stationp->_sourceUrl = RadioScanStation::trimToFirst(url);
     considerStation(stationp);
 
     return 0;
+}
+
+// should make this an apply-like function that calls an std::function
+// on every URL
+/* static */std::string
+RadioScanStation::trimToFirst(std::string url) {
+    size_t ix;
+    ix = url.find("\n");
+    if (ix == std::string::npos)
+        return url;
+    else
+        return url.substr(0,ix);
 }
 
 /* static */ int32_t
@@ -1354,7 +1280,7 @@ RadioScanQuery::searchStreamTheWorld(RadioScan::ScanType scanType)
     name = _nameList.front();
     snprintf(tbuffer, sizeof(tbuffer),
              "http://playerservices.streamtheworld.com/pls/%sAMAAC.pls", name.c_str());
-    stationp->_sourceUrl = std::string(tbuffer);
+    stationp->_sourceUrl = RadioScanStation::trimToFirst(std::string(tbuffer));
     considerStation(stationp);
     
     return 0;
@@ -1410,11 +1336,11 @@ RadioScanQuery::isDelimeter(char ac) {
 void
 RadioScanQuery::addWord(std::string newWord) {
     const char *tp = newWord.c_str();
-    if (strncmp(tp, "c:", 2) == 0) {
+    if (strncasecmp(tp, "c:", 2) == 0) {
         _countryList.push_back(newWord.substr(2));
-    } else if (strncmp(tp, "t:", 2) == 0) {
+    } else if (strncasecmp(tp, "t:", 2) == 0) {
         _cityList.push_back(newWord.substr(2));
-    } else if (strncmp(tp, "g:", 2) == 0) {
+    } else if (strncasecmp(tp, "g:", 2) == 0) {
         _genreList.push_back(newWord.substr(2));
     } else {
         _nameList.push_back(newWord);

@@ -20,15 +20,29 @@ Ideas for Radio app
 
 ** station prefix should be on lock screen, not regular scroll
 
+** radiotime, at least, sometimes sends back \n separated list of URLs as a string.
+   So, trim whitespace from URLs, and maybe check until you find a working one from
+   the list.
+
+-- Help text for search won't be read if long, and is way too long.
+
 -- settings for how much music to keep / whether to restore after
    restart / whether to automatically record playing stations in background
 
 ** reorganize UI so press always selects, long pres brings up status
    with a button for editing, which does a second push.
 
--- see if can improve ad text to get more views
+** see if can improve ad text to get more views
 
 -- keep using disk file across app restarts
+
+-- modify MFANSocket to support https?
+
+-- Search should be populating live without popup.
+
+-- limit results to 64 stations chosen randomly (and warn user)
+
+-- multiple validation threads
 
 ** prefix station 6 char abbrev to song names
 

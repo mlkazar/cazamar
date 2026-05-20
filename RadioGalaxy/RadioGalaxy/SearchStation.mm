@@ -72,20 +72,18 @@
     if (self != nil) {
 	// size for search bar and bottom buttons
 	float verticalViewSize = vc.activeFrame.size.height * 0.1;
-	float searchBarWidthPct = 0.6;
 
 	_vc = vc;
 
-	_signStations = [[NSMutableArray alloc] init];
 	searchFrame = vc.activeFrame;
 	searchFrame.origin.y = 0;
-	searchFrame.size.width = vc.activeFrame.size.width * searchBarWidthPct;
+	searchFrame.size.width = frame.size.width;
 	searchFrame.size.height = verticalViewSize;
 
 	CGRect textFrame;
 	textFrame = searchFrame;
-	textFrame.origin.x = searchFrame.size.width;
-	textFrame.size.width = frame.size.width * (1 - searchBarWidthPct);
+	textFrame.origin.y += verticalViewSize;
+	textFrame.size.width = frame.size.width;
 
 	// for UITableView
 	_rowHeight = 72.0;
@@ -115,8 +113,8 @@
 	_pickerRow = 0;
 
 	tableFrame.origin.x = 0;
-	tableFrame.origin.y = searchFrame.origin.y + searchFrame.size.height;
-	tableFrame.size.width = vc.activeFrame.size.width;
+	tableFrame.origin.y = textFrame.origin.y + textFrame.size.height;
+	tableFrame.size.width = frame.size.width;
 	// use the rest of the vertical space, but reserve one
 	// verticalViewSize for buttons at the bottom.
 	tableFrame.size.height = (vc.activeFrame.size.height - tableFrame.origin.y
@@ -214,9 +212,9 @@
     searchStringp = [_queryString cStringUsingEncoding: NSUTF8StringEncoding];
 
     if (_pickerRow == 0) {
-	scanType = RadioScan::useName;
-    } else if (_pickerRow == 1) {
 	scanType = RadioScan::useTag;
+    } else if (_pickerRow == 1) {
+	scanType = RadioScan::useName;
     }
 
     _queryp = new RadioScanQuery();
@@ -453,6 +451,9 @@
     _queryString = _searchBar.text;
     NSLog(@"search test is %@", _queryString);
 
+    _signStations = [[NSMutableArray alloc] init];
+    _stationp = nil;
+
     _queryDone = NO;
     _searchThread = [[NSThread alloc] initWithTarget: self
 					    selector: @selector(searchAsync:)
@@ -640,9 +641,9 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 - (NSString *) pickerView:(UIPickerView *) pickerView
 	      titleForRow:(NSInteger)row
 	     forComponent:(NSInteger)component {
-    if (row == 0)
+    if (row == 1)
 	return @"By name";
-    else if (row == 1)
+    else if (row == 0)
 	return @"By keywords";
     else
 	return @"BOOP!";

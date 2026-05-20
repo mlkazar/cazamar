@@ -81,7 +81,7 @@ main(int argc, char **argv)
 
     scanp = new RadioScan();
     scanp->init(&socketFactory, "");
-    // scanp->setStrictLicense();
+    scanp->setStrictLicense();
     printf("back from init\n");
 
     monitorp = new QueryMonitor();
