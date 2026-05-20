@@ -1446,16 +1446,50 @@ RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
 }
 
 void
+RadioScanQuery::threadWait(RadioScanThread *threadp) {
+    RadioScan::takeLock();
+    while(true) {
+        if (threadp->_done)
+            break;
+        _cv.wait();
+    }
+    RadioScan::releaseLock();
+}
+
+void
 RadioScanQuery::verifyStations() {
-    int32_t code;
+    uint32_t i;
+    CThreadHandle *hp;
 
     _verifying = true;
     _verifyingCount = (uint32_t) _unverifiedStations.count();
     _verifyingIndex = 0;
 
+    for(i=0;i<_kThreads;i++) {
+        // start all threads
+        _threads[i]._handlep = hp = new CThreadHandle();
+        hp->init((CThread::StartMethod) &RadioScanQuery::verifyStationThread,
+                 this,
+                 _threads+i);
+    }
+
+    // now wait for all the threads to finish
+    for(i=0;i<_kThreads;i++) {
+        threadWait(_threads+i);
+    }
+}
+
+void
+RadioScanQuery::verifyStationThread(RadioScanThread *threadp) {
+    int32_t code;
     RadioScanStation *stationp;
+
+    RadioScan::takeLock();
     while((stationp = _unverifiedStations.pop()) != nullptr) {
+        if (isAborted())
+            break;
         _verifyingUrl = stationp->_sourceUrl;
+        RadioScan::releaseLock();
         code = stationp->streamApply(stationp->_sourceUrl,
                                      RadioScanStation::stwCallback,
                                      stationp,
@@ -1470,6 +1504,7 @@ RadioScanQuery::verifyStations() {
             }
         }
 
+        RadioScan::takeLock();
         if (code == 0 && stationp->_entries.count() > 0) {
             _goodStations.append(stationp);
         } else {
@@ -1478,6 +1513,9 @@ RadioScanQuery::verifyStations() {
 
         _verifyingIndex++;
     }
+    threadp->_done = true;
+    _cv.broadcast();
+    RadioScan::releaseLock();
 }
 
 RadioScanStation::Entry *

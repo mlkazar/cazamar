@@ -652,7 +652,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 - (void)pickerView:(UIPickerView *)thePickerView 
       didSelectRow:(NSInteger)row 
        inComponent:(NSInteger)component {
-
+    _pickerRow = (int) row;
     NSLog(@"in picker select %d", (int) row);
 }
 

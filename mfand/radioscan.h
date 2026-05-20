@@ -25,6 +25,8 @@ class RadioScanStation;
  * thread pool, we can pass in a cdisp instead.
  */
 class RadioScan {
+    friend class RadioScanQuery;
+
     dqueue<RadioScanQuery> _activeQueries;
     static CThreadMutex _lock;
     bool _strictLicense;
@@ -36,8 +38,8 @@ class RadioScan {
     // unqualified tokens might be interpreted as components of a
     // name, or of a keyword tag.
     typedef enum _ScanType {
-        useName = 1,
-        useTag = 2,
+        useTag = 1,
+        useName = 2,
     } ScanType;
 
     XApi *_xapip;
@@ -68,8 +70,27 @@ class RadioScan {
     }
 };
 
-class RadioScanQuery {
+class RadioScanThread {
+public:
+    bool _done;         // thread is about to exit
+    bool _aborted;      // request to abort the running thread safely
+    CThreadHandle *_handlep;
+
+    RadioScanThread() {
+        init();
+    };
+
+    void init() {
+        _done = false;
+        _aborted = false;
+        _handlep = nullptr;
+    }
+};
+
+class RadioScanQuery : public CThread {
+    static const uint32_t _kThreads = 4;
     friend class RadioScan;
+    friend class RadioScanThread;
 private:
     std::string _baseStatus;
 public:
@@ -83,6 +104,9 @@ public:
     std::list<std::string> _genreList;
     int32_t _browseMaxCount;
 
+    RadioScanThread _threads[_kThreads];
+    CThreadCV _cv;
+
     RadioScan *_scanp;
     dqueue<RadioScanStation> _unverifiedStations;       // these get sorted into good vs bad
     dqueue<RadioScanStation> _goodStations;
@@ -94,7 +118,7 @@ public:
     uint32_t _verifyingCount;
     uint32_t _verifyingIndex;
 
-    RadioScanQuery() {
+    RadioScanQuery() : _cv(&RadioScan::_lock) {
         _refCount = 0;
         _aborted = 0;
         _verifying = false;
@@ -131,6 +155,8 @@ public:
 
     void verifyStations();
 
+    void verifyStationThread(RadioScanThread *threadp);
+
     int32_t searchFile();
 
     int32_t searchShoutcast(RadioScan::ScanType scanType);
@@ -143,7 +169,13 @@ public:
 
     bool isDelimeter(char ac);
 
+    bool threadAbort(RadioScanThread *threadp);
+
+    void threadWait(RadioScanThread *threadp);
+
     void abort() {
+        // the helper threads all watch this, and will exit early if
+        // aborted gets set.
         _aborted = 1;
         // _baseStatus = std::string("Aborting");
     }

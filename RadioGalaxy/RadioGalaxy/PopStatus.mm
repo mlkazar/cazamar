@@ -417,6 +417,11 @@
 }
 
 - (void) activateTopView {
+    // if the edit command did a remove, don't stay on the status
+    // page, since the station doesn't exist anymore.
+    if (_editStation.doRemove) {
+	[_vc popTopView];
+    }
     return;
 }
 
