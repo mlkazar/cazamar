@@ -386,7 +386,6 @@
 	    newStation.iconUrl = [NSString stringWithUTF8String: _stationp->_iconUrl.c_str()];
 	    SignCoord rowColumn = {0, 0};
 	    [newStation setRowColumn: rowColumn];
-	    newStation.isRecording = NO;
 	    [newStation setIconImageFromUrl: YES];
 
 	    // TODO: find best stream to use

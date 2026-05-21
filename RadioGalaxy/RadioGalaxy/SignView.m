@@ -1542,7 +1542,16 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _isBackground = false;
     NSLog(@"====leave background");
     [self processBackgroundState];
+    [self addRecognizers];
     [self animationOn];
+}
+
+- (void) activateTopView {
+    [self addRecognizers];
+}
+
+- (void) deactivateTopView {
+    [self removeRecognizers];
 }
 
 // Generally, we want the silence player running if we aren't playing

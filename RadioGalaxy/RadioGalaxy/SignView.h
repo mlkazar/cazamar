@@ -11,11 +11,12 @@
 #import "MFANStreamPlayer.h"
 #import "RadioHistory.h"
 #import "SignStation.h"
+#import "TopView.h"
 #import "ViewController.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface SignView : UIView<AudioInt>
+@interface SignView : UIView<AudioInt,TopViewInt>
 
 @property RadioHistory *history;
 @property ViewController *vc;
@@ -67,6 +68,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (MFANAqStream *) startStationStream: (SignStation *) station;
 
 - (void) setupAudioSession: (BOOL) mix;
+
+- (void) activateTopView;
+
+- (void) deactivateTopView;
 
 @end
 

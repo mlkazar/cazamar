@@ -253,6 +253,9 @@
 
 - (void) activateTopView {
     [_marquee restartLabel];
+
+    // let signview know it is active again
+    [_signView activateTopView];
 }
 
 - (void) deactivateTopView {

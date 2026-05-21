@@ -24,7 +24,15 @@ Ideas for Radio app
    So, trim whitespace from URLs, and maybe check until you find a working one from
    the list.
 
--- Help text for search won't be read if long, and is way too long.
+** Help text for search won't be read if long, and is way too long.
+
+-- limit results to 64 stations chosen randomly (and warn user).  Do
+   this in radioscan, before starting validation.  Do it by generating
+   a probability of 64/count, and flipping a random coin over one pass
+   picking up or discarding a station based on the coin flip.  Perhaps limit to
+   128 now that validation is faster.
+
+-- keep using disk file across app restarts
 
 -- settings for how much music to keep / whether to restore after
    restart / whether to automatically record playing stations in background
@@ -34,15 +42,9 @@ Ideas for Radio app
 
 ** see if can improve ad text to get more views
 
--- keep using disk file across app restarts
+-- Search should be populating live without popup?
 
--- modify MFANSocket to support https?
-
--- Search should be populating live without popup.
-
--- limit results to 64 stations chosen randomly (and warn user)
-
--- multiple validation threads
+** multiple validation threads
 
 ** prefix station 6 char abbrev to song names
 
@@ -152,7 +154,10 @@ name as well)
 
 ** doesn't reconnect after a failiure.
 
-Longer term items
+
+================Longer term items================
+
+-- modify MFANSocket to support https?
 
 -- keep playing silent noise when downloading and nothing else playing
 
