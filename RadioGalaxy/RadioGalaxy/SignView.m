@@ -687,7 +687,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     SignStation *station;
     BOOL keepAnimating = false;
 
-    // forceOff = true;
+    // uncomment to disable blinking
+    forceOff = true;
 
     for(station in _allStations) {
 	if ([self shouldIndicateStreaming:station]) {
@@ -927,7 +928,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     SearchStationResults *iterator = [[SearchStationResults alloc]
 					 initWithSearchStation: _searchStation];
     while((station = [iterator getNext]) != nil) {
-	if (station.isSelected)
+	if (station.isSelected && station.verified && station.verifiedWorking)
 	    [_allStations addObject: station];
     }
 

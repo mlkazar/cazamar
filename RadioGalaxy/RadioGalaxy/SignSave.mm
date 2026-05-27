@@ -27,6 +27,11 @@
 	Json::Node *stationDefNodep;
 	Json::Node *valNodep;
 
+	if (station.streamUrl == nil) {
+	    // this is a failed station
+	    continue;
+	}
+
 	stationDefNodep = new Json::Node();
 	stationDefNodep->initStruct();
 

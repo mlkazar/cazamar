@@ -15,6 +15,7 @@
     ViewController *_vc;
     UISearchBar *_searchBar;
     UITableView *_stationTable;
+    UITextView *_textView;
     float _rowHeight;
     UIImage *_genericImage;
     UIImage *_scaledGenericImage;
@@ -26,7 +27,6 @@
     // Search state
     RadioScan *_scanp;
     RadioScanQuery *_queryp;
-    RadioScanStation *_stationp;
     RadioScanStation::Entry *_stationStreamp;
     NSThread *_searchThread;
     MFANSocketFactory *_factory;
@@ -50,9 +50,14 @@
     NSTimer *_finishedTimer;
 
     uint32_t _pickerRow;
+
+    uint32_t _lastUpdateVersion;
+
+    bool _didNotify;
 }
 
 - (void) doNotify {
+    _didNotify = true;
     if (_callbackObj != nil) {
 	[_callbackObj  performSelectorOnMainThread: _callbackSel
 					withObject: _searchBar
@@ -80,15 +85,18 @@
 	searchFrame.size.width = frame.size.width;
 	searchFrame.size.height = verticalViewSize;
 
+	CGRect pickerFrame;
+	pickerFrame = searchFrame;
+	pickerFrame.origin.y += verticalViewSize;
+	pickerFrame.size.width = frame.size.width;
+
 	CGRect textFrame;
-	textFrame = searchFrame;
+	textFrame = pickerFrame;
 	textFrame.origin.y += verticalViewSize;
 	textFrame.size.width = frame.size.width;
 
 	// for UITableView
 	_rowHeight = 72.0;
-
-	_stationp = nullptr;
 
 	_searchBar = [[UISearchBar alloc] initWithFrame: searchFrame];
 	_searchBar.showsCancelButton = NO;
@@ -103,7 +111,7 @@
 								     alpha: 1.0];
 	_searchBar.barTintColor = [UIColor whiteColor];
 
-	_pickerView = [[UIPickerView alloc] initWithFrame: textFrame];
+	_pickerView = [[UIPickerView alloc] initWithFrame: pickerFrame];
 	[self addSubview: _pickerView];
 	_pickerView.delegate = self;
 	_pickerView.dataSource = self;
@@ -111,6 +119,9 @@
 	[_pickerView setValue: [UIColor blackColor] forKey: @"textColor"];
 
 	_pickerRow = 0;
+
+	_textView = [[UITextView alloc] initWithFrame: textFrame];
+	[self addSubview: _textView];
 
 	tableFrame.origin.x = 0;
 	tableFrame.origin.y = textFrame.origin.y + textFrame.size.height;
@@ -192,6 +203,7 @@
         [self addSubview: _doneButton];
 
 	_canceled = NO;
+	_didNotify = false;
 
 	[vc pushTopView: self];
 
@@ -260,29 +272,11 @@
 }
 
 - (void) displayQueryStatus: (RadioScanQuery *) queryp {
-    if (_alert == nil) {
-	_alert = [UIAlertController
-				   alertControllerWithTitle: @"RadioStar"
-						    message: @"Searching"
-					     preferredStyle: UIAlertControllerStyleAlert];
-
-	UIAlertAction *action = [UIAlertAction
-				    actionWithTitle:@"Stop search"
-					      style: UIAlertActionStyleDefault
-					    handler:^(UIAlertAction *act) {
-		NSLog(@"stopping search");
-		if (self->_queryp)
-		    self->_queryp->abort();
-	    }];
-	[_alert addAction: action];
-	[_vc presentViewController:_alert animated:YES completion: nil];
-    }
-
     if (queryp != nullptr) {
 	std::string status = queryp->getStatus();
-	_alert.message = [NSString stringWithUTF8String: status.c_str()];
+	_textView.text = [NSString stringWithUTF8String: status.c_str()];
     } else {
-	_alert.message = @"Search complete";
+	_textView.text = @"Search complete";
     }
 }
 
@@ -290,8 +284,10 @@
 // RadioScanQuery to terminate, to cleanup any other state created by
 // the queryMonitor.
 - (void) cleanupQueryMonitor {
-    [_alert dismissViewControllerAnimated: YES completion: nil];
-    _alert = nil;
+    if (_alert != nil) {
+	[_alert dismissViewControllerAnimated: YES completion: nil];
+	_alert = nil;
+    }
 
     if (_queryTimer != nil) {
 	[_queryTimer invalidate];
@@ -303,14 +299,34 @@
 	_queryp = nullptr;
     }
 
+    [self cleanupFailedStations];
+
     [self displayNextSteps];
 }
 
+- (void) cleanupFailedStations {
+    uint64_t stationCount = [_signStations count];
+    SignStation *station;
+    NSMutableArray *cleanStations = [[NSMutableArray alloc] init];
+    for(uint64_t i=0;i<stationCount;i++) {
+	station = _signStations[i];
+	if (station.verified && station.verifiedWorking)
+	    [cleanStations addObject: station];
+    }
+    _signStations = cleanStations;
+
+    [_stationTable reloadData];
+}
+
 - (void) displayNextSteps {
+    // don't do this if the user already moved on.
+    if (_didNotify)
+	return;
+
     _finishedAlert = [UIAlertController
 				   alertControllerWithTitle: @"RadioStar"
 						    message: @"Next, select stations to add\n"
-			 @"and press done"
+			 @"and press done."
 					     preferredStyle: UIAlertControllerStyleAlert];
 
     UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK"
@@ -347,88 +363,113 @@
 // more than one outstanding query at a time (which we could fix if
 // necessary).
 - (void) queryMonitor: (id) junk {
-    SignStation *newStation;
     bool doAdd = NO;
-    bool didAny = NO;
+
+    NSLog(@"QM new invocation self=%p ", self);
 
     _queryTimer = nil;
+    if (!_queryp->_verifying) {
+	// TODO: figure out where to put the status, returned as a
+	// std::string from _queryp->getStatus()
+	[self displayQueryStatus: _queryp];
+	_queryTimer = [NSTimer scheduledTimerWithTimeInterval: 0.5
+						       target:self
+						     selector:@selector(queryMonitor:)
+						     userInfo:nil
+						      repeats: NO];
+	return;
+    }
 
-    NSLog(@"querymonitor new invocation self=%p", self);
     // At the top of this loop, if _stationp is non-null, it is the
     // last station successfully added to the _signStations array.
     // Otherwise, no stations have been added yet.  Note that we don't
     // start the add between timer activations, instead _stationp keeps
     // track of which stations we've already added, so we can just keep
     // adding the new stations.
-    while(true) {
-	doAdd = NO;
-	if (!_stationp) {
-	    if (_queryp->_goodStations.head() != nullptr) {
-		_stationp = _queryp->_goodStations.head();
-		doAdd = YES;
-	    }
-	} else {
-	    if (_stationp->_dqNextp != nullptr) {
-		_stationp = _stationp->_dqNextp;
-		doAdd = YES;
-	    }
+    const uint32_t kFlagAdded = 1;
+    RadioScanStation *scanStationp;
+    SignStation *station;
+    uint32_t ix;	// index into _signStations output array
+    bool queryDoneAtStart = _queryDone;
+
+    uint32_t nextUpdateVersion = _queryp->getUpdateVersion();
+    uint32_t prevUpdateVersion = _lastUpdateVersion;
+
+    for( ix=0, scanStationp = _queryp->_goodStations.head();
+	 scanStationp != nullptr;
+	 ++ix, scanStationp = scanStationp->_dqNextp) {
+	// the query's update version is the next version to be
+	// allocated, so all already existing entries have properly
+	// smaller update versions.  So if we perform a scan of the
+	// list when the update version is X (or starts at X and only
+	// increases), we will process all entries with update
+	// versions < X.  On a later pass, we can skip those entries.
+	if (scanStationp->getUpdateVersion() < prevUpdateVersion) {
+	    // we've already processed this element; it's already in _signStations
+	    continue;
+	}
+
+	{
+	    SignStation *tstation;
+	    if (ix < [_signStations count])
+		tstation = _signStations[ix];
+	    else
+		tstation = nil;
 	}
 
 	// if doAdd is true, we have a new station to add to the return
-	// array.  Reset the timer if the query isn't done, otherwise do
-	// the notify operation and terminate the polling.
+	// array.
+	doAdd = !(scanStationp->_userFlags & kFlagAdded);
 	if (doAdd) {
-	    didAny = YES; 
-	    newStation = [[SignStation alloc] init];
-	    newStation.stationName = [NSString stringWithUTF8String: _stationp->_stationName.c_str()];
-	    newStation.shortDescr = [NSString stringWithUTF8String:
-						  _stationp->_stationShortDescr.c_str()];
-	    newStation.iconUrl = [NSString stringWithUTF8String: _stationp->_iconUrl.c_str()];
-	    SignCoord rowColumn = {0, 0};
-	    [newStation setRowColumn: rowColumn];
-	    [newStation setIconImageFromUrl: YES];
-
-	    // TODO: find best stream to use
-	    RadioScanStation::Entry *ep;
-	    RadioScanStation::Entry *bestEp = nullptr;
-	    uint32_t bestRate = 0;
-	    for(ep = _stationp->_entries.head(); ep; ep=ep->_dqNextp) {
-		if (ep->_streamRateKb >= bestRate) {
-		    bestRate = ep->_streamRateKb;
-		    bestEp = ep;
-		}
-	    }
-	    if (bestEp != nullptr) {
-		newStation.streamUrl = [NSString stringWithUTF8String:
-						     bestEp->_streamUrl.c_str()];
-		newStation.streamRateKb = bestEp->_streamRateKb;
-		newStation.streamType = [NSString stringWithUTF8String:
-						      bestEp->_streamType.c_str()];
-	    }
-
 	    // origin is set by layout code later.
-	    if (bestEp != nil) {
-		[_signStations addObject: newStation];
-	    } else {
-		NSLog(@"internal error -- returned station %@ has no streams",
-		      newStation.stationName);
-	    }
-	    NSLog(@"querymonitor added station %@ %@",
-		  newStation.stationName, newStation.shortDescr);
+	    station = [[SignStation alloc] init];
+	    [_signStations addObject: station];
+	    scanStationp->_userFlags |= kFlagAdded;
 	} else {
+	    station = _signStations[ix];
 	    // Nothing new to return.
-	    NSLog(@"querymonitor breaking from loop");
-	    break;
 	}
-    }
+
+	// update existing station
+	station.stationName =
+	    [NSString stringWithUTF8String: scanStationp->_stationName.c_str()];
+	station.shortDescr = [NSString stringWithUTF8String:
+					   scanStationp->_stationShortDescr.c_str()];
+	station.iconUrl = [NSString stringWithUTF8String: scanStationp->_iconUrl.c_str()];
+	SignCoord rowColumn = {0, 0};		// filled in by 
+	[station setRowColumn: rowColumn];
+	[station setIconImageFromUrl: YES];
+	station.verified = scanStationp->_verified;
+	station.verifiedWorking = scanStationp->_verifiedWorking;
+
+	// Find the best stream to use
+	RadioScanStation::Entry *ep;
+	RadioScanStation::Entry *bestEp = nullptr;
+	uint32_t bestRate = 0;
+	for(ep = scanStationp->_entries.head(); ep; ep=ep->_dqNextp) {
+	    if (ep->_streamRateKb >= bestRate) {
+		bestRate = ep->_streamRateKb;
+		bestEp = ep;
+	    }
+	}
+	if (bestEp != nullptr) {
+	    station.streamUrl = [NSString stringWithUTF8String:
+						 bestEp->_streamUrl.c_str()];
+	    station.streamRateKb = bestEp->_streamRateKb;
+	    station.streamType = [NSString stringWithUTF8String:
+						  bestEp->_streamType.c_str()];
+	}
+    } // for loop over all radioscan stations
+    _lastUpdateVersion = nextUpdateVersion;
 
     // trigger reload of uitable's visible parts.
     [_stationTable reloadData];
 
     [self displayQueryStatus: _queryp];
 
-    if (_queryDone) {
+    if (queryDoneAtStart) {
 	// nothing until done button pressed
+	NSLog(@"QM All done");
 	[self cleanupQueryMonitor];
     } else {
 	_queryTimer = [NSTimer scheduledTimerWithTimeInterval: 0.5
@@ -436,7 +477,6 @@
 						     selector:@selector(queryMonitor:)
 						     userInfo:nil
 						      repeats: NO];
-	NSLog(@"querymonitor restarting timer");
     }
 }
 
@@ -448,12 +488,12 @@
     [_searchBar resignFirstResponder];
     _canceled = NO;
     _queryString = _searchBar.text;
-    NSLog(@"search test is %@", _queryString);
+    NSLog(@"search text is %@", _queryString);
 
     _signStations = [[NSMutableArray alloc] init];
-    _stationp = nil;
 
     _queryDone = NO;
+    _lastUpdateVersion = 0;
     _searchThread = [[NSThread alloc] initWithTarget: self
 					    selector: @selector(searchAsync:)
 					      object: nil];
@@ -545,7 +585,12 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     backgroundView.backgroundColor = [UIColor clearColor];
     cell.multipleSelectionBackgroundView = backgroundView;
     cell.textLabel.text = station.stationName;
-    cell.textLabel.textColor = [UIColor blueColor];
+    if (!station.verified)
+	cell.textLabel.textColor = [UIColor blueColor];
+    else if (station.verifiedWorking)
+	cell.textLabel.textColor = [UIColor greenColor];
+    else
+	cell.textLabel.textColor = [UIColor redColor];
     cell.textLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 32];
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 

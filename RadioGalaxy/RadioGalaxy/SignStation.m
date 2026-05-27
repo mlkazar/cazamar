@@ -20,6 +20,9 @@
     bool _isSelected;		// selected as part of search operation
     bool _isLoaded;		// image is loaded from URL, not string
 
+    bool _verified;		// search system has checked it
+    bool _verifiedWorking;	// check above found it working
+
     MFANAqStream *_recordingStream;	// stream being recorded
     MFANAqStreamBuffer *_recordingBuffer; // recorded data from stream.
     uint64_t _recordingPosition;	// ms currently coming out the speaker

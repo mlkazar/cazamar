@@ -22,6 +22,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property bool isRecording;
 @property bool isSelected;
 @property bool isLoaded;
+
+// flags for the search operation
+@property bool verified;	// we've checked the station
+@property bool verifiedWorking;	// check indicated station is up
+
 @property CGPoint origin;
 @property uint16_t signIndex;
 @property (nullable) UIImage *iconImage;

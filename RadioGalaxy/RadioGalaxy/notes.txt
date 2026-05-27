@@ -26,6 +26,8 @@ Ideas for Radio app
 
 ** Help text for search won't be read if long, and is way too long.
 
+-- Sample station in search results.
+
 -- limit results to 64 stations chosen randomly (and warn user).  Do
    this in radioscan, before starting validation.  Do it by generating
    a probability of 64/count, and flipping a random coin over one pass
@@ -42,7 +44,7 @@ Ideas for Radio app
 
 ** see if can improve ad text to get more views
 
--- Search should be populating live without popup?
+** Search should be populating live without popup.
 
 ** multiple validation threads
 

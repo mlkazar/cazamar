@@ -19,6 +19,14 @@
 class RadioScan;
 class RadioScanQuery;
 class RadioScanStation;
+class RadioScanWork;
+
+class RadioScanWork {
+public:
+    RadioScanWork *_dqNextp;
+    RadioScanWork *_dqPrevp;
+    RadioScanStation *_stationp;
+};
 
 /* instantiate a radioscan object once, and then perform multiple search operations.
  * It creates its own cdisp object now, but if we ever have multiple users of a 
@@ -33,7 +41,7 @@ class RadioScan {
 
  public:
     /* max # of 301 redirects before we call it quits */
-    static const uint32_t _maxRedirects = 4;
+    static const uint32_t _maxRedirects = 6;
 
     // unqualified tokens might be interpreted as components of a
     // name, or of a keyword tag.
@@ -88,7 +96,7 @@ public:
 };
 
 class RadioScanQuery : public CThread {
-    static const uint32_t _kThreads = 4;
+    static const uint32_t _kThreads = 6;
     friend class RadioScan;
     friend class RadioScanThread;
 private:
@@ -108,21 +116,25 @@ public:
     CThreadCV _cv;
 
     RadioScan *_scanp;
-    dqueue<RadioScanStation> _unverifiedStations;       // these get sorted into good vs bad
     dqueue<RadioScanStation> _goodStations;
-    dqueue<RadioScanStation> _badStations;
+    dqueue<RadioScanWork> _workEntries;
     uint32_t _refCount;
     std::string _detailedStatus;
     int _aborted;
+
     bool _verifying;
     uint32_t _verifyingCount;
     uint32_t _verifyingIndex;
+    bool _allVerified;
+    uint32_t _nextVersion;
 
     RadioScanQuery() : _cv(&RadioScan::_lock) {
         _refCount = 0;
         _aborted = 0;
         _verifying = false;
+        _allVerified = false;
         _browseMaxCount = 10000;
+        _nextVersion = 0;
     }
 
     void init(RadioScan *scanp, std::string query) {
@@ -136,6 +148,10 @@ public:
                     std::string state,
                     std::string city,
                     std::string genre);
+
+    uint32_t getUpdateVersion() {
+        return _nextVersion;
+    }
 
     void initSmart(RadioScan *scanp, std::string query);
 
@@ -232,9 +248,22 @@ class RadioScanStation {
     uint8_t _sawIcyBr;
     std::string _streamType;
 
+    bool _verified;
+    bool _verifiedWorking;
+    uint32_t _updateVersion;
+    uint32_t _userFlags;        // flags for our caller to use
+
     void init(RadioScanQuery *queryp) {
         _queryp = queryp;
         _scanp = queryp->_scanp;
+        _updateVersion = 0;
+        _verified = false;
+        _verifiedWorking = false;
+        _userFlags = 0;
+    }
+
+    uint32_t getUpdateVersion() {
+        return _updateVersion;
     }
 
     void addStreamEntry(const char *streamUrlp,

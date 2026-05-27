@@ -736,8 +736,17 @@ RadioScanQuery::freeUnusedStations(std::vector<RadioScanStation *> *stationsp) {
 
 void
 RadioScanQuery::considerStation(RadioScanStation *stationp) {
+    RadioScan::takeLock();
+
+    _goodStations.append(stationp);
     stationp->_inQueryList = true;
-    _unverifiedStations.append(stationp);
+    stationp->_updateVersion = _nextVersion++;
+
+    RadioScanWork *workEntryp = new RadioScanWork();
+    workEntryp->_stationp = stationp;
+    _workEntries.append(workEntryp);
+
+    RadioScan::releaseLock();
 }
 
 // Can tagList comma separated: all must be present.  Multiple tag= terms, any must be present
@@ -1440,8 +1449,8 @@ RadioScan::searchStation(RadioScanQuery *resp, ScanType scanType)
 
     resp->verifyStations();
 
+    // TODO: Why do we do this?
     takeLock();
-    
     releaseLock();
 }
 
@@ -1462,7 +1471,7 @@ RadioScanQuery::verifyStations() {
     CThreadHandle *hp;
 
     _verifying = true;
-    _verifyingCount = (uint32_t) _unverifiedStations.count();
+    _verifyingCount = (uint32_t) _workEntries.count();
     _verifyingIndex = 0;
 
     for(i=0;i<_kThreads;i++) {
@@ -1477,15 +1486,24 @@ RadioScanQuery::verifyStations() {
     for(i=0;i<_kThreads;i++) {
         threadWait(_threads+i);
     }
+
+    // mark that we're all done
+    _allVerified = true;
 }
 
 void
 RadioScanQuery::verifyStationThread(RadioScanThread *threadp) {
     int32_t code;
     RadioScanStation *stationp;
+    RadioScanWork *workEntryp;
 
     RadioScan::takeLock();
-    while((stationp = _unverifiedStations.pop()) != nullptr) {
+    while((workEntryp = _workEntries.pop()) != nullptr) {
+        // get the station from the work queue.
+        stationp = workEntryp->_stationp;
+        _workEntries.remove(workEntryp);
+        delete workEntryp;
+
         if (isAborted())
             break;
         _verifyingUrl = stationp->_sourceUrl;
@@ -1506,10 +1524,12 @@ RadioScanQuery::verifyStationThread(RadioScanThread *threadp) {
 
         RadioScan::takeLock();
         if (code == 0 && stationp->_entries.count() > 0) {
-            _goodStations.append(stationp);
+            stationp->_verifiedWorking = true;
         } else {
-            _badStations.append(stationp);
+            stationp->_verifiedWorking = false;
         }
+        stationp->_verified = true;
+        stationp->_updateVersion = _nextVersion++;
 
         _verifyingIndex++;
     }
@@ -1646,15 +1666,15 @@ RadioScanStation::hasISubstr(const char *keyp, std::string target)
 RadioScanQuery::~RadioScanQuery() {
     RadioScanStation *nextp;
     RadioScanStation *stationp;
-    for(stationp = _unverifiedStations.head(); stationp != nullptr; stationp = nextp) {
-        nextp = stationp->_dqNextp;
-        delete stationp;
+    RadioScanWork *workEntryp;
+    RadioScanWork *workNextp;
+    for(workEntryp = _workEntries.head(); workEntryp != nullptr; workEntryp = workNextp) {
+        workNextp = workEntryp->_dqNextp;
+        // don't delete the stationp in the workEntry, since the
+        // station is also in the goodStations list.
+        delete workEntryp;
     }
     for(stationp = _goodStations.head(); stationp != nullptr; stationp = nextp) {
-        nextp = stationp->_dqNextp;
-        delete stationp;
-    }
-    for(stationp = _badStations.head(); stationp != nullptr; stationp = nextp) {
         nextp = stationp->_dqNextp;
         delete stationp;
     }
