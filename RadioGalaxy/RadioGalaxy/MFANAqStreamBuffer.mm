@@ -935,7 +935,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     return packet;
 }
 
-- (MFANAqStreamBuffer *) init {
+- (MFANAqStreamBuffer *) initWithFileId: (uint32_t) fileId {
     static uint32_t fileIdGenerator = 1;
     self = [super init];
     if (self != nil) {
@@ -967,7 +967,10 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	_streamFile = new MFANAqStreamFile();
 	_streamFile->_blocks = [[NSMutableArray alloc] init];
 	_streamFile->_lru = [[NSMutableOrderedSet alloc] init];
-	_streamFile->_fileId = fileIdGenerator++;
+	if (fileId == 0)
+	    _streamFile->_fileId = fileIdGenerator++;
+	else
+	    _streamFile->_fileId = fileId;
 
 	// and create the backing file
 	int fd = open([fileNameForFileId(_streamFile->_fileId)
@@ -1413,6 +1416,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     pthread_mutex_lock(&_bufferMutex);
     _shuttingDown = true;
     while(true) {
+	pthread_cond_broadcast(&_pthreadReqCv);
 	if (_pthreadDone && !_gcRunning) break;
 	pthread_cond_wait(&_pthreadDoneCv, &_bufferMutex);
     }

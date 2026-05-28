@@ -50,7 +50,7 @@
 	self.isRecording = YES;
 	self.isSelected = NO;
 	self.isLoaded = NO;
-	self.recordingBuffer = [[MFANAqStreamBuffer alloc] init];
+	self.recordingBuffer = [[MFANAqStreamBuffer alloc] initWithFileId: 0];
     }
     return self;
 }

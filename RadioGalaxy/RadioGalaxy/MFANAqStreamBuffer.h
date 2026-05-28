@@ -190,7 +190,9 @@ typedef struct _MFANAqStreamFile {
 
 - (MFANAqStreamPacket *) lastPacket;
 
-- (MFANAqStreamBuffer *) init;
+- (MFANAqStreamBuffer *) initWithFileId: (uint32_t) fileId;
+
+- (void) shutdown;
 
 - (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block;
 

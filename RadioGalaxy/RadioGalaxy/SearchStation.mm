@@ -1,9 +1,12 @@
 #import "SearchStation.h"
 #import "HelpView.h"
+#import "MFANAqStream.h"
+#import "MFANAqStreamBuffer.h"
 #import "MFANCGUtil.h"
 #import "MFANCoreButton.h"
 #import "MFANIconButton.h"
 #import "MFANSocket.h"
+#import "MFANStreamPlayer.h"
 #import "ViewController.h"
 
 #include "radioscan.h"
@@ -54,9 +57,16 @@
     uint32_t _lastUpdateVersion;
 
     bool _didNotify;
+
+    // these are non-null if we're playing a sample
+    MFANAqStreamBuffer *_sampleStreamBuffer;
+    MFANAqStream *_sampleStream;
+    MFANStreamPlayer *_samplePlayer;
+    SignStation *_sampleStation;
 }
 
 - (void) doNotify {
+    [self stopSampler];
     _didNotify = true;
     if (_callbackObj != nil) {
 	[_callbackObj  performSelectorOnMainThread: _callbackSel
@@ -624,6 +634,65 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     cell.backgroundColor = [UIColor clearColor];
 
     return cell;
+}
+
+- (UISwipeActionsConfiguration *) tableView: (UITableView *) tview
+trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
+{
+    long row = [path row];
+    SignStation *station = _signStations[row];
+
+    NSString *playString;
+
+    if (station == _sampleStation) {
+	playString = @"Stop Sampling";
+    } else {
+	playString = @"Sample";
+    }
+
+    UIContextualAction *playAction =
+	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+						title:playString
+					      handler:^(UIContextualAction *action,
+							UIView *sourceView,
+							void (^complete)(BOOL)) {
+		[self runSampler: station];
+		complete(true);
+	    }];
+    playAction.backgroundColor = [UIColor blueColor];
+
+    return [UISwipeActionsConfiguration configurationWithActions: @[playAction]];
+}
+
+- (void) runSampler: (SignStation *) station {
+    SignStation *origStation = _sampleStation;
+
+    // always stop current station being sampled
+    if (_samplePlayer != nil) {
+	[self stopSampler];
+    }
+
+    // if we selected a different station to sample, or if there was
+    // no station being sampled, start sampling now.
+    if (origStation != station) {
+	// start playing
+	_sampleStreamBuffer = [[MFANAqStreamBuffer alloc] initWithFileId: 10000];
+	_sampleStream = [[MFANAqStream alloc] initWithUrl: station.streamUrl
+						   buffer:_sampleStreamBuffer];
+	_samplePlayer = [[MFANStreamPlayer alloc] initWithStream: _sampleStream ms: 0];
+	_sampleStation = station;
+    }
+}
+
+- (void) stopSampler {
+    if (_samplePlayer != nil) {
+	[_samplePlayer shutdown];
+	_samplePlayer = nil;
+	[_sampleStream shutdown];
+	_sampleStream = nil;
+	[_sampleStreamBuffer shutdown];
+	_sampleStreamBuffer = nil;
+    }
 }
 
 - (UIImage *) imageFromText: (NSString *) text Size: (CGSize) size {
