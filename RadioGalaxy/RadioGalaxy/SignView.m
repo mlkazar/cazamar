@@ -687,8 +687,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     SignStation *station;
     BOOL keepAnimating = false;
 
-    // uncomment to disable blinking
+#if 0	// set to 1 if you want to turn off blinking
     forceOff = true;
+#endif
 
     for(station in _allStations) {
 	if ([self shouldIndicateStreaming:station]) {

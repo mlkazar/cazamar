@@ -58,6 +58,10 @@
 
     bool _didNotify;
 
+    // for a short period after 
+    bool _suppressReloads;
+    NSTimer *_suppressTimer;
+
     // these are non-null if we're playing a sample
     MFANAqStreamBuffer *_sampleStreamBuffer;
     MFANAqStream *_sampleStream;
@@ -214,6 +218,7 @@
 
 	_canceled = NO;
 	_didNotify = false;
+	_suppressReloads = false;
 
 	[vc pushTopView: self];
 
@@ -405,6 +410,7 @@
     uint32_t nextUpdateVersion = _queryp->getUpdateVersion();
     uint32_t prevUpdateVersion = _lastUpdateVersion;
 
+    bool didAny = false;
     for( ix=0, scanStationp = _queryp->_goodStations.head();
 	 scanStationp != nullptr;
 	 ++ix, scanStationp = scanStationp->_dqNextp) {
@@ -419,13 +425,7 @@
 	    continue;
 	}
 
-	{
-	    SignStation *tstation;
-	    if (ix < [_signStations count])
-		tstation = _signStations[ix];
-	    else
-		tstation = nil;
-	}
+	didAny = true;
 
 	// if doAdd is true, we have a new station to add to the return
 	// array.
@@ -448,7 +448,7 @@
 	station.iconUrl = [NSString stringWithUTF8String: scanStationp->_iconUrl.c_str()];
 	SignCoord rowColumn = {0, 0};		// filled in by 
 	[station setRowColumn: rowColumn];
-	[station setIconImageFromUrl: YES];
+	[station setIconImageFromUrl: NO];
 	station.verified = scanStationp->_verified;
 	station.verifiedWorking = scanStationp->_verifiedWorking;
 
@@ -473,7 +473,8 @@
     _lastUpdateVersion = nextUpdateVersion;
 
     // trigger reload of uitable's visible parts.
-    [_stationTable reloadData];
+    if (didAny && !_suppressReloads)
+	[_stationTable reloadData];
 
     [self displayQueryStatus: _queryp];
 
@@ -620,6 +621,9 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     else
 	cell.accessoryType = UITableViewCellAccessoryNone;
 
+    // make sure we've done a URL load
+    [station tryLoadFromUrl];
+
     UIImage *scaledImage = resizeImage(station.iconImage, 60);
 
     [[cell imageView] setImage: scaledImage];
@@ -661,10 +665,25 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    }];
     playAction.backgroundColor = [UIColor blueColor];
 
+    _suppressReloads = true;
+    if (_suppressTimer == nil) {
+	_suppressTimer = [NSTimer scheduledTimerWithTimeInterval: 2.5
+							  target:self
+							selector:@selector(suppressCanceled:)
+							userInfo:nil
+							 repeats: NO];
+    }
+
     return [UISwipeActionsConfiguration configurationWithActions: @[playAction]];
 }
 
+- (void) suppressCanceled: (id) junk {
+    _suppressTimer = nil;
+    _suppressReloads = false;
+}
+
 - (void) runSampler: (SignStation *) station {
+    NSLog(@"IN RUNAMPLER");
     SignStation *origStation = _sampleStation;
 
     // always stop current station being sampled
