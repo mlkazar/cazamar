@@ -39,6 +39,8 @@ Ideas for Radio app
 -- settings for how much music to keep / whether to restore after
    restart / whether to automatically record playing stations in background
 
+-- break out 'search station' as a separate button on hte menu line.
+
 ** reorganize UI so press always selects, long pres brings up status
    with a button for editing, which does a second push.
 

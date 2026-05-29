@@ -183,7 +183,7 @@ MFANAqStream_PacketsProc( void *contextp,
     // NB: keep this well above the implicit delay from the stream player's
     // audio queue (~32 seconds at 64 Kbps) to avoid pruning data before the
     // player has had a chance to read it for the first time.
-    [aqp->_buffer pruneOldestMs: 9000000];  // should be 2 hours or more, in ms
+    [aqp->_buffer pruneOldestMs: 9000000];  // should be >= 2.5 hours (9000000)
 }
 
 /* Called by RadioStream with raw (unparsed) data from the HTTP connection. */
