@@ -22,6 +22,7 @@
     CGRect _activeFrame;
     UIView<TopViewInt> *_activeView;
     UIView<AudioInt> *_remoteReceiver;
+    NSObject *_settings;	// convenient place to find app-specific settings
 }
 
 // The view in self.view is a whole screen view painted black.  It

@@ -4,6 +4,7 @@
 #import "MFANIconButton.h"
 #import "MarqueeLabel.h"
 #import "MFANStreamPlayer.h"
+#import "Settings.h"
 
 @implementation TopView {
     MarqueeLabel *_marquee;
@@ -12,11 +13,14 @@
     MFANCoreButton *_skipFwdButton;
     MFANCoreButton *_skipBackButton;
     MFANCoreButton *_startButton;
+    MFANCoreButton *_settingsButton;
+    MFANCoreButton *_addButton;
     SignView *_signView;
     RadioHistory *_history;
     ViewController *_vc;
     NSMutableDictionary *_nowPlayingInfo;
     BufferSlider *_sliderView;
+    Settings *_settings;
 }
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc {
@@ -56,20 +60,62 @@
 	[signView setSongCallback: self sel:@selector(songChanged:)];
 	[signView setStateCallback: self sel:@selector(stateChanged:)];
 
+	UIColor *borderColor = [UIColor colorWithRed: 0.0
+					       green: 0.5
+						blue: 0.0
+					       alpha: 1.0];
+
 	CGRect startFrame = screenFrame;
 	startFrame.origin.y = signFrame.size.height;
 	startFrame.size.height = usableHeight * barHeight;
-	MFANCoreButton *_startButton= [[MFANCoreButton alloc]
+	startFrame.size.width = screenFrame.size.width / 3;
+	MFANCoreButton *_addButton= [[MFANCoreButton alloc]
 					  initWithFrame: startFrame
 						  title: @"None"
 						  color: [UIColor blackColor]
 					backgroundColor: [UIColor greenColor]];
+	[_addButton setBackgroundColor:
+		 [UIColor colorWithRed: 0.0
+				 green: 0.75
+				  blue:0.0
+				 alpha: 1.0]];
+	_addButton.layer.borderWidth = 2.0;
+	_addButton.layer.borderColor = borderColor.CGColor;
+	[_addButton setClearText: @"+ Station"];
+	[_addButton addCallback: self withAction: @selector(addPressed:)];
+	[self addSubview: _addButton];
+
+	startFrame.origin.x += screenFrame.size.width/3;
+	MFANCoreButton *_settingsButton= [[MFANCoreButton alloc]
+					     initWithFrame: startFrame
+						     title: @"None"
+						     color: [UIColor blackColor]
+					   backgroundColor: [UIColor greenColor]];
+	[_settingsButton setBackgroundColor:
+		      [UIColor colorWithRed: 0.0
+				      green: 0.75
+				       blue:0.0
+				      alpha: 1.0]];
+	_settingsButton.layer.borderWidth = 2.0;
+	_settingsButton.layer.borderColor = borderColor.CGColor;
+	[_settingsButton setClearText: @"Settings"];
+	[_settingsButton addCallback: self withAction: @selector(settingsPressed:)];
+	[self addSubview: _settingsButton];
+
+	startFrame.origin.x += screenFrame.size.width/3;
+	MFANCoreButton *_startButton= [[MFANCoreButton alloc]
+					     initWithFrame: startFrame
+						     title: @"None"
+						     color: [UIColor blackColor]
+					   backgroundColor: [UIColor greenColor]];
 	[_startButton setBackgroundColor:
 		   [UIColor colorWithRed: 0.0
 				   green: 0.75
 				    blue:0.0
 				   alpha: 1.0]];
-	[_startButton setClearText: @"Main Menu"];
+	_startButton.layer.borderWidth = 2.0;
+	_startButton.layer.borderColor = borderColor.CGColor;
+	[_startButton setClearText: @"More..."];
 	[_startButton addCallback: self withAction: @selector(startPressed:)];
 	[self addSubview: _startButton];
 
@@ -152,6 +198,9 @@
 
 	[self setBackgroundColor: [UIColor whiteColor]];
 
+	_settings = [[Settings alloc] initWithViewController: _vc];
+	_vc.settings = _settings;
+
 	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }
 
@@ -164,6 +213,14 @@
 
 - (void) startPressed: (id) junk {
     [_signView displayAppOptions];
+}
+
+- (void) addPressed: (id) junk {
+    [_signView performAddOperation];
+}
+
+- (void) settingsPressed: (id) junk {
+    [_vc pushTopView: _settings];
 }
 
 - (void) skipFwdPressed:(id) junk withData: junk2 {

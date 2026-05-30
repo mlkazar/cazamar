@@ -20,6 +20,7 @@
 #import "PopStatus.h"
 #import "RadioHistory.h"
 #import "SearchStation.h"
+#import "Settings.h"
 #import "SignView.h"
 #import "SignSave.h"
 #import "SignViewInt.h"
@@ -773,7 +774,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) showIntroAlert: (id) junk {
     _introAlert = [UIAlertController
 		      alertControllerWithTitle: @"RadioStar"
-				       message: @"Use Main Menu / Search for Station to "
+				       message: @"'+Station' button to "
 		      "add station(s) to play, select station from search results"
 		      "and press station's icon to play"
 				preferredStyle: UIAlertControllerStyleAlert];
@@ -986,21 +987,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 						    message: @"Options"
 					     preferredStyle: UIAlertControllerStyleAlert];
 
-    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Search for station"
-                                                     style: UIAlertActionStyleDefault
-                                                   handler:^(UIAlertAction *act) {
-	    self->_searchStation = [[SearchStation alloc]
-				       initWithFrame: self.frame
-					    ViewCont: self->_vc];
-	    [self removeRecognizers];
-	    // [self addSubview: self->_searchStation];
-	    [self->_searchStation setCallback: self WithSel: @selector(searchDone:)];
-	}];
-    [alert addAction: action];
-
-    action = [UIAlertAction actionWithTitle:@"Manually add station"
-				      style: UIAlertActionStyleDefault
-				    handler:^(UIAlertAction *act) {
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Manually add station"
+						     style: UIAlertActionStyleDefault
+						   handler:^(UIAlertAction *act) {
 	    self->_manualStation = [[ManualStation alloc]
 					    initWithViewCont: self->_vc];
 	    [self removeRecognizers];
@@ -1043,6 +1032,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [_vc presentViewController: alert animated:YES completion: nil];
 }
 
+- (void) performAddOperation {
+    _searchStation = [[SearchStation alloc]
+			 initWithFrame: self.frame
+			      ViewCont: _vc];
+    [self removeRecognizers];
+    [_searchStation setCallback: self WithSel: @selector(searchDone:)];
+}
+
 - (void) historyDone: (id) junk {
     [_vc popTopView];
 }
@@ -1071,7 +1068,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	return;
 
     if (_playingStation != nil) {
-	[self stopRadioResetStream: NO];
+	[self stopRadioForceReset: NO fromCarPlay: YES];
 	_playingStation = nil;
     }
 
@@ -1086,7 +1083,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) removeStation: (SignStation *) station {
     if (station == _playingStation) {
-	[self stopRadioResetStream: YES];
+	[self stopRadioForceReset: YES fromCarPlay: NO];
 	_playingStation = nil;
     }
 
@@ -1243,10 +1240,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) stopRadioResumeAtEnd {
     uint64_t newResumePoint;
     if (_playingStation != nil) {
-	[self stopRadioResetStream: YES];
+	[self stopRadioForceReset: YES fromCarPlay: NO];
 	newResumePoint = _playingStation.recordingBuffer.lastPacketEndMs;
 	_playingStation.recordingPosition = newResumePoint;
-	_playingStation.isRecording = false;
 
 	[self animationOn];
     }
@@ -1263,7 +1259,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// interruption occurred in currently playing station, so
 	// rebuild the player on top of the rebuilt stream.
 	NSLog(@"=== in restartstationwithstream self=%p", self);
-	[self stopRadioResetStream: YES];
+	[self stopRadioForceReset: YES fromCarPlay: NO];
 	NSLog(@"====back from restart");
 	[NSThread sleepForTimeInterval: 3.0];
 	[self startCurrentStation];
@@ -1320,7 +1316,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	    // stop playing old station
 	    if (prevStation != nil) {
-		[self stopRadioResetStream: NO];
+		[self stopRadioForceReset: NO fromCarPlay: NO];
 		_playingStation = nil;
 	    }
 
@@ -1373,8 +1369,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 // doReset is true if we should force a stream closed even if we're
-// recording the station.
-- (void) stopRadioResetStream: (BOOL) doReset {
+// recording the station.  carPlay is true if this request is coming
+// from the lock screen or carplay 'next' or 'prev' buttons
+- (void) stopRadioForceReset: (BOOL) doReset fromCarPlay: (BOOL) carPlay {
     NSLog(@"in restartradio");
     uint64_t currentTimestamp;
 
@@ -1389,8 +1386,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     NSLog(@"streamplayer shutdown done");
 
     // shutdown the stream unless we're recording it.
+    Settings *settings = (Settings *) _vc.settings;
+    bool keepStreaming;
+    if (carPlay)
+	keepStreaming = settings.keepStreamingAfterCarPlay;
+    else
+	keepStreaming = settings.keepStreamingAfterSwitch;
     if ( !doReset &&
-	 (_playingStation != nil && _playingStation.isRecording)) {
+	 (_playingStation != nil && keepStreaming)) {
 	// keep downloading, but remember where to resume playing if we go
 	// back to this stream.
 	_playingStation.recordingStream = _stream;
@@ -1471,18 +1474,12 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	return @"[Unknown station]";
 }
 
-- (void) startRecording: (SignStation *)station {
-    station.isRecording = true;
-    [self animationOn];
-}
-
 - (void) stopRecording: (SignStation *) station {
     MFANAqStream *stream = station.recordingStream;
     if (stream != nil) {
 	[stream shutdown];
 	station.recordingStream = nil;
     }
-    station.isRecording = false;
     [self animationOn];
 }
 

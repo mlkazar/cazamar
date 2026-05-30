@@ -19,7 +19,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property NSString *iconUrl;
 @property NSString *streamType;
 @property uint32_t streamRateKb;
-@property bool isRecording;
 @property bool isSelected;
 @property bool isLoaded;
 

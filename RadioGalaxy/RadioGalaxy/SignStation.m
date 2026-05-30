@@ -16,7 +16,6 @@
     // row and column, both 0 based
     SignCoord _rowColumn;
 
-    bool _isRecording;		// so don't stop stream if switch away
     bool _isSelected;		// selected as part of search operation
     bool _isLoaded;		// image is loaded from URL, not string
 
@@ -47,7 +46,6 @@
 - (SignStation *) init {
     self = [super init];
     if (self) {
-	self.isRecording = YES;
 	self.isSelected = NO;
 	self.isLoaded = NO;
 	self.recordingBuffer = [[MFANAqStreamBuffer alloc] initWithFileId: 0];

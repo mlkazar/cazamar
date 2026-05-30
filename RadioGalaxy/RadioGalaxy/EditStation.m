@@ -235,22 +235,6 @@
     [_vc presentViewController: alert animated:YES completion: nil];
 }
 
-- (void) recordPressed: (id) junk1 {
-    NSString *notice;
-    NSLog(@"record pressed");
-    if (_station.isRecording) {
-	[_signView stopRecording: _station];
-	notice = @"Will stop recording upon switching stations";
-    } else {
-	[_signView startRecording: _station];
-	notice = @"Will keep recording even after switching stations";
-    }
-
-    (void) [[MFANWarn alloc] initWithTitle: @"Streaming" message: notice secs: 1.2];
-
-    [self doNotify];
-}
-
 - (void) donePressed: (id) junk1 withData: (id) junk2 {
     _canceled = false;
     _stationName = _nameView.text;

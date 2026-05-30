@@ -222,7 +222,7 @@
 			     initWithFrame: recordTextFrame
 				    target: self
 				  selector: @selector(recordHelp:)];
-	[recordHelpLabel setTitle: @"Stream even in background"
+	[recordHelpLabel setTitle: @"Stop background streaming"
 			forState: UIControlStateNormal];
 
 	[self addSubview: recordHelpLabel];
@@ -232,8 +232,7 @@
 	recordSwitchFrame.size.width = switchWidth;
 	recordSwitch = [[UISwitch alloc] initWithFrame: recordSwitchFrame];
 	recordSwitch.onTintColor = [UIColor greenColor];
-	[recordSwitch setOn: _station.isRecording animated: false];
-	NSLog(@"set recordswitch to %d / %p",_station.isRecording, _station);
+	[recordSwitch setOn: false animated: false];
 	[recordSwitch addTarget: self
 			 action:@selector(recordPressed:)
 	       forControlEvents: UIControlEventValueChanged];
@@ -380,15 +379,7 @@
 }
 
 - (void) recordPressed: (UISwitch *) s {
-    NSString *notice;
-    NSLog(@"record pressed");
-    if (s.isOn) {
-	[_signView startRecording: _station];
-	notice = @"Will keep recording even after switching stations";
-    } else {
-	[_signView stopRecording: _station];
-	notice = @"Will stop recording upon switching stations";
-    }
+    [_signView stopRecording: _station];
 }
 
 #if 0

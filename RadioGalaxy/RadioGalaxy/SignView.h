@@ -47,7 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) seek: (float) distance relative: (bool) isRelative;
 
-- (void) stopRadioResetStream: (BOOL) doReset;
+- (void) stopRadioForceReset: (BOOL) doReset fromCarPlay: (BOOL) carPlay;
 
 - (void) changeStationBy: (int16_t) change;
 
@@ -57,8 +57,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) stopRecording: (SignStation *) station;
 
-- (void) startRecording: (SignStation *) station;
-
 - (void) stopRadioResumeAtEnd;
 
 - (float) getStationBufferEnd: (SignStation *) station;
@@ -66,6 +64,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (float) getStationBufferStart: (SignStation *) station;
 
 - (MFANAqStream *) startStationStream: (SignStation *) station;
+
+- (void) performAddOperation;
 
 - (void) setupAudioSession: (BOOL) mix;
 
