@@ -697,7 +697,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	// start playing
 	_sampleStreamBuffer = [[MFANAqStreamBuffer alloc] initWithFileId: 10000];
 	_sampleStream = [[MFANAqStream alloc] initWithUrl: station.streamUrl
-						   buffer:_sampleStreamBuffer];
+						   buffer:_sampleStreamBuffer
+						 viewCont: _vc];
 	_samplePlayer = [[MFANStreamPlayer alloc] initWithStream: _sampleStream ms: 0];
 	_sampleStation = station;
     }

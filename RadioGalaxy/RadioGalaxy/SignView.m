@@ -997,6 +997,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
     [alert addAction: action];
 
+    action = [UIAlertAction actionWithTitle:@"Settings"
+				      style: UIAlertActionStyleDefault
+				    handler:^(UIAlertAction *act) {
+	    Settings *settings = (Settings *)self->_vc.settings;
+	    [self->_vc pushTopView: settings];
+	}];
+    [alert addAction: action];
+
     action = [UIAlertAction actionWithTitle:@"Help"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
@@ -1193,7 +1201,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     [station.recordingBuffer allowReaders];
     stream = [[MFANAqStream alloc] initWithUrl: station.streamUrl
-					buffer: station.recordingBuffer];
+					buffer: station.recordingBuffer
+				      viewCont: _vc];
     [stream setFailureCallback: self sel: @selector(restartStationWithStream:)];
 
     return stream;

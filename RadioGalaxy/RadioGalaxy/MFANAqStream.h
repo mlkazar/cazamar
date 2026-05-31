@@ -3,6 +3,7 @@
 #import <MediaPlayer/MediaPlayer.h>
 
 #import "MFANAqStreamBuffer.h"
+#import "ViewController.h"
 
 // MFANAqStreamPacket and MFANAqStreamBuffer are declared in
 // MFANAqStreamBuffer.h (imported above).
@@ -49,7 +50,9 @@
 // (e.g. MFANStreamPlayer) can still read stream.packetDuration directly.
 @property (readonly) float packetDuration;
 
-- (MFANAqStream *) initWithUrl: (NSString *) url buffer:(MFANAqStreamBuffer *) buffer;
+- (MFANAqStream *) initWithUrl: (NSString *) url
+			buffer:(MFANAqStreamBuffer *) buffer
+		      viewCont: (ViewController *) vc;
 
 - (NSString *) getDataFormatString;
 

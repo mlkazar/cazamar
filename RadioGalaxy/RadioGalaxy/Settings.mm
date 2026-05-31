@@ -135,7 +135,7 @@ Settings *_globalSettings;
 	 */
 	buttonHeight = ((1.0-buttonPct) * _appFrame.size.height) / 1.3 / 12;
 
-	float fontSizeScale = 0.6;
+	float fontSizeScale = 0.45;
 	float labelPct = 0.667;
 
 	labelFrame = _appFrame;
@@ -167,6 +167,9 @@ Settings *_globalSettings;
 	   forControlEvents:UIControlEventAllEvents];
 	[self addSubview: _button1];
 	[_button1 setOn: _keepStreamingAfterSwitch animated: false];
+	_button1.backgroundColor = [UIColor blackColor];
+	_button1.layer.cornerRadius = 16.0;
+	// _button1.clipsToBounds = YES;
 
 	labelFrame.origin.y += labelFrame.size.height*1.3;
 
@@ -192,6 +195,9 @@ Settings *_globalSettings;
 	   forControlEvents:UIControlEventAllEvents];
 	[self addSubview: _button2];
 	[_button2 setOn: _keepStreamingAfterCarPlay animated: false];
+	_button2.backgroundColor = [UIColor blackColor];
+	_button2.layer.cornerRadius = 16.0;
+	// _button2.clipsToBounds = YES;
 
 	labelFrame.origin.y += labelFrame.size.height*1.3;
 
@@ -203,7 +209,7 @@ Settings *_globalSettings;
 					      selector: @selector(helpStreamBuffer:)];
 	tlabel = [_label3 titleLabel];
 	_label3.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-	[_label3 setTitle: @"Hours of stream to keep" forState: UIControlStateNormal];
+	[_label3 setTitle: [self streamHours] forState: UIControlStateNormal];
 	[_label3 setTitleColor: [UIColor blackColor] forState: UIControlStateNormal];
 	[_label3 setSelected: YES];
 	[tlabel setFont: [UIFont fontWithName: @"Arial-BoldMT"
@@ -214,6 +220,12 @@ Settings *_globalSettings;
 	_button3.minimumValue = 0.5;
 	_button3.maximumValue = 48;
 	_button3.stepValue = 0.5;
+	_button3.tintColor = [UIColor blueColor];
+	_button3.backgroundColor = [UIColor colorWithRed: 0.8
+						   green: 0.8
+						    blue: 0.8
+						   alpha: 1.0];
+	_button3.layer.cornerRadius = 16.0;
 
 	[_button3 addTarget: self
 		     action:@selector(streamBuffer:)
@@ -292,8 +304,13 @@ Settings *_globalSettings;
     [_vc presentViewController: alert animated:true completion: nil];
 }
 
+- (NSString *) streamHours {
+    return [NSString stringWithFormat:@"Keep %2.1f hours of audio", _streamBufferMinutes/60.0];
+}
+
 - (void) streamBuffer: (UIStepper *) sender {
     _streamBufferMinutes = (uint32_t) (sender.value * 60.0);
+    [_label3 setTitle: [self streamHours] forState: UIControlStateNormal];
     NSLog(@"set stream buffer minutes to %d", _streamBufferMinutes);
 }
 

@@ -301,10 +301,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     aqp->_queuedPackets -= bufRefp->mPacketDescriptionCount;
     NSLog(@"buffer %p returned with %d packets, %lld still queued",
 	  bufRefp, bufRefp->mPacketDescriptionCount, aqp->_queuedPackets);
-    if (_showIo) {
-	NSLog(@"buffer with %d packets returned, leaving %lld in audio queue",
-	      bufRefp->mPacketDescriptionCount, aqp->_queuedPackets);
-    }
     [aqp pushBuffer: bufRefp];
     aqp->_lastReturnedMs = now;
 

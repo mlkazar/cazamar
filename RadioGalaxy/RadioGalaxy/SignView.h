@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property ViewController *vc;
 @property (readonly) MFANStreamPlayer *player;
 @property BOOL resumeAtEnd;
+@property SignStation *playingStation;
 
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc;
 

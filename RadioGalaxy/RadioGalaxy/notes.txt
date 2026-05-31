@@ -36,10 +36,10 @@ Ideas for Radio app
 
 -- keep using disk file across app restarts
 
--- settings for how much music to keep / whether to restore after
+** settings for how much music to keep / whether to restore after
    restart / whether to automatically record playing stations in background
 
--- break out 'search station', 'settings' and 'more' as separate
+** break out 'search station', 'highlight' and 'more' as separate
    buttons on the menu line.
 
 ** reorganize UI so press always selects, long pres brings up status

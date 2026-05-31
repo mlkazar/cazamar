@@ -9,6 +9,8 @@
 #import "MFANAqStreamBuffer.h"
 #import "MFANCGUtil.h"
 #import "MFANSocket.h"
+#import "Settings.h"
+#import "ViewController.h"
 
 #include <string>
 
@@ -65,6 +67,8 @@ static pthread_mutex_t _streamMutex;
 
     // The buffer that accumulates decoded packets.
     MFANAqStreamBuffer *_buffer;
+
+    ViewController *_vc;
 }
 
 - (MFANAqStreamBuffer *) buffer {
@@ -183,7 +187,11 @@ MFANAqStream_PacketsProc( void *contextp,
     // NB: keep this well above the implicit delay from the stream player's
     // audio queue (~32 seconds at 64 Kbps) to avoid pruning data before the
     // player has had a chance to read it for the first time.
-    [aqp->_buffer pruneOldestMs: 9000000];  // should be >= 2.5 hours (9000000)
+    Settings *settings = (Settings *) aqp->_vc.settings;
+    uint32_t pruneMs = settings.streamBufferMinutes * 60000;
+
+    NSLog(@"prunning to %d ms", pruneMs);
+    [aqp->_buffer pruneOldestMs: pruneMs];
 }
 
 /* Called by RadioStream with raw (unparsed) data from the HTTP connection. */
@@ -316,7 +324,9 @@ MFANAqStream_rsControlProc( void *contextp,
 // MFANAqStream — lifecycle
 // ---------------------------------------------------------------------------
 
-- (MFANAqStream *) initWithUrl: (NSString *) url buffer:(MFANAqStreamBuffer *) buffer {
+- (MFANAqStream *) initWithUrl: (NSString *) url
+			buffer:(MFANAqStreamBuffer *) buffer
+		      viewCont:(ViewController *) vc {
     self = [super init];
     if (self) {
         NSLog(@"- AqStream init starts for %p", self);
@@ -328,6 +338,7 @@ MFANAqStream_rsControlProc( void *contextp,
 
         // Create the buffer first; it initialises the shared mutex.
         _buffer = buffer;
+	_vc = vc;
 
         _shuttingDown = NO;
         _audioStreamHandle = 0;

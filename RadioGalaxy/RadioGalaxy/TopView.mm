@@ -6,6 +6,46 @@
 #import "MFANStreamPlayer.h"
 #import "Settings.h"
 
+@implementation TopAlert {
+    NSTimer *_timer;
+    UIAlertController *_alert;
+}
+
+- (TopAlert *) initWithMessage: (NSString *) message
+		      duration: (float) duration
+		      viewCont: (ViewController *) vc {
+    self = [super init];
+    if (self != nil) {
+	_alert = [UIAlertController alertControllerWithTitle: @"RadioGalaxy"
+						     message: message
+					      preferredStyle: UIAlertControllerStyleAlert];
+
+	UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK"
+							 style: UIAlertActionStyleDefault
+						       handler:^(UIAlertAction *act) {
+		[self->_alert dismissViewControllerAnimated: YES completion: nil];
+	    }];
+
+	[_alert addAction: action];
+
+	[NSTimer scheduledTimerWithTimeInterval: duration
+					 target: self
+				       selector: @selector(dismissAlert:)
+				       userInfo: nil
+					repeats: NO];
+
+	[vc presentViewController: _alert animated:YES completion: nil];
+    }
+
+    return self;
+}
+
+- (void) dismissAlert: (id) junk {
+    [_alert dismissViewControllerAnimated: YES completion: nil];
+}
+
+@end
+
 @implementation TopView {
     MarqueeLabel *_marquee;
     MFANCoreButton *_playButton;
@@ -13,8 +53,8 @@
     MFANCoreButton *_skipFwdButton;
     MFANCoreButton *_skipBackButton;
     MFANCoreButton *_startButton;
-    MFANCoreButton *_settingsButton;
     MFANCoreButton *_addButton;
+    MFANCoreButton *_highlightButton;
     SignView *_signView;
     RadioHistory *_history;
     ViewController *_vc;
@@ -86,23 +126,24 @@
 	[self addSubview: _addButton];
 
 	startFrame.origin.x += screenFrame.size.width/3;
-	MFANCoreButton *_settingsButton= [[MFANCoreButton alloc]
+	MFANCoreButton *_highlightButton= [[MFANCoreButton alloc]
 					     initWithFrame: startFrame
 						     title: @"None"
 						     color: [UIColor blackColor]
 					   backgroundColor: [UIColor greenColor]];
-	[_settingsButton setBackgroundColor:
+	[_highlightButton setBackgroundColor:
 		      [UIColor colorWithRed: 0.0
 				      green: 0.75
 				       blue:0.0
 				      alpha: 1.0]];
-	_settingsButton.layer.borderWidth = 2.0;
-	_settingsButton.layer.borderColor = borderColor.CGColor;
-	[_settingsButton setClearText: @"Settings"];
-	[_settingsButton addCallback: self withAction: @selector(settingsPressed:)];
-	[self addSubview: _settingsButton];
+	_highlightButton.layer.borderWidth = 2.0;
+	_highlightButton.layer.borderColor = borderColor.CGColor;
+	[_highlightButton setClearText: @"Highlight"];
+	[_highlightButton addCallback: self withAction: @selector(highlightPressed:)];
+	[self addSubview: _highlightButton];
 
 	startFrame.origin.x += screenFrame.size.width/3;
+
 	MFANCoreButton *_startButton= [[MFANCoreButton alloc]
 					     initWithFrame: startFrame
 						     title: @"None"
@@ -219,8 +260,26 @@
     [_signView performAddOperation];
 }
 
-- (void) settingsPressed: (id) junk {
-    [_vc pushTopView: _settings];
+- (void) highlightPressed: (id) junk {
+    SignStation *playingStation = _signView.playingStation;
+    if (playingStation == nil) {
+	[_signView.history toggleHighlightInStation:playingStation.stationName];
+	(void) [[TopAlert alloc] initWithMessage: @"No song playing"
+					duration: 2.0
+					viewCont: _vc];
+    }
+
+    if (![_signView.history isHighlightedInStation:playingStation.stationName]) {
+	[_signView.history toggleHighlightInStation:playingStation.stationName];
+	(void) [[TopAlert alloc] initWithMessage: @"Highlighted song in history"
+					duration: 2.0
+					viewCont: _vc];
+    } else {
+	(void) [[TopAlert alloc] initWithMessage: @"Song already highlighted in history. "
+				 @"Unhighlight via history menu item"
+					duration: 2.0
+					viewCont: _vc];
+    }
 }
 
 - (void) skipFwdPressed:(id) junk withData: junk2 {

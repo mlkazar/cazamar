@@ -3,6 +3,12 @@
 #import "ViewController.h"
 #import "SignView.h"
 
+@interface TopAlert : NSObject
+- (TopAlert *) initWithMessage: (NSString *) message
+		      duration: (float) duration
+		      viewCont: (ViewController *) vc;
+@end
+
 @interface TopView : UIView<TopViewInt>
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc;
