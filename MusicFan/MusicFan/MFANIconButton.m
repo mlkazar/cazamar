@@ -37,6 +37,13 @@
     [self setNeedsDisplay];
 }
 
+- (void) setHighlighted: (BOOL) highlighted {
+    [super setHighlighted: highlighted];
+    [UIView animateWithDuration: 0.2 animations: ^{
+	    self.alpha = highlighted? 0.3 : 1.0;
+	}];
+}
+
 - (void) updateTitle: (NSString *) title
 {
     [self setTitle: title forState: UIControlStateNormal];

@@ -209,7 +209,7 @@
 	CGRect recordTextFrame;
 	CGRect recordSwitchFrame;
 	HelpLabel *recordHelpLabel;
-	UISwitch *recordSwitch;
+	MFANIconButton *recordSwitch;
 
 	// Stream in background switch
 	recordTextFrame = frame;
@@ -230,38 +230,12 @@
 	recordSwitchFrame = recordTextFrame;
 	recordSwitchFrame.origin.x = recordTextFrame.origin.x + recordTextFrame.size.width;
 	recordSwitchFrame.size.width = switchWidth;
-	recordSwitch = [[UISwitch alloc] initWithFrame: recordSwitchFrame];
-	recordSwitch.onTintColor = [UIColor greenColor];
-	[recordSwitch setOn: false animated: false];
-	[recordSwitch addTarget: self
-			 action:@selector(recordPressed:)
-	       forControlEvents: UIControlEventValueChanged];
-	[self addSubview: recordSwitch];
-
-
-	// Highlight switch
-	recordTextFrame.origin.y += labelHeight + frame.size.height * 0.03;
-	recordHelpLabel = [[HelpLabel alloc]
-			     initWithFrame: recordTextFrame
-				    target: self
-				  selector: @selector(highlightHelp:)];
-	[recordHelpLabel setTitle: @"Highlight song in history"
-			forState: UIControlStateNormal];
-
-	[self addSubview: recordHelpLabel];
-
-	recordSwitchFrame = recordTextFrame;
-	recordSwitchFrame.origin.x = recordTextFrame.origin.x + recordTextFrame.size.width;
-	recordSwitchFrame.size.width = switchWidth;
-	recordSwitch = [[UISwitch alloc] initWithFrame: recordSwitchFrame];
-	recordSwitch.onTintColor = [UIColor greenColor];
-	[recordSwitch
-	    setOn: [_signView.history isHighlightedInStation:_station.stationName]
-	    animated: false];
-	NSLog(@"toggle highlight for station %@", _station.stationName);
-	[recordSwitch addTarget: self
-			 action:@selector(highlightPressed:)
-	       forControlEvents: UIControlEventValueChanged];
+	recordSwitch = [[MFANIconButton alloc] initWithFrame: recordSwitchFrame
+						       title: @"Stop"
+						       color: [UIColor clearColor]
+							file: @"icon-button.png"];
+	[recordSwitch addCallback: self
+		       withAction: @selector(recordPressed:)];
 	[self addSubview: recordSwitch];
 
 	buttonFrame.origin.x = frame.size.width / 5;
