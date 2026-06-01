@@ -353,7 +353,7 @@
 
     NSString *message;
 
-    message = @"Next, select stations to add and press 'done'\n";
+    message = @"Next, select stations to add and press 'done.\n  Swipe left to sample a stsation.";
 
     if (actualCount > _maxSearchReturn) {
 	message = [message stringByAppendingString:

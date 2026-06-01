@@ -135,7 +135,7 @@
    sterams are AAC_ADTSType.
  */
 
-static const uint32_t MFANStreamPlayer_nBuffers = 6;
+static const uint32_t MFANStreamPlayer_nBuffers = 12;
 
 /* global function */
 NSString *

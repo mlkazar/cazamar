@@ -1501,10 +1501,11 @@ RadioScanQuery::verifyStations() {
     CThreadHandle *hp;
 
     _verifying = true;
-    _verifyingCount = (uint32_t) _goodStations.count();
     _verifyingIndex = 0;
 
     buildWorkEntries();
+
+    _verifyingCount = (uint32_t) _workEntries.count();
 
     for(i=0;i<_kThreads;i++) {
         // start all threads
