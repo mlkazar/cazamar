@@ -70,14 +70,17 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
     vertexOut.normal = rotations[instanceId].normalRotationMatrix * vertices[vid].normal;
 
     float4 selectedGlassColor = float4{1.0, .6, 0, 0.35};
+    float4 recordingGlassColor = float4{0.0, 0.2, 1.0, 0.35};
 
-    // pass green screen colors through unchanged.  Otherwise, use the
-    // incoming glass color unless this is the selected icon.
+    // pass green screen colors through unchanged; this turns into the radio station icon.
+    // Otherwise, use the incoming glass color unless this is the selected icon.
     if (vertices[vid].color.x == .2 && vertices[vid].color.y == 1.0)
         vertexOut.color = vertices[vid].color;
     else {
         if (instanceId == signInfo->selectedId) {
             vertexOut.color = selectedGlassColor;
+        } else if (signInfo->flags[instanceId] & SIGNVIEW_METAL_FLAG_RECORDING) {
+            vertexOut.color = recordingGlassColor;
         } else {
             vertexOut.color = vertices[vid].color;
         }

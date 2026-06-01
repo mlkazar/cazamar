@@ -102,6 +102,10 @@ NS_ASSUME_NONNULL_BEGIN
     uint32_t _fireCount;
 
     RadioHistory *_history;
+
+    Settings *_settings;
+
+    NSTimer *_checkAnimate;
 }
 
 // some defines for the images we're dealing with
@@ -589,7 +593,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	SignInfo *signInfop = (SignInfo *) [_infoBuffer contents];
 	signInfop->_selectedId = -1;
-	signInfop->_clock++;
+	if (_settings.animateIcons)
+	    signInfop->_clock++;
+	else
+	    signInfop->_clock = 0;
 
 	SignStation *station;
 	uint32_t signCount = 0;
@@ -656,23 +663,25 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// now execute the buffer
         [comBuffer presentDrawable:drawable];
         [comBuffer commit];
-
-	// NB: you need to call animationOn to update the
-	// metal-controlled layer or to enable real animation, since
-	// it burns ~12% of the CPU to just keep running the display
-	// link / GPU to keep a fixed image on the screen.
-	//
-	// Perhaps a better approach is to use a 3D graphics API
-	// instead, but using metal allows us to do animation if we
-	// want.
-	[self animationOff: NO];
     }
 }
 
 - (void) displayLinkFired: (CADisplayLink *) displayLink {
     // TODO: use CAFrameRateRange
 
+    static uint32_t counter;
+    NSLog(@"=====displaylink %d", counter++);
     [self redraw];
+
+    // NB: you need to call animationOn to update the
+    // metal-controlled layer or to enable real animation, since
+    // it burns ~12% of the CPU to just keep running the display
+    // link / GPU to keep a fixed image on the screen.
+    //
+    // Perhaps a better approach is to use a 3D graphics API
+    // instead, but using metal allows us to do animation if we
+    // want.
+    [self animationOff: NO];
 }
 
 - (void) animationOn {
@@ -688,9 +697,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     SignStation *station;
     BOOL keepAnimating = false;
 
-#if 0	// set to 1 if you want to turn off blinking
-    forceOff = true;
-#endif
+    if (!_settings.animateIcons)
+	forceOff = true;
 
     for(station in _allStations) {
 	if ([self shouldIndicateStreaming:station]) {
@@ -707,8 +715,24 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	if (_displayLink != nil) {
 	    [_displayLink invalidate];
 	    _displayLink = nil;
+
+	    // do one last animation to get the right clock value shown.
+	    [self redraw];
+
+	    if (_checkAnimate == nil) {
+		[NSTimer scheduledTimerWithTimeInterval: 4.0
+						 target: self
+					       selector: @selector(checkAnimate:)
+					       userInfo: nil
+						repeats: YES];
+	    }
 	}
     }
+}
+
+- (void) checkAnimate: (id) junk {
+    if (_settings.animateIcons)
+	[self animationOn];
 }
 
 // start the drawing pipeline here
@@ -799,6 +823,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_resumeAtEnd = NO;
 	_vc = vc;
 	_allStations = [[NSMutableOrderedSet alloc] init];
+	_settings = (Settings *) _vc.settings;
 
 	// assign origin points to all stations in world space Note
 	// that world space's origin is in the center, and each icon's

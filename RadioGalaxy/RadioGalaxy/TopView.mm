@@ -75,6 +75,10 @@
 
 	_vc = vc;
 
+	// load this early so other init functions can make use of it.
+	_settings = [[Settings alloc] initWithViewController: _vc];
+	_vc.settings = _settings;
+
 	CGRect signFrame;
 
 	// We reserve vertMargin at the top and bottom of the screen.
@@ -238,9 +242,6 @@
 	[signView setRadioHistory: _history];
 
 	[self setBackgroundColor: [UIColor whiteColor]];
-
-	_settings = [[Settings alloc] initWithViewController: _vc];
-	_vc.settings = _settings;
 
 	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
     }

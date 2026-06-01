@@ -87,6 +87,8 @@
     UIStepper *_button3;
     SettingsLabel *_label4;
     UIStepper *_button4;
+    SettingsLabel *_label5;
+    UISwitch *_button5;
 
     CGRect _doneFrame;
     CGRect _cancelFrame;
@@ -97,6 +99,7 @@
     bool _keepStreamingAfterCarPlay;	// after carplay next/prev
     uint32_t _streamBufferMinutes;	// minutes of stream buffer to keep
     uint32_t _maxSearchReturn;		// max # of search results to return;
+    bool _animateIcons;			// flash active downloading stations
 }
 
 Settings *_globalSettings;
@@ -275,6 +278,35 @@ Settings *_globalSettings;
 	[self addSubview: _button4];
 	_button4.value = 64;
 
+	////////////////////////////////////////////////////////////////
+	labelFrame.origin.y += labelFrame.size.height*1.3;
+	////////////////////////////////////////////////////////////////
+
+	buttonFrame = labelFrame;
+	buttonFrame.origin.x += _appWidth * labelPct;
+	buttonFrame.size.width = _appWidth * (1 - labelPct);
+	_label5 = [[SettingsLabel alloc] initWithFrame: labelFrame
+						target: self
+					      selector: @selector(helpAnimateIcons:)];
+	tlabel = [_label5 titleLabel];
+	_label5.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+	[_label5 setTitle: @"Animate streaming stations" forState: UIControlStateNormal];
+	[_label5 setTitleColor: [UIColor blackColor] forState: UIControlStateNormal];
+	[_label5 setSelected: YES];
+	[tlabel setFont: [UIFont fontWithName: @"Arial-BoldMT"
+					 size: labelFrame.size.height * fontSizeScale]];
+	[tlabel setAdjustsFontSizeToFitWidth: YES];
+	[self addSubview: _label5];
+	_button5 = [[UISwitch alloc] initWithFrame: buttonFrame];
+
+	[_button5 addTarget: self
+		     action:@selector(animateIcons:)
+	   forControlEvents:UIControlEventAllEvents];
+	[self addSubview: _button5];
+	[_button5 setOn: _animateIcons animated: false];
+	_button5.backgroundColor = [UIColor blackColor];
+	_button5.layer.cornerRadius = 16.0;
+	// _button5.clipsToBounds = YES;
 	/* ================================================================ */
 
 	_buttonWidth = _appWidth/5;
@@ -394,6 +426,24 @@ Settings *_globalSettings;
     [_vc presentViewController: alert animated:true completion: nil];
 }
 
+- (void) animateIcons: (UISwitch *) sender {
+    _animateIcons = sender.on;
+}
+
+- (void) helpAnimateIcons: (id) junk {
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"Animate Icons"
+						    message:@"Flash icons of stations currently downloading from network."
+					     preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction actionWithTitle: @"Done"
+						     style:UIAlertActionStyleDefault
+						   handler: ^(UIAlertAction *act) {
+	    return;
+	}];
+    [alert addAction: action];
+    [_vc presentViewController: alert animated:true completion: nil];
+}
+
 - (void) reloadSettings
 {
     FILE *filep;
@@ -458,6 +508,7 @@ Settings *_globalSettings;
     _keepStreamingAfterCarPlay = false;
     _streamBufferMinutes = 150;	// 2.5 hours in minutes
     _maxSearchReturn = 64;
+    _animateIcons = true;
     for(attrp = rootNodep->_attrs.head(); attrp; attrp = attrp->_dqNextp) {
 	if (strcmp(attrp->_name.c_str(), "keepStreamingAfterSwitch") == 0) {
 	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
@@ -471,7 +522,10 @@ Settings *_globalSettings;
 	} else if (strcmp(attrp->_name.c_str(), "maxSearchReturn") == 0) {
 	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
 	    _maxSearchReturn = temp;
-	} 
+	} else if (strcmp(attrp->_name.c_str(), "animateIcons") == 0) {
+	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
+	    _animateIcons = temp;
+	}
     }
 
     delete rootNodep;
@@ -511,6 +565,11 @@ Settings *_globalSettings;
     snprintf(tbuffer, sizeof(tbuffer), "%6lu", (long) _maxSearchReturn);
     attrNodep = new Xgml::Attr();
     attrNodep->init("maxSearchReturn", tbuffer);
+    rootNodep->appendAttr(attrNodep);
+
+    snprintf(tbuffer, sizeof(tbuffer), "%6lu", (long) _animateIcons);
+    attrNodep = new Xgml::Attr();
+    attrNodep->init("animateIcons", tbuffer);
     rootNodep->appendAttr(attrNodep);
 
     NSLog(@"- Saving settings to file %@", _associatedFile);
