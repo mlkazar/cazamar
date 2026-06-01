@@ -22,6 +22,7 @@
 @property (readonly) bool keepStreamingAfterSwitch;
 @property (readonly) bool keepStreamingAfterCarPlay;
 @property (readonly) uint32_t streamBufferMinutes;
+@property (readonly) uint32_t maxSearchReturn;
 
 - (Settings *) initWithViewController: (ViewController *) vc;
 

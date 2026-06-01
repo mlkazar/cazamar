@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 #include "osp.h"
 #include "radioscan.h"
@@ -742,10 +743,6 @@ RadioScanQuery::considerStation(RadioScanStation *stationp) {
     stationp->_inQueryList = true;
     stationp->_updateVersion = _nextVersion++;
 
-    RadioScanWork *workEntryp = new RadioScanWork();
-    workEntryp->_stationp = stationp;
-    _workEntries.append(workEntryp);
-
     RadioScan::releaseLock();
 }
 
@@ -1466,13 +1463,48 @@ RadioScanQuery::threadWait(RadioScanThread *threadp) {
 }
 
 void
+RadioScanQuery::buildWorkEntries() {
+    uint32_t seed = (uint32_t) time(nullptr);
+    RadioScanWork *workEntryp;
+    uint32_t stationCount = (uint32_t) _goodStations.count();
+    RadioScanStation *stationp;
+
+    srandom(seed);
+
+    if (_maxReturnCount == 0 || stationCount <= _maxReturnCount) {
+        for(stationp = _goodStations.head(); stationp != nullptr; stationp=stationp->_dqNextp) {
+            workEntryp = new RadioScanWork();
+            workEntryp->_stationp = stationp;
+            _workEntries.append(workEntryp);
+        }
+    } else {
+        // create workEntries probabilistically to end up with about maxReturnCount
+        // work entries.  Take a random number mod stationCount, and if the
+        // the result is <= maxReturnCount, create a work entry for the station.
+        for(stationp = _goodStations.head(); stationp != nullptr; stationp=stationp->_dqNextp) {
+            uint32_t tval = ((uint32_t) random()) % stationCount;
+            if (tval <= _maxReturnCount) {
+                workEntryp = new RadioScanWork();
+                workEntryp->_stationp = stationp;
+                _workEntries.append(workEntryp);
+            }
+        }
+
+        // We can make _maxReturnCount a hard limit by removing
+        // any extras here, but we don't care.
+    }
+}
+
+void
 RadioScanQuery::verifyStations() {
     uint32_t i;
     CThreadHandle *hp;
 
     _verifying = true;
-    _verifyingCount = (uint32_t) _workEntries.count();
+    _verifyingCount = (uint32_t) _goodStations.count();
     _verifyingIndex = 0;
+
+    buildWorkEntries();
 
     for(i=0;i<_kThreads;i++) {
         // start all threads

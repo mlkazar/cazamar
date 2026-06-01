@@ -128,6 +128,8 @@ public:
     bool _allVerified;
     uint32_t _nextVersion;
 
+    uint32_t _maxReturnCount;
+
     RadioScanQuery() : _cv(&RadioScan::_lock) {
         _refCount = 0;
         _aborted = 0;
@@ -135,11 +137,18 @@ public:
         _allVerified = false;
         _browseMaxCount = 10000;
         _nextVersion = 0;
+        _maxReturnCount = 0;
     }
 
     void init(RadioScan *scanp, std::string query) {
         _query = query;
         _scanp = scanp;
+    }
+
+    void buildWorkEntries();
+
+    void setMaxReturnCount(uint32_t amax) {
+        _maxReturnCount = amax;
     }
 
     void initBrowse(RadioScan *scanp, 

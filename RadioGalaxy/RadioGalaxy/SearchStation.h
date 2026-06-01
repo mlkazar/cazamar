@@ -13,6 +13,7 @@
 
 @property bool canceled;
 @property NSMutableArray *signStations;
+@property uint32_t maxReturn;
 
 - (void) activateTopView;
 

@@ -1,4 +1,5 @@
 #import "SearchStation.h"
+
 #import "HelpView.h"
 #import "MFANAqStream.h"
 #import "MFANAqStreamBuffer.h"
@@ -7,6 +8,7 @@
 #import "MFANIconButton.h"
 #import "MFANSocket.h"
 #import "MFANStreamPlayer.h"
+#import "Settings.h"
 #import "ViewController.h"
 
 #include "radioscan.h"
@@ -58,6 +60,8 @@
 
     bool _didNotify;
 
+    uint32_t _maxSearchReturn;
+
     // for a short period after 
     bool _suppressReloads;
     NSTimer *_suppressTimer;
@@ -67,6 +71,7 @@
     MFANAqStream *_sampleStream;
     MFANStreamPlayer *_samplePlayer;
     SignStation *_sampleStation;
+    Settings *_settings;
 }
 
 - (void) doNotify {
@@ -220,6 +225,9 @@
 	_didNotify = false;
 	_suppressReloads = false;
 
+	_settings = (Settings *) vc.settings;
+	_maxSearchReturn = _settings.maxSearchReturn;
+
 	[vc pushTopView: self];
 
 	[self setBackgroundColor: [UIColor whiteColor]];
@@ -246,6 +254,7 @@
 
     _queryp = new RadioScanQuery();
     _queryp->initSmart(_scanp, std::string(searchStringp));
+    _queryp->setMaxReturnCount(_settings.maxSearchReturn);
     _scanp->searchStation(_queryp, scanType);
 
     _queryDone = YES;
@@ -299,6 +308,8 @@
 // RadioScanQuery to terminate, to cleanup any other state created by
 // the queryMonitor.
 - (void) cleanupQueryMonitor {
+    uint32_t actualCount;
+
     if (_alert != nil) {
 	[_alert dismissViewControllerAnimated: YES completion: nil];
 	_alert = nil;
@@ -309,14 +320,16 @@
 	_queryTimer = nil;
     }
 
+    actualCount = (uint32_t) [_signStations count];
+
+    [self cleanupFailedStations];
+
     if (_queryp) {
 	delete _queryp;
 	_queryp = nullptr;
     }
 
-    [self cleanupFailedStations];
-
-    [self displayNextSteps];
+    [self displayNextSteps: actualCount];
 }
 
 - (void) cleanupFailedStations {
@@ -333,15 +346,23 @@
     [_stationTable reloadData];
 }
 
-- (void) displayNextSteps {
+- (void) displayNextSteps: (uint32_t) actualCount {
     // don't do this if the user already moved on.
     if (_didNotify)
 	return;
 
+    NSString *message;
+
+    message = @"Next, select stations to add and press 'done'\n";
+
+    if (actualCount > _maxSearchReturn) {
+	message = [message stringByAppendingString:
+			[NSString stringWithFormat: @"[%d stations found; randomly trimmed to %d]",
+				  actualCount, _maxSearchReturn]];
+    }
     _finishedAlert = [UIAlertController
 				   alertControllerWithTitle: @"RadioStar"
-						    message: @"Next, select stations to add\n"
-			 @"and press done."
+						    message: message
 					     preferredStyle: UIAlertControllerStyleAlert];
 
     UIAlertAction *action = [UIAlertAction actionWithTitle:@"OK"

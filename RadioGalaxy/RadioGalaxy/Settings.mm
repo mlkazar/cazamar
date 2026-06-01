@@ -85,6 +85,8 @@
     UISwitch *_button2;
     SettingsLabel *_label3;
     UIStepper *_button3;
+    SettingsLabel *_label4;
+    UIStepper *_button4;
 
     CGRect _doneFrame;
     CGRect _cancelFrame;
@@ -94,6 +96,7 @@
     bool _keepStreamingAfterSwitch;	// except for carplay
     bool _keepStreamingAfterCarPlay;	// after carplay next/prev
     uint32_t _streamBufferMinutes;	// minutes of stream buffer to keep
+    uint32_t _maxSearchReturn;		// max # of search results to return;
 }
 
 Settings *_globalSettings;
@@ -171,7 +174,9 @@ Settings *_globalSettings;
 	_button1.layer.cornerRadius = 16.0;
 	// _button1.clipsToBounds = YES;
 
+	////////////////////////////////////////////////////////////////
 	labelFrame.origin.y += labelFrame.size.height*1.3;
+	////////////////////////////////////////////////////////////////
 
 	buttonFrame = labelFrame;
 	buttonFrame.origin.x += _appWidth * labelPct;
@@ -199,7 +204,9 @@ Settings *_globalSettings;
 	_button2.layer.cornerRadius = 16.0;
 	// _button2.clipsToBounds = YES;
 
+	////////////////////////////////////////////////////////////////
 	labelFrame.origin.y += labelFrame.size.height*1.3;
+	////////////////////////////////////////////////////////////////
 
 	buttonFrame = labelFrame;
 	buttonFrame.origin.x += _appWidth * labelPct;
@@ -232,6 +239,41 @@ Settings *_globalSettings;
 	   forControlEvents:UIControlEventAllEvents];
 	[self addSubview: _button3];
 	_button3.value = _streamBufferMinutes / 60;
+
+	////////////////////////////////////////////////////////////////
+	labelFrame.origin.y += labelFrame.size.height*1.3;
+	////////////////////////////////////////////////////////////////
+	buttonFrame = labelFrame;
+	buttonFrame.origin.x += _appWidth * labelPct;
+	buttonFrame.size.width = _appWidth * (1-labelPct);
+	_label4 = [[SettingsLabel alloc] initWithFrame: labelFrame
+						target: self
+					      selector: @selector(helpMaxSearchReturn:)];
+	tlabel = [_label4 titleLabel];
+	_label4.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+	[_label4 setTitle: [self maxSearchText] forState: UIControlStateNormal];
+	[_label4 setTitleColor: [UIColor blackColor] forState: UIControlStateNormal];
+	[_label4 setSelected: YES];
+	[tlabel setFont: [UIFont fontWithName: @"Arial-BoldMT"
+					 size: labelFrame.size.height * fontSizeScale]];
+	[tlabel setAdjustsFontSizeToFitWidth: YES];
+	[self addSubview: _label4];
+	_button4 = [[UIStepper alloc] initWithFrame: buttonFrame];
+	_button4.minimumValue = 8;
+	_button4.maximumValue = 1000;
+	_button4.stepValue = 1;
+	_button4.tintColor = [UIColor blueColor];
+	_button4.backgroundColor = [UIColor colorWithRed: 0.8
+						   green: 0.8
+						    blue: 0.8
+						   alpha: 1.0];
+	_button4.layer.cornerRadius = 16.0;
+
+	[_button4 addTarget: self
+		     action:@selector(maxSearchReturn:)
+	   forControlEvents:UIControlEventAllEvents];
+	[self addSubview: _button4];
+	_button4.value = 64;
 
 	/* ================================================================ */
 
@@ -328,6 +370,30 @@ Settings *_globalSettings;
     [_vc presentViewController: alert animated:true completion: nil];
 }
 
+- (NSString *) maxSearchText {
+    return [NSString stringWithFormat: @"Limit search to %d stations", _maxSearchReturn];
+}
+
+- (void) maxSearchReturn: (UIStepper *) sender {
+    _maxSearchReturn = sender.value;
+    [_label4 setTitle: [self maxSearchText] forState: UIControlStateNormal];
+}
+
+- (void) helpMaxSearchReturn: (id) junk {
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"Max Search Return"
+						    message:@"Maximum number of search results "
+				   @"to verify and return in one query."
+					     preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction actionWithTitle: @"Done"
+						     style:UIAlertActionStyleDefault
+						   handler: ^(UIAlertAction *act) {
+	    return;
+	}];
+    [alert addAction: action];
+    [_vc presentViewController: alert animated:true completion: nil];
+}
+
 - (void) reloadSettings
 {
     FILE *filep;
@@ -391,6 +457,7 @@ Settings *_globalSettings;
     _keepStreamingAfterSwitch = false;
     _keepStreamingAfterCarPlay = false;
     _streamBufferMinutes = 150;	// 2.5 hours in minutes
+    _maxSearchReturn = 64;
     for(attrp = rootNodep->_attrs.head(); attrp; attrp = attrp->_dqNextp) {
 	if (strcmp(attrp->_name.c_str(), "keepStreamingAfterSwitch") == 0) {
 	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
@@ -401,6 +468,9 @@ Settings *_globalSettings;
 	} else if (strcmp(attrp->_name.c_str(), "streamBufferMinutes") == 0) {
 	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
 	    _streamBufferMinutes = temp;
+	} else if (strcmp(attrp->_name.c_str(), "maxSearchReturn") == 0) {
+	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
+	    _maxSearchReturn = temp;
 	} 
     }
 
@@ -438,6 +508,11 @@ Settings *_globalSettings;
     attrNodep->init("streamBufferMinutes", tbuffer);
     rootNodep->appendAttr(attrNodep);
     
+    snprintf(tbuffer, sizeof(tbuffer), "%6lu", (long) _maxSearchReturn);
+    attrNodep = new Xgml::Attr();
+    attrNodep->init("maxSearchReturn", tbuffer);
+    rootNodep->appendAttr(attrNodep);
+
     NSLog(@"- Saving settings to file %@", _associatedFile);
     writer = [[MFANFileWriter alloc] initWithFile: _associatedFile];
     if ([writer failed]) {
