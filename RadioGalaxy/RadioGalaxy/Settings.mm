@@ -460,7 +460,11 @@ Settings *_globalSettings;
     static const uint32_t maxFileSize = 10000;
 
     /* defaults */
-    _keepStreamingAfterSwitch = true;
+    _keepStreamingAfterCarPlay = false;
+    _keepStreamingAfterSwitch = false;
+    _streamBufferMinutes = 150;	// 2.5 hours in minutes
+    _maxSearchReturn = 64;
+    _animateIcons = true;
 
     xgmlp = new Xgml();
     rootNodep = NULL;
@@ -504,11 +508,6 @@ Settings *_globalSettings;
     /* pull out the query string */
     int temp;
     // defaults
-    _keepStreamingAfterSwitch = false;
-    _keepStreamingAfterCarPlay = false;
-    _streamBufferMinutes = 150;	// 2.5 hours in minutes
-    _maxSearchReturn = 64;
-    _animateIcons = true;
     for(attrp = rootNodep->_attrs.head(); attrp; attrp = attrp->_dqNextp) {
 	if (strcmp(attrp->_name.c_str(), "keepStreamingAfterSwitch") == 0) {
 	    code = sscanf(attrp->_value.c_str(), "%d", &temp);

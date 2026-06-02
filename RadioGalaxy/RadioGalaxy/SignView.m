@@ -799,7 +799,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _introAlert = [UIAlertController
 		      alertControllerWithTitle: @"RadioStar"
 				       message: @"'+Station' button to "
-		      "add station(s) to play, select station from search results"
+		      "add station(s) to play, select station from search results "
 		      "and press station's icon to play"
 				preferredStyle: UIAlertControllerStyleAlert];
 
@@ -1400,6 +1400,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _popStatus = nil;
     [_vc popTopView];
     [self addRecognizers];
+    [self animationOn];
 }
 
 // doReset is true if we should force a stream closed even if we're

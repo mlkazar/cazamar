@@ -12,6 +12,8 @@ Ideas for Radio app
 
 ========Todo========
 
+** adjust colors for background fetch and provide option for turning off animations
+
 ** change default to always record
 
 ** use keyword searches to do AND not OR
@@ -28,7 +30,7 @@ Ideas for Radio app
 
 ** Sample station in search results.
 
--- limit results to 64 stations chosen randomly (and warn user).  Do
+** limit results to 64 stations chosen randomly (and warn user).  Do
    this in radioscan, before starting validation.  Do it by generating
    a probability of 64/count, and flipping a random coin over one pass
    picking up or discarding a station based on the coin flip.  Perhaps limit to

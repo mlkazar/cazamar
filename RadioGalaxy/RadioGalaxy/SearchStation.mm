@@ -353,7 +353,8 @@
 
     NSString *message;
 
-    message = @"Next, select stations to add and press 'done.\n  Swipe left to sample a stsation.";
+    message = @"Next, select stations to add and press 'done.  "
+	@"Swipe left to sample a station.\n";
 
     if (actualCount > _maxSearchReturn) {
 	message = [message stringByAppendingString:
@@ -376,7 +377,7 @@
 	}];
     [_finishedAlert addAction: action];
 
-    _finishedTimer = [NSTimer scheduledTimerWithTimeInterval: 5.0
+    _finishedTimer = [NSTimer scheduledTimerWithTimeInterval: 10.0
 						      target:self
 						    selector:@selector(finishedDismiss:)
 						    userInfo:nil
