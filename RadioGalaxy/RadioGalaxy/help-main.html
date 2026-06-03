@@ -28,54 +28,54 @@
     <p>
       If you want streaming to stop when you switch away from a
       station, you can either press the Stop icon (the black box), or
-      long press the station's icon to bring up station options, and
-      turn off the toggle for "Stream even in the background."
+      go to the More.../Settings menu and turn off 'Stream even after
+      switch.'
     </p>
     <a id="Basic"><h2>Basic Operation</h2></a>
     <p>
       There are four control buttons at the bottom of the screen.  The
       "-20" button moves back 20 seconds in the playing stream, and
       "+20" moves forward 20 seconds.  The Play/Pause button pauses or
-      resumes the current station, and the station keeps streaming
-      while the playing is paused.  The Stop (square) button stops the
-      player and stops the stream as well.
+      resumes the current station, although the station keeps streaming
+      even when playing is paused.  The Stop (square) button stops both the
+      player and the stream.
     </p>
-    <p> Pressing a station's icon will play or resume the station.  If
-      the trim around a station's icon is orange, it is the currently
-      selected station, otherwise it is green.  If the icon is
-      flashing, it means that the station is streaming music in the
-      background, even if it isn't the currently selected station.
+    <p>
+      Pressing a station's icon will play or resume the station.  The icon
+      colors and animation tells you the current state:
+      <ul>
+	<li>Purple+Flashing</li>Currently playing radio station and
+	streaming data.
+	<li>Orange</li>Last playing radio station, but when the
+	station is no longer playing or streaming data.  Pressing the
+	'play' button will resume streaming and playing audio.
+	<li>Blue+Flashing</li>Not playing, but still streaming audio
+	in the background.
+	<li>Green</li>Idle station: neither playing nor streaming
+	data.
+      </ul>
     </p>
     <p>
       A long press on any station's icon will display details about
       the station, including its name, streaming URL and current
       transfer rate.  The details page also contains an "Edit Station"
       button that let's you change any of the station parameters, or
-      to remove the station entirely
+      to remove the station entirely.
     </p>
     <p>
-      The details page also has a button that enables or disables
-      streaming in the background.  If enabled (the default) the
-      station will keep streaming data while you're listening to
-      another station, and will resume playing where you left off when
-      you return to the original station.  If this is disabled,
-      while playing" the stream will stop if you switch to play
-      another station, and will resume from the latest point in the
-      stream.
-    </p>
-    <p>
-      Another button on the details page tells RadioGalaxy to
+      The Highlight button on the main screen tells RadioGalaxy to
       highlight the currently playing song in the history list so you
       can later review music you found interesting.
     </p>
     <a id="AddingStations"><h2>Adding and Editing Station Details</h2></a>
     <p>
       The first menu item in the Main Menu (the green button on the
-      screen) is "Search for Station."  If pressed, you can search for
-      stations by name or properties.  The search page has its own
-      help pages that describe in detail how to search for and add
-      radio stations, but you can search by name, tag, country code,
-      city and/or genre.
+      screen) is "+Station."  If pressed, you can search for stations
+      by name or keywords.  The search page has its own help pages
+      that describe in detail how to search for and add radio
+      stations, but you can search by name, keyword, country code,
+      city name and/or genre.  If you swipe left on a validated
+      station, you can listen to a sample of the station's stream.
     </p>
     <p>
       If you long press a station's icon and then press the "Edit
@@ -84,15 +84,31 @@
       There are also buttons to cancel the update, end the editing
       session and to remove the station from RadioGalaxy entirely.
     </p>
+    <a id="StreamingControl"><h2>Streaming Control</h2></a>
+    <p>
+      The Settings page has a button that enables or disables
+      streaming in the background.  If enabled (the default) the
+      station will keep streaming data after you switch away to listen
+      to another station, and will resume playing where you left off
+      when you return to the original station.
+    </p>
+    <p>
+      If this is disabled, the stream will stop if you switch to play
+      another station, and will resume from the latest point in the
+      stream when selected again.  However, you can still use the
+      "-20" button or slider to play already streamed data from the
+      station.
+    </p>
+    <p>
+      You can set this behavior separately for switching from the
+      app's main screen, or when switching from the lock screen or
+      CarPlay controls.
+    </p>
     <h2<a id="Menu Ops">Menu Operations</h2></a>
     <p>
-      If you press the green menu bar under the station icons, it pops
-      up a list of functions RadioGalaxy can perform.
+      If you press the "More..."  menu button under the station icons,
+      it pops up a list of functions RadioGalaxy can perform.
       <ul>
-	<li>Search for stations</li> Selecting this operation brings
-	up a page you can use to search our directory providers for a
-	station.  The Search page has its own more detailed help page
-	on how to add a new station.
 	<li>Manually add station</li> If a station is missing from all
 	of our databases, you can still add a station in manually as
 	long as you know its stream URL.
@@ -101,7 +117,9 @@
 	station, and logs it in a history file.  You can highlight
 	songs to remember by swiping on the entry.  When you erase all
 	the songs in the history, all the highlighted songs are
-	preserved untouched.
+	preserved untouched, although you can manually remove
+	highlighted songs by removing the highlight or delete them on
+	a song by song basis.
 	<li>Legal</li>RadioGalaxy makes use of some directory services
 	that require acknowledgement or other legal statements, and
 	those are listed here.
