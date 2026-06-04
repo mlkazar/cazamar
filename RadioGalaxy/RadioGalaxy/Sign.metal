@@ -89,7 +89,7 @@ vertex Vertex vertex_sign_proc(const device Vertex *vertices [[buffer(0)]],
             vertexOut.color = vertices[vid].color;
         }
 
-        float factor = ((float) (signInfo->clock % 8)) / 4.0;
+        float factor = (float) ((signInfo->clock) % 28 )/ 14;
         if (factor > 1.0)
             factor = 2.0 - factor;
         if (signInfo->flags[instanceId] & SIGNVIEW_METAL_FLAG_RECORDING) {

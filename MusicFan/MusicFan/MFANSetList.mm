@@ -844,7 +844,8 @@ wrapMediaItems(NSArray *mediaArray)
 
     _queryp = new RadioScanQuery();
     _queryp->initSmart(_scanp, searchStringp);
-    _scanp->searchStation(_queryp);
+    _queryp->setMaxReturnCount(128);	// keep things sane
+    _scanp->searchStation(_queryp, RadioScan::useName);
     NSLog(@"back from search -- %ld stations", _queryp->_goodStations.count());
     
     /* now add in all the stations we found */

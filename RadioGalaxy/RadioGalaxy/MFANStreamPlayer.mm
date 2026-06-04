@@ -1089,19 +1089,20 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     NSError *setError;
 
     setError = nil;
+    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
 
     if (mix) {
-        [[AVAudioSession sharedInstance]
-            setCategory: AVAudioSessionCategoryPlayback
-            withOptions: AVAudioSessionCategoryOptionMixWithOthers
-            error: &setError];
+        [audioSession setCategory: AVAudioSessionCategoryPlayback
+		      withOptions: AVAudioSessionCategoryOptionMixWithOthers
+			    error: &setError];
     }
     else {
-        [[AVAudioSession sharedInstance]
-            setCategory: AVAudioSessionCategoryPlayback
-            withOptions: 0
-            error: &setError];
+        [audioSession setCategory: AVAudioSessionCategoryPlayback
+		      withOptions: 0
+			    error: &setError];
     }
+
+    [audioSession setActive: true error: &setError];
 
     [[NSNotificationCenter defaultCenter] addObserver: self
                                           selector: @selector(audioInterruption:)

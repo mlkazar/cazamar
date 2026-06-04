@@ -689,7 +689,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (_displayLink == nil) {
 	_displayLink = [CADisplayLink displayLinkWithTarget:self
 						   selector:@selector(displayLinkFired:)];
-	_displayLink.preferredFramesPerSecond = 4;
+	_displayLink.preferredFramesPerSecond = 15;
 	[_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     }
 }
@@ -1540,20 +1540,24 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) setupAudioSession: (BOOL) mix {
     NSError *setError;
+    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     if (_player != nil) {
 	[_player setupAudioSession: mix];
     } else if (mix) {
 	// can't setup callbacks, but setup the session
-	[[AVAudioSession sharedInstance]
-            setCategory: AVAudioSessionCategoryPlayback
-            withOptions: AVAudioSessionCategoryOptionMixWithOthers
-		  error: &setError];
+	[audioSession setCategory: AVAudioSessionCategoryPlayback
+		      withOptions: AVAudioSessionCategoryOptionMixWithOthers
+			    error: &setError];
     } else {
-        [[AVAudioSession sharedInstance]
-            setCategory: AVAudioSessionCategoryPlayback
-            withOptions: 0
-            error: &setError];
+        [audioSession setCategory: AVAudioSessionCategoryPlayback
+		      withOptions: 0
+			    error: &setError];
     }
+
+    [audioSession setActive: true error: &setError];
+
+    // make sure we keep getting notifications for the new session.
+    [self setupNotifications];
 }
 
 - (void) playerStateChanged: (id) aplayer {
