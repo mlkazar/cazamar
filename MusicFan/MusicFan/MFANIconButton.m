@@ -39,7 +39,7 @@
 
 - (void) setHighlighted: (BOOL) highlighted {
     [super setHighlighted: highlighted];
-    [UIView animateWithDuration: 0.2 animations: ^{
+    [UIView animateWithDuration: 0.8 animations: ^{
 	    self.alpha = highlighted? 0.3 : 1.0;
 	}];
 }
