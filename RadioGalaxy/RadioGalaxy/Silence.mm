@@ -30,7 +30,7 @@
 
 - (void) start {
     bool started;
-    NSLog(@"starting bkg, prev state isPlaying=%d", _isPlaying);
+    NSLog(@"=1= starting bkg, prev state isPlaying=%d", _isPlaying);
 
     started = [_silentPlayer play];
 
@@ -38,7 +38,7 @@
 }
 
 - (void) stop {
-    NSLog(@"stopping bkg, prev state isPlaying=%d", _isPlaying);
+    NSLog(@"=1= stopping bkg, prev state isPlaying=%d", _isPlaying);
     [_silentPlayer stop];
     _isPlaying = false;
 }

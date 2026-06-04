@@ -79,6 +79,7 @@ NS_ASSUME_NONNULL_BEGIN
     PopStatus *_popStatus;
 
     BOOL _isPlaying;
+    BOOL _isInterrupted;	// another app is playing audio
     BOOL _isBackground;
 
     UIGestureRecognizer *_pressRecognizer;
@@ -819,6 +820,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	self.frame = frame;
 
 	_fireCount = 0;
+	_isInterrupted = false;
 
 	_resumeAtEnd = NO;
 	_vc = vc;
@@ -1566,7 +1568,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) enterBackground {
-    NSLog(@"====enter background");
+    NSLog(@"=1= enter background");
     _isBackground = true;
     [self processBackgroundState];
     [self animationOff: YES];
@@ -1574,7 +1576,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) leaveBackground {
     _isBackground = false;
-    NSLog(@"====leave background");
+    NSLog(@"=1= leave background");
     [self processBackgroundState];
     [self addRecognizers];
     [self animationOn];
@@ -1610,6 +1612,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 // music or keep the app running with silence, but car play controls
 // don't work.
 - (void) processBackgroundState {
+    NSLog(@"=1= isBackground=%d isPlaying=%d player=%p playerPaused=%d",
+	  _isBackground, _isPlaying, _player, [_player isPaused]);
     if (_isBackground) {
 	// We want a stalled player (not playing but not paused) to
 	// keep the controls around (use mix == false) .  Such a
@@ -1617,8 +1621,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// chance to start the silence player going before we get
 	// killed (hopefully).
 	if (!_isPlaying && (_player == nil || [_player isPaused])) {
+	    // if we were interrupted by another audio app, we have to use
+	    // mix == true so that the silent player keeps running.
+	    // to keep the app alive.
+	    //
+	    // Otherwise, we want to keep the non-mixing session, so that
+	    // the remote controls can keep working.
+	    [self setupAudioSession: _isInterrupted];
 	    [_silence start];
-	    [self setupAudioSession: true];
 	} else {
 	    // playing, so we don't need more things playing in order
 	    // to keep our process around.  Or we're not playing
@@ -1642,6 +1652,43 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	[_silence stop];
 	[self setupAudioSession: false];
     }
+}
+
+- (void) setupNotifications {
+    [[NSNotificationCenter defaultCenter] addObserver: self
+					     selector: @selector(audioInterruption:)
+						 name: AVAudioSessionInterruptionNotification
+					       object: nil];
+}
+
+- (void) audioInterruption: (NSNotification *) notification {
+    NSDictionary *userInfo = [notification userInfo];
+    NSNumber *intKey;
+    NSNumber *optKey;
+    long intType;
+
+    intKey = (NSNumber *) userInfo[AVAudioSessionInterruptionTypeKey];
+    optKey = (NSNumber *) userInfo[AVAudioSessionInterruptionOptionKey];
+
+    intType = [intKey longValue];
+    if (intType == AVAudioSessionInterruptionTypeEnded) {
+	NSLog(@"=1= audio interruption ended");
+	if ([optKey longValue] & AVAudioSessionInterruptionOptionShouldResume) {
+	    NSLog(@"=1= resuming audio player");
+	    // also calls checkUpcallState
+	}
+	_isInterrupted = false;
+    }
+    else if (intType == AVAudioSessionInterruptionTypeBegan) {
+	NSLog(@"=1= audio interruption began");
+	// also calls checkUpcallState
+	_isInterrupted = true;
+    }
+    else {
+	NSLog(@"=1= audio interruption unknown type %ld", intType);
+    }
+
+    [self processBackgroundState];
 }
 
 NS_ASSUME_NONNULL_END

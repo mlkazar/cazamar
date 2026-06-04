@@ -195,3 +195,7 @@ WESU
 WESA
 KQED
 J.S.Bach Classical Radio
+
+================================Promotional text================================
+Stream multiple radio stations, seek backwards or forwards in streams.
+================================================================
