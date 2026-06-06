@@ -16,7 +16,7 @@
 
     self = [super init];
     if (self != nil) {
-	_silentData = silentData(10);
+	_silentData = silentData(1800);
 	_isPlaying = false;
 
 	_silentPlayer = [[AVAudioPlayer alloc] initWithData: _silentData error:&setError];

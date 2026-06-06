@@ -1092,11 +1092,13 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
 
     if (mix) {
+	NSLog(@"=1= streamplayer setup session mix set");
         [audioSession setCategory: AVAudioSessionCategoryPlayback
 		      withOptions: AVAudioSessionCategoryOptionMixWithOthers
 			    error: &setError];
     }
     else {
+	NSLog(@"=1= streamplayer setup session mix not set");
         [audioSession setCategory: AVAudioSessionCategoryPlayback
 		      withOptions: 0
 			    error: &setError];

@@ -386,6 +386,7 @@
             case UIEventSubtypeRemoteControlPlay:
             case UIEventSubtypeRemoteControlPause:
             case UIEventSubtypeRemoteControlTogglePlayPause:
+		NSLog(@"=1= TopView play/pause %ld", (long) receivedEvent.subtype);
 		[self playInternal];
                 break;
 

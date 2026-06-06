@@ -871,6 +871,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	[self addRecognizers];
 
+	[self setupNotifications];
+
 	[[SignSave alloc] initRestoreFromFile: _allStations
 				   completion: ^() {
 		[self animationOn];
@@ -1542,13 +1544,16 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     NSError *setError;
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     if (_player != nil) {
+	NSLog(@"=1= setupAudioSession for player");
 	[_player setupAudioSession: mix];
     } else if (mix) {
 	// can't setup callbacks, but setup the session
+	NSLog(@"=1= setupAudioSession mix");
 	[audioSession setCategory: AVAudioSessionCategoryPlayback
 		      withOptions: AVAudioSessionCategoryOptionMixWithOthers
 			    error: &setError];
     } else {
+	NSLog(@"=1= setupAudioSession playback");
         [audioSession setCategory: AVAudioSessionCategoryPlayback
 		      withOptions: 0
 			    error: &setError];
@@ -1557,7 +1562,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     [audioSession setActive: true error: &setError];
 
     // make sure we keep getting notifications for the new session.
-    [self setupNotifications];
+    // [self setupNotifications];
 }
 
 - (void) playerStateChanged: (id) aplayer {
@@ -1616,8 +1621,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 // music or keep the app running with silence, but car play controls
 // don't work.
 - (void) processBackgroundState {
-    NSLog(@"=1= isBackground=%d isPlaying=%d player=%p playerPaused=%d",
-	  _isBackground, _isPlaying, _player, [_player isPaused]);
+    NSLog(@"=1= PBS isBackground=%d isPlaying=%d player=%p playerPaused=%d interrupted=%d",
+	  _isBackground, _isPlaying, _player, [_player isPaused], _isInterrupted);
+    if (_player != nil && [_player isPlaying]) {
+	// player has been restarted.  We don't always get interruption ended events,
+	// so in this case we simulate one.
+	_isInterrupted = false;
+    }
     if (_isBackground) {
 	// We want a stalled player (not playing but not paused) to
 	// keep the controls around (use mix == false) .  Such a
@@ -1704,6 +1714,7 @@ NS_ASSUME_NONNULL_END
             case UIEventSubtypeRemoteControlPlay:
             case UIEventSubtypeRemoteControlPause:
             case UIEventSubtypeRemoteControlTogglePlayPause:
+		NSLog(@"=1= SignView play/pause %ld", (long) receivedEvent.subtype);
 		if (_playingStation != nil) {
 		    if (_player == nil) {
 			[self startStation: _playingStation];
