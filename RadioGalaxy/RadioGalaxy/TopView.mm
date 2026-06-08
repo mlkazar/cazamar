@@ -312,6 +312,8 @@
     [_nowPlayingInfo setObject: [NSNumber numberWithDouble: 1.0]
 			forKey: MPNowPlayingInfoPropertyPlaybackRate];
 
+    MFANStreamPlayer *player = [_signView getCurrentPlayer];
+
     [_nowPlayingInfo setObject: [NSNumber numberWithFloat: 0.0]
 			forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime];
     [_nowPlayingInfo setObject: [NSNumber numberWithFloat: 300.0]
@@ -328,7 +330,15 @@
     if (song != nil)
 	[_nowPlayingInfo setObject: song forKey: MPMediaItemPropertyTitle];
 
-    [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo: _nowPlayingInfo];
+    MPNowPlayingInfoCenter *infoCenter = [MPNowPlayingInfoCenter defaultCenter];
+    [infoCenter setNowPlayingInfo: _nowPlayingInfo];
+
+    if ([player isPaused]) {
+	infoCenter.playbackState =  MPNowPlayingPlaybackStatePaused;
+    } else {
+	infoCenter.playbackState =  MPNowPlayingPlaybackStatePlaying;
+    }
+
 }
 
 - (void) songChanged: (id) asong {
