@@ -68,6 +68,12 @@
 	namedNodep->initNamed("iconUrl", valNodep);
 	stationDefNodep->appendChild(namedNodep);
 
+	valNodep = new Json::Node();
+	valNodep->initInt(station.fileId);
+	namedNodep = new Json::Node();
+	namedNodep->initNamed("fileId", valNodep);
+	stationDefNodep->appendChild(namedNodep);
+
 	rootNodep->appendChild(stationDefNodep);
     }
 
@@ -108,6 +114,7 @@
     int32_t code;
     const char *fileNamep;
     FILE *filep;
+    int32_t fileId;
 
     fileNamep = [fileNameForFile(@"stations.json") cStringUsingEncoding: NSUTF8StringEncoding];
 
@@ -126,13 +133,14 @@
 
     // walk through the results creating the stations again, and then
     Json::Node *stationNodep;
+    fileId = -1;
     for( stationNodep = rootNodep->_children.head();
 	 stationNodep != nullptr;
 	 stationNodep = stationNodep->_dqNextp) {
 	Json::Node *tnodep;
 	SignStation *station;
 
-	station = [[SignStation alloc] init];
+	station = [[SignStation alloc] initWithFileId: ~0U];
 
 	tnodep = stationNodep->searchForChild("stationName", false);
 	station.stationName =
@@ -149,6 +157,15 @@
 	tnodep = stationNodep->searchForChild("iconUrl", false);
 	station.iconUrl =
 	    [NSString stringWithUTF8String: tnodep->_children.head()->_name.c_str()];
+
+	tnodep = stationNodep->searchForChild("fileId", false);
+	if (tnodep != nullptr) {
+	    station.fileId =
+		(uint32_t) strtoul(tnodep->_children.head()->_name.c_str(),
+				   nullptr, 10);
+	    if (station.fileId > fileId)
+		fileId = station.fileId;
+	}
 
 	[station setIconImageFromUrl: NO];
 

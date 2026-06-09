@@ -454,7 +454,7 @@
 	doAdd = !(scanStationp->_userFlags & kFlagAdded);
 	if (doAdd) {
 	    // origin is set by layout code later.
-	    station = [[SignStation alloc] init];
+	    station = [[SignStation alloc] initWithFileId: ~0U];
 	    [_signStations addObject: station];
 	    scanStationp->_userFlags |= kFlagAdded;
 	} else {

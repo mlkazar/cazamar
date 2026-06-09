@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property uint32_t streamRateKb;
 @property bool isSelected;
 @property bool isLoaded;
+@property uint32_t fileId;
 
 // flags for the search operation
 @property bool verified;	// we've checked the station
@@ -37,7 +38,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) setRowColumn: (SignCoord) rowColumn;
 
-- (SignStation *) init;
+- (SignStation *) initWithFileId: (uint32_t) fileId;
 
 - (void) setIconImageFromUrl: (BOOL) doLoad;
 

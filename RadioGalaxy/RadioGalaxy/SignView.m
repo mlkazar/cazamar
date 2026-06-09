@@ -477,8 +477,27 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	} else {
 	    xPos += iconWidth + extraX;
 	}
+
+	if (station.fileId == ~0U) {
+	    station.fileId = [self allocStationId];
+	    station.recordingBuffer = [[MFANAqStreamBuffer alloc]
+					  initWithFileId: station.fileId];
+	}
     }
 
+}
+
+- (uint32_t) allocStationId {
+    uint32_t highestStationId = 0;
+    SignStation *station;
+    for(station in _allStations) {
+	if (station.fileId != ~0U) {
+	    if (station.fileId > highestStationId)
+		highestStationId = station.fileId;
+	}
+    }
+
+    return highestStationId + 1;
 }
 
 - (CALayer *) makeBackingLayer {
@@ -537,7 +556,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	  streamUrl: (NSString *) streamUrl
 	    iconUrl: (NSString *) iconUrl
 	  rowColumn: (SignCoord) rowColumn {
-    SignStation *station = [[SignStation alloc] init];
+    SignStation *station = [[SignStation alloc] initWithFileId: [self allocStationId]];
     station.stationName = stationName;
     station.shortDescr = shortDescr;
     station.streamUrl = streamUrl;
@@ -545,6 +564,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     station.rowColumn = rowColumn;
 
     [_allStations addObject: station];
+
+    [self computeLayout];
 }
 
 - (bool) shouldIndicateStreaming: (SignStation *) station {
@@ -878,6 +899,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		[self animationOn];
 	    }];
 
+	[self computeLayout];
+
 	if ([_allStations count] == 0) {
 #if 0
 	    [self addStation: @"WYEP"
@@ -899,8 +922,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 					    repeats: NO];
 #endif
 	}
-
-	[self computeLayout];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self
 						 selector:@selector(sceneDidBecomeActive:)
@@ -991,7 +1012,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	return;
     }
 
-    SignStation *station = [[SignStation alloc] init];
+    SignStation *station = [[SignStation alloc] initWithFileId: [self allocStationId]];
     station.stationName = _manualStation.stationName;
     station.shortDescr = @"Added manually";
     station.streamUrl = _manualStation.stationUrl;
@@ -1122,6 +1143,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (station == _playingStation) {
 	[self stopRadioForceReset: YES fromCarPlay: NO];
 	_playingStation = nil;
+    }
+
+    if (station.fileId != 0UL) {
+	[MFANAqStreamBuffer cleanupFileId: station.fileId];
     }
 
     [_allStations removeObject: station];

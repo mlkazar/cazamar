@@ -10,6 +10,7 @@
     NSString *_streamType;
     UIImage *_iconImage;
     uint16_t _signIndex;
+    uint32_t _fileId;
 
     uint32_t _streamRateKb;
 
@@ -43,12 +44,12 @@
     }
 }
 
-- (SignStation *) init {
+- (SignStation *) initWithFileId: (uint32_t) fileId {
     self = [super init];
     if (self) {
 	self.isSelected = NO;
 	self.isLoaded = NO;
-	self.recordingBuffer = [[MFANAqStreamBuffer alloc] initWithFileId: 0];
+	self.fileId = fileId;
     }
     return self;
 }

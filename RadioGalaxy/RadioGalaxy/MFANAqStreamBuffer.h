@@ -172,6 +172,9 @@ typedef struct _MFANAqStreamFile {
 // Packet management
 // -------------------------------------------------------------------
 
+// cleanup files for a particular file ID
++ (void) cleanupFileId: (uint32_t) fileId;
+
 // after stopping readers, reenable reads
 - (void) allowReaders;
 

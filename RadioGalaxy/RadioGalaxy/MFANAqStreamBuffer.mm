@@ -688,6 +688,22 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     return fileName;
 }
 
++ (void) cleanupFileId: (uint32_t) fileId {
+    NSError *error;
+    NSString *filePath;
+    BOOL status;
+
+    filePath = fileNameForFileId(fileId);
+    status = [[NSFileManager defaultManager] removeItemAtPath: filePath error: &error];
+    if (!status) {
+	NSLog(@"failed to delete main file=%@ for fileId=%d", filePath, fileId);
+    }
+
+    filePath = altFileNameForFileId(fileId);
+    status = [[NSFileManager defaultManager] removeItemAtPath: filePath error: &error];
+    // alt file rarely exists
+}
+
 - (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block {
     NSString *fileName = fileNameForFileId(_streamFile->_fileId);
     FILE *filep;
@@ -938,7 +954,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 }
 
 - (MFANAqStreamBuffer *) initWithFileId: (uint32_t) fileId {
-    static uint32_t fileIdGenerator = 1;
     self = [super init];
     if (self != nil) {
 	MFANAqStreamBlock *block;
@@ -969,10 +984,9 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	_streamFile = new MFANAqStreamFile();
 	_streamFile->_blocks = [[NSMutableArray alloc] init];
 	_streamFile->_lru = [[NSMutableOrderedSet alloc] init];
-	if (fileId == 0)
-	    _streamFile->_fileId = fileIdGenerator++;
-	else
-	    _streamFile->_fileId = fileId;
+
+	osp_assert(fileId != 0 && fileId != ~0U);	// debug
+	_streamFile->_fileId = fileId;
 
 	// and create the backing file
 	int fd = open([fileNameForFileId(_streamFile->_fileId)
