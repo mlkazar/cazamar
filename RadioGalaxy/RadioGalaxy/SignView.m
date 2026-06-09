@@ -480,6 +480,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	if (station.fileId == ~0U) {
 	    station.fileId = [self allocStationId];
+	}
+	if (station.recordingBuffer == nil) {
 	    station.recordingBuffer = [[MFANAqStreamBuffer alloc]
 					  initWithFileId: station.fileId];
 	}

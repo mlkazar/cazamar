@@ -10,12 +10,17 @@
 
 @class MFANAqStreamBlock;
 
-typedef struct _MFANAqStreamFile {
-    NSMutableArray<MFANAqStreamBlock *> *_blocks;
-    NSMutableOrderedSet<MFANAqStreamBlock *> *_lru;
-    uint32_t _fileId;
-    uint32_t _gcBlockShift;
-} MFANAqStreamFile;
+@interface MFANAqStreamFile : NSObject
+@property NSMutableArray<MFANAqStreamBlock *> *blocks;
+@property NSMutableOrderedSet<MFANAqStreamBlock *> *lru;
+@property uint32_t fileId;
+@property uint32_t gcBlockShift;
+@property int readFd;
+@property int writeFd;
+
+- (MFANAqStreamFile *) init;
+
+@end
 
 @interface MFANAqStreamPacket : NSObject
 
@@ -107,6 +112,9 @@ typedef struct _MFANAqStreamFile {
 // The ordered set of MFANAqStreamPacket objects, oldest first.
 @property NSMutableOrderedSet *packetArray;
 
+// The file status information.
+@property MFANAqStreamFile *streamFile;
+
 // Incremented whenever a packet is removed so that readers can detect that
 // their cached index into packetArray has been invalidated.
 @property uint32_t packetStreamVersion;
@@ -117,9 +125,6 @@ typedef struct _MFANAqStreamFile {
 
 // Seconds per audio packet, derived from the stream's data format.
 @property float packetDuration;
-
-// pointer to file descriptor.
-@property MFANAqStreamFile *streamFile;
 
 // the end timestamp of last packet in the last block
 @property uint64_t lastPacketEndMs;

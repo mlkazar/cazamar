@@ -67,6 +67,59 @@
 
 @end
 
+class MFANAqStreamBlockHolder {
+ public:
+    char *_blockDatap;
+
+    MFANAqStreamBlockHolder();
+
+    ~MFANAqStreamBlockHolder() {
+	if (_blockDatap) {
+	    free(_blockDatap);
+	    _blockDatap = nullptr;
+	}
+    }
+
+    char *data() {
+	return _blockDatap;
+    }
+};
+
+@implementation MFANAqStreamFile {
+    NSMutableArray<MFANAqStreamBlock *> *_blocks;
+    NSMutableOrderedSet<MFANAqStreamBlock *> *_lru;
+    uint32_t _fileId;
+    uint32_t _gcBlockShift;
+    int _readFd;
+    int _writeFd;
+};
+
+- (MFANAqStreamFile *) init {
+    self = [super init];
+    if (self != nil) {
+	_fileId = ~0U;
+	_gcBlockShift = 0;
+	_readFd = -1;
+	_writeFd = -1;
+	_blocks = [[NSMutableArray alloc] init];
+	_lru = [[NSMutableOrderedSet alloc] init];
+    }
+    return self;
+}
+
+- (void) dealloc {
+    if (_readFd >= 0) {
+	close(_readFd);
+	_readFd = -1;
+    }
+    if (_writeFd >= 0) {
+	close(_writeFd);
+	_writeFd = -1;
+    }
+}
+
+@end
+
 // ---------------------------------------------------------------------------
 // MFANAqStreamReader
 //
@@ -227,7 +280,7 @@
             break;
         }
 
-	blockCount = (uint32_t) [_streamBuffer.streamFile->_blocks count];
+	blockCount = (uint32_t) [_streamBuffer.streamFile.blocks count];
 
         if (!self.indicesAreValid) {
 	    block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&blockIx];
@@ -239,7 +292,7 @@
 		pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
 		return false;
 	    }
-	    block = _streamBuffer.streamFile->_blocks[blockIx];
+	    block = _streamBuffer.streamFile.blocks[blockIx];
 	}
 
 	packetCount = (uint32_t) [block.packetArray count];
@@ -280,7 +333,7 @@
 	    if (blockIx >= blockCount) {
 		break;
 	    }
-	    block = _streamBuffer.streamFile->_blocks[blockIx];
+	    block = _streamBuffer.streamFile.blocks[blockIx];
 	    firstBlock = false;
 	}
 
@@ -308,7 +361,7 @@
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
 
     NSLog(@"hasData starts");
-    blockCount = (uint32_t) [_streamBuffer.streamFile->_blocks count];
+    blockCount = (uint32_t) [_streamBuffer.streamFile.blocks count];
 
     if (!self.indicesAreValid) {
 	block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&blockIx];
@@ -319,7 +372,7 @@
 	if (blockIx >= blockCount)
 	    block = nil;
 	else
-	    block = _streamBuffer.streamFile->_blocks[blockIx];
+	    block = _streamBuffer.streamFile.blocks[blockIx];
     }
 
     if (blockIx < blockCount - 1) {
@@ -374,7 +427,7 @@
 	    NSLog(@"read index !valid, using bix=%d pix=%d baseMs=%lld o=%llx (recordMs=%lld)",
 		  _blockIx, _packetIx, block.baseMs, block.fileOffset, _recordMs);
         } else {
-	    block = _streamBuffer.streamFile->_blocks[_blockIx];
+	    block = _streamBuffer.streamFile.blocks[_blockIx];
 	    NSLog(@"read index valid using bix=%d baseMs=%lld for recordMs=%lld",
 		  _blockIx, block.baseMs, _recordMs);
 	}
@@ -390,7 +443,7 @@
 
 	// get count after making sure block is valid
 	packetCount = (uint32_t) [block.packetArray count];
-	blockCount = (uint32_t) [_streamBuffer.streamFile->_blocks count];
+	blockCount = (uint32_t) [_streamBuffer.streamFile.blocks count];
 
 	// blockCount is never 0; it is one upon creation and we never
 	// get rid of the block at the end collecting packets.
@@ -483,7 +536,7 @@
 	_packetArray = [[NSMutableArray alloc] init];
 
 	// gets marked dirty and valid when it gets sealed
-	[buffer.streamFile->_blocks addObject: self];
+	[buffer.streamFile.blocks addObject: self];
     }
 
     return self;
@@ -508,6 +561,10 @@ static const uint16_t _kMagic = 0x0301;
 static const uint16_t _kTrailerMagic = 0x0924;
 static const uint32_t _kMaxValidBlocks = 32;
 static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before reclaim
+
+MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
+    _blockDatap = (char *) malloc(_kBytesPerBlock);
+}
 
 @implementation MFANAqStreamBuffer {
     pthread_cond_t _packetArrayCv;	// data arrival CV
@@ -570,16 +627,16 @@ static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before re
     MFANAqStreamPacket *nextPacket;
 
     // index isn't valid if it points beyond end of array
-    if (blockIx >= [_streamFile->_blocks count])
+    if (blockIx >= [_streamFile.blocks count])
 	return false;
 
     // otherwise this is the block to check
-    block = _streamFile->_blocks[blockIx];
+    block = _streamFile.blocks[blockIx];
 
-    if (blockIx >= [_streamFile->_blocks count] - 1)
+    if (blockIx >= [_streamFile.blocks count] - 1)
 	nextBlock = nil;
     else
-	nextBlock = _streamFile->_blocks[blockIx+1];
+	nextBlock = _streamFile.blocks[blockIx+1];
 
     if (ms >= block.baseMs &&
 	(nextBlock == nil || ms < nextBlock.baseMs)) {
@@ -615,10 +672,10 @@ static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before re
 // valid, but it is always valid and never in the LRU queue.
 - (MFANAqStreamBlock *) lastBlockSetIndex: (uint32_t *) indexp {
     // last block is always valid
-    uint32_t blockIndex = (uint32_t) [_streamFile->_blocks count] - 1;
+    uint32_t blockIndex = (uint32_t) [_streamFile.blocks count] - 1;
     if (indexp != nullptr)
 	*indexp = blockIndex;
-    return _streamFile->_blocks[blockIndex];
+    return _streamFile.blocks[blockIndex];
 }
 
 // Called with the buffer lock held, returns the block (and sets
@@ -633,9 +690,9 @@ static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before re
     // remember we need to validate the block is still valid
     // after reading it.
     while(true) {
-	blockCount = (uint32_t) [_streamFile->_blocks count];
+	blockCount = (uint32_t) [_streamFile.blocks count];
 	for(i=0;i<blockCount;i++) {
-	    block = _streamFile->_blocks[i];
+	    block = _streamFile.blocks[i];
 	    if ( ms >= block.baseMs &&
 		 ms < block.baseMs + block.durationMs)
 		break;
@@ -705,78 +762,67 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 }
 
 - (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block {
-    NSString *fileName = fileNameForFileId(_streamFile->_fileId);
-    FILE *filep;
-    size_t code;
     uint16_t shortTemp;
     uint32_t longTemp;
     char *tdatap;
     uint32_t packetCount=0;
     uint64_t packetStartMs;
+    MFANAqStreamBlockHolder diskBlock;
+    char *datap;
+    int32_t bytesRead;
 
     NSLog(@"reading block at offset %llx", block.fileOffset);
     osp_assert(block.sealed && !block.dirty);
-    filep = fopen([fileName cStringUsingEncoding: NSUTF8StringEncoding], "r");
-    if (!filep)
-	return -1;
-    fseek(filep, block.fileOffset, SEEK_SET);
+
+    lseek(_streamFile.readFd, block.fileOffset, SEEK_SET);
 
     packetStartMs = block.baseMs;
-    while(true) {
-	code = fread(&shortTemp, 2, 1, filep);
-	if (code != 1) {
-	    NSLog(@"read inconsistency after %d packets A", packetCount);
-	    fclose(filep);
+    datap = diskBlock.data();
+    bytesRead = (int32_t) read(_streamFile.readFd, datap, _kBytesPerBlock);
+    NSLog(@"readpacketsfromblock read %d bytes", bytesRead);
+    if (bytesRead <= 0)
+	return -1;
+
+    while(bytesRead > 0) {
+	if (bytesRead < 2)
 	    return -1;
-	}
+	memcpy(&shortTemp, datap, 2);
+	bytesRead -= 2; datap += 2;
 
 	if (shortTemp == _kTrailerMagic) {
 	    // block should end with a trailer magic
-	    fclose(filep);
 	    NSLog(@"read success (no inconsistency) with packetcount=%d B", packetCount);
 	    return 0;
 	}
 
 	if (shortTemp != _kMagic) {
 	    NSLog(@"read inconsistency after %d packets C", packetCount);
-	    fclose(filep);
 	    return -2;
 	}
 
 	// packet data count
-	code = fread(&shortTemp, 2, 1, filep);
-	if (code != 1) {
-	    NSLog(@"read inconsistency after %d packets D", packetCount);
-	    fclose(filep);
+	if (bytesRead < 2)
 	    return -1;
-	}
+	memcpy(&shortTemp, datap, 2);
+	bytesRead -= 2; datap += 2;
 
-	if (shortTemp > _kBytesPerBlock) {
+	// sanity check data length field
+	if (shortTemp > bytesRead) {
 	    NSLog(@"read inconsistency after %d packets E", packetCount);
-	    fclose(filep);
 	    return -2;
 	}
 
 	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
 
-	tdatap = (char *) malloc(shortTemp);
-	code = fread(tdatap, shortTemp, 1, filep);
-	if (code != 1) {
-	    NSLog(@"read inconsistency after %d packets F", packetCount);
-	    free(tdatap);
-	    fclose(filep);
-	    return -1;
-	}
+	// copy out the packet data into the packet
+	[packet setData: std::string(datap, shortTemp)];
+	bytesRead -= shortTemp; datap += shortTemp;
 
-	[packet setData: std::string(tdatap, shortTemp)];
-	free(tdatap);
-
-	code = fread(&longTemp, 4, 1, filep);
-	if (code != 1) {
-	    NSLog(@"read inconsistency after %d packets K", packetCount);
-	    fclose(filep);
+	// copy out duration in milliseconds.
+	if(bytesRead < 4)
 	    return -1;
-	}
+	memcpy(&longTemp, datap, 4);
+	bytesRead -= 4; datap += 4;
 
 	// we know where the block started (and keep a rolling update
 	// of the packet start times in packetStartMs).  Update the
@@ -785,148 +831,131 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	packet.durationMs = longTemp;
 	packetStartMs += longTemp;
 
-	code = fread(&shortTemp, 2, 1, filep);
-	if (code != 1) {
-	    NSLog(@"read inconsistency after %d packets G", packetCount);
-	    fclose(filep);
+	// Now read the packet descriptor.  If the packet descriptor size
+	// changes, we abort the reading.
+	if (bytesRead < 2)
 	    return -1;
-	}
+	memcpy(&shortTemp, datap, 2);
+	bytesRead -= 2; datap += 2;
 
-	code = fread([packet getDescrAddr], sizeof(packet.descr), 1, filep);
-	if (code != 1) {
-	    NSLog(@"read inconsistency after %d packets H", packetCount);
-	    return -2;
-	}
-
-	// Now read the playing song
-	code = fread(&shortTemp, 2, 1, filep);
-	if (code != 1) {
-	    NSLog(@"read inconsistency after %d packets I", packetCount);
-	    fclose(filep);
+	if (shortTemp > bytesRead ||
+	    shortTemp != sizeof(packet.descr))
 	    return -1;
-	}
+	memcpy([packet getDescrAddr], datap, shortTemp);
+	bytesRead -= shortTemp; datap += shortTemp;
+
+	if (bytesRead < 2)
+	    return -1;
+	memcpy(&shortTemp, datap, 2);
+	bytesRead -= 2; datap += 2;
 
 	if (shortTemp > 0) {
 	    tdatap = (char *) malloc(shortTemp+1);	// extra for added null termination
-	    code = fread(tdatap, shortTemp, 1, filep);
-	    if (code != 1) {
-		NSLog(@"read inconsistency after %d packets J", packetCount);
-		free(tdatap);
-		fclose(filep);
-		return -1;
-	    }
+	    memcpy(tdatap, datap, shortTemp);
 	    tdatap[shortTemp] = 0;	// null terminate
 	    packet.playingSong = [NSString stringWithUTF8String: tdatap];
 	    free(tdatap);
 	} else {
 	    packet.playingSong = @"";
 	}
+	bytesRead -= shortTemp; datap += shortTemp;
 
 	// we have a complete packet, now append it; timestamps are
 	// already present.
 	[block.packetArray addObject: packet];
 	packetCount++;
     } // loop over all packets
+
+    // ran out of bytes before the trailer was encountered
+    return -3;
 }
 
+// Disk format:
+//
+// 2 bytes -- Magic number _kMagic
+//
+// 2 bytes -- data length
+//
+// N bytes -- data
+//
+// 4 bytes -- packet duration in milliseconds
+//
+// 2 bytes -- size of AudioStreamPacketDscription
+//
+// N bytes -- raw packet description.
+//
+// 2 bytes -- length of playing song (may be zero)
+//
+// N bytes -- song name as UTF-8 bytes
+//
+// When all the records have been written, we write a trailer record consisting of:
+//
+// 2 bytes -- _kTrailerMagic.
 - (int32_t) writePacketsToBlock: (MFANAqStreamBlock *) block {
-    NSString *fileName = fileNameForFileId(_streamFile->_fileId);
-    FILE *filep;
+    int fd;
     size_t code;
     uint16_t shortTemp;
     uint32_t longTemp;
+    MFANAqStreamBlockHolder diskBlock;
 
     NSLog(@"writing block at offset %llx", block.fileOffset);
     // opens an existing file for read and write without truncating it
-    filep = fopen([fileName cStringUsingEncoding: NSUTF8StringEncoding], "r+");
-    if (!filep) {
-	NSLog(@"write failure!");
-	return -1;
-    }
-    fseek(filep, block.fileOffset, SEEK_SET);
+    fd = _streamFile.writeFd;
+    lseek(fd, block.fileOffset, SEEK_SET);
 
     MFANAqStreamPacket *packet;
+    char *datap = diskBlock.data();
+
     for(packet in block.packetArray) {
+	// write out magic #
 	shortTemp = _kMagic;
-	code = fwrite(&shortTemp, 2, 1, filep);
-	if (code != 1) {	// returns # of 2 byte items, not # of bytes
-	    NSLog(@"write failure 1!");
-	    fclose(filep);
-	    return -1;
-	}
+	memcpy(datap, &shortTemp, 2);
+	datap += 2;
 
+	// write out data length
 	shortTemp = [packet getLength];
-	code = fwrite(&shortTemp, 2, 1, filep);
-	if (code != 1) {
-	    NSLog(@"write failure 2!");
-	    fclose(filep);
-	    return -1;
-	}
+	memcpy(datap, &shortTemp, 2);
+	datap += 2;
 
-	code = fwrite([packet getData], shortTemp, 1, filep);
-	if (code != 1) {
-	    NSLog(@"write failure 3!");
-	    fclose(filep);
-	    return -1;
-	}
+	// write out data
+	memcpy(datap, [packet getData], shortTemp);
+	datap += shortTemp;
 
 	longTemp = (uint32_t) packet.durationMs;
-	code = fwrite(&longTemp, 4, 1, filep);
-	if (code != 1) {
-	    NSLog(@"write failure 4");
-	    fclose(filep);
-	    return -1;
-	}
+	memcpy(datap, &longTemp, 4);
+	datap += 4;
 
 	shortTemp = sizeof(AudioStreamPacketDescription);
-	code = fwrite(&shortTemp, 2, 1, filep);
-	if (code != 1) {
-	    NSLog(@"write failure 5!");
-	    fclose(filep);
-	    return -1;
-	}
+	memcpy(datap, &shortTemp, 2);
+	datap += 2;
 
-	code = fwrite([packet getDescrAddr], shortTemp, 1, filep);
-	if (code != 1) {
-	    NSLog(@"write failure 6!");
-	    fclose(filep);
-	    return -1;
-	}
+	memcpy(datap, [packet getDescrAddr], shortTemp);
+	datap += shortTemp;
 
 	shortTemp = (uint16_t) [packet.playingSong length];
-	code = fwrite(&shortTemp, 2, 1, filep);
-	if (code != 1) {
-	    NSLog(@"write failure 7!");
-	    fclose(filep);
-	    return -1;
-	}
+	memcpy(datap, &shortTemp, 2);
+	datap += 2;
 
 	if (shortTemp > 0) {
-	    code = fwrite([packet.playingSong cStringUsingEncoding: NSUTF8StringEncoding],
-			  shortTemp, 1, filep);
-	    if (code != 1) {
-		NSLog(@"write failure 8!");
-		fclose(filep);
-		return -1;
-	    }
+	    memcpy(datap,
+		   [packet.playingSong cStringUsingEncoding: NSUTF8StringEncoding],
+		   shortTemp);
+	    datap += shortTemp;
 	}
     } // loop over all records in this block
 
     // write end
     shortTemp = _kTrailerMagic;
-    code = fwrite(&shortTemp, 2, 1, filep);
-    if (code != 1) {
-	NSLog(@"write failure 9!");
-	fclose(filep);
+    memcpy(datap, &shortTemp, 2);
+
+    code = write(fd, diskBlock.data(), _kBytesPerBlock);
+    if (code != _kBytesPerBlock) {
+	NSLog(@"write failure -- write %ld", code);
 	return -1;
     }
 
-    code = fclose(filep);
-    if(code != 0) {
-	NSLog(@"write failure -- close!");
-    }
     return 0;
- }
+}
 
 - (pthread_cond_t *) packetArrayCv {
     return &_packetArrayCv;
@@ -981,19 +1010,22 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	_dirtyBlocks = 0;
 	_fileSize = _kBytesPerBlock;
 
-	_streamFile = new MFANAqStreamFile();
-	_streamFile->_blocks = [[NSMutableArray alloc] init];
-	_streamFile->_lru = [[NSMutableOrderedSet alloc] init];
+	_streamFile = [[MFANAqStreamFile alloc] init];
 
 	osp_assert(fileId != 0 && fileId != ~0U);	// debug
-	_streamFile->_fileId = fileId;
+	_streamFile.fileId = fileId;
 
-	// and create the backing file
-	int fd = open([fileNameForFileId(_streamFile->_fileId)
+	// open and create the backing file
+	int fd = open([fileNameForFileId(_streamFile.fileId)
 			  cStringUsingEncoding: NSUTF8StringEncoding],
-		      O_CREAT | O_WRONLY | O_TRUNC, 0666);
+		      O_CREAT | O_RDWR | O_TRUNC, 0666);
 	osp_assert(fd >= 0);
-	close(fd);
+	_streamFile.writeFd = fd;
+
+	fd = open([fileNameForFileId(_streamFile.fileId)
+		      cStringUsingEncoding: NSUTF8StringEncoding], O_RDONLY);
+	osp_assert(fd >= 0);
+	_streamFile.readFd = fd;
 
 	// create first block so we have somewhere to put data.
 	// Invariant is that this block always exists, but isn't in
@@ -1013,11 +1045,14 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     if (_streamFile) {
 	// ARC doesn't know to walk into streamFile to find references
 	// to release.
-	_streamFile->_blocks = nil;
-	_streamFile->_lru = nil;
-	delete _streamFile;
+	_streamFile.blocks = nil;
+	_streamFile.lru = nil;
 	_streamFile = nullptr;
     }
+}
+
+- (MFANAqStreamFile *) getStreamFile {
+    return _streamFile;
 }
 
 - (void) fillBlock: (MFANAqStreamBlock *) block {
@@ -1071,25 +1106,25 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     pthread_mutex_lock(&_bufferMutex);
 
     _gcRunning = true;
-    int newFd = open([altFileNameForFileId(_streamFile->_fileId)
+    int newFd = open([altFileNameForFileId(_streamFile.fileId)
 			 cStringUsingEncoding: NSUTF8StringEncoding],
 		     O_CREAT | O_WRONLY | O_TRUNC, 0666);
     osp_assert(newFd >= 0);
     close(newFd);
 
-    NSString *oldFileName = fileNameForFileId (_streamFile->_fileId);
+    NSString *oldFileName = fileNameForFileId (_streamFile.fileId);
     FILE *oldFilep = fopen([oldFileName cStringUsingEncoding: NSUTF8StringEncoding], "r");
-    NSString *newFileName = altFileNameForFileId (_streamFile->_fileId);
+    NSString *newFileName = altFileNameForFileId (_streamFile.fileId);
     FILE *newFilep = fopen([newFileName cStringUsingEncoding: NSUTF8StringEncoding], "r+");
 
 
     // the first block will appear at offset 0 of the new file, so its
     // offset is the shift.
-    uint64_t gcByteShift = _streamFile->_blocks[0].fileOffset;
-    _streamFile->_gcBlockShift = (uint32_t) gcByteShift / _kBytesPerBlock;
+    uint64_t gcByteShift = _streamFile.blocks[0].fileOffset;
+    _streamFile.gcBlockShift = (uint32_t) gcByteShift / _kBytesPerBlock;
 
     NSLog(@"====starting GC block count=%ld removing %d blocks",
-	  (long) [_streamFile->_blocks count], _streamFile->_gcBlockShift);
+	  (long) [_streamFile.blocks count], _streamFile.gcBlockShift);
 
     char *diskBufferp = (char *) malloc(_kBytesPerBlock);
     BOOL failed = false;
@@ -1101,11 +1136,11 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     // looks like an atomic change.
     //
     // Note that the file offset changes, but the ms label doesn't.
-    for(uint32_t blockIx = 0; blockIx < [_streamFile->_blocks count]; blockIx++) {
-	block = _streamFile->_blocks[blockIx];
+    for(uint32_t blockIx = 0; blockIx < [_streamFile.blocks count]; blockIx++) {
+	block = _streamFile.blocks[blockIx];
 	// the last block may not be sealed (typically isn't)
 	if (!block.sealed) {
-	    osp_assert(blockIx == [_streamFile->_blocks count] - 1);
+	    osp_assert(blockIx == [_streamFile.blocks count] - 1);
 	    break;
 	}
 
@@ -1175,7 +1210,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
     NSLog(@"====GC done");
 
-    for(block in _streamFile->_blocks) {
+    for(block in _streamFile.blocks) {
 	// offsets in GC file are correct for offsets in regular file after
 	// rename of GC file to be the main file.
 	osp_assert(block.fileOffset >= gcByteShift);
@@ -1202,7 +1237,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 		// see if we should pull some buffers from the LRU queue
 		// and remove their data.
 		while (_validBlocks > _kMaxValidBlocks) {
-		    block = _streamFile->_lru[0];
+		    block = _streamFile.lru[0];
 		    if (block.dirty) {
 			[self cleanBlock: block];
 			NSLog(@"cleaned block for invalidation at %llx ms=%lld",
@@ -1228,11 +1263,11 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 		// file, and clean them.  Don't clean the last one, since
 		// it is still accumulating new packets, and of course
 		// don't wait for the last one to get cleaned, either.
-		uint32_t blockCount = (uint32_t) [_streamFile->_blocks count];
+		uint32_t blockCount = (uint32_t) [_streamFile.blocks count];
 		while(_dirtyBlocks > 1) {
 		    bool foundAny = false;
 		    for(int32_t i=blockCount - 2; i >= 0; i--) {
-			block = _streamFile->_blocks[i];
+			block = _streamFile.blocks[i];
 			if (block.dirty) {
 			    [self cleanBlock: block];
 			    foundAny = true;
@@ -1293,9 +1328,9 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	// be careful never to remove the last block, since the code
 	// in this module assumes there's always at least one block in
 	// the array.
-	blockCount = (uint32_t) [_streamFile->_blocks count];
+	blockCount = (uint32_t) [_streamFile.blocks count];
 	if (blockCount > 1) {
-	    block = _streamFile->_blocks[0];
+	    block = _streamFile.blocks[0];
 	    while(block.ioRunning) {
 		pthread_cond_wait(&_blockIoCv, &_bufferMutex);
 	    }
@@ -1304,7 +1339,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 		      block.baseMs, block.durationMs, block.fileOffset);
 		// this will free all the data in memory, but the disk
 		// file will still need to be compacted eventually.
-		[_streamFile->_blocks removeObjectAtIndex: 0];
+		[_streamFile.blocks removeObjectAtIndex: 0];
 
 		// someone other thread may have a reference to block,
 		// so make sure we mark it as invalid and clean.
@@ -1324,11 +1359,11 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	    break;
     }
 
-    blockCount = (uint32_t) [_streamFile->_blocks count];
+    blockCount = (uint32_t) [_streamFile.blocks count];
     if (blockCount <= 0)
 	_firstPacketStartMs = 0;
     else {
-	block = _streamFile->_blocks[0];
+	block = _streamFile.blocks[0];
 	_firstPacketStartMs = block.baseMs;
     }
 
@@ -1336,7 +1371,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     // than 50% garbage.  We can tell by seeing how many blocks are in the file,
     // and where the first block's file offset is.
     if ( !_gcRunning && !_shuttingDown &&
-	 (100 * (_streamFile->_blocks[0].fileOffset / _kBytesPerBlock) / blockCount >
+	 (100 * (_streamFile.blocks[0].fileOffset / _kBytesPerBlock) / blockCount >
 	  _kMaxDiskPct)) {
 	_gcRunning = true;
         _gcBufferThread = [[NSThread alloc] initWithTarget: self
@@ -1358,7 +1393,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 - (MFANAqStreamBlock *) addBlockAndSealPrev {
     MFANAqStreamBlock *newBlock;
     MFANAqStreamBlock *prevBlock;
-    prevBlock = [_streamFile->_blocks lastObject];
+    prevBlock = [_streamFile.blocks lastObject];
 
     newBlock = [[MFANAqStreamBlock alloc] initWithBuffer: self];
 
@@ -1380,7 +1415,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     // caller will add newBLock to array at count offset
     NSLog(@"addBlockAndSeal sealed block startMs=%lld %lld packets newBlock startMs=%lld bix=%llu",
 	  prevBlock.baseMs, (uint64_t) [prevBlock.packetArray count],
-	  newBlock.baseMs, (uint64_t) [_streamFile->_blocks count]);
+	  newBlock.baseMs, (uint64_t) [_streamFile.blocks count]);
     _fileSize += _kBytesPerBlock;
 
     return newBlock;
@@ -1397,10 +1432,10 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     }
 
     if (needLru && !block.inLru) {
-	[_streamFile->_lru addObject: block];
+	[_streamFile.lru addObject: block];
 	block.inLru = true;
     } else if (!needLru && block.inLru) {
-	[_streamFile->_lru removeObject: block];
+	[_streamFile.lru removeObject: block];
 	block.inLru = false;
     }
 }
