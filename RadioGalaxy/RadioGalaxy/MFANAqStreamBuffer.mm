@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include <string>
 
@@ -731,6 +732,76 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     return block;
 }
 
+// Call after doing initFromFileId
+- (int32_t) restoreBlocksFromFile {
+    struct stat tstat;
+    int32_t code;
+    uint32_t blockCount;
+    uint32_t ix;
+    MFANAqStreamBlock *block;
+    uint32_t durationMs;
+
+    pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
+    code = fstat(_streamFile.readFd, &tstat);
+    if (code < 0) {
+	pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+	return -1;
+    }
+
+    blockCount = (uint32_t) (tstat.st_size / _kBytesPerBlock);
+    uint64_t baseMs = 0;
+    [_streamFile.blocks removeAllObjects];
+    osp_assert(_dirtyBlocks == 0 && _validBlocks == 0);
+    _firstPacketStartMs = 0;
+    for(ix=0; ix<blockCount; ix++) {
+	block = [[MFANAqStreamBlock alloc] initWithBuffer: self];
+	block.ioRunning = true;
+	block.dirty = false;
+	block.fileOffset = ix * _kBytesPerBlock;
+	block.inLru = false;
+	block.baseMs = baseMs;
+	block.sealed = true;
+	block.valid = false;
+	code = [self readPacketsFromBlock: block duration:&durationMs];
+
+	// make it look valid and sealed now that it is present
+	block.ioRunning = false;
+	[block.packetArray removeAllObjects];
+	[self fixLru: block];
+
+	// and manage the duration and ms timestamps
+	block.durationMs = durationMs;
+	block.baseMs = baseMs;
+	baseMs += durationMs;
+
+	// if read failed, stop
+	if (code != 0) {
+	    pthread_cond_broadcast(&_blockIoCv);
+	    break;
+	}
+
+	[_streamFile.blocks addObject: block];
+    }
+
+    if (ix == blockCount) {
+	NSLog(@"streambuf restored all %d blocks successfully", blockCount);
+    } else {
+	NSLog(@"streambuf failed restoring ix=%d", ix);
+    }
+
+    // add new tail block
+    block = [[MFANAqStreamBlock alloc] initWithBuffer: self];
+    block.baseMs = baseMs;
+    block.fileOffset = ix * _kBytesPerBlock;
+    _fileSize = block.fileOffset + _kBytesPerBlock;
+
+    _lastPacketEndMs = block.baseMs;	// no packets in it yet
+
+    pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+
+    return 0;
+}
+
 NSString *fileNameForFileId(uint32_t fileId) {
     NSString *entryName = [NSString stringWithFormat: @"station-stream-%d.dat", fileId];
     NSString *fileName = fileNameForFile(entryName);
@@ -761,12 +832,13 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     // alt file rarely exists
 }
 
-- (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block {
+- (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block duration: (uint32_t *) durationMsp{
     uint16_t shortTemp;
     uint32_t longTemp;
     char *tdatap;
     uint32_t packetCount=0;
     uint64_t packetStartMs;
+    uint32_t durationMs;
     MFANAqStreamBlockHolder diskBlock;
     char *datap;
     int32_t bytesRead;
@@ -777,6 +849,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     lseek(_streamFile.readFd, block.fileOffset, SEEK_SET);
 
     packetStartMs = block.baseMs;
+    durationMs = 0;
     datap = diskBlock.data();
     bytesRead = (int32_t) read(_streamFile.readFd, datap, _kBytesPerBlock);
     NSLog(@"readpacketsfromblock read %d bytes", bytesRead);
@@ -792,6 +865,8 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	if (shortTemp == _kTrailerMagic) {
 	    // block should end with a trailer magic
 	    NSLog(@"read success (no inconsistency) with packetcount=%d B", packetCount);
+	    if (durationMsp != nullptr)
+		*durationMsp = durationMs;
 	    return 0;
 	}
 
@@ -830,6 +905,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	packet.startMs = packetStartMs;
 	packet.durationMs = longTemp;
 	packetStartMs += longTemp;
+	durationMs += longTemp;
 
 	// Now read the packet descriptor.  If the packet descriptor size
 	// changes, we abort the reading.
@@ -1018,7 +1094,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	// open and create the backing file
 	int fd = open([fileNameForFileId(_streamFile.fileId)
 			  cStringUsingEncoding: NSUTF8StringEncoding],
-		      O_CREAT | O_RDWR | O_TRUNC, 0666);
+		      O_CREAT | O_RDWR, 0666);
 	osp_assert(fd >= 0);
 	_streamFile.writeFd = fd;
 
@@ -1068,7 +1144,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     block.ioRunning = true;
 
     // do the IO without the lock, after setting ioRunning flag.
-    [self readPacketsFromBlock: block];
+    [self readPacketsFromBlock: block duration: nullptr];
 
     NSLog(@"fill done baseMs=%lld o=%llx", block.baseMs, block.fileOffset);
     block.ioRunning = false;

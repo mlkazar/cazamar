@@ -200,9 +200,12 @@
 
 - (void) shutdown;
 
-- (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block;
+- (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block
+			duration: (uint32_t *) dp;
 
 - (void) fillBlock: (MFANAqStreamBlock *) block;
+
+- (int32_t) restoreBlocksFromFile;
 
 - (void) cleanBlock: (MFANAqStreamBlock *) block;
 

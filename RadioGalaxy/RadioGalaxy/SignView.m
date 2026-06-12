@@ -482,11 +482,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    station.fileId = [self allocStationId];
 	}
 	if (station.recordingBuffer == nil) {
-	    station.recordingBuffer = [[MFANAqStreamBuffer alloc]
+	    MFANAqStreamBuffer *buffer;
+	    buffer = [[MFANAqStreamBuffer alloc]
 					  initWithFileId: station.fileId];
+	    [buffer restoreBlocksFromFile];
+	    station.recordingPosition = buffer.lastPacketEndMs;
+	    station.recordingBuffer = buffer;
 	}
     }
-
 }
 
 - (uint32_t) allocStationId {

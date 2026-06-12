@@ -166,9 +166,9 @@ name as well)
 
 -- modify MFANSocket to support https?
 
--- keep playing silent noise when downloading and nothing else playing
+** keep playing silent noise when downloading and nothing else playing
 
--- alarm clock functionality?
+** alarm clock functionality? can't do it on ios
 
 -- Some way when saving a recording to edit the start and end times.
 
