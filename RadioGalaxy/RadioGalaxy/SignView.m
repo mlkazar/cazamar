@@ -1322,41 +1322,31 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 // used after a stream failure to restart the stream.
 - (void) restartStationWithStream: (id) stream {
-    // we really don't want to reset the stream, but we need recreate
-    // the stream after a stream failure.
-    //
-    // TODO: separate out recorded
-    // stream from downloader.
+    SignStation *station;
+    MFANAqStream *newStream;
     if (_stream == stream) {
-	// interruption occurred in currently playing station, so
-	// rebuild the player on top of the rebuilt stream.
-	NSLog(@"=== in restartstationwithstream self=%p", self);
-	[self stopRadioForceReset: YES fromCarPlay: NO];
-	NSLog(@"====back from restart");
-	[NSThread sleepForTimeInterval: 3.0];
-	[self startCurrentStation];
-	NSLog(@"====back from start again");
+	station = _playingStation;
     } else {
-	SignStation *station;
-	// could use a weak back pointer, but this is a rare event and
-	// doing a search among 10-20 items on a network failure seems
-	// harmless.
 	for(station in _allStations) {
 	    if (station.recordingStream == stream)
 		break;
 	}
-	if (station == nil) {
-	    NSLog(@"can't find station for stream %p", stream);
-	    return;
-	}
-	NSLog(@"===in restartStationWithStream just to get the stream running again");
-	[stream shutdownAbortReaders: true];
-	NSLog(@"=== station shutdown done for station=%p", station);
-	station.recordingStream = nil;
+    }
+    [stream shutdownAbortReaders: false];	// don't abort readers from the associated buffer
+    if (station == nil) {
+	NSLog(@"can't find station for stream %p", stream);
+	return;
+    }
+    newStream = [self startStationStream: station];
+    if (station == _playingStation)
+	_stream = newStream;
+    else
+	station.recordingStream = newStream;
+}
 
-	station.recordingStream = [self startStationStream: station];
-	NSLog(@"===station only start for station=%p", station);
-	[self animationOn];
+- (void) eraseStation: (SignStation *) station {
+    if (station.recordingBuffer != nil) {
+	[station.recordingBuffer erase];
     }
 }
 

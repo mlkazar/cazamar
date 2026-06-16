@@ -206,13 +206,17 @@
 	// indent from each end
 	float textLabelWidth = (2.0/3.0 * (frame.size.width - 2*indent));
 	float switchWidth = (frame.size.width - 2*indent) - textLabelWidth;
+	CGRect eraseTextFrame;
 	CGRect recordTextFrame;
+	CGRect eraseSwitchFrame;
 	CGRect recordSwitchFrame;
 	CGRect freezeLabelFrame;
 	CGRect freezeSwitchFrame;
+	HelpLabel *eraseHelpLabel;
 	HelpLabel *recordHelpLabel;
 	HelpLabel *freezeHelpLabel;
 	MFANIconButton *recordSwitch;
+	MFANIconButton *eraseSwitch;
 	UISwitch *freezeSwitch;
 
 	// Stream in background button
@@ -242,9 +246,34 @@
 		       withAction: @selector(recordPressed:)];
 	[self addSubview: recordSwitch];
 
+	eraseTextFrame.origin.x = indent;
+	eraseTextFrame.origin.y = recordTextFrame.origin.y +
+	    labelHeight + frame.size.height * 0.03;
+	eraseTextFrame.size.height = labelHeight;
+	eraseTextFrame.size.width = textLabelWidth;
+	eraseHelpLabel = [[HelpLabel alloc]
+			     initWithFrame: eraseTextFrame
+				    target: self
+				  selector: @selector(eraseHelp:)];
+	[eraseHelpLabel setTitle: @"Erase streamed buffer"
+			forState: UIControlStateNormal];
+
+	[self addSubview: eraseHelpLabel];
+
+	eraseSwitchFrame = eraseTextFrame;
+	eraseSwitchFrame.origin.x = eraseTextFrame.origin.x + eraseTextFrame.size.width;
+	eraseSwitchFrame.size.width = switchWidth;
+	eraseSwitch = [[MFANIconButton alloc] initWithFrame: eraseSwitchFrame
+						       title: @"Erase"
+						       color: [UIColor clearColor]
+							file: @"icon-button.png"];
+	[eraseSwitch addCallback: self
+		       withAction: @selector(erasePressed:)];
+	[self addSubview: eraseSwitch];
+
 	freezeLabelFrame.origin.x = indent;
 	freezeLabelFrame.size.width = frame.size.width * 3 / 5;
-	freezeLabelFrame.origin.y = recordTextFrame.origin.y +
+	freezeLabelFrame.origin.y = eraseTextFrame.origin.y +
 	    labelHeight + frame.size.height * 0.03;
 	freezeLabelFrame.size.height = labelHeight;
 	freezeHelpLabel = [[HelpLabel alloc]
@@ -355,6 +384,26 @@
 
 - (void) freezeStream: (UISwitch *) swp {
     [_signView freezeStation: _station frozen: swp.on];
+}
+
+- (void) eraseHelp: (id) junk {
+    UIAlertController *alert =
+	[UIAlertController
+	    alertControllerWithTitle: @"RadioGalaxy"
+			     message:@"Erase all buffered data for this station."
+		      preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction
+				actionWithTitle: @"OK"
+					  style:UIAlertActionStyleDefault
+					handler:^(UIAlertAction *act) {
+	    NSLog(@"blah");
+	}];
+    [alert addAction: action];
+    [_vc presentViewController: alert animated: YES completion: nil];
+}
+
+- (void) erasePressed: (UISwitch *) swp {
+    [_signView eraseStation: _station];
 }
 
 - (void) highlightHelp: (id) junk {

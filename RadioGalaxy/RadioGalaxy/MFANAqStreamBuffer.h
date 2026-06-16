@@ -225,6 +225,8 @@
 
 - (MFANAqStreamBlock *) pin: (MFANAqStreamBlock *) block;
 
+- (void) erase;
+
 - (bool) blockIx: (uint32_t) blockIx
 	packetIx: (uint32_t) packetIx
       containsMs: (uint64_t) ms;

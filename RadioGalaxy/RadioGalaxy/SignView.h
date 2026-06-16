@@ -76,6 +76,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) freezeStation: (SignStation *) station frozen: (bool) freeze;
 
+- (void) eraseStation: (SignStation *) station;
+
 @end
 
 NS_ASSUME_NONNULL_END

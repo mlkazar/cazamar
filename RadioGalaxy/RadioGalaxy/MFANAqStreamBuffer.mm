@@ -1464,6 +1464,32 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     pthread_cond_broadcast(&_packetArrayCv);
 }
 
+- (void) erase {
+    MFANAqStreamBlock *newBlock;
+
+    // remove everything, but preserve the first block, since until
+    // you start the stream again, it has the only copy of the stream
+    // parameters we need to be able to play newly arriving data.
+    pthread_mutex_lock(&_bufferMutex);
+    [_streamFile.blocks removeAllObjects];
+    ftruncate(_streamFile.writeFd, _kBytesPerBlock);
+
+    // reset global state
+    _dirtyBlocks = 0;
+    _validBlocks = 0;
+    _fileSize = _kBytesPerBlock;
+    _firstPacketStartMs = 0;
+    _lastPacketEndMs = 0;
+
+    // and create new block for incoming data.  Code assumes there's always
+    // one block in the blocks array
+    newBlock = [[MFANAqStreamBlock alloc] initWithBuffer: self];
+    newBlock.baseMs = 0;
+    newBlock.fileOffset = _kBytesPerBlock;
+
+    pthread_mutex_unlock(&_bufferMutex);
+}
+
 // prune records so that all records older than pruneLength ms before
 // the last appended packet get deleted.
 - (void) pruneOldestMs: (uint64_t) pruneLength {
