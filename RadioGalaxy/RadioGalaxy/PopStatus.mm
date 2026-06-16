@@ -197,7 +197,7 @@
 	_publicUrlView = [[MarqueeLabel alloc] initWithFrame: boxFrame];
 	[_publicUrlView setTextColor: textColor];
 	[_publicUrlView setBackgroundColor: valueColor];
-	[_publicUrlView setText: [_player getPublicUrl]];
+	[_publicUrlView setText: [_stream getPublicUrl]];
 	//_publicUrlView.layer.borderWidth = 1.0;
 	//_publicUrlView.layer.borderColor = [UIColor blackColor].CGColor;
 	[self addSubview: _publicUrlView];
@@ -208,10 +208,14 @@
 	float switchWidth = (frame.size.width - 2*indent) - textLabelWidth;
 	CGRect recordTextFrame;
 	CGRect recordSwitchFrame;
+	CGRect freezeLabelFrame;
+	CGRect freezeSwitchFrame;
 	HelpLabel *recordHelpLabel;
+	HelpLabel *freezeHelpLabel;
 	MFANIconButton *recordSwitch;
+	UISwitch *freezeSwitch;
 
-	// Stream in background switch
+	// Stream in background button
 	recordTextFrame = frame;
 	recordTextFrame.origin.y += labelFrame.origin.y + labelHeight + frame.size.height * 0.03;
 	recordTextFrame.origin.x = indent;
@@ -238,9 +242,36 @@
 		       withAction: @selector(recordPressed:)];
 	[self addSubview: recordSwitch];
 
+	freezeLabelFrame.origin.x = indent;
+	freezeLabelFrame.size.width = frame.size.width * 3 / 5;
+	freezeLabelFrame.origin.y = recordTextFrame.origin.y +
+	    labelHeight + frame.size.height * 0.03;
+	freezeLabelFrame.size.height = labelHeight;
+	freezeHelpLabel = [[HelpLabel alloc]
+			      initWithFrame: freezeLabelFrame
+				     target: self
+				   selector: @selector(freezeHelp:)];
+	[freezeHelpLabel setTitle: @"Freeze stream downloading"
+			 forState: UIControlStateNormal];
+	[self addSubview: freezeHelpLabel];
+	// now the switch
+	freezeSwitchFrame = freezeLabelFrame;
+	freezeSwitchFrame.origin.x = freezeLabelFrame.origin.x + freezeLabelFrame.size.width;
+	freezeSwitchFrame.size.width = switchWidth;
+	freezeSwitch = [[UISwitch alloc] initWithFrame: freezeSwitchFrame];
+
+	[freezeSwitch addTarget: self
+			 action:@selector(freezeStream:)
+	       forControlEvents:UIControlEventAllEvents];
+	[self addSubview: freezeSwitch];
+	[freezeSwitch setOn: _station.isFrozen animated: false];
+	freezeSwitch.backgroundColor = [UIColor blackColor];
+	freezeSwitch.layer.cornerRadius = 16.0;
+	[self addSubview: freezeSwitch];
+
 	buttonFrame.origin.x = frame.size.width / 5;
 	buttonFrame.size.width = frame.size.width * 3 / 5;
-	buttonFrame.origin.y = recordTextFrame.origin.y + labelHeight + frame.size.height * 0.03;
+	buttonFrame.origin.y = freezeLabelFrame.origin.y + labelHeight + frame.size.height * 0.03;
 	buttonFrame.size.height = labelHeight;
 
 	MFANCoreButton *recordButton;
@@ -305,6 +336,27 @@
     [_vc pushTopView: _editStation];
 }
 
+- (void) freezeHelp: (id) junk {
+    UIAlertController *alert =
+	[UIAlertController
+	    alertControllerWithTitle: @"RadioGalaxy"
+			     message:@"Keep streaming data this station even after "
+	    "switching to other stations."
+		      preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction
+				actionWithTitle: @"OK"
+					  style:UIAlertActionStyleDefault
+					handler:^(UIAlertAction *act) {
+	    NSLog(@"blah");
+	}];
+    [alert addAction: action];
+    [_vc presentViewController: alert animated: YES completion: nil];
+}
+
+- (void) freezeStream: (UISwitch *) swp {
+    [_signView freezeStation: _station frozen: swp.on];
+}
+
 - (void) highlightHelp: (id) junk {
     UIAlertController *alert =
 	[UIAlertController
@@ -352,7 +404,7 @@
     }
 }
 
-- (void) recordPressed: (UISwitch *) s {
+- (void) recordPressed: (UIButton *) s {
     [_signView stopRecording: _station];
 }
 

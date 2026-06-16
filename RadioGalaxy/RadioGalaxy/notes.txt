@@ -38,6 +38,9 @@ Ideas for Radio app
 
 -- keep using disk file across app restarts
 
+-- 3 second pause on reconnect shouldn't be done on main thread.  To
+   synchronize properly, perhaps we need a per station lock.
+
 ** settings for how much music to keep / whether to restore after
    restart / whether to automatically record playing stations in background
 

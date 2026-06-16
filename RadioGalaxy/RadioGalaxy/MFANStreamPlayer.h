@@ -20,7 +20,8 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 @property BOOL muted;
 
-- (MFANStreamPlayer *) initWithStream : (MFANAqStream *) stream ms: (uint64_t) ms;
+- (MFANStreamPlayer *) initWithStreamBuffer : (MFANAqStreamBuffer *) stream
+					  ms: (uint64_t) ms;
 
 - (void) resume;
 
@@ -43,8 +44,6 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 - (float) getDataRate;
 
 - (NSString *) getEncodingType;
-
-- (NSString *) getPublicUrl;
 
 - (uint64_t) getSeekTarget: (float) offset;
 

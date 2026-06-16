@@ -721,7 +721,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	_sampleStream = [[MFANAqStream alloc] initWithUrl: station.streamUrl
 						   buffer:_sampleStreamBuffer
 						 viewCont: _vc];
-	_samplePlayer = [[MFANStreamPlayer alloc] initWithStream: _sampleStream ms: 0];
+	_samplePlayer = [[MFANStreamPlayer alloc] initWithStreamBuffer: _sampleStreamBuffer
+								    ms: 0];
 	_sampleStation = station;
     }
 }
@@ -730,7 +731,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     if (_samplePlayer != nil) {
 	[_samplePlayer shutdown];
 	_samplePlayer = nil;
-	[_sampleStream shutdown];
+	[_sampleStream shutdownAbortReaders: true];
 	_sampleStream = nil;
 	[_sampleStreamBuffer shutdown];
 	_sampleStreamBuffer = nil;

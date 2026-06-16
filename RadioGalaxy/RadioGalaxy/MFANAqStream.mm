@@ -115,17 +115,7 @@ MFANAqStream_PropertyProc( void *contextp,
 
         NSLog(@"PropertyProc has properties");
 
-        aqp->_buffer.dataFormat    = fmt;
-        aqp->_buffer.haveProperties = YES;
-
-        float frameDuration  = 1.0f / fmt.mSampleRate;
-        float packetDuration = fmt.mFramesPerPacket / fmt.mSampleRate;
-
-        aqp->_buffer.frameDuration  = frameDuration;
-        aqp->_buffer.packetDuration = packetDuration;
-
-        NSLog(@"frame duration=%f packetDuration=%f",
-              frameDuration, packetDuration);
+	[aqp->_buffer setDataFormat: &fmt];
     }
 }
 
@@ -362,10 +352,10 @@ MFANAqStream_rsControlProc( void *contextp,
         _failedWindowMs = 4000;
         _failedWindowCount = 6;
 
-        _radioStreamThread = [[NSThread alloc] initWithTarget: self
-                                                      selector: @selector(playAsync:)
-                                                        object: nil];
-        [_radioStreamThread start];
+	_radioStreamThread = [[NSThread alloc] initWithTarget: self
+						     selector: @selector(playAsync:)
+						       object: nil];
+	[_radioStreamThread start];
     }
     return self;
 }
@@ -422,7 +412,7 @@ MFANAqStream_rsControlProc( void *contextp,
     pthread_exit(NULL);
 }
 
-- (void) shutdown {
+- (void) shutdownAbortReaders: (bool) abortReaders {
     NSLog(@"in MFAqStream shutdown");
     pthread_mutex_lock(&_streamMutex);
 
@@ -436,8 +426,8 @@ MFANAqStream_rsControlProc( void *contextp,
         pthread_mutex_unlock(&_streamMutex);
         NSLog(@" - shutdownAudio bouncing to main thread");
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self shutdown];
-        });
+		[self shutdownAbortReaders: abortReaders];
+	    });
         return;
     }
 
@@ -445,7 +435,8 @@ MFANAqStream_rsControlProc( void *contextp,
 
     // abort any readers, so that the streamplayer can be shutdown and
     // deleted.
-    [_buffer abortReaders];
+    if (abortReaders)
+	[_buffer abortReaders];
 
     if (_radioStreamp != nullptr) {
         _radioStreamp->close();

@@ -67,6 +67,6 @@
 // Stops the stream thread and marks the buffer as complete.
 // After this returns, the buffer and its packets remain accessible to
 // existing readers until they release their reference to the buffer.
-- (void) shutdown;
+- (void) shutdownAbortReaders: (bool) abortReaders;
 
 @end

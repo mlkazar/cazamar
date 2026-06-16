@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property uint32_t streamRateKb;
 @property bool isSelected;
 @property bool isLoaded;
+@property bool isFrozen;
 @property uint32_t fileId;
 
 // flags for the search operation

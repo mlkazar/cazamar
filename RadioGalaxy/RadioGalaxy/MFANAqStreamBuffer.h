@@ -1,5 +1,9 @@
 #import <Foundation/Foundation.h>
+#import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <MediaPlayer/MediaPlayer.h>
+#import <CoreAudio/CoreAudioTypes.h>
+#import <CoreFoundation/CoreFoundation.h>
 
 // ---------------------------------------------------------------------------
 // MFANAqStreamPacket
@@ -145,7 +149,6 @@
 // -------------------------------------------------------------------
 @property BOOL haveProperties;
 @property float frameDuration;
-@property AudioStreamBasicDescription dataFormat;
 
 // -------------------------------------------------------------------
 // Synchronisation primitives (shared across all buffer instances).
@@ -171,8 +174,6 @@
 // Audio format helpers (delegate to the stored dataFormat).
 // -------------------------------------------------------------------
 - (NSString *) getDataFormatString;
-- (void) getDataFormat: (AudioStreamBasicDescription *) format;
-
 // -------------------------------------------------------------------
 // Packet management
 // -------------------------------------------------------------------
@@ -218,9 +219,13 @@
 
 - (void) unpin: (MFANAqStreamBlock *) block;
 
+- (void) setDataFormat: (AudioStreamBasicDescription *) descr;
+
+- (void) getDataFormat: (AudioStreamBasicDescription *) descr;
+
 - (MFANAqStreamBlock *) pin: (MFANAqStreamBlock *) block;
 
-- (BOOL) blockIx: (uint32_t) blockIx
+- (bool) blockIx: (uint32_t) blockIx
 	packetIx: (uint32_t) packetIx
       containsMs: (uint64_t) ms;
 @end

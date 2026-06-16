@@ -13,6 +13,17 @@
 
 #include <string>
 
+// Some useful constants
+static int _bufferStaticSetup = 0;
+static pthread_mutex_t _bufferMutex;
+static const uint32_t _kBytesPerBlock = 16*1024;
+static const uint32_t _kTrailerBytes = 2;
+static const uint16_t _kMagic = 0x0301;			// for records
+static const uint16_t _kFileMagic = 0x0302;		// for the whole file
+static const uint16_t _kTrailerMagic = 0x0924;
+static const uint32_t _kMaxValidBlocks = 32;
+static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before reclaim
+
 // ---------------------------------------------------------------------------
 // MFANAqStreamPacket
 // ---------------------------------------------------------------------------
@@ -529,7 +540,7 @@ class MFANAqStreamBlockHolder {
 	_dirty = false;
 	_sealed = false;
 	_ioRunning = false;
-	_fileOffset = 0;
+	_fileOffset = _kBytesPerBlock;	// init as if restore isn't done, so skip header
 	_diskBytesUsed = 0;
 	_durationMs = 0;
 	_inLru = false;
@@ -553,15 +564,6 @@ class MFANAqStreamBlockHolder {
 // ---------------------------------------------------------------------------
 // MFANAqStreamBuffer
 // ---------------------------------------------------------------------------
-
-static int _bufferStaticSetup = 0;
-static pthread_mutex_t _bufferMutex;
-static const uint32_t _kBytesPerBlock = 16*1024;
-static const uint32_t _kTrailerBytes = 2;
-static const uint16_t _kMagic = 0x0301;
-static const uint16_t _kTrailerMagic = 0x0924;
-static const uint32_t _kMaxValidBlocks = 32;
-static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before reclaim
 
 MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     _blockDatap = (char *) malloc(_kBytesPerBlock);
@@ -592,12 +594,21 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
 
     NSThread *_gcBufferThread;
     BOOL _gcRunning;
+
+    AudioStreamBasicDescription _dataFormat;
 }
 
 + (pthread_mutex_t *) bufferMutex {
     return &_bufferMutex;
 }
 
+// The first block has a separate header.  It starts off with 2 bytes
+// of _kFileMagic, and is followed by the AudioStreamBasicDescription
+// for the stream.
+//
+// The remaining blocks are just a set of records, described below,
+// ending with an end record.
+//
 // The format of a packet on disk consists of:
 //
 // 2 bytes magic # (0xaa for regular data, 0xee for end record)
@@ -615,6 +626,7 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
 // 2 bytes of song name length
 //
 // <n> bytes of song name
+//
 - (uint32_t) packetDiskSize: (MFANAqStreamPacket *) packet {
     return (uint32_t) (12 + [packet getLength] + [packet.playingSong length] +
 		       sizeof(AudioStreamPacketDescription));
@@ -720,8 +732,8 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
 	return;
 
     osp_assert(block.pinCount > 0);
-    block.pinCount--;
-    [self fixLru: block];
+    block.pinCount--; 
+   [self fixLru: block];
 }
 
 - (MFANAqStreamBlock *) pin: (MFANAqStreamBlock *) block {
@@ -742,18 +754,23 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     uint32_t durationMs;
 
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
+
+    // This may truncate the file if the header looks bad.
+    [self readHeaderBlock];
+
     code = fstat(_streamFile.readFd, &tstat);
     if (code < 0) {
 	pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
 	return -1;
     }
 
+    // note that blockCount *include* the header block.
     blockCount = (uint32_t) (tstat.st_size / _kBytesPerBlock);
     uint64_t baseMs = 0;
     [_streamFile.blocks removeAllObjects];
     osp_assert(_dirtyBlocks == 0 && _validBlocks == 0);
     _firstPacketStartMs = 0;
-    for(ix=0; ix<blockCount; ix++) {
+    for(ix=1; ix<blockCount; ix++) {
 	block = [[MFANAqStreamBlock alloc] initWithBuffer: self];
 	block.ioRunning = true;
 	block.dirty = false;
@@ -762,6 +779,7 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
 	block.baseMs = baseMs;
 	block.sealed = true;
 	block.valid = false;
+	block.diskBytesUsed = _kBytesPerBlock;
 	code = [self readPacketsFromBlock: block duration:&durationMs];
 
 	// make it look valid and sealed now that it is present
@@ -776,22 +794,35 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
 
 	// if read failed, stop
 	if (code != 0) {
+	    [_streamFile.blocks removeLastObject];
 	    pthread_cond_broadcast(&_blockIoCv);
 	    break;
 	}
-
-	[_streamFile.blocks addObject: block];
     }
 
-    if (ix == blockCount) {
+    if (blockCount >= 1 && ix == blockCount) {
 	NSLog(@"streambuf restored all %d blocks successfully", blockCount);
+	// If we had a block count of 2, for example, ix == 2, and we
+	// have a header block and the block with ix == 1.  The next
+	// block to allocate should have a file offset of
+	// 2*_kBytesPerBlock.
     } else {
+	// if failed on ix == 2, for example, ix == 1 is good, and we
+	// have the header block, too, so we want to truncate to two
+	// blocks.  We should in this case have one block in the
+	// blocks array.  Also in this case, the next block to use is
+	// ix=2, at file offset 2*_kBytesPerBlock
+	ftruncate(_streamFile.writeFd, ix * _kBytesPerBlock);
+	osp_assert([_streamFile.blocks count] == ix - 1);
 	NSLog(@"streambuf failed restoring ix=%d", ix);
     }
 
     // add new tail block
     block = [[MFANAqStreamBlock alloc] initWithBuffer: self];
     block.baseMs = baseMs;
+
+    // see comment on 'if' above to see why in either failure or
+    // success case, the next block is at the offset computed below.
     block.fileOffset = ix * _kBytesPerBlock;
     _fileSize = block.fileOffset + _kBytesPerBlock;
 
@@ -830,6 +861,55 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     filePath = altFileNameForFileId(fileId);
     status = [[NSFileManager defaultManager] removeItemAtPath: filePath error: &error];
     // alt file rarely exists
+}
+
+- (int32_t) readHeaderBlock {
+    MFANAqStreamBlockHolder diskBlock;
+    char *datap = diskBlock.data();
+    int32_t bytesRead;
+    uint16_t shortTemp;
+
+    lseek(_streamFile.readFd, 0, SEEK_SET);
+    bytesRead = (int32_t) read(_streamFile.readFd, datap, _kBytesPerBlock);
+    NSLog(@"readheaderblcok read %d bytes", bytesRead);
+    if (bytesRead <= 0) {
+	ftruncate(_streamFile.writeFd, 0);
+	return -1;
+    }
+
+    memcpy(&shortTemp, datap, 2);
+    if (shortTemp != _kFileMagic) {
+	ftruncate(_streamFile.writeFd, 0);
+	return -1;
+    }
+    datap += 2;
+
+    memcpy(&_dataFormat, datap, sizeof(_dataFormat));
+    [self deriveDataFormatProperties];
+
+    return 0;
+}
+
+- (int32_t) updateHeaderBlock {
+    MFANAqStreamBlockHolder diskBlock;
+    int32_t bytesWritten;
+    uint16_t shortTemp;
+
+    char *datap = diskBlock.data();
+    char *writeDatap = datap;
+
+    shortTemp = _kFileMagic;
+    memcpy(datap, &shortTemp, sizeof(shortTemp));
+    datap += 2;
+
+    memcpy(datap, &_dataFormat, sizeof(_dataFormat));
+
+    lseek(_streamFile.writeFd, 0, SEEK_SET);
+    bytesWritten = (int32_t) write(_streamFile.writeFd, writeDatap, _kBytesPerBlock);
+    if (bytesWritten != _kBytesPerBlock)
+	return -1;
+    else
+	return 0;
 }
 
 - (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block duration: (uint32_t *) durationMsp{
@@ -1084,7 +1164,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	_pthreadDoWork = false;
 	_validBlocks = 0;
 	_dirtyBlocks = 0;
-	_fileSize = _kBytesPerBlock;
+	_fileSize = 2*_kBytesPerBlock;
 
 	_streamFile = [[MFANAqStreamFile alloc] init];
 
@@ -1544,6 +1624,21 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
     // wakeup anyone waiting for more data to read
     pthread_cond_broadcast(&_packetArrayCv);
+}
+
+- (void) deriveDataFormatProperties {
+    _frameDuration  = 1.0f / _dataFormat.mSampleRate;
+    _packetDuration = _dataFormat.mFramesPerPacket / _dataFormat.mSampleRate;
+    _haveProperties = YES;
+
+    NSLog(@"frame duration=%f packetDuration=%f",
+	  _frameDuration, _packetDuration);
+}
+
+- (void) setDataFormat: (AudioStreamBasicDescription *) descr {
+    _dataFormat = *descr;
+    [self deriveDataFormatProperties];
+    [self updateHeaderBlock];
 }
 
 - (NSString *) getDataFormatString {

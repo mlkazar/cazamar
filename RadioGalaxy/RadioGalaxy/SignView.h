@@ -74,6 +74,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) deactivateTopView;
 
+- (void) freezeStation: (SignStation *) station frozen: (bool) freeze;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -22,6 +22,7 @@
 
     bool _verified;		// search system has checked it
     bool _verifiedWorking;	// check above found it working
+    bool _isFrozen;		// don't start streaming this station.
 
     MFANAqStream *_recordingStream;	// stream being recorded
     MFANAqStreamBuffer *_recordingBuffer; // recorded data from stream.
@@ -50,6 +51,7 @@
 	self.isSelected = NO;
 	self.isLoaded = NO;
 	self.fileId = fileId;
+	self.isFrozen = false;
     }
     return self;
 }

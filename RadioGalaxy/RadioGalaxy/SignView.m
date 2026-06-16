@@ -26,6 +26,8 @@
 #import "SignViewInt.h"
 #import "Silence.h"
 
+#include "assert.h"
+
 NS_ASSUME_NONNULL_BEGIN
 
 @implementation SignView {
@@ -1268,29 +1270,31 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) startStation: (SignStation *) station {
-    _stream = station.recordingStream;
-    if (_stream != nil) {
-	if (_stream.shuttingDown) {
-	    // call shutdown again in case the pthread hasn't exited
-	    // yet.  When shutdown completes, everything will be
-	    // cleanly shutdown.
-	    [_stream shutdown];
-	    _stream = nil;
+    if (!station.isFrozen) {
+	_stream = station.recordingStream;
+	if (_stream != nil) {
+	    if (_stream.shuttingDown) {
+		// call shutdown again in case the pthread hasn't exited
+		// yet.  When shutdown completes, everything will be
+		// cleanly shutdown.
+		[_stream shutdownAbortReaders: true];
+		_stream = nil;
+	    }
 	}
-    }
 
-    // and create a stream if necessary.
-    if (_stream == nil) {
-	_stream = [self startStationStream: station];
+	// and create a stream if necessary.
+	if (_stream == nil) {
+	    _stream = [self startStationStream: station];
+	}
     }
 
     // and now bind a player to the stream
     if (_resumeAtEnd) {
-	_player = [[MFANStreamPlayer alloc] initWithStream: _stream
-							ms: ~0ULL];
+	_player = [[MFANStreamPlayer alloc] initWithStreamBuffer: station.recordingBuffer
+							      ms: ~0ULL];
     } else {
-	_player = [[MFANStreamPlayer alloc] initWithStream: _stream
-							ms: station.recordingPosition];
+	_player = [[MFANStreamPlayer alloc] initWithStreamBuffer: station.recordingBuffer
+							      ms: station.recordingPosition];
     }
 
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
@@ -1346,7 +1350,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    return;
 	}
 	NSLog(@"===in restartStationWithStream just to get the stream running again");
-	[stream shutdown];
+	[stream shutdownAbortReaders: true];
 	NSLog(@"=== station shutdown done for station=%p", station);
 	station.recordingStream = nil;
 
@@ -1466,9 +1470,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	// keep downloading, but remember where to resume playing if we go
 	// back to this stream.
 	_playingStation.recordingStream = _stream;
+	_stream = nil;
     } else {
 	if (_stream != nil) {
-	    [_stream shutdown];
+	    [_stream shutdownAbortReaders: true];
 	    _stream = nil;
 	}
     }
@@ -1487,9 +1492,12 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) seek: (float) distance relative: (bool) isRelative {
     uint64_t seekTargetMs = (uint64_t) (distance * 1000);
+    MFANAqStreamBuffer *buffer;
 
-    if (_stream == nil)
+    if (_playingStation == nil)
 	return;
+
+    buffer = _playingStation.recordingBuffer;
 
     if (_player != nil) {
 	if (isRelative)
@@ -1499,7 +1507,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 
     // and start a new player at the selected time code
-    _player = [[MFANStreamPlayer alloc] initWithStream: _stream ms:seekTargetMs];
+    _player = [[MFANStreamPlayer alloc] initWithStreamBuffer: buffer ms:seekTargetMs];
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
     [_player addStateCallback: _stateCallbackObj sel: _stateCallbackSel];
     [_player addStateCallback: self sel: @selector(playerStateChanged:)];
@@ -1546,7 +1554,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) stopRecording: (SignStation *) station {
     MFANAqStream *stream = station.recordingStream;
     if (stream != nil) {
-	[stream shutdown];
+	[stream shutdownAbortReaders: true];
 	station.recordingStream = nil;
     }
     [self animationOn];
@@ -1623,10 +1631,51 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) activateTopView {
     [self addRecognizers];
+    [self animationOn];
 }
 
 - (void) deactivateTopView {
     [self removeRecognizers];
+}
+
+- (void) freezeStation: (SignStation *) station frozen: (bool) freeze {
+    NSLog(@"=2= in freeze station with freeze=%d station=%p", freeze, station);
+
+    // this happens because we get multiple calls as the slider actually moves.
+    if (station.isFrozen == freeze)
+	return;
+
+    station.isFrozen = freeze;
+
+    if (freeze) {
+	if (station == _playingStation) {
+	    if (_stream != nil) {
+		[_stream shutdownAbortReaders: false];
+		if (station.recordingStream == _stream)
+		    station.recordingStream = nil;
+		_stream = nil;
+	    }
+	    if (station.recordingStream != nil) {
+		// not sure these should ever be different
+		[station.recordingStream shutdownAbortReaders: false];
+		station.recordingStream = nil;
+	    }
+	}
+    } else {
+	if (station == _playingStation) {
+	    if (_stream != nil) {
+		[_stream shutdownAbortReaders: true];
+		_stream = nil;
+	    }
+	    _stream = [self startStationStream: station];
+	} else {
+	    if (station.recordingStream != nil) {
+		[station.recordingStream shutdownAbortReaders: true];
+		station.recordingStream = nil;
+	    }
+	    station.recordingStream = [self startStationStream: station];
+	}
+    }
 }
 
 // Generally, we want the silence player running if we aren't playing

@@ -167,7 +167,7 @@ MFANStreamPlayer_getUnknownString()
 @implementation MFANStreamPlayer {
     AudioQueueRef _audioQueue;
     AudioStreamBasicDescription _dataFormat;	/* detailed data format info from parser */
-    MFANAqStream *_aqStream;
+    MFANAqStreamBuffer *_streamBuffer;
 
     // used by the playAsync thread, but available here for canceling the
     // read performed by the thread.
@@ -340,16 +340,17 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 }
 
 /* called on the main thread to create a new player */
-- (MFANStreamPlayer *) initWithStream: (MFANAqStream *) stream ms:(uint64_t) ms {
+- (MFANStreamPlayer *) initWithStreamBuffer: (MFANAqStreamBuffer *) streamBuffer
+					 ms:(uint64_t) ms {
     self = [super init];
     if (self) {
-	NSLog(@"- streamplayer init starts for %p ms=%lld", self, ms);
+	NSLog(@"=2= streamplayer init starts for %p ms=%lld", self, ms);
 
 	// Remember the stream
-	_aqStream = stream;
+	_streamBuffer = streamBuffer;
 
 	// Create a reader
-	_streamReader = [[MFANAqStreamReader alloc] initWithBuffer: _aqStream.buffer];
+	_streamReader = [[MFANAqStreamReader alloc] initWithBuffer: _streamBuffer];
 	if (ms != ~0ULL) {
 	    [_streamReader seek: ms whence: 0];
 	}
@@ -643,8 +644,8 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     AudioQueueRef audioQueue;
     OSStatus osStatus;
 
-    NSLog(@"setupaudioqueue player=%p", self);
-    [_aqStream getDataFormat: &_dataFormat];
+    [_streamBuffer getDataFormat: &_dataFormat];
+    NSLog(@"=2= setupaudioqueue player=%p rate=%f", self, _dataFormat.mSampleRate);
     osStatus = AudioQueueNewOutput ( &_dataFormat,
 				     MFANStreamPlayer_handleOutput,
 				     (__bridge void *) self,
@@ -713,6 +714,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     OSStatus osStatus;
 
     packet = nil;
+    NSLog(@"=2= playasync thread starts=%p", self);
     while(!_shutdown) {
 	@autoreleasepool {
 	    // If there's nothing queued to the AudioQueue, we don't
@@ -727,6 +729,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 		// don't start filling the audio queue unless we know we
 		// can provide at least one full buffers of audio data.
 		if (![_streamReader waitForAtLeast: _maxBufferSize]) {
+		    NSLog(@"=2= streamreader failed shutdown=%d", _shutdown);
 		    break;
 		}
 	    }
@@ -979,14 +982,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return rstr;
 }
 
-- (NSString *) getPublicUrl {
-    if (_aqStream) {
-	return [_aqStream getPublicUrl];
-    } else {
-	return @"[None]";
-    }
-}
-
 - (bool) isPaused {
     return _paused;
 }
@@ -1042,7 +1037,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 // minus the # of packets still in the AudioQueue.
 - (uint64_t) getSeekTarget: (float) offset {
     int64_t seekTarget;
-    float queuedSecs = _queuedPackets * _aqStream.packetDuration;
+    float queuedSecs = _queuedPackets * _streamBuffer.packetDuration;
     float nextRecordMs = (float) [_streamReader tell];
 
     seekTarget = (int64_t) (nextRecordMs + 1000*offset - 1000*queuedSecs);
