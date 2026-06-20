@@ -52,6 +52,7 @@
 	self.isLoaded = NO;
 	self.fileId = fileId;
 	self.isFrozen = false;
+	self.isSnapshot = false;
     }
     return self;
 }

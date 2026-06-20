@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property bool isSelected;
 @property bool isLoaded;
 @property bool isFrozen;
+@property bool isSnapshot;
 @property uint32_t fileId;
 
 // flags for the search operation

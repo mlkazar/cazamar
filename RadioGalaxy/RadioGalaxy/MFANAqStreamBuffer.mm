@@ -840,6 +840,11 @@ NSString *fileNameForFileId(uint32_t fileId) {
     return fileName;
 }
 
+- (NSString *) entryNameForFileId: (uint32_t) fileId {
+    NSString *entryName = [NSString stringWithFormat: @"station-stream-%d.dat", fileId];
+    return entryName;
+}
+
 NSString *altFileNameForFileId(uint32_t fileId) {
     NSString *entryName = [NSString stringWithFormat: @"station-gc-%d.dat", fileId];
     NSString *fileName = fileNameForFile(entryName);
@@ -1138,38 +1143,76 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     return packet;
 }
 
+- (void) commonInitWithFileId: (uint32_t) fileId {
+    MFANAqStreamBlock *block;
+
+    if (!_bufferStaticSetup) {
+	_bufferStaticSetup = YES;
+	pthread_mutex_init(&_bufferMutex, NULL);
+    }
+    pthread_cond_init(&_packetArrayCv, NULL);
+    pthread_cond_init(&_pthreadReqCv, NULL);
+    pthread_cond_init(&_pthreadDoneCv, NULL);
+    pthread_cond_init(&_blockIoCv, NULL);
+
+    _packetArray = [[NSMutableOrderedSet alloc] init];
+    _shuttingDown = NO;
+    _haveProperties = NO;
+    _lastPacketEndMs = 0;
+    _packetDuration = 0.0;
+    _frameDuration = 0.0;
+    _shuttingDown = false;
+    _pthreadDone = false;
+    _gcRunning = false;
+    _pthreadDoWork = false;
+    _validBlocks = 0;
+    _dirtyBlocks = 0;
+    _fileSize = 2*_kBytesPerBlock;
+
+    _streamFile = [[MFANAqStreamFile alloc] init];
+
+    osp_assert(fileId != 0 && fileId != ~0U);	// debug
+    _streamFile.fileId = fileId;
+
+    // create first block so we have somewhere to put data.
+    // Invariant is that this block always exists, but isn't in
+    // the LRU and isn't marked as dirty until it is complete.
+    block = [[MFANAqStreamBlock alloc] initWithBuffer: self];
+
+    _streamBufferThread = [[NSThread alloc] initWithTarget: self
+						  selector: @selector(ioAsync:)
+						    object: nil];
+    [_streamBufferThread start];
+}
+
 - (MFANAqStreamBuffer *) initWithFileId: (uint32_t) fileId {
     self = [super init];
     if (self != nil) {
-	MFANAqStreamBlock *block;
+	[self commonInitWithFileId: fileId];
 
-        if (!_bufferStaticSetup) {
-            _bufferStaticSetup = YES;
-            pthread_mutex_init(&_bufferMutex, NULL);
-        }
-        pthread_cond_init(&_packetArrayCv, NULL);
-	pthread_cond_init(&_pthreadReqCv, NULL);
-	pthread_cond_init(&_pthreadDoneCv, NULL);
-	pthread_cond_init(&_blockIoCv, NULL);
+	// open and create the backing file
+	int fd = open([fileNameForFileId(_streamFile.fileId)
+			  cStringUsingEncoding: NSUTF8StringEncoding],
+		      O_CREAT | O_RDWR, 0666);
+	osp_assert(fd >= 0);
+	_streamFile.writeFd = fd;
 
-        _packetArray = [[NSMutableOrderedSet alloc] init];
-        _shuttingDown = NO;
-        _haveProperties = NO;
-        _lastPacketEndMs = 0;
-        _packetDuration = 0.0;
-        _frameDuration = 0.0;
-	_shuttingDown = false;
-	_pthreadDone = false;
-	_gcRunning = false;
-	_pthreadDoWork = false;
-	_validBlocks = 0;
-	_dirtyBlocks = 0;
-	_fileSize = 2*_kBytesPerBlock;
+	fd = open([fileNameForFileId(_streamFile.fileId)
+		      cStringUsingEncoding: NSUTF8StringEncoding], O_RDONLY);
+	osp_assert(fd >= 0);
+	_streamFile.readFd = fd;
+    }
 
-	_streamFile = [[MFANAqStreamFile alloc] init];
+    return self;
+}
 
-	osp_assert(fileId != 0 && fileId != ~0U);	// debug
-	_streamFile.fileId = fileId;
+- (MFANAqStreamBuffer *) initWithNewFileId: (uint32_t) newFileId
+				 oldBuffer: (MFANAqStreamBuffer *) oldBuffer {
+    int32_t code;
+
+    self = [super init];
+    if (self != nil) {
+	[self commonInitWithFileId: newFileId];
 
 	// open and create the backing file
 	int fd = open([fileNameForFileId(_streamFile.fileId)
@@ -1183,16 +1226,29 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	osp_assert(fd >= 0);
 	_streamFile.readFd = fd;
 
-	// create first block so we have somewhere to put data.
-	// Invariant is that this block always exists, but isn't in
-	// the LRU and isn't marked as dirty until it is complete.
-	block = [[MFANAqStreamBlock alloc] initWithBuffer: self];
+	// now copy data from old file to new
+	MFANAqStreamBlockHolder diskBlock;
+	lseek(oldBuffer->_streamFile.readFd, 0, SEEK_SET);
+	lseek(_streamFile.writeFd, 0, SEEK_SET);
+	while(true) {
+	    code = (int32_t) read(oldBuffer->_streamFile.readFd,
+				  diskBlock.data(),
+				  _kBytesPerBlock);
+	    if (code <= 0)
+		break;
+	    code = (int32_t) write(_streamFile.writeFd,
+				   diskBlock.data(),
+				   _kBytesPerBlock);
+	    if (code < _kBytesPerBlock) {
+		NSLog(@"Snapshot COPY FAILED");
+		return nil;
+	    }
+	}
+	fsync(_streamFile.writeFd);
 
-        _streamBufferThread = [[NSThread alloc] initWithTarget: self
-                                                      selector: @selector(ioAsync:)
-                                                        object: nil];
-        [_streamBufferThread start];
+	[self restoreBlocksFromFile];
     }
+
     return self;
 }
 

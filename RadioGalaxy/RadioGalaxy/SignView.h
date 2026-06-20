@@ -78,6 +78,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) eraseStation: (SignStation *) station;
 
+- (void) createSnapshot: (SignStation *) station;
+
 @end
 
 NS_ASSUME_NONNULL_END

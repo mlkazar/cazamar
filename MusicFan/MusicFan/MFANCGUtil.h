@@ -52,6 +52,8 @@ tintImage(UIImage *image, UIColor *color);
 void
 drawBackground(CGRect rect);
 
+NSString *dirNameForFiles(void);
+
 NSString *
 fileNameForFile(NSString *fileName);
 

@@ -207,16 +207,20 @@
 	float textLabelWidth = (2.0/3.0 * (frame.size.width - 2*indent));
 	float switchWidth = (frame.size.width - 2*indent) - textLabelWidth;
 	CGRect eraseTextFrame;
+	CGRect snapshotTextFrame;
 	CGRect recordTextFrame;
 	CGRect eraseSwitchFrame;
 	CGRect recordSwitchFrame;
 	CGRect freezeLabelFrame;
 	CGRect freezeSwitchFrame;
+	CGRect snapshotSwitchFrame;
+	HelpLabel *snapshotHelpLabel;
 	HelpLabel *eraseHelpLabel;
 	HelpLabel *recordHelpLabel;
 	HelpLabel *freezeHelpLabel;
 	MFANIconButton *recordSwitch;
 	MFANIconButton *eraseSwitch;
+	MFANIconButton *snapshotSwitch;
 	UISwitch *freezeSwitch;
 
 	// Stream in background button
@@ -246,6 +250,7 @@
 		       withAction: @selector(recordPressed:)];
 	[self addSubview: recordSwitch];
 
+	// Erase contents button
 	eraseTextFrame.origin.x = indent;
 	eraseTextFrame.origin.y = recordTextFrame.origin.y +
 	    labelHeight + frame.size.height * 0.03;
@@ -271,9 +276,36 @@
 		       withAction: @selector(erasePressed:)];
 	[self addSubview: eraseSwitch];
 
+	// Snapshot contents button
+	snapshotTextFrame.origin.x = indent;
+	snapshotTextFrame.origin.y = eraseTextFrame.origin.y +
+	    labelHeight + frame.size.height * 0.03;
+	snapshotTextFrame.size.height = labelHeight;
+	snapshotTextFrame.size.width = textLabelWidth;
+	snapshotHelpLabel = [[HelpLabel alloc]
+			     initWithFrame: snapshotTextFrame
+				    target: self
+				  selector: @selector(snapshotHelp:)];
+	[snapshotHelpLabel setTitle: @"Snapshot station stream"
+			forState: UIControlStateNormal];
+
+	[self addSubview: snapshotHelpLabel];
+
+	snapshotSwitchFrame = snapshotTextFrame;
+	snapshotSwitchFrame.origin.x = snapshotTextFrame.origin.x + snapshotTextFrame.size.width;
+	snapshotSwitchFrame.size.width = switchWidth;
+	snapshotSwitch = [[MFANIconButton alloc] initWithFrame: snapshotSwitchFrame
+						       title: @"Snapshot"
+						       color: [UIColor clearColor]
+							file: @"icon-button.png"];
+	[snapshotSwitch addCallback: self
+		       withAction: @selector(snapshotPressed:)];
+	[self addSubview: snapshotSwitch];
+
+	// Freeze contents button
 	freezeLabelFrame.origin.x = indent;
 	freezeLabelFrame.size.width = frame.size.width * 3 / 5;
-	freezeLabelFrame.origin.y = eraseTextFrame.origin.y +
+	freezeLabelFrame.origin.y = snapshotTextFrame.origin.y +
 	    labelHeight + frame.size.height * 0.03;
 	freezeLabelFrame.size.height = labelHeight;
 	freezeHelpLabel = [[HelpLabel alloc]
@@ -298,6 +330,7 @@
 	freezeSwitch.layer.cornerRadius = 16.0;
 	[self addSubview: freezeSwitch];
 
+	// Edit station button
 	buttonFrame.origin.x = frame.size.width / 5;
 	buttonFrame.size.width = frame.size.width * 3 / 5;
 	buttonFrame.origin.y = freezeLabelFrame.origin.y + labelHeight + frame.size.height * 0.03;
@@ -403,7 +436,26 @@
 }
 
 - (void) erasePressed: (UISwitch *) swp {
-    [_signView eraseStation: _station];
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"RadioStar"
+						    message: @"Are you sure?"
+					     preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Erase downloaded contents"
+                                                     style: UIAlertActionStyleDefault
+                                                   handler:^(UIAlertAction *act) {
+	    [self->_signView eraseStation: self->_station];
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Cancel"
+                                      style: UIAlertActionStyleDefault
+                                    handler:^(UIAlertAction *act) {
+	    NSLog(@"Perform cancel");
+        }];
+    [alert addAction: action];
+
+    [_vc presentViewController: alert animated:YES completion: nil];
 }
 
 - (void) highlightHelp: (id) junk {
@@ -456,6 +508,26 @@
 - (void) recordPressed: (UIButton *) s {
     [_signView stopRecording: _station];
 }
+
+- (void) snapshotHelp: (id) junk {
+    UIAlertController *alert =
+	[UIAlertController
+	    alertControllerWithTitle: @"RadioGalaxy"
+			     message:@"Create snapshot of current station's stream"
+		      preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction
+				actionWithTitle: @"OK"
+					  style:UIAlertActionStyleDefault
+					handler:^(UIAlertAction *act) {
+	    NSLog(@"blah");
+	}];
+    [alert addAction: action];
+    [_vc presentViewController: alert animated: YES completion: nil];
+}
+
+- (void) snapshotPressed: (UIButton *) s {
+    [_signView createSnapshot: _station];
+};
 
 #if 0
 // Is this really useful?

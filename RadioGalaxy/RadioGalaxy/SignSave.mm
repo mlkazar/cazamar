@@ -74,6 +74,12 @@
 	namedNodep->initNamed("fileId", valNodep);
 	stationDefNodep->appendChild(namedNodep);
 
+	valNodep = new Json::Node();
+	valNodep->initInt(station.isSnapshot);
+	namedNodep = new Json::Node();
+	namedNodep->initNamed("isSnapshot", valNodep);
+	stationDefNodep->appendChild(namedNodep);
+
 	rootNodep->appendChild(stationDefNodep);
     }
 
@@ -165,6 +171,15 @@
 				   nullptr, 10);
 	    if (station.fileId > fileId)
 		fileId = station.fileId;
+	}
+
+	tnodep = stationNodep->searchForChild("isSnapshot", false);
+	if (tnodep != nullptr) {
+	    station.isSnapshot =
+		(uint32_t) strtoul(tnodep->_children.head()->_name.c_str(),
+				   nullptr, 10);
+	    if (station.isSnapshot)
+		station.isFrozen = true;
 	}
 
 	[station setIconImageFromUrl: NO];

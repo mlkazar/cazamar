@@ -199,6 +199,9 @@
 
 - (MFANAqStreamBuffer *) initWithFileId: (uint32_t) fileId;
 
+- (MFANAqStreamBuffer *) initWithNewFileId: (uint32_t) newFileId
+				 oldBuffer: (MFANAqStreamBuffer *) oldBuffer;
+
 - (void) shutdown;
 
 - (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block
@@ -230,4 +233,9 @@
 - (bool) blockIx: (uint32_t) blockIx
 	packetIx: (uint32_t) packetIx
       containsMs: (uint64_t) ms;
+
+NSString *fileNameForFileId(uint32_t fileId);
+
+- (NSString *) entryNameForFileId: (uint32_t) fileId;
+
 @end

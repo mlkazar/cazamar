@@ -36,9 +36,9 @@ Ideas for Radio app
    picking up or discarding a station based on the coin flip.  Perhaps limit to
    128 now that validation is faster.
 
--- keep using disk file across app restarts
+** keep using disk file across app restarts
 
--- 3 second pause on reconnect shouldn't be done on main thread.  To
+** 3 second pause on reconnect shouldn't be done on main thread.  To
    synchronize properly, perhaps we need a per station lock.
 
 ** settings for how much music to keep / whether to restore after
@@ -177,6 +177,8 @@ name as well)
 
 -- smart record functionality -- by song boundary
 
+-- hybrid stations consisting of sequence of songs from N stations?
+
 -- export recordings somehow
 
 ** use backing file for large streams
@@ -192,7 +194,7 @@ WERS
 Acid Flashback
 WSUM
 KKUP
-Jaxx Radio Black Music
+Jazz Radio Black Music
 North East Radio Scotlandf
 WESU
 WESA

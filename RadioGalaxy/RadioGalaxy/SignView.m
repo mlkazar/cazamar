@@ -96,12 +96,6 @@ NS_ASSUME_NONNULL_BEGIN
     NSObject *_songCallbackObj;
     SEL _songCallbackSel;
 
-    // when we switch back to a recording station, should we resume at
-    // the last record played (resumeAtEnd = NO), or resume at the
-    // current record now being sent by the station (resumeAtEnd =
-    // YES)
-    BOOL _resumeAtEnd;
-
     uint32_t _fireCount;
 
     RadioHistory *_history;
@@ -469,15 +463,18 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     uint16_t ix = 0;
     for(station in _allStations) {
 	station.signIndex = ix++;
-	station.origin = CGPointMake(xPos, yPos);
-	columns++;
-	if (columns >= xCount) {
-	    // switch to next row
-	    xPos = (iconWidth - _xSpace) / 2.0 + leftMargin;
-	    yPos -= iconHeight;
-	    columns = 0;
-	} else {
-	    xPos += iconWidth + extraX;
+
+	if (/* !station.isSnapshot*/ 1) {
+	    station.origin = CGPointMake(xPos, yPos);
+	    columns++;
+	    if (columns >= xCount) {
+		// switch to next row
+		xPos = (iconWidth - _xSpace) / 2.0 + leftMargin;
+		yPos -= iconHeight;
+		columns = 0;
+	    } else {
+		xPos += iconWidth + extraX;
+	    }
 	}
 
 	if (station.fileId == ~0U) {
@@ -488,7 +485,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    buffer = [[MFANAqStreamBuffer alloc]
 					  initWithFileId: station.fileId];
 	    [buffer restoreBlocksFromFile];
-	    station.recordingPosition = buffer.lastPacketEndMs;
+	    if (station.isSnapshot)
+		station.recordingPosition = buffer.firstPacketStartMs;
+	    else
+		station.recordingPosition = buffer.lastPacketEndMs;
 	    station.recordingBuffer = buffer;
 	}
     }
@@ -630,6 +630,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	SignStation *station;
 	uint32_t signCount = 0;
 	for(station in _allStations) {
+	    // snapshots aren't visible on screen.
+#if 0
+	    if (station.isSnapshot)
+		continue;
+#endif
 	    if (signCount >= maxIcons)
 		break;
 
@@ -850,7 +855,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_fireCount = 0;
 	_isInterrupted = false;
 
-	_resumeAtEnd = NO;
 	_vc = vc;
 	_allStations = [[NSMutableOrderedSet alloc] init];
 	_settings = (Settings *) _vc.settings;
@@ -908,6 +912,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	[self computeLayout];
 
+	[self cleanupGarbageFiles];
+
 	if ([_allStations count] == 0) {
 #if 0
 	    [self addStation: @"WYEP"
@@ -941,6 +947,59 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 
     return self;
+}
+
+- (void) cleanupGarbageFiles {
+    NSArray *dirArray;
+    NSString *dirName = dirNameForFiles();
+
+    dirArray = [[NSFileManager defaultManager] contentsOfDirectoryAtPath: dirName
+								   error: nil];
+    if (dirArray == nil)
+	return;
+
+    NSString *entry;
+    const char *namep;
+    uint32_t tlen;
+    for(entry in dirArray) {
+	NSLog(@"=3= found %@", entry);
+	namep = [entry cStringUsingEncoding: NSUTF8StringEncoding];
+	tlen = (uint32_t) strlen(namep);
+	if (tlen > 4) {
+	    if (strncmp(".dat", namep+tlen-4, 4) != 0)
+		continue;
+	} else {
+	    continue;
+	}
+
+	// file name ends with .dat, it should correspond to a station
+	SignStation *station;
+	bool found = false;
+	bool success;
+	for(station in _allStations) {
+	    NSString *datName;
+	    datName = [station.recordingBuffer
+			  entryNameForFileId: station.recordingBuffer.streamFile.fileId];
+	    if ([datName isEqualToString: entry]) {
+		found = true;
+		break;
+	    }
+	}
+	if (!found) {
+	    NSLog(@"=3= Would delete file %@", entry);
+	    NSString *path = [NSString stringWithFormat: @"%@/%@", dirName, entry];
+	    success = [[NSFileManager defaultManager] removeItemAtPath: path
+								 error: nil];
+	    if (!success) {
+		NSLog(@"=3= failed to remove file %@", path);
+	    }
+	    else {
+		NSLog(@"=3= removed file %@", path);
+	    }
+	} else {
+	    NSLog(@"=3= Would **keep** file %@", entry);
+	}
+    }
 }
 
 - (void) sceneDidBecomeActive: (id) junk {
@@ -1077,6 +1136,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		// pop is done by TopView in its history done callback
 		[self.history showHistory];
 	    }
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Play snapshot"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+            NSLog(@"play snapshot history");
 	}];
     [alert addAction: action];
 
@@ -1246,6 +1312,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     SignStation *station;
     for(station in _allStations) {
+#if 0
+	if (station.isSnapshot)
+	    continue;
+#endif
+
 	if ( (modelX >= station.origin.x - boundingX / 2) &&
 	     (modelX <= station.origin.x + boundingX / 2) &&
 	     (modelY >= station.origin.y - boundingY / 2) &&
@@ -1289,13 +1360,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 
     // and now bind a player to the stream
-    if (_resumeAtEnd) {
-	_player = [[MFANStreamPlayer alloc] initWithStreamBuffer: station.recordingBuffer
-							      ms: ~0ULL];
-    } else {
-	_player = [[MFANStreamPlayer alloc] initWithStreamBuffer: station.recordingBuffer
-							      ms: station.recordingPosition];
-    }
+    _player = [[MFANStreamPlayer alloc] initWithStreamBuffer: station.recordingBuffer
+							  ms: station.recordingPosition];
 
     [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
     [_player addStateCallback: _stateCallbackObj sel: _stateCallbackSel];
@@ -1348,6 +1414,42 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (station.recordingBuffer != nil) {
 	[station.recordingBuffer erase];
     }
+}
+
+- (void) createSnapshot: (SignStation *) station {
+    NSLog(@"in create snapshot");
+    SignStation *snapStation;
+    bool wasFrozen;
+
+    snapStation = [[SignStation alloc] initWithFileId: [self allocStationId]];
+    wasFrozen = station.isFrozen;
+    station.isFrozen = true;
+
+    snapStation.stationName =
+	[NSString stringWithFormat: @"Snapshot of %@", station.stationName];
+    snapStation.shortDescr = @"Snapshot";
+    snapStation.iconUrl = @"";
+    snapStation.isSnapshot = true;
+    snapStation.isFrozen = true;
+
+    MFANAqStreamBuffer *buffer;
+    buffer = [[MFANAqStreamBuffer alloc]
+		 initWithNewFileId: snapStation.fileId
+			 oldBuffer: station.recordingBuffer];
+    snapStation.recordingPosition = buffer.firstPacketStartMs;
+    snapStation.recordingBuffer = buffer;
+    snapStation.rowColumn = SignCoordMake(0,0);	// will be filled in by computeLayout
+    snapStation.streamUrl = @"No URL";
+    [_allStations addObject: snapStation];
+
+    // reset source frozen flag
+    station.isFrozen = wasFrozen;
+
+    [[SignSave alloc] initSaveToFile: _allStations];
+
+    [self computeLayout];
+
+    [self animationOn];
 }
 
 - (void) startCurrentStation {

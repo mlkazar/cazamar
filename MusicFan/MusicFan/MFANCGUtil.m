@@ -92,6 +92,15 @@ signature(NSString *str)
     return sum;
 }
 
+NSString *dirNameForFiles(void) {
+    NSArray *paths;
+    NSString *libdir;
+
+    paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
+    libdir = [paths objectAtIndex:0];
+    return libdir;
+}
+
 NSString *
 fileNameForFile(NSString *fileName)
 {
