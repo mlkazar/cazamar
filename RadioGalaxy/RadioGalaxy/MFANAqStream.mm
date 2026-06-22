@@ -178,7 +178,9 @@ MFANAqStream_PacketsProc( void *contextp,
     // audio queue (~32 seconds at 64 Kbps) to avoid pruning data before the
     // player has had a chance to read it for the first time.
     Settings *settings = (Settings *) aqp->_vc.settings;
+
     uint32_t pruneMs = settings.streamBufferMinutes * 60000;
+    // uint32_t pruneMs = 2 * 60000; // TESTING
 
     NSLog(@"prunning to %d ms", pruneMs);
     [aqp->_buffer pruneOldestMs: pruneMs];
