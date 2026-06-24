@@ -53,6 +53,7 @@
 		7F8418082F1EF49500B497E8 /* osptypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = osptypes.h; path = ../rpc/osptypes.h; sourceTree = SOURCE_ROOT; };
 		7F84180B2F1EF4F000B497E8 /* radiostream.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = radiostream.h; path = ../mfand/radiostream.h; sourceTree = SOURCE_ROOT; };
 		7F84180C2F1EF4F000B497E8 /* radiostream.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = radiostream.cc; path = ../mfand/radiostream.cc; sourceTree = SOURCE_ROOT; };
+		7F9AEE202FEB2CB3006CDD09 /* RadioGalaxy copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "RadioGalaxy copy-Info.plist"; path = "/Users/kazar/mac/RadioGalaxy/RadioGalaxy copy-Info.plist"; sourceTree = "<absolute>"; };
 		7FAB24472F3AA16F00D99D4A /* xapi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = xapi.h; path = ../mfand/xapi.h; sourceTree = SOURCE_ROOT; };
 		7FAB24482F3AA16F00D99D4A /* xapi.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = xapi.cc; path = ../mfand/xapi.cc; sourceTree = SOURCE_ROOT; };
 		7FAB244A2F3AA19200D99D4A /* radioscan.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = radioscan.h; path = ../mfand/radioscan.h; sourceTree = SOURCE_ROOT; };
@@ -156,6 +157,7 @@
 				7F8417F52F1EF3BD00B497E8 /* MFANSocket.cc */,
 				7F1E14C32ED6A80D00D08908 /* RadioGalaxy */,
 				7F40AC9D2F1EF70D001B1EE8 /* Frameworks */,
+				7F9AEE202FEB2CB3006CDD09 /* RadioGalaxy copy-Info.plist */,
 				7F1E14C22ED6A80D00D08908 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -291,11 +293,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 140;
+				CURRENT_PROJECT_VERSION = 200;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RadioGalaxy/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RadioGalaxy;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -306,7 +310,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.RadioGalaxy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -325,11 +329,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 140;
+				CURRENT_PROJECT_VERSION = 200;
 				DEVELOPMENT_TEAM = 5Q64UZQ97C;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RadioGalaxy/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RadioGalaxy;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
@@ -340,7 +346,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.4;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.Cazamar.RadioGalaxy;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

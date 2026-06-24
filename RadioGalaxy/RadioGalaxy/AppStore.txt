@@ -1,0 +1,20 @@
+MAIN
+Search by name/genre
+Keep hours of history
+Skip forward / back
+
+PROP
+Preload multiple stations
+while listening to others
+Create stream snapshots
+
+SEARCH
+Verifies stations work
+Sample stations from
+search page
+
+Promotional text:
+Play Internet Radio stations.  Completely free.
+
+Use photopea to create 1242x2688 images
+or ipad 2064x2752 images

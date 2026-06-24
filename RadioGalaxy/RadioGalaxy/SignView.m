@@ -1389,7 +1389,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 // used after a stream failure to restart the stream.
 - (void) restartStationWithStream: (id) stream {
     SignStation *station;
-    MFANAqStream *newStream;
     if (_stream == stream) {
 	station = _playingStation;
     } else {
@@ -1399,10 +1398,23 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}
     }
     [stream shutdownAbortReaders: false];	// don't abort readers from the associated buffer
+
     if (station == nil) {
 	NSLog(@"can't find station for stream %p", stream);
 	return;
     }
+
+    [NSTimer scheduledTimerWithTimeInterval: 0.5
+				     target: self
+				   selector: @selector(continueRestart:)
+				   userInfo: station
+				    repeats: NO];
+}
+
+- (void) continueRestart: (NSTimer *) timer {
+    MFANAqStream *newStream;
+    SignStation *station = timer.userInfo;
+
     newStream = [self startStationStream: station];
     if (station == _playingStation)
 	_stream = newStream;
