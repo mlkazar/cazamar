@@ -458,23 +458,6 @@
     [_vc presentViewController: alert animated:YES completion: nil];
 }
 
-- (void) highlightHelp: (id) junk {
-    UIAlertController *alert =
-	[UIAlertController
-	    alertControllerWithTitle: @"RadioGalaxy"
-			     message:@"Toggle whether the latest song for this station"
-	    @" is highlighted in the history"
-		      preferredStyle: UIAlertControllerStyleAlert];
-    UIAlertAction *action = [UIAlertAction
-				actionWithTitle: @"OK"
-					  style:UIAlertActionStyleDefault
-					handler:^(UIAlertAction *act) {
-	    NSLog(@"blah");
-	}];
-    [alert addAction: action];
-    [_vc presentViewController: alert animated: YES completion: nil];
-}
-
 - (void) updateStats: (id) junk {
     NSString *satString;
     if (_player == nil)
@@ -488,20 +471,6 @@
     // have the status disappear on its own after a minute
     if (osp_time_ms() - _startTimeMs > 60000) {
 	[self doNotify];
-    }
-}
-
-- (void) highlightPressed: (id) junk1 {
-    NSString *notice;
-
-    NSLog(@"highlight pressed");
-
-    [_signView.history toggleHighlightInStation:_station.stationName];
-
-    if ([_signView.history isHighlightedInStation:_station.stationName]) {
-	notice = @"Highlighted last song for later";
-    } else {
-	notice = @"Removed highlighting for current song";
     }
 }
 

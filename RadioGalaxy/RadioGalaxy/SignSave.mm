@@ -148,6 +148,9 @@
 
 	station = [[SignStation alloc] initWithFileId: ~0U];
 
+	// This work will be done asynchronously.
+	station.didRestoreBlocks = false;
+
 	tnodep = stationNodep->searchForChild("stationName", false);
 	station.stationName =
 	    [NSString stringWithUTF8String: tnodep->_children.head()->_name.c_str()];

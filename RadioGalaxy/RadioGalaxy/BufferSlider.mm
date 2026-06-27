@@ -19,6 +19,7 @@
     SignStation *_station;
     NSTimer *_updateTimer;
 }
+
 - (BufferSlider *) initWithFrame: (CGRect) frame
 			viewCont: (ViewController *) vc
 			signView: (SignView *) signView {

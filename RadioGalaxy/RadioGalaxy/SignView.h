@@ -26,6 +26,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (SignView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *)vc;
 
+- (void) slowInit;
+
 + (Class) layerClass;
 
 - (CALayer *) makeBackingLayer;

@@ -53,6 +53,7 @@
 	self.fileId = fileId;
 	self.isFrozen = false;
 	self.isSnapshot = false;
+	self.didRestoreBlocks = true;
     }
     return self;
 }

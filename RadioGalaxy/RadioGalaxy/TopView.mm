@@ -6,6 +6,8 @@
 #import "MFANStreamPlayer.h"
 #import "Settings.h"
 
+#include "osp.h"
+
 @implementation TopAlert {
     NSTimer *_timer;
     UIAlertController *_alert;
@@ -61,6 +63,7 @@
     NSMutableDictionary *_nowPlayingInfo;
     BufferSlider *_sliderView;
     Settings *_settings;
+    NSString *_playingSong;
 }
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc {
@@ -244,9 +247,19 @@
 	[self setBackgroundColor: [UIColor whiteColor]];
 
 	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+
+	[NSTimer scheduledTimerWithTimeInterval: 0.1
+					 target: self
+				       selector: @selector(continueInit:)
+				       userInfo: nil
+					repeats: NO];
     }
 
     return self;
+}
+
+- (void) continueInit: (NSTimer *) timer {
+    [_signView slowInit];
 }
 
 - (void) historyDone: (id) junk {
@@ -264,14 +277,17 @@
 - (void) highlightPressed: (id) junk {
     SignStation *playingStation = _signView.playingStation;
     if (playingStation == nil) {
-	[_signView.history toggleHighlightInStation:playingStation.stationName];
+	[_signView.history toggleHighlightInStation:playingStation.stationName
+					       song: _playingSong];
 	(void) [[TopAlert alloc] initWithMessage: @"No song playing"
 					duration: 2.0
 					viewCont: _vc];
     }
 
-    if (![_signView.history isHighlightedInStation:playingStation.stationName]) {
-	[_signView.history toggleHighlightInStation:playingStation.stationName];
+    if (![_signView.history isHighlightedInStation:playingStation.stationName
+					      song: _playingSong]) {
+	[_signView.history toggleHighlightInStation:playingStation.stationName
+					       song:_playingSong];
 	(void) [[TopAlert alloc] initWithMessage: @"Highlighted song in history"
 					duration: 2.0
 					viewCont: _vc];
@@ -358,9 +374,15 @@
     }
 
     [self updateIOSCenter: displayName];
-    [_history addHistoryStation: stationName
-		       withSong: song];
 
+    // we dont' want to add every song we scroll past to the history
+    uint64_t now = osp_time_ms();
+    if (now - _sliderView.lastMusicSampleTime > 2000) {
+	[_history addHistoryStation: stationName
+			   withSong: song];
+    }
+
+    _playingSong = song;
     [_marquee setText: song];
 }
 

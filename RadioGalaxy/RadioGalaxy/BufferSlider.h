@@ -8,6 +8,9 @@
 #import "SignView.h"
 
 @interface BufferSlider : UIView
+
+@property uint64_t lastMusicSampleTime;
+
 - (BufferSlider *) initWithFrame: (CGRect) frame
 			viewCont: (ViewController *) vc
 			signView: (SignView *) signView;

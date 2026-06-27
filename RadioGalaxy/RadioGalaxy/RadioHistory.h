@@ -48,9 +48,9 @@
 
 - (void) addHistoryStation: (NSString *) station withSong: (NSString *) song;
 
-- (void) toggleHighlightInStation: (NSString *) stationName;
+- (void) toggleHighlightInStation: (NSString *) stationName song: (NSString *) song;
 
-- (BOOL) isHighlightedInStation: (NSString *) stationName;
+- (BOOL) isHighlightedInStation: (NSString *) stationName song: (NSString *) song;
 
 - (void) showHistory;
 

@@ -25,6 +25,7 @@
 #import "SignSave.h"
 #import "SignViewInt.h"
 #import "Silence.h"
+#import "StatusMon.h"
 
 #include "assert.h"
 
@@ -484,12 +485,15 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    MFANAqStreamBuffer *buffer;
 	    buffer = [[MFANAqStreamBuffer alloc]
 					  initWithFileId: station.fileId];
+	    station.recordingBuffer = buffer;
+	    station.recordingPosition = 0;	// default for new stations
+#if 0
 	    [buffer restoreBlocksFromFile];
 	    if (station.isSnapshot)
 		station.recordingPosition = buffer.firstPacketStartMs;
 	    else
 		station.recordingPosition = buffer.lastPacketEndMs;
-	    station.recordingBuffer = buffer;
+#endif
 	}
     }
 }
@@ -949,6 +953,27 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     return self;
 }
 
+- (void) slowInit {
+    (void) [[StatusMon alloc]
+	       initWithMessage: @"Parsing streamed music"
+			 timer: 1.5
+		      viewCont: _vc
+			 block: ^void (StatusMon *mon) {
+	    for(SignStation *station in self->_allStations) {
+		if (!station.didRestoreBlocks) {
+		    station.didRestoreBlocks = true;
+		    MFANAqStreamBuffer *buffer = station.recordingBuffer;
+		    [buffer restoreBlocksFromFile];
+		    NSLog(@"=5= restored new station");
+		    if (station.isSnapshot)
+			station.recordingPosition = buffer.firstPacketStartMs;
+		    else
+			station.recordingPosition = buffer.lastPacketEndMs;
+		}
+	    }
+	}];
+}
+
 - (void) cleanupGarbageFiles {
     NSArray *dirArray;
     NSString *dirName = dirNameForFiles();
@@ -1136,13 +1161,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		// pop is done by TopView in its history done callback
 		[self.history showHistory];
 	    }
-	}];
-    [alert addAction: action];
-
-    action = [UIAlertAction actionWithTitle:@"Play snapshot"
-				       style: UIAlertActionStyleDefault
-				     handler:^(UIAlertAction *act) {
-            NSLog(@"play snapshot history");
 	}];
     [alert addAction: action];
 
@@ -1477,6 +1495,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	if (station != nil) {
 	    SignStation *prevStation = _playingStation;
 	    NSLog(@"tap station=%p name=%@", station, station.stationName);
+
+	    if (!station.didRestoreBlocks) {
+		NSLog(@"STILL RESTORING");
+		(void) [[TopAlert alloc] initWithMessage: @"Still restoring blocks"
+						duration: 2.0
+						viewCont: _vc];
+		return;
+	    }
 
 	    if (station == _playingStation) {
 		if (_player == nil) {

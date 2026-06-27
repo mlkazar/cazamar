@@ -12,6 +12,16 @@ Ideas for Radio app
 
 ========Todo========
 
+** fix +highlight button to add a new record if it can't find one
+
+** fix history not to add music to history while scrolling
+
+** warning when initially scanning streamed data
+
+-- record button with slider to select / or song selection
+
+-- random access by song name
+
 ** adjust colors for background fetch and provide option for turning off animations
 
 ** change default to always record

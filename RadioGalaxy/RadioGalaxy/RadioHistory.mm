@@ -35,6 +35,8 @@ static UIColor *_backgroundColor;
     UITableView *_tableView;
 }
 
+static const uint32_t _kMaxLookBack = 12;
+
 - (BOOL) anySelected
 {
     return ([_listTableSelections count] != 0);
@@ -701,7 +703,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     }
 
     /* suppress duplicates */
-    for(uint64_t i=1;i<12;i++) {
+    for(uint64_t i=1;i<_kMaxLookBack;i++) {
 	ix = count - i;
 	if (ix < 0)
 	    break;
@@ -709,6 +711,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	prev = [_histItems objectAtIndex: ix];
 	if ( [prev.station isEqualToString: station] &&
 	     [prev.song isEqualToString: song]) {
+	    prev.when = osp_time_sec();
 	    return;
 	}
     }
@@ -727,41 +730,54 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     [self saveEdits];
 }
 
-- (uint64_t) findLastItemInStation: (NSString *) stationName {
+- (uint64_t) findItemInStation: (NSString *) stationName
+			  song: (NSString *) song {
     uint64_t count;
-    int64_t ix;
+    uint64_t ix;
     MFANHistoryItem *item;
 
     count = [_histItems count];
+    // the song that's playing could be in any of the station's items
+    // up to _kMaxLookBack items, since we eliminate recent
+    // duplicates.  We want to find the one with the largest 'when'
+    // field.
+    //
+    // We look back _kMaxLookBack history items from the most recent
+    // entry for the station.
     for(ix = count - 1; ix >= 0; ix--) {
 	item = _histItems[ix];
-	if ( [item.station isEqualToString: stationName])
+
+	if ( [item.station isEqualToString: stationName] &&
+	     [item.song isEqualToString: song]) {
 	    return ix;
+	}
     }
 
     return ~0ULL;
 }
 
-- (void) toggleHighlightInStation: (NSString *) stationName;
+- (void) toggleHighlightInStation: (NSString *) stationName
+			     song: (NSString *) song
 {
     uint64_t ix;
     MFANHistoryItem *lastItem;
 
-    ix = [self findLastItemInStation: stationName];
+    ix = [self findItemInStation: stationName song: song];
     if (ix == ~0ULL)
 	return;
 
     lastItem = [_histItems objectAtIndex: ix];
     lastItem.highlighted = !lastItem.highlighted;
-    [_histItems replaceObjectAtIndex: ix withObject: lastItem];
+    // [_histItems replaceObjectAtIndex: ix withObject: lastItem];
 }
 
 - (BOOL) isHighlightedInStation: (NSString *) stationName
+			   song: (NSString *) song
 {
     uint64_t ix;
     MFANHistoryItem *lastItem;
 
-    ix = [self findLastItemInStation: stationName];
+    ix = [self findItemInStation: stationName song: song];
     if (ix == ~0ULL)
 	return false;
 
