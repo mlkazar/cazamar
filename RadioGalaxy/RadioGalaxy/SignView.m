@@ -14,6 +14,7 @@
 #import "GraphMath.h"
 #import "ManualStation.h"
 #import "EditStation.h"
+#import "Export.h"
 #import "HelpView.h"
 #import "MFANAqStream.h"
 #import "MFANFileWriter.h"
@@ -1143,6 +1144,16 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 				    handler:^(UIAlertAction *act) {
 	    Settings *settings = (Settings *)self->_vc.settings;
 	    [self->_vc pushTopView: settings];
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Export"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+	    if (self->_playingStation != nil) {
+		Export *export = [[Export alloc] initWithStation: self->_playingStation
+							viewCont: self->_vc];
+	    }
 	}];
     [alert addAction: action];
 
