@@ -114,8 +114,8 @@
     currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
     currentStartPosition = _buffer.firstPacketStartMs / 1000.0;
 
-    _sliderLabel.text = [self stringFromTime: currentStartPosition text:@"start"];
-    _middleLabel.text = [self stringFromTime: currentEndPosition text:@"end"];
+    _middleLabel.text = [self stringFromTime: currentStartPosition text:@"start"];
+    _sliderLabel.text = [self stringFromTime: currentEndPosition text:@"end"];
 
     _slider.minimumValue = currentStartPosition;
     _slider.maximumValue = currentEndPosition;

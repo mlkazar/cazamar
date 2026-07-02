@@ -9,6 +9,17 @@
 #import "ViewController.h"
 #import "SignView.h"
 
+@interface ExportEntry : NSObject
+@property NSString *song;
+@property NSString *alt;
+@property float start;
+@property float end;
+
+- (ExportEntry *) initWithStartTime: (float) start end: (float) end;
+
+- (void) setSong: (NSString *) song  alt: (NSString *) alt;
+@end
+
 @interface Export : UIView<TopViewInt, UITableViewDataSource, UITableViewDelegate>
 
 - (Export *) initWithStation: (SignStation *) station

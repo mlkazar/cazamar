@@ -11,6 +11,29 @@
 
 #include "osp.h"
 
+@implementation ExportEntry {
+    // all properties
+}
+
+- (ExportEntry *) initWithStartTime: (float) start end: (float) end {
+    self = [super init];
+    if (self != nil) {
+	self.start = start;
+	self.end = end;
+    }
+
+    return self;
+}
+
+- (void) setSong: (NSString *) song  alt: (NSString *) alt {
+    _song = song;
+    if (alt != nil) {
+	_alt = alt;
+    }
+}
+
+@end
+
 @implementation Export {
     ViewController *_vc;
     SignStation *_station;
@@ -20,11 +43,6 @@
     ExportSlider *_endSlider;
     UITableView *_songTable;
 
-    // tags
-    UILabel *_startLabel;
-    UILabel *_endLabel;
-    UILabel *_populateLabel;
-    
     // useful buttons
     MFANIconButton *_exportButton;
     MFANIconButton *_cancelButton;
@@ -115,7 +133,7 @@
 	[_songTable setAllowsMultipleSelection: YES];
 	[_songTable setDataSource: self];
 	[_songTable setDelegate: self];
-	[_songTable setRowHeight: labelHeight];
+	[_songTable setRowHeight: 1.2 * labelHeight];
 	[_songTable setSectionIndexMinimumDisplayRowCount: 20];
 	[_songTable setBackgroundColor: [UIColor whiteColor]];
 	_songTable.sectionIndexBackgroundColor = [UIColor clearColor];
@@ -143,15 +161,15 @@
 	startLabelFrame = startSliderFrame;
 	startLabelFrame.origin.x = 0;
 	startLabelFrame.size.width = 0.25 * frame.size.width;
-	_startLabel = [[UILabel alloc] initWithFrame: startLabelFrame];
-	_startLabel.backgroundColor = [UIColor whiteColor];
-	_startLabel.text = @"Start pos.";
-	_startLabel.textColor = [UIColor blackColor];
-	_startLabel.textAlignment = NSTextAlignmentLeft;
-	[self addSubview: _startLabel];
+	HelpLabel *startHelpLabel = [[HelpLabel alloc]
+					   initWithFrame: startLabelFrame
+						  target: self
+						selector: @selector(startHelp:)];
+	[startHelpLabel setTitle: @"Start time"
+			forState: UIControlStateNormal];
+	[self addSubview: startHelpLabel];
 
-
-	viewOffset += viewHeight;
+	viewOffset += 1.5 * viewHeight;
 	viewHeight = labelHeight;
 	endSliderFrame = frame;
 	endSliderFrame.origin.y = viewOffset;
@@ -174,22 +192,23 @@
 	endLabelFrame = endSliderFrame;
 	endLabelFrame.origin.x = 0;
 	endLabelFrame.size.width = 0.25 * frame.size.width;
-	_endLabel = [[UILabel alloc] initWithFrame: endLabelFrame];
-	_endLabel.backgroundColor = [UIColor whiteColor];
-	_endLabel.text = @"End pos.";
-	_endLabel.textColor = [UIColor blackColor];
-	_endLabel.textAlignment = NSTextAlignmentLeft;
-	[self addSubview: _endLabel];
+	HelpLabel *endHelpLabel = [[HelpLabel alloc]
+					   initWithFrame: endLabelFrame
+						  target: self
+						selector: @selector(endHelp:)];
+	[endHelpLabel setTitle: @"End time"
+		      forState: UIControlStateNormal];
+	[self addSubview: endHelpLabel];
 
 	// add populate button
-	viewOffset += viewHeight;
+	viewOffset += 1.5 * viewHeight;
 	viewHeight = labelHeight;
 
 	// Populate (from song list) contents button
 	populateTextFrame.origin.x = indent;
 	populateTextFrame.origin.y = viewOffset;
 	populateTextFrame.size.height = labelHeight;
-	populateTextFrame.size.width = textLabelWidth;
+	populateTextFrame.size.width = frame.size.width * 0.7;
 	HelpLabel *populateHelpLabel = [[HelpLabel alloc]
 					   initWithFrame: populateTextFrame
 						  target: self
@@ -322,11 +341,11 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     cell.multipleSelectionBackgroundView = backgroundView;
     cell.textLabel.text = @"textLabel";
     cell.textLabel.textColor = [UIColor blueColor];
-    cell.textLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 32];
+    cell.textLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 20];
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
     cell.detailTextLabel.text = @"Detailed info";
-    cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 16];
+    cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 10];
     cell.detailTextLabel.textColor = [UIColor colorWithRed: 0.0
 						     green: 0.5
 						      blue: 0.0
@@ -386,6 +405,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 - (void) populateHelp: (id) junk {
     NSLog(@"write populate help");
+}
+
+- (void) startHelp: (id) junk {
+}
+
+- (void) endHelp: (id) junk {
 }
 
 - (void) populatePressed: (id) junk {
