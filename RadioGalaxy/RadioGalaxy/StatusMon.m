@@ -22,6 +22,7 @@
 						      repeats: NO];
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
 		       ^{
+			   NSLog(@"=5= about to run block");
 			   block(self);
 			   dispatch_async(dispatch_get_main_queue(), ^{
 				   [self cleanup];

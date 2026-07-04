@@ -1170,7 +1170,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     pthread_cond_init(&_blockIoCv, NULL);
 
     _packetArray = [[NSMutableOrderedSet alloc] init];
-    _shuttingDown = NO;
     _haveProperties = NO;
     _lastPacketEndMs = 0;
     _packetDuration = 0.0;

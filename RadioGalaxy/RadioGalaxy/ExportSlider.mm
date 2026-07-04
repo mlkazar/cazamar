@@ -9,9 +9,9 @@
 
 @implementation ExportSlider {
     UISlider *_slider;
-    UILabel *_sliderLabel;
-    UILabel *_middleLabel;
+    UILabel *_midLabel;
     uint64_t _lastMusicSampleTime;
+    uint64_t _lastTouchMs;
     ViewController *_vc;
     MFANAqStreamBuffer *_buffer;
     NSTimer *_updateTimer;
@@ -50,6 +50,7 @@
 	_slider.continuous = true;
 	_slider.minimumTrackTintColor = [UIColor greenColor];
 	_slider.maximumTrackTintColor = [UIColor blueColor];
+
 	_slider.thumbTintColor = [UIColor colorWithRed: 0.0
 						 green: 1.0
 						  blue: 1.0
@@ -58,33 +59,30 @@
 	[_slider addTarget:self
 		    action:@selector(sliderValue:)
 	  forControlEvents:UIControlEventValueChanged];
+	[_slider addTarget:self
+		    action:@selector(sliderTouch:)
+	  forControlEvents:UIControlEventTouchDown];
 	[self addSubview: _slider];
 
 	// put in right half with a little extra space on right
-	labelFrame.origin.x = frame.size.width * 0.50;
+	labelFrame.origin.x = frame.size.width * 0.67;
 	labelFrame.origin.y = frame.size.height / 2;
-	labelFrame.size.width = frame.size.width * 0.48;
+	labelFrame.size.width = frame.size.width * 0.33;
 	labelFrame.size.height = frame.size.height / 2;
 
 	currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
 
-	_sliderLabel = [[UILabel alloc] initWithFrame:labelFrame];
-	_sliderLabel.text = [NSString stringWithFormat:@"%.f secs end",
-				      currentEndPosition];
-	[_sliderLabel setTextColor: [UIColor blackColor]];
-	_sliderLabel.textAlignment = NSTextAlignmentRight;
-	[self addSubview: _sliderLabel];
-
-	// first half, with a little extra space on left
-	labelFrame.origin.x = frame.size.width * 0.02;
-	_middleLabel = [[UILabel alloc] initWithFrame:labelFrame];
-	_middleLabel.text = [NSString stringWithFormat:@"%.f secs start",
-				      currentPosition];
-	[_middleLabel setTextColor: [UIColor blackColor]];
-	[self addSubview: _middleLabel];
-
 	_slider.maximumValue = currentEndPosition;
 	_slider.value = currentPosition;
+
+	labelFrame.origin.x = frame.size.width * 0.10;
+	labelFrame.size.width = frame.size.width * 0.80;
+
+	_midLabel = [[UILabel alloc] initWithFrame:labelFrame];
+	_midLabel.text = [self stringFromTime];
+	[_midLabel setTextColor: [UIColor blackColor]];
+	_midLabel.textAlignment = NSTextAlignmentCenter;
+	[self addSubview: _midLabel];
 
 	_updateTimer = [NSTimer scheduledTimerWithTimeInterval: 0.20
 							target: self
@@ -96,26 +94,33 @@
     return self;
 }
 
-- (NSString *) stringFromTime: (float) time text: (NSString *) text{
-    NSString *rval;
-    if (time >= 180) {
-	rval = [NSString stringWithFormat: @"%.f mins %@", time / 60.0, text];
-    } else {
-	rval = [NSString stringWithFormat: @"%.f secs %@", time, text];
-    }
+- (void) setValue: (float) newPosition  {
+    _slider.value = newPosition;
+
+    [self updateCallback];
+}
+
+- (float) getValue {
+    return _slider.value;
+}
+
+- (NSString *) stringFromTime {
+    float currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
+    float currentStartPosition = _buffer.firstPacketStartMs / 1000.0;
+
+    NSString *rval = [NSString stringWithFormat: @"%.f secs / %.f",
+			       _slider.value, currentEndPosition - currentStartPosition];
     return rval;
 }
 
 - (void) updateStats: (id) junk {
-    float currentPosition;
     float currentEndPosition;
     float currentStartPosition;
 
     currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
     currentStartPosition = _buffer.firstPacketStartMs / 1000.0;
 
-    _middleLabel.text = [self stringFromTime: currentStartPosition text:@"start"];
-    _sliderLabel.text = [self stringFromTime: currentEndPosition text:@"end"];
+    _midLabel.text = [self stringFromTime];
 
     _slider.minimumValue = currentStartPosition;
     _slider.maximumValue = currentEndPosition;
@@ -129,24 +134,33 @@
     _vc = nil;
 }
 
+- (void) sliderTouch: (UISlider *) slider {
+    uint64_t now = osp_time_ms();
+    _lastTouchMs = now;
+}
+
+- (void) updateCallback {
+    uint64_t now = osp_time_ms();
+
+    // if we ever set it to NaN, comparison in updateStats fails
+    if (now - _lastMusicSampleTime > 200) {
+	_callbackBlock(_slider.value);
+	_lastMusicSampleTime = now;
+    }
+}
+
 - (void) sliderValue:(UISlider *) slider {
     float currentEndPosition;
     float currentStartPosition;
 
     uint64_t now = osp_time_ms();
+    _lastTouchMs = now;
 
     currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
     currentStartPosition = _buffer.firstPacketStartMs / 1000.0;
     _slider.minimumValue = currentStartPosition;
     _slider.maximumValue = currentEndPosition;
 
-    float val = slider.value;
-    NSLog(@"slider value %f at %lld ms", val, now);
-
-    // if we ever set it to NaN, comparison in updateStats fails
-    if (now - _lastMusicSampleTime > 200) {
-	_callbackBlock(val);
-	_lastMusicSampleTime = now;
-    }
+    [self updateCallback];
 }
 @end

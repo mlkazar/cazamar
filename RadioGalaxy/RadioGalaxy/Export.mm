@@ -4,6 +4,7 @@
 #import "HelpLabel.h"
 #import "MFANAqStreamBuffer.h"
 #import "MFANCGUtil.h"
+#import "MFANCoreButton.h"
 #import "MFANIconButton.h"
 #import "MFANWarn.h"
 #import "SignView.h"
@@ -42,12 +43,18 @@
     ExportSlider *_startSlider;
     ExportSlider *_endSlider;
     UITableView *_songTable;
+    UIStepper *_stepper;
 
     // useful buttons
     MFANIconButton *_exportButton;
     MFANIconButton *_cancelButton;
     MFANIconButton *_populateSwitch;
     MFANIconButton *_doneButton;
+
+    MFANStreamPlayer *_samplePlayer;
+    NSTimer *_sampleTimer;
+
+    float _lastStepperValue;
 
     id _callbackObj;
     SEL _callbackSel;
@@ -76,14 +83,11 @@
 {
     // we get the frame from the view controller
     CGRect tableFrame;
-    CGRect labelFrame;
     CGRect buttonFrame;
     CGRect startSliderFrame;
     CGRect endSliderFrame;
     CGRect startLabelFrame;
     CGRect endLabelFrame;
-    CGRect populateTextFrame;
-    CGRect populateSwitchFrame;
     CGRect frame;
 
     self.frame = vc.activeFrame;
@@ -99,16 +103,16 @@
 
 	_vc = vc;
 	
-	UIColor *labelColor = [UIColor colorWithRed: 0.9
-					      green: 0.9
-					       blue: 0.9
+	UIColor *labelColor = [UIColor colorWithRed: 0.8
+					      green: 0.8
+					       blue: 0.8
 					      alpha: 1.0];
 	// layout the station name, descr, URL, rate+type
 	float boxHeight = frame.size.height * 0.06;
-	float boxWidth = frame.size.width * 0.60;
 	float labelHeight = boxHeight;
-	float labelWidth = frame.size.width * 0.35;
 	float okButtonWidth = labelHeight;
+	float buttonWidth = frame.size.width * 0.8;
+	float sliderLabelPct = 0.12;	// fraction used by the each slider's label
 
 	// 60% for the table
 	// 6% for start slider
@@ -119,10 +123,9 @@
 
 	// indent things so that we center the label and text box in
 	//the frame.
-	float indent = (frame.size.width - labelWidth - boxWidth) / 2;
 
 	float viewOffset = 0.0;
-	float viewHeight = 0.6 * frame.size.height;
+	float viewHeight = 0.45 * frame.size.height;
 
 	tableFrame = frame;
 	tableFrame.size.height = viewHeight;
@@ -147,8 +150,8 @@
 	startSliderFrame.size.height = viewHeight;
 
 	// and shrink to allow label
-	startSliderFrame.origin.x = 0.25 * frame.size.width;
-	startSliderFrame.size.width = 0.75 * frame.size.width;
+	startSliderFrame.origin.x = sliderLabelPct * frame.size.width;
+	startSliderFrame.size.width = (1.0 - sliderLabelPct) * frame.size.width;
 
 	_startSlider = [[ExportSlider alloc] initWithFrame: startSliderFrame
 						    buffer: _buffer
@@ -160,12 +163,12 @@
 
 	startLabelFrame = startSliderFrame;
 	startLabelFrame.origin.x = 0;
-	startLabelFrame.size.width = 0.25 * frame.size.width;
+	startLabelFrame.size.width = sliderLabelPct * frame.size.width;
 	HelpLabel *startHelpLabel = [[HelpLabel alloc]
 					   initWithFrame: startLabelFrame
 						  target: self
 						selector: @selector(startHelp:)];
-	[startHelpLabel setTitle: @"Start time"
+	[startHelpLabel setTitle: @"Start"
 			forState: UIControlStateNormal];
 	[self addSubview: startHelpLabel];
 
@@ -175,11 +178,9 @@
 	endSliderFrame.origin.y = viewOffset;
 	endSliderFrame.size.height = viewHeight;
 
-	float textLabelWidth = frame.size.width * 0.33;
-
 	// and shrink to allow label
-	endSliderFrame.origin.x = 0.25 * frame.size.width;
-	endSliderFrame.size.width = 0.75 * frame.size.width;
+	endSliderFrame.origin.x = sliderLabelPct * frame.size.width;
+	endSliderFrame.size.width = (1.0 - sliderLabelPct) * frame.size.width;
 
 	_endSlider = [[ExportSlider alloc] initWithFrame: endSliderFrame
 						  buffer: _buffer
@@ -191,43 +192,83 @@
 
 	endLabelFrame = endSliderFrame;
 	endLabelFrame.origin.x = 0;
-	endLabelFrame.size.width = 0.25 * frame.size.width;
+	endLabelFrame.size.width = sliderLabelPct * frame.size.width;
 	HelpLabel *endHelpLabel = [[HelpLabel alloc]
 					   initWithFrame: endLabelFrame
 						  target: self
 						selector: @selector(endHelp:)];
-	[endHelpLabel setTitle: @"End time"
+	[endHelpLabel setTitle: @"End"
 		      forState: UIControlStateNormal];
 	[self addSubview: endHelpLabel];
 
-	// add populate button
+	float currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
+	float currentStartPosition = _buffer.firstPacketStartMs / 1000.0;
+
+	// add stepper button
+	CGRect stepperFrame;
+	_lastStepperValue = 0.0;
+	viewOffset += 1.5 * viewHeight;
+	viewHeight = labelHeight;
+	stepperFrame = frame;
+	stepperFrame.origin.x = (frame.size.width - 100) / 2.0;
+	stepperFrame.size.width = 100;
+	stepperFrame.origin.y = viewOffset;
+	stepperFrame.size.height = labelHeight;
+	_stepper = [[UIStepper alloc] initWithFrame: stepperFrame];
+	_stepper.minimumValue = -1000000.0;
+	_stepper.maximumValue = 1000000.0;
+	_stepper.stepValue = 1.0;
+	_stepper.tintColor = [UIColor blueColor];
+	_stepper.backgroundColor = [UIColor colorWithRed: 0.8
+						   green: 0.8
+						    blue: 0.8
+						   alpha: 1.0];
+	_stepper.layer.cornerRadius = 16.0;
+	
+	[_stepper addTarget: self
+		     action:@selector(stepperChanged:)
+	   forControlEvents:UIControlEventAllEvents];
+	[self addSubview: _stepper];
+	_stepper.value = 0.0;
+
+	CGRect addButtonFrame;
+	viewOffset += 1.5 * viewHeight;
+	viewHeight = labelHeight;
+	addButtonFrame.origin.x = (frame.size.width - buttonWidth)/2.0;
+	addButtonFrame.origin.y = viewOffset;
+	addButtonFrame.size.height = labelHeight;
+	addButtonFrame.size.width = buttonWidth;
+
+	MFANCoreButton *addButton;
+	addButton = [[MFANCoreButton alloc] initWithFrame: addButtonFrame
+							 title: @"Border"
+							 color: [UIColor blackColor]
+					       backgroundColor: labelColor];
+	[addButton setFillColor: [UIColor whiteColor]];
+	[addButton setClearText: @"Add from range"];
+	[addButton addCallback: self
+			 withAction: @selector(addRangePressed:)];
+	[self addSubview: addButton];
+
 	viewOffset += 1.5 * viewHeight;
 	viewHeight = labelHeight;
 
-	// Populate (from song list) contents button
-	populateTextFrame.origin.x = indent;
-	populateTextFrame.origin.y = viewOffset;
-	populateTextFrame.size.height = labelHeight;
-	populateTextFrame.size.width = frame.size.width * 0.7;
-	HelpLabel *populateHelpLabel = [[HelpLabel alloc]
-					   initWithFrame: populateTextFrame
-						  target: self
-						selector: @selector(populateHelp:)];
-	[populateHelpLabel setTitle: @"Populate streamed buffer"
-			forState: UIControlStateNormal];
+	CGRect populateButtonFrame;
+	populateButtonFrame.origin.x = (frame.size.width - buttonWidth)/2.0;
+	populateButtonFrame.origin.y = viewOffset;
+	populateButtonFrame.size.height = labelHeight;
+	populateButtonFrame.size.width = buttonWidth;
 
-	[self addSubview: populateHelpLabel];
-
-	populateSwitchFrame = populateTextFrame;
-	populateSwitchFrame.origin.x = populateTextFrame.origin.x + populateTextFrame.size.width;
-	populateSwitchFrame.size.width = textLabelWidth;
-	_populateSwitch = [[MFANIconButton alloc] initWithFrame: populateSwitchFrame
-							  title: @"Populate from songs"
-							  color: [UIColor clearColor]
-							   file: @"icon-button.png"];
-	[_populateSwitch addCallback: self
-		       withAction: @selector(populatePressed:)];
-	[self addSubview: _populateSwitch];
+	MFANCoreButton *populateButton;
+	populateButton = [[MFANCoreButton alloc] initWithFrame: populateButtonFrame
+							 title: @"Border"
+							 color: [UIColor blackColor]
+					       backgroundColor: labelColor];
+	[populateButton setFillColor: [UIColor whiteColor]];
+	[populateButton setClearText: @"Fill from song names"];
+	[populateButton addCallback: self
+			 withAction: @selector(populatePressed:)];
+	[self addSubview: populateButton];
 
 	// OK button
 	buttonFrame.origin.y = frame.size.height - labelHeight;
@@ -266,16 +307,74 @@
     return self;
 }
 
+- (void) stepperChanged: (UIStepper *) stepper {
+    NSLog(@"%f value", stepper.value);
+
+    float diff = stepper.value - _lastStepperValue;
+    _lastStepperValue = stepper.value;
+
+    if (_startSlider.lastTouchMs >= _endSlider.lastTouchMs) {
+	[ _startSlider setValue: [_startSlider getValue] + diff];
+    } else {
+	[ _endSlider setValue: [_endSlider getValue] + diff];
+    }
+}
+
 - (void) playTo: (float) value {
+    static const float playDuration = 3.0;
+    float playTarget;
     NSLog(@"playto %f", value);
+    [self stopSample];
+
+    if (value < playDuration)
+	playTarget = 0.0;
+    else
+	playTarget = value - playDuration;
+
+    NSLog(@"starting player");
+    _samplePlayer = [[MFANStreamPlayer alloc]
+			initWithStreamBuffer: _buffer
+					  ms: (uint64_t) (playTarget * 1000)];
+    _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: playDuration
+						    target: self
+						  selector: @selector(stopSampleTimer:)
+						  userInfo: nil
+						   repeats: NO];
+}
+
+- (void) stopSample {
+    NSLog(@"in stopsample");
+    if (_sampleTimer != nil) {
+	[_sampleTimer invalidate];
+	_sampleTimer = nil;
+    }
+    if (_samplePlayer != nil) {
+	[_samplePlayer shutdown];
+	_samplePlayer = nil;
+    }
 }
 
 - (void) playFrom: (float) value {
-    NSLog(@"playfrom %f", value);
+    // make sure we stop anything already playing
+    [self stopSample];
+
+    NSLog(@"starting player");
+    _samplePlayer = [[MFANStreamPlayer alloc]
+			initWithStreamBuffer: _buffer
+					  ms: (uint64_t) (value*1000)];
+    _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: 3.0
+						    target:self
+						  selector:@selector(stopSampleTimer:)
+						  userInfo:nil
+						   repeats: NO];
+}
+
+- (void) stopSampleTimer: (id) junk{
+    NSLog(@"in stopsampletimer");
+    [self stopSample];
 }
 
 - (void) donePressed: (id) junk1 {
-    // [self doNotify];
     [_vc popTopView];
 }
 
@@ -415,6 +514,10 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 - (void) populatePressed: (id) junk {
     NSLog(@"write populate from file code");
+}
+
+- (void) addRangePressed: (id) junk {
+    NSLog(@"addRange pressed");
 }
 
 - (void) deactivateTopView {

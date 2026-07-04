@@ -72,6 +72,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) setupAudioSession: (BOOL) mix;
 
+- (void) pause;
+
 - (void) activateTopView;
 
 - (void) deactivateTopView;

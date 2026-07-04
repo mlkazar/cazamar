@@ -957,7 +957,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) slowInit {
     (void) [[StatusMon alloc]
 	       initWithMessage: @"Parsing streamed music"
-			 timer: 1.5
+			 timer: 4.0
 		      viewCont: _vc
 			 block: ^void (StatusMon *mon) {
 	    for(SignStation *station in self->_allStations) {
@@ -1151,8 +1151,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
 	    if (self->_playingStation != nil) {
-		Export *export = [[Export alloc] initWithStation: self->_playingStation
-							viewCont: self->_vc];
+		(void) [[Export alloc] initWithStation: self->_playingStation
+					      viewCont: self->_vc];
 	    }
 	}];
     [alert addAction: action];
@@ -1926,6 +1926,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 NS_ASSUME_NONNULL_END
+
+- (void) pause {
+    if (_player != nil) {
+	if (![_player isPaused]) {
+	    [_player pause];
+	}
+    }
+}
 
 - (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
    NSLog(@"- remotecontrolev = %d", (int) receivedEvent.type);
