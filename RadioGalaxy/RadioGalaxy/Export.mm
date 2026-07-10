@@ -7,7 +7,9 @@
 #import "MFANCoreButton.h"
 #import "MFANIconButton.h"
 #import "MFANWarn.h"
+#import "MarqueeLabel.h"
 #import "SignView.h"
+#import "TopView.h"
 #import "ViewController.h"
 
 #include "osp.h"
@@ -29,7 +31,7 @@
 - (void) setSong: (NSString *) song  alt: (NSString *) alt {
     _song = song;
     if (alt != nil) {
-	_alt = alt;
+	_altSong = alt;
     }
 }
 
@@ -51,6 +53,8 @@
     MFANIconButton *_populateSwitch;
     MFANIconButton *_doneButton;
 
+    MarqueeLabel *_marquee;
+
     MFANStreamPlayer *_samplePlayer;
     NSTimer *_sampleTimer;
 
@@ -59,7 +63,11 @@
     id _callbackObj;
     SEL _callbackSel;
     bool _didNotify;
+
+    NSMutableArray *_recordings;	// of ExportEntry objects
 }
+
+static const float _kPlayDuration = 4.0;
 
 - (void) setCallback: (id) obj withSel: (SEL) sel {
     _callbackObj = obj;
@@ -95,6 +103,7 @@
 
     self = [super initWithFrame: frame];
     if (self != nil) {
+	_recordings = [[NSMutableArray alloc] init];
 	_vc = vc;
 	_station = station;
 
@@ -113,6 +122,7 @@
 	float okButtonWidth = labelHeight;
 	float buttonWidth = frame.size.width * 0.8;
 	float sliderLabelPct = 0.12;	// fraction used by the each slider's label
+	float labelHeightFactor = 1.25;
 
 	// 60% for the table
 	// 6% for start slider
@@ -172,7 +182,7 @@
 			forState: UIControlStateNormal];
 	[self addSubview: startHelpLabel];
 
-	viewOffset += 1.5 * viewHeight;
+	viewOffset += labelHeightFactor * viewHeight;
 	viewHeight = labelHeight;
 	endSliderFrame = frame;
 	endSliderFrame.origin.y = viewOffset;
@@ -201,13 +211,25 @@
 		      forState: UIControlStateNormal];
 	[self addSubview: endHelpLabel];
 
-	float currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
-	float currentStartPosition = _buffer.firstPacketStartMs / 1000.0;
+	CGRect marqueeFrame;
+	viewOffset += labelHeightFactor * viewHeight;
+	viewHeight = labelHeight;
+
+	marqueeFrame = frame;
+	marqueeFrame.origin.y = viewOffset;
+	marqueeFrame.size.height = viewHeight;
+
+	_marquee = [[MarqueeLabel alloc] initWithFrame: marqueeFrame];
+	[_marquee setTextColor: [UIColor blackColor]];
+	[_marquee setTextAlignment: NSTextAlignmentCenter];
+	[_marquee setFont: [UIFont fontWithName: @"Arial-BoldMT" size: 30]];
+	[_marquee setText: @"[Unknown]"];
+	[self addSubview: _marquee];
 
 	// add stepper button
 	CGRect stepperFrame;
 	_lastStepperValue = 0.0;
-	viewOffset += 1.5 * viewHeight;
+	viewOffset += labelHeightFactor * viewHeight;
 	viewHeight = labelHeight;
 	stepperFrame = frame;
 	stepperFrame.origin.x = (frame.size.width - 100) / 2.0;
@@ -232,7 +254,7 @@
 	_stepper.value = 0.0;
 
 	CGRect addButtonFrame;
-	viewOffset += 1.5 * viewHeight;
+	viewOffset += labelHeightFactor * viewHeight;
 	viewHeight = labelHeight;
 	addButtonFrame.origin.x = (frame.size.width - buttonWidth)/2.0;
 	addButtonFrame.origin.y = viewOffset;
@@ -250,7 +272,7 @@
 			 withAction: @selector(addRangePressed:)];
 	[self addSubview: addButton];
 
-	viewOffset += 1.5 * viewHeight;
+	viewOffset += labelHeightFactor * viewHeight;
 	viewHeight = labelHeight;
 
 	CGRect populateButtonFrame;
@@ -265,7 +287,7 @@
 							 color: [UIColor blackColor]
 					       backgroundColor: labelColor];
 	[populateButton setFillColor: [UIColor whiteColor]];
-	[populateButton setClearText: @"Fill from song names"];
+	[populateButton setClearText: @"Add all recorded songs"];
 	[populateButton addCallback: self
 			 withAction: @selector(populatePressed:)];
 	[self addSubview: populateButton];
@@ -320,22 +342,30 @@
     }
 }
 
+- (void) retrieveNameAt: (float) time {
+    uint64_t ms = (uint64_t) (time * 1000);
+    NSString *song;
+
+    song = [_buffer nameAt: ms];
+    [_marquee setText: song];
+}
+
 - (void) playTo: (float) value {
-    static const float playDuration = 3.0;
     float playTarget;
     NSLog(@"playto %f", value);
     [self stopSample];
+    [self retrieveNameAt: value];
 
-    if (value < playDuration)
+    if (value < _kPlayDuration)
 	playTarget = 0.0;
     else
-	playTarget = value - playDuration;
+	playTarget = value - _kPlayDuration;
 
     NSLog(@"starting player");
     _samplePlayer = [[MFANStreamPlayer alloc]
 			initWithStreamBuffer: _buffer
 					  ms: (uint64_t) (playTarget * 1000)];
-    _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: playDuration
+    _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: _kPlayDuration
 						    target: self
 						  selector: @selector(stopSampleTimer:)
 						  userInfo: nil
@@ -357,12 +387,13 @@
 - (void) playFrom: (float) value {
     // make sure we stop anything already playing
     [self stopSample];
+    [self retrieveNameAt: value];
 
     NSLog(@"starting player");
     _samplePlayer = [[MFANStreamPlayer alloc]
 			initWithStreamBuffer: _buffer
 					  ms: (uint64_t) (value*1000)];
-    _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: 3.0
+    _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: _kPlayDuration
 						    target:self
 						  selector:@selector(stopSampleTimer:)
 						  userInfo:nil
@@ -400,7 +431,7 @@ commitEditingStyle: (UITableViewCellEditingStyle) style
 
 - (NSInteger) tableView: (UITableView *)tview numberOfRowsInSection: (NSInteger) section {
     // return count of # of rows of data we have
-    return 2;
+    return [_recordings count];
 }
 
 - (NSArray *) sectionIndexTitlesForTableView:(UITableView *) tview {
@@ -423,6 +454,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     unsigned int section;
     UITableViewCell *cell;
     UIView *backgroundView;
+    ExportEntry *ep;
 
     /* lookup section and row within section, all zero-based.  We
      * compute ix as the total depth into the combined array.  The
@@ -431,6 +463,8 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     section = (int) [path section];
     row = (int) [path row];
 
+    ep = _recordings[row];
+
     // index data by row
 
     cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle
@@ -438,12 +472,12 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     backgroundView = [[UIView alloc] init];
     backgroundView.backgroundColor = [UIColor clearColor];
     cell.multipleSelectionBackgroundView = backgroundView;
-    cell.textLabel.text = @"textLabel";
+    cell.textLabel.text = ep.song;
     cell.textLabel.textColor = [UIColor blueColor];
     cell.textLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 20];
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
-    cell.detailTextLabel.text = @"Detailed info";
+    cell.detailTextLabel.text = ep.altSong;
     cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 10];
     cell.detailTextLabel.textColor = [UIColor colorWithRed: 0.0
 						     green: 0.5
@@ -451,10 +485,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 						     alpha: 1.0];
     cell.detailTextLabel.adjustsFontSizeToFitWidth = YES;
 
-    if (true)
-	cell.accessoryType = UITableViewCellAccessoryCheckmark;
-    else
-	cell.accessoryType = UITableViewCellAccessoryNone;
+    cell.accessoryType = UITableViewCellAccessoryNone;
 
     // can set cell.imageView if necessary
 
@@ -471,29 +502,33 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 - (UISwipeActionsConfiguration *) tableView: (UITableView *) tview
 trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 {
-    // long row = [path row];
+    long row = [path row];
 
-    NSString *playString;
-
-    if (true) {
-	playString = @"Stop Sampling";
-    } else {
-	playString = @"Sample";
-    }
-
-    UIContextualAction *playAction =
+    UIContextualAction *exportAction =
 	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
-						title:playString
+						title:@"Export"
 					      handler:^(UIContextualAction *action,
 							UIView *sourceView,
 							void (^complete)(BOOL)) {
 		// do the work for the action
-		NSLog(@"action run");
+		NSLog(@"performe export work");
+		[self saveFile: self->_recordings[row]];
+		complete(true);
+	    }];
+    exportAction.backgroundColor = [UIColor greenColor];
+
+    UIContextualAction *playAction =
+	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+						title:@"Play"
+					      handler:^(UIContextualAction *action,
+							UIView *sourceView,
+							void (^complete)(BOOL)) {
+		// do the work for the action
+		NSLog(@"performe play work");
 		complete(true);
 	    }];
     playAction.backgroundColor = [UIColor blueColor];
-
-    return [UISwipeActionsConfiguration configurationWithActions: @[playAction]];
+    return [UISwipeActionsConfiguration configurationWithActions: @[exportAction, playAction]];
 }
 
 - (void) activateTopView {
@@ -516,8 +551,75 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     NSLog(@"write populate from file code");
 }
 
+- (void) promptFor: (NSString *) prompt
+	   default:(NSString *) def
+	   handler: (PromptContinuation) continueAt {
+    UIAlertController *alert;
+    alert = [UIAlertController alertControllerWithTitle: @"RadioGalaxy"
+						message: prompt
+					 preferredStyle: UIAlertControllerStyleAlert];
+
+    [alert  addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+	    textField.text = def;
+	    textField.placeholder = @"";
+	    textField.secureTextEntry = NO; // Set to YES for passwords
+	    NSLog(@"=6= setup %@", textField.text);
+	}];
+
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Save"
+						     style: UIAlertActionStyleDefault
+						   handler:^(UIAlertAction *act) {
+	    UITextField *field = alert.textFields.firstObject;
+	    NSLog(@"=6=  %@ TODO call saveFile with right ep", field.text);
+	    continueAt(field.text);
+	    }];
+
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle: @"Cancel"
+				      style: UIAlertActionStyleCancel
+				    handler:^(UIAlertAction *action) {
+	}];
+    [alert addAction: action];
+
+    [_vc presentViewController: alert animated:YES completion: nil];
+}
+
 - (void) addRangePressed: (id) junk {
-    NSLog(@"addRange pressed");
+    ExportEntry *ep;
+    float startTime;
+    float endTime;
+    float midTime;
+    NSString *song;
+
+    startTime = [_startSlider getValue];
+    endTime = [_endSlider getValue];
+    midTime = (startTime + endTime) / 2;
+    if (startTime >= endTime) {
+	(void) [[TopAlert alloc]
+		   initWithMessage: @"Start time (slider) must be earlier than end"
+			  duration: 10.0
+			  viewCont: _vc];
+	return;
+    }
+
+    song = [_buffer nameAt: (uint64_t)(midTime * 1000)];
+
+    ep = [[ExportEntry alloc] initWithStartTime: startTime end: endTime];
+    if ([song length] == 0 || [song isEqualToString:@"[Unknown]"]) {
+	song = @"";
+    }
+
+    // I guess this is easier than building an entire screen to push
+    // into the viewcontroller's stack, but I'm not sure.
+    [self promptFor:@"Song name" default: song handler:^(NSString *value) {
+	    NSLog(@"=6= in addrangepart2 with %@", value);
+	    if ([value length] == 0)
+		return;
+	    ep.song = value;
+	    [self->_recordings addObject: ep];
+	    [self->_songTable reloadData];
+	}];
 }
 
 - (void) deactivateTopView {
@@ -526,6 +628,125 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     [_endSlider shutdown];
     _endSlider = nil;
     return;
+}
+
+- (NSString *) generateName: (ExportEntry *) ep isMp3: (bool) isMp3 {
+    NSString *entryName;
+    NSArray<NSString *> *parsed = [ep.song componentsSeparatedByString: @"-"];
+    uint64_t parsedCount = [parsed count];
+
+    if (parsedCount == 0)
+	return (isMp3? @"Unknown.mp3" : @"Unknown.aac");
+    entryName = [parsed[parsedCount-1] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+    entryName = [entryName stringByAppendingString: (isMp3? @".mp3" : @".aac")];
+    return fileNameForDoc(entryName);
+}
+
+- (void) finishMp3File: (FILE *) filep
+		 entry: (ExportEntry *) ep {
+    char tbuffer[130];
+    char *tp;
+
+    /* put out old style MP3 trailer (easiest to do) */
+    memset(tbuffer, 0, sizeof(tbuffer));
+    tp = tbuffer;
+
+    *tp++ = 'T';	/* id3v1 tag */
+    *tp++ = 'A';
+    *tp++ = 'G';
+
+    strcpy(tp, "Unknown title");
+    tp += 30;
+    strcpy(tp, "Unknown artist");
+    tp += 30;
+    strcpy(tp, "Unknown album");
+    tp += 30;
+
+    /* write out recordingYear */
+    uint32_t recordingYear = 2026;
+    *tp++ = (recordingYear/1000) + '0';	/* fails at year 10000 */
+    *tp++ = ((recordingYear/100) % 10) + '0';
+    *tp++ = ((recordingYear/10) % 10) + '0';
+    *tp++ = (recordingYear % 10) + '0';
+
+    /* comment */
+    strcpy(tp, "Saved by RadioGalaxy");
+    tp += 30;
+
+    *tp++ = 96;	/* big band :-) */
+
+    /* write out MP3 v1 tag */
+    fwrite(tbuffer, 1, 128, filep);
+}
+
+- (int32_t) saveFile: (ExportEntry *) ep {
+    const char *fileNamep;
+    NSString *fileName;
+    FILE *filep = nullptr;
+    MFANAqStreamReader *reader;
+    MFANAqStreamPacket *p;
+    AudioStreamBasicDescription dataFormat;
+    bool isMp3;
+    uint64_t bytesWritten;
+    uint64_t byteCount;
+    uint64_t packetSize;
+    uint64_t endMs;
+    int64_t code;
+    NSMutableData *adtsHeader;
+
+    [_buffer getDataFormat: &dataFormat];
+    isMp3 = (dataFormat.mFormatID == '.mp3');
+
+    reader = [[MFANAqStreamReader alloc]
+		  initWithBuffer: _buffer];
+    [reader seek: (uint64_t) (ep.start * 1000) whence: 0];
+    reader.noWait = true;
+
+    fileName = [self generateName: ep isMp3: isMp3];
+    fileNamep = [fileName cStringUsingEncoding: NSUTF8StringEncoding];
+
+    filep = fopen(fileNamep, "w");
+    if (filep == nullptr) {
+	return -1;
+    }
+
+    endMs = (uint64_t)(ep.end * 1000);
+    while(true) {
+	p = [reader read];
+	if (p == nil)
+	    break;
+	if (p.startMs >= endMs)
+	    break;
+	packetSize = [p getLength];
+
+	// if AAC file, write out the ADTS header, which we retrieve from
+	// the buffer.
+	if (!isMp3) {
+	    // must be aac
+	    adtsHeader = [_buffer getAdtsHeaderForLength: (int32_t) packetSize];
+	    byteCount = adtsHeader.length;
+	    bytesWritten = fwrite([adtsHeader bytes], 1, byteCount, filep);
+	    if (bytesWritten != byteCount)
+		return -1;
+	}
+
+	bytesWritten = fwrite([p getData], 1, packetSize, filep);
+	if (bytesWritten != packetSize) {
+	    [reader close];
+	    return -1;
+	}
+    }
+
+    if (isMp3) {
+	[self finishMp3File: filep entry: ep];
+    }
+
+    code = fflush(filep);
+    fsync(fileno(filep));
+    code = fclose(filep);
+
+    return 0;
 }
 
 @end

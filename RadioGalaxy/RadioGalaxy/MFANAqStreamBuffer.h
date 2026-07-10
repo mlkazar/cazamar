@@ -23,7 +23,6 @@
 @property int writeFd;
 
 - (MFANAqStreamFile *) init;
-
 @end
 
 @interface MFANAqStreamPacket : NSObject
@@ -60,6 +59,7 @@
 @property MFANAqStreamBuffer *streamBuffer;
 @property uint32_t packetStreamVersion;
 @property uint64_t recordMs;
+@property bool noWait;
 @property AudioStreamPacketDescription descr;
 
 - (MFANAqStreamPacket *) read;
@@ -96,6 +96,7 @@
 
 - (BOOL) validContents;
 
+- (uint32_t) findPacketIx: (uint64_t) ms;
 @end
 
 // ---------------------------------------------------------------------------
@@ -222,9 +223,14 @@
 
 - (void) unpin: (MFANAqStreamBlock *) block;
 
-- (void) setDataFormat: (AudioStreamBasicDescription *) descr;
+- (void) setDataFormat: (AudioStreamBasicDescription *) descr
+	    adtsHeader: (char *) header;
 
 - (void) getDataFormat: (AudioStreamBasicDescription *) descr;
+
+- (NSMutableData *) getAdtsHeaderForLength: (int32_t) rawLen;
+
+- (NSString *) nameAt: (uint64_t) ms;
 
 - (MFANAqStreamBlock *) pin: (MFANAqStreamBlock *) block;
 

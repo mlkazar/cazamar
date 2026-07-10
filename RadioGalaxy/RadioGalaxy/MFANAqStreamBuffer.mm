@@ -19,7 +19,7 @@ static pthread_mutex_t _bufferMutex;
 static const uint32_t _kBytesPerBlock = 16*1024;
 static const uint32_t _kTrailerBytes = 2;
 static const uint16_t _kMagic = 0x0301;			// for records
-static const uint16_t _kFileMagic = 0x0302;		// for the whole file
+static const uint16_t _kFileMagic = 0x0303;		// for the whole file
 static const uint16_t _kTrailerMagic = 0x0924;
 static const uint32_t _kMaxValidBlocks = 32;
 static const uint32_t _kMaxDiskPct = 50;		// maximum unused disk space before reclaim
@@ -157,6 +157,7 @@ class MFANAqStreamBlockHolder {
     uint32_t _packetIx;                   // index of the next packet to read
     bool _closed;
     MFANAqStreamBlock *_pinned;		// pinned block
+    bool _noWait;
 }
 
 - (void) dealloc {
@@ -191,7 +192,8 @@ class MFANAqStreamBlockHolder {
 	    _packetIx = 0;
 	}
 
-	_closed = NO;
+	_closed = false;
+	_noWait = false;
 
 	pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
     }
@@ -204,27 +206,6 @@ class MFANAqStreamBlockHolder {
 // parameters.
 - (bool) indicesAreValid {
     return ([_streamBuffer blockIx: _blockIx packetIx: _packetIx containsMs: _recordMs]);
-}
-
-// Called with bufferMutex held.
-// Returns the index of the first packet with startMs >= ms.
-- (uint32_t) findPacketIx: (uint64_t) ms inBlock: (MFANAqStreamBlock *) block {
-    uint32_t ix;
-    MFANAqStreamPacket *packet;
-
-    // caller should have done this for us
-    osp_assert([block validContents]);
-
-    for(ix = 0; ix < [block.packetArray count]; ix++) {
-        packet = block.packetArray[ix];
-        if (packet.startMs >= ms)
-            break;
-    }
-
-    NSLog(@"findPacketIx for %lld ms off=%llx returns pix=%u/%u ms=%lld",
-	  ms, block.fileOffset, ix, (uint32_t) [block.packetArray count],
-	  packet.startMs);
-    return ix;
 }
 
 - (void) updatePinnedBlock: (MFANAqStreamBlock *) block {
@@ -241,7 +222,7 @@ class MFANAqStreamBlockHolder {
 
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
     block = [_streamBuffer findBlockAtMs: ms setIndex:&_blockIx];
-    _packetIx = [self findPacketIx: ms inBlock: block];
+    _packetIx = [block findPacketIx: ms];
     packetCount = (uint32_t) [block.packetArray count];
 
     // seek to last packet available near our seek point.
@@ -296,7 +277,7 @@ class MFANAqStreamBlockHolder {
 
         if (!self.indicesAreValid) {
 	    block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&blockIx];
-	    packetIx = [self findPacketIx: _recordMs inBlock: block];
+	    packetIx = [block findPacketIx: _recordMs];
         } else {
 	    blockIx = _blockIx;
 	    packetIx = _packetIx;
@@ -377,7 +358,7 @@ class MFANAqStreamBlockHolder {
 
     if (!self.indicesAreValid) {
 	block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&blockIx];
-	packetIx = [self findPacketIx: _recordMs inBlock: block];
+	packetIx = [block findPacketIx: _recordMs];
     } else {
 	blockIx = _blockIx;
 	packetIx = _packetIx;
@@ -436,7 +417,7 @@ class MFANAqStreamBlockHolder {
 
         if (!self.indicesAreValid) {
 	    block = [_streamBuffer findBlockAtMs: _recordMs setIndex:&_blockIx];
-	    _packetIx = [self findPacketIx: _recordMs inBlock: block];
+	    _packetIx = [block findPacketIx: _recordMs];
 	    NSLog(@"read index !valid, using bix=%d pix=%d baseMs=%lld o=%llx (recordMs=%lld)",
 		  _blockIx, _packetIx, block.baseMs, block.fileOffset, _recordMs);
         } else {
@@ -465,7 +446,13 @@ class MFANAqStreamBlockHolder {
         if ( _blockIx > lastBlockIx ||
 	     (_blockIx == lastBlockIx &&
 	      _packetIx >= packetCount)) {
-            // No packet at the current index.
+
+            // No packet at the current index.  Handle nowait case first.
+	    if (_noWait) {
+		pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+		return nil;
+	    }
+
 	    NSLog(@"read waiting for more data bix=%d pix=%d", _blockIx, _packetIx);
             pthread_cond_wait([_streamBuffer packetArrayCv], [MFANAqStreamBuffer bufferMutex]);
             continue;
@@ -563,6 +550,24 @@ class MFANAqStreamBlockHolder {
     return _valid || !_sealed;
 }
 
+- (uint32_t) findPacketIx: (uint64_t) ms {
+    uint32_t ix;
+    MFANAqStreamPacket *packet;
+
+    // caller should have done this for us
+    osp_assert([self validContents]);
+
+    for(ix = 0; ix < [_packetArray count]; ix++) {
+        packet = _packetArray[ix];
+        if (packet.startMs >= ms)
+            break;
+    }
+
+    NSLog(@"findPacketIx for %lld ms off=%llx returns pix=%u/%u ms=%lld",
+	  ms, _fileOffset, ix, (uint32_t) [_packetArray count],
+	  packet.startMs);
+    return ix;
+}
 @end
 
 // ---------------------------------------------------------------------------
@@ -601,7 +606,17 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     int _gcOldFd;
     int _gcNewFd;
 
+    // We keep a copy of the dataFormat (for the whole file) and the
+    // adtsHeader (for AAC files) in a header, to use if the network
+    // stream isn't available.  These fields are initalized from the
+    // file's header block, and updated (along with the header block)
+    // if a network stream starts up.
     AudioStreamBasicDescription _dataFormat;
+
+    // we save a prototype of the stream's ADTS header, with the
+    // length zeroed and the 'CRC not present' flag set, to use if the
+    // network stream isn't available.
+    char _adtsHeader[7];
 }
 
 + (pthread_mutex_t *) bufferMutex {
@@ -684,6 +699,34 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     }
 
     return false;
+}
+
+- (NSString *) nameAt: (uint64_t) ms {
+    MFANAqStreamBlock *block;
+    uint32_t blockIx;
+    uint32_t packetIx;
+    MFANAqStreamPacket *packet;
+    NSString *rval;
+    uint32_t packetCount;
+
+    pthread_mutex_lock(&_bufferMutex);
+    block = [self findBlockAtMs: ms setIndex:&blockIx];
+    packetIx = [block findPacketIx: ms];
+    packetCount = (uint32_t) [block.packetArray count];
+
+    if (packetCount == 0) {
+	return @"";
+    } else if (packetIx >= packetCount)
+	packet = block.packetArray[packetCount-1];
+    else {
+	packet = block.packetArray[packetIx];
+    }
+
+    rval = packet.playingSong;
+
+    pthread_mutex_unlock(&_bufferMutex);
+
+    return rval;
 }
 
 // these functions not only return a block, but ensure that its
@@ -903,7 +946,17 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     datap += 2;
 
     memcpy(&_dataFormat, datap, sizeof(_dataFormat));
+    datap += sizeof(_dataFormat);
     [self deriveDataFormatProperties];
+
+    memcpy(&shortTemp, datap, 2);
+    datap += 2;
+    if (shortTemp == 7) {
+	memcpy(_adtsHeader, datap, 7);
+    } else {
+	memset(_adtsHeader, 0, sizeof(_adtsHeader));
+    }
+    datap += shortTemp;
 
     return 0;
 }
@@ -915,12 +968,22 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
     char *datap = diskBlock.data();
     char *writeDatap = datap;
+    memset(datap, 0, _kBytesPerBlock);
 
     shortTemp = _kFileMagic;
     memcpy(datap, &shortTemp, sizeof(shortTemp));
     datap += 2;
 
+    // information for the whole file's encoding.
     memcpy(datap, &_dataFormat, sizeof(_dataFormat));
+    datap += sizeof(_dataFormat);
+
+    // AAC per-record ADTS prototype (with length field zeroed).
+    shortTemp = sizeof(_adtsHeader);
+    memcpy(datap, &shortTemp, 2);
+    datap += 2;
+    memcpy(datap, _adtsHeader, sizeof(_adtsHeader));
+    datap += sizeof(_adtsHeader);
 
     lseek(_streamFile.writeFd, 0, SEEK_SET);
     bytesWritten = (int32_t) write(_streamFile.writeFd, writeDatap, _kBytesPerBlock);
@@ -1181,6 +1244,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     _validBlocks = 0;
     _dirtyBlocks = 0;
     _fileSize = 2*_kBytesPerBlock;
+    memset(&_adtsHeader, 0, sizeof(_adtsHeader));
 
     _streamFile = [[MFANAqStreamFile alloc] init];
 
@@ -1783,8 +1847,11 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	  _frameDuration, _packetDuration);
 }
 
-- (void) setDataFormat: (AudioStreamBasicDescription *) descr {
+- (void) setDataFormat: (AudioStreamBasicDescription *) descr
+	    adtsHeader: (char *) headerp {
     _dataFormat = *descr;
+    memcpy(_adtsHeader, headerp, sizeof(_adtsHeader));
+
     [self deriveDataFormatProperties];
     [self updateHeaderBlock];
 }
@@ -1820,6 +1887,20 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
 - (void) getDataFormat: (AudioStreamBasicDescription *) format {
     *format = _dataFormat;
+}
+
+- (NSMutableData *) getAdtsHeaderForLength: (int32_t) rawLen {
+    char *datap;
+    uint32_t len = rawLen + sizeof(_adtsHeader);
+    NSMutableData *data = [[NSMutableData alloc]
+			      initWithBytes: _adtsHeader
+				     length: sizeof(_adtsHeader)];
+    datap = (char *) [data mutableBytes];
+    datap[1] |= 0x1;	// turn on 'no crc' flag
+    datap[3] |= (len >> 11) & 0x3F;
+    datap[4] = (len >> 3) & 0xFF;	// replacing all bits in byte
+    datap[5] |= (len & 0x7) << 5;
+    return data;
 }
 
 @end

@@ -11,7 +11,7 @@
 
 @interface ExportEntry : NSObject
 @property NSString *song;
-@property NSString *alt;
+@property NSString *altSong;
 @property float start;
 @property float end;
 
@@ -21,6 +21,8 @@
 @end
 
 @interface Export : UIView<TopViewInt, UITableViewDataSource, UITableViewDelegate>
+
+typedef void (^PromptContinuation)(NSString *value);
 
 - (Export *) initWithStation: (SignStation *) station
 		    viewCont: (ViewController *) vc;

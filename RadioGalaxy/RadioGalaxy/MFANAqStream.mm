@@ -69,6 +69,9 @@ static pthread_mutex_t _streamMutex;
     MFANAqStreamBuffer *_buffer;
 
     ViewController *_vc;
+
+    char _adtsHeader[7];
+    uint8_t _adtsCount;
 }
 
 - (MFANAqStreamBuffer *) buffer {
@@ -115,7 +118,12 @@ MFANAqStream_PropertyProc( void *contextp,
 
         NSLog(@"PropertyProc has properties");
 
-	[aqp->_buffer setDataFormat: &fmt];
+	// make sure we've received the adtsHeader already.  If so,
+	// save a prototype of the adtsHeader.
+	osp_assert(aqp->_adtsCount == sizeof(aqp->_adtsHeader));
+	[aqp->_buffer
+	    setDataFormat: &fmt
+	    adtsHeader: aqp->_adtsHeader];
     }
 }
 
@@ -131,6 +139,7 @@ MFANAqStream_PacketsProc( void *contextp,
     uint32_t bytesCopied;
     uint32_t packetsCopied;
     uint32_t durationMs;
+    uint32_t copiedOffset;
 
     if (!aqp->_buffer.haveProperties) {
         NSLog(@"! MFANAqStream data received before properties callback");
@@ -146,8 +155,19 @@ MFANAqStream_PacketsProc( void *contextp,
         NSLog(@"AqStream parser received %d bytes w %d packets", numBytes, numPackets);
     }
 
+    // A little tricky here for AAC files.  When saving files from MP3
+    // streams, you just concatenate all the packet data (data being
+    // from mStartOffset for mDataByteSize) and finally append a
+    // trailer giving some identifying metadata.  The packet
+    // description information is encoded in the packet data.
+    //
+    // But for AAC files, that same packet data is preceded by some
+    // metadata that provides that packetDescription and that data
+    // needs to be written to the file ahead of the actual packet
+    // data.
     packetsCopied = 0;
     bytesCopied = 0;
+    copiedOffset = 0;
     for(uint32_t i = 0; i < numPackets; i++) {
         int64_t packetOffset        = packetsp[i].mStartOffset;
         int64_t packetSize          = packetsp[i].mDataByteSize;
@@ -221,6 +241,33 @@ MFANAqStream_rsDataProc(void *contextp, RadioStream *radiop, char *bufferp, int3
     }
     else {
         aqp->_lastDataBytes += nbytes;
+    }
+
+    // accumulate the first 7 bytes of the stream.  If this is an AAC
+    // stream, this is a 7 or 9 byte ADTS header, and we'll need to
+    // add ADTS headers to each audio packet when writing the file
+    // out.  At this point, we don't actually know if this is an AAC file or an
+    // MP3, so we save these bytes just in case it turns out to be AAC.
+    if (aqp->_adtsCount < sizeof(aqp->_adtsHeader)) {
+
+	uint8_t bytesToCopy = sizeof(aqp->_adtsHeader) - aqp->_adtsCount;
+	if (nbytes < bytesToCopy)
+	    bytesToCopy = nbytes;
+
+	memcpy(aqp->_adtsHeader + aqp->_adtsCount, bufferp, bytesToCopy);
+	aqp->_adtsCount += bytesToCopy;
+	if (aqp->_adtsCount == sizeof(aqp->_adtsHeader)) {
+	    // turn on 'CRC not present' flag
+	    aqp->_adtsHeader[1] |= 1;
+
+	    // zero length bits
+	    aqp->_adtsHeader[3] &= 0xC0;// highest 6 bits of length in
+					// lowest 6 bits
+	    aqp->_adtsHeader[4] = 0;	// next 8 bits of packet
+					// length
+	    aqp->_adtsHeader[5] &= 0x1F;// least significant 3 bits
+					// present in top 3 bits
+	}
     }
 
     /* create the AudioFileStream parser once we know the content type */
@@ -331,6 +378,8 @@ MFANAqStream_rsControlProc( void *contextp,
         // Create the buffer first; it initialises the shared mutex.
         _buffer = buffer;
 	_vc = vc;
+
+	_adtsCount = 0;
 
         _shuttingDown = NO;
         _audioStreamHandle = 0;
