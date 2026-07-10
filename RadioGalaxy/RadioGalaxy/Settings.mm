@@ -553,7 +553,7 @@ Settings *_globalSettings;
     
     snprintf(tbuffer, sizeof(tbuffer), "%6lu", (long) _keepStreamingAfterCarPlay);
     attrNodep = new Xgml::Attr();
-    attrNodep->init("keepStreamingAfterPlay", tbuffer);
+    attrNodep->init("keepStreamingAfterCarPlay", tbuffer);
     rootNodep->appendAttr(attrNodep);
     
     snprintf(tbuffer, sizeof(tbuffer), "%6lu", (long) _streamBufferMinutes);
