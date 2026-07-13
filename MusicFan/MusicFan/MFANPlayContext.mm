@@ -241,7 +241,6 @@ static const int _maxFileSize = 1024*1024;
     float playOffset;
     int32_t code;
     MFANScanItem *scanItem;
-    int overflow;
     struct stat tstat;
 
     xgmlp = new Xgml();
@@ -256,24 +255,16 @@ static const int _maxFileSize = 1024*1024;
     filep = fopen([_associatedFile cStringUsingEncoding: NSUTF8StringEncoding], "r");
     if (!filep)
 	return;
-    origBufferp = tbufferp = (char *) malloc(_maxFileSize);
+    origBufferp = tbufferp = (char *) malloc(tstat.st_size+1);
     bytesRead = 0;
     tp = tbufferp;
-    overflow = 0;
     while (1) {
-	if (bytesRead >= _maxFileSize-1) {
-	    overflow = 1;
-	    break;
-	}
 	tc = fgetc(filep);
 	if (tc < 0) {
 	    break;
 	}
 	*tp++ = tc;
 	bytesRead++;
-    }
-    if (overflow) {
-	return;
     }
     *tp++ = 0;
 
