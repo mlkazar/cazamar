@@ -23,6 +23,7 @@
     if (self != nil) {
 	self.start = start;
 	self.end = end;
+	self.saved = false;
     }
 
     return self;
@@ -503,19 +504,38 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 {
     long row = [path row];
+    ExportEntry *ep = self->_recordings[row];
 
-    UIContextualAction *exportAction =
-	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
-						title:@"Export"
-					      handler:^(UIContextualAction *action,
-							UIView *sourceView,
-							void (^complete)(BOOL)) {
-		// do the work for the action
-		NSLog(@"performe export work");
-		[self saveFile: self->_recordings[row]];
-		complete(true);
-	    }];
-    exportAction.backgroundColor = [UIColor greenColor];
+    UIContextualAction *exportAction;
+    if (!ep.saved) {
+	exportAction =
+	    [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+						    title:@"Export"
+						  handler:^(UIContextualAction *action,
+							    UIView *sourceView,
+							    void (^complete)(BOOL)) {
+		    // do the work for the action
+		    NSLog(@"performe export work");
+		    [self saveFile: ep];
+		    complete(true);
+		}];
+	exportAction.backgroundColor = [UIColor greenColor];
+    } else {
+	exportAction =
+	    [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+						    title:@"Delete"
+						  handler:^(UIContextualAction *action,
+							    UIView *sourceView,
+							    void (^complete)(BOOL)) {
+		    // do the work for the action
+		    NSLog(@"performe delete work");
+		    [self removeFile: ep];
+		    [self->_recordings removeObjectAtIndex:row];
+		    [self->_songTable reloadData];
+		    complete(true);
+		}];
+	exportAction.backgroundColor = [UIColor redColor];
+    }
 
     UIContextualAction *playAction =
 	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
@@ -528,6 +548,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		complete(true);
 	    }];
     playAction.backgroundColor = [UIColor blueColor];
+
     return [UISwipeActionsConfiguration configurationWithActions: @[exportAction, playAction]];
 }
 
@@ -619,6 +640,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    ep.song = value;
 	    [self->_recordings addObject: ep];
 	    [self->_songTable reloadData];
+	    [self saveFile: ep];
 	}];
 }
 
@@ -678,6 +700,24 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     /* write out MP3 v1 tag */
     fwrite(tbuffer, 1, 128, filep);
+}
+
+- (int32_t) removeFile: (ExportEntry *) ep {
+    NSString *fileName;
+    AudioStreamBasicDescription dataFormat;
+    bool isMp3;
+
+    [_buffer getDataFormat: &dataFormat];
+    isMp3 = (dataFormat.mFormatID == '.mp3');
+
+    fileName = [self generateName: ep isMp3: isMp3];
+
+    bool success = [[NSFileManager defaultManager] removeItemAtPath: fileName
+							      error: nil];
+    if (success)
+	return 0;
+    else
+	return -1;
 }
 
 - (int32_t) saveFile: (ExportEntry *) ep {
@@ -745,6 +785,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     code = fflush(filep);
     fsync(fileno(filep));
     code = fclose(filep);
+
+    ep.saved = true;
 
     return 0;
 }

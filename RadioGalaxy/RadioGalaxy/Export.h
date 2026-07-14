@@ -14,6 +14,7 @@
 @property NSString *altSong;
 @property float start;
 @property float end;
+@property bool saved;
 
 - (ExportEntry *) initWithStartTime: (float) start end: (float) end;
 

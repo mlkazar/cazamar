@@ -18,9 +18,12 @@ Ideas for Radio app
 
 ** warning when initially scanning streamed data
 
--- record button with slider to select / or song selection
+-- preserve recording info per stastion, with ExportInfo object holding
+   our _recordings mutable array.
 
--- random access by song name
+-- record button with song recordings populate button
+
+-- implement play on recordings
 
 ** adjust colors for background fetch and provide option for turning off animations
 

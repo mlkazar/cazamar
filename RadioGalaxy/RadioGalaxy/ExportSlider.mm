@@ -106,10 +106,19 @@
 
 - (NSString *) stringFromTime {
     float currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
-    float currentStartPosition = _buffer.firstPacketStartMs / 1000.0;
+    float sliderMins;
+    float sliderSecs;
+    float endMins;
+    float endSecs;
 
-    NSString *rval = [NSString stringWithFormat: @"%.f secs / %.f",
-			       _slider.value, currentEndPosition - currentStartPosition];
+    sliderMins = _slider.value / 60;
+    sliderSecs = ((uint64_t) _slider.value) % 60;
+    endMins = currentEndPosition / 60;
+    endSecs = ((uint64_t) currentEndPosition) % 60;
+
+    NSString *rval = [NSString stringWithFormat: @"%.f:%02.f / %.f:%02.f",
+			       sliderMins, sliderSecs,
+			       endMins, endSecs];
     return rval;
 }
 
