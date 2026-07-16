@@ -13,6 +13,7 @@
 #import "ViewController.h"
 
 #include "osp.h"
+#include <pthread.h>
 
 @implementation ExportEntry {
     // all properties
@@ -47,6 +48,7 @@
     ExportSlider *_endSlider;
     UITableView *_songTable;
     UIStepper *_stepper;
+    long _selectedRow;
 
     // useful buttons
     MFANIconButton *_exportButton;
@@ -58,6 +60,7 @@
 
     MFANStreamPlayer *_samplePlayer;
     NSTimer *_sampleTimer;
+    int32_t _sampleIndex;
 
     float _lastStepperValue;
 
@@ -65,7 +68,17 @@
     SEL _callbackSel;
     bool _didNotify;
 
+    NSThread *_scanThread;
+
+    UIAlertController *_alert;
+
     NSMutableArray *_recordings;	// of ExportEntry objects
+    bool _populateDone;
+    bool _populateCanceled;
+    uint32_t _populatePct;		// % through the downloaded music scanner is
+    NSString *_populateSong;		// name of last song populated
+    pthread_mutex_t _populateLock;
+    NSTimer *_populateTimer;		// timer for probing
 }
 
 static const float _kPlayDuration = 4.0;
@@ -104,6 +117,8 @@ static const float _kPlayDuration = 4.0;
 
     self = [super initWithFrame: frame];
     if (self != nil) {
+	pthread_mutex_init(&_populateLock, nullptr);
+
 	_recordings = [[NSMutableArray alloc] init];
 	_vc = vc;
 	_station = station;
@@ -153,6 +168,15 @@ static const float _kPlayDuration = 4.0;
 	_songTable.sectionIndexBackgroundColor = [UIColor clearColor];
 	[_songTable setSeparatorStyle: UITableViewCellSeparatorStyleNone];
 	[self addSubview: _songTable];
+
+	_selectedRow = -1;
+	_populateDone = false;
+	_populateCanceled = false;
+
+	// this value is a non-negative integer if we're playing a
+	// song from the songTable, or -1 if we're playing something
+	// else (like when using the position sliders).
+	_sampleIndex = -1;
 
 	viewOffset += viewHeight;
 	viewHeight = frame.size.height * .06;
@@ -363,10 +387,33 @@ static const float _kPlayDuration = 4.0;
 	playTarget = value - _kPlayDuration;
 
     NSLog(@"starting player");
+    _sampleIndex = -1;
     _samplePlayer = [[MFANStreamPlayer alloc]
 			initWithStreamBuffer: _buffer
 					  ms: (uint64_t) (playTarget * 1000)];
     _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: _kPlayDuration
+						    target: self
+						  selector: @selector(stopSampleTimer:)
+						  userInfo: nil
+						   repeats: NO];
+}
+
+- (void) playIndex: (uint64_t) ix {
+    ExportEntry *ep;
+
+    [self stopSample];
+
+    // remember what we're playing
+    _sampleIndex = ix;
+
+    ep = _recordings[ix];
+    float duration = ep.end - ep.start;
+    NSLog(@"playing entryIndex=%lld with duration=%f at start=%f",
+	  ix, duration, ep.start);
+    _samplePlayer = [[MFANStreamPlayer alloc]
+			initWithStreamBuffer: _buffer
+					  ms: (uint64_t) (ep.start * 1000.0)];
+    _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: duration
 						    target: self
 						  selector: @selector(stopSampleTimer:)
 						  userInfo: nil
@@ -391,6 +438,7 @@ static const float _kPlayDuration = 4.0;
     [self retrieveNameAt: value];
 
     NSLog(@"starting player");
+    _sampleIndex = -1;
     _samplePlayer = [[MFANStreamPlayer alloc]
 			initWithStreamBuffer: _buffer
 					  ms: (uint64_t) (value*1000)];
@@ -491,13 +539,32 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     // can set cell.imageView if necessary
 
     /* make cell clear */
-    cell.contentView.backgroundColor = [UIColor clearColor];
+    UIColor *selectedColor = [UIColor colorWithRed: 1.0
+					     green: 1.0
+					      blue: 0.8
+					     alpha: 1.0];
+    if (_selectedRow == row) {
+	cell.contentView.backgroundColor = selectedColor;
+    } else {
+	cell.contentView.backgroundColor = [UIColor clearColor];
+    }
     cell.backgroundView.backgroundColor = [UIColor clearColor];
     cell.multipleSelectionBackgroundView.backgroundColor = [UIColor clearColor];
     cell.selectedBackgroundView.backgroundColor = [UIColor clearColor];
     cell.backgroundColor = [UIColor clearColor];
 
     return cell;
+}
+
+- (void) tableView: (UITableView *) tview
+didSelectRowAtIndexPath:(NSIndexPath *) path {
+    long row = [path row];
+    if (row == _selectedRow)
+	_selectedRow = -1;
+    else
+	_selectedRow = row;
+    [_songTable reloadData];
+    NSLog(@"did selection row=%ld", row);
 }
 
 - (UISwipeActionsConfiguration *) tableView: (UITableView *) tview
@@ -537,16 +604,33 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	exportAction.backgroundColor = [UIColor redColor];
     }
 
-    UIContextualAction *playAction =
-	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
-						title:@"Play"
-					      handler:^(UIContextualAction *action,
-							UIView *sourceView,
-							void (^complete)(BOOL)) {
+    UIContextualAction *playAction;
+    if (_samplePlayer == nil || row != _sampleIndex) {
+	playAction = [UIContextualAction
+			 contextualActionWithStyle:UIContextualActionStyleNormal
+					     title:@"Play"
+					   handler:^(UIContextualAction *action,
+						     UIView *sourceView,
+						     void (^complete)(BOOL)) {
 		// do the work for the action
 		NSLog(@"performe play work");
+		[self playIndex: row];
 		complete(true);
 	    }];
+    } else {
+	// stop the player
+	playAction = [UIContextualAction
+			 contextualActionWithStyle:UIContextualActionStyleNormal
+					     title:@"Stop player"
+					   handler:^(UIContextualAction *action,
+						     UIView *sourceView,
+						     void (^complete)(BOOL)) {
+		// do the work for the action
+		NSLog(@"performe play work");
+		[self stopSample];
+		complete(true);
+	    }];
+    }
     playAction.backgroundColor = [UIColor blueColor];
 
     return [UISwipeActionsConfiguration configurationWithActions: @[exportAction, playAction]];
@@ -570,6 +654,14 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 - (void) populatePressed: (id) junk {
     NSLog(@"write populate from file code");
+    _populateDone = false;
+    _populateCanceled = false;
+    _scanThread = [[NSThread alloc] initWithTarget: self
+					  selector: @selector(scanAsync:)
+					    object: nil];
+    [_scanThread start];
+
+    [self monitorScan];
 }
 
 - (void) promptFor: (NSString *) prompt
@@ -598,7 +690,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     [alert addAction: action];
 
     action = [UIAlertAction actionWithTitle: @"Cancel"
-				      style: UIAlertActionStyleCancel
+				      style: UIAlertActionStyleDefault
 				    handler:^(UIAlertAction *action) {
 	}];
     [alert addAction: action];
@@ -718,6 +810,117 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	return 0;
     else
 	return -1;
+}
+
+- (void) monitorScan {
+    _alert = [UIAlertController
+		 alertControllerWithTitle: @"Scanning recordings"
+				  message: @"Starting"
+			   preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Cancel"
+                                                     style: UIAlertActionStyleCancel
+                                                   handler:^(UIAlertAction *act) {
+	    self->_populateCanceled = true;
+	}];
+
+    [_alert addAction: action];
+
+    [_vc presentViewController: _alert animated:YES completion: nil];
+
+    _populateTimer = [NSTimer scheduledTimerWithTimeInterval: 0.5
+						      target:self
+						    selector:@selector(monitorUpdate:)
+						    userInfo:nil
+						     repeats: YES];
+}
+
+- (void) monitorUpdate: (id) junk {
+    NSString *updatedMessage;
+
+    if (_populateCanceled) {
+	updatedMessage = [NSString stringWithFormat: @"Canceling at %d%% done", _populatePct];
+    } else {
+	updatedMessage = [NSString stringWithFormat: @"Added song %@, %d%% done",
+				   _populateSong, _populatePct];
+    }
+    _alert.message = updatedMessage;
+
+    pthread_mutex_lock(&_populateLock);
+    [_songTable reloadData];
+    pthread_mutex_unlock(&_populateLock);
+
+    if (_populateDone) {
+	[_alert dismissViewControllerAnimated: YES completion:nil];
+	[_populateTimer invalidate];
+    }
+}
+
+- (void) scanAsync: (id) junk {
+    NSString *startSong;
+    uint64_t startMs = 0;
+    uint64_t endMs = 0;
+    bool first = true;
+    ExportEntry *ep;
+    MFANAqStreamReader *reader;
+    MFANAqStreamPacket *p;
+    uint64_t populateStartMs;
+    uint64_t populateEndMs;
+
+    reader = [[MFANAqStreamReader alloc]
+		  initWithBuffer: _buffer];
+    reader.noWait = true;
+
+    [reader seek: 0  whence: 0];
+
+    while(true) {
+	p = [reader read];
+	if (p == nil)
+	    break;
+
+	// canceled, stop early
+	if (_populateCanceled)
+	    break;
+
+	if (first) {
+	    startMs = endMs = p.startMs;
+	    startSong = p.playingSong;
+	    first = false;
+	    continue;
+	}
+
+	if ( [startSong isEqualToString: p.playingSong] ||
+	     [p.playingSong length] == 0) {
+	    endMs = p.startMs + p.durationMs;
+	    continue;
+	}
+
+	// new song
+	ep = [[ExportEntry alloc] initWithStartTime: startMs/1000.0
+						end: endMs/1000.0];
+	ep.song = startSong;
+
+	pthread_mutex_lock(&_populateLock);
+	_populateSong = startSong;
+	[_recordings addObject: ep];
+	pthread_mutex_unlock(&_populateLock);
+
+	populateStartMs = _buffer.firstPacketStartMs;
+	populateEndMs = _buffer.lastPacketEndMs;
+
+	startSong = p.playingSong;
+	startMs = p.startMs;
+	endMs = p.startMs + p.durationMs;
+
+	_populatePct = (uint32_t) (100 * (endMs - populateStartMs) /
+				   (populateEndMs - populateStartMs));
+    }
+
+    pthread_mutex_lock(&_populateLock);
+    _populateDone = true;
+    pthread_mutex_unlock(&_populateLock);
+
+    pthread_exit(nullptr);
 }
 
 - (int32_t) saveFile: (ExportEntry *) ep {

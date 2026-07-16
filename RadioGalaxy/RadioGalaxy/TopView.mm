@@ -26,6 +26,8 @@
 							 style: UIAlertActionStyleDefault
 						       handler:^(UIAlertAction *act) {
 		[self->_alert dismissViewControllerAnimated: YES completion: nil];
+		if (self->_timer != nil)
+		    [self->_timer invalidate];
 	    }];
 
 	[_alert addAction: action];
@@ -43,6 +45,7 @@
 }
 
 - (void) dismissAlert: (id) junk {
+    _timer = nil;
     [_alert dismissViewControllerAnimated: YES completion: nil];
 }
 

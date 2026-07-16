@@ -268,7 +268,7 @@ class MFANAqStreamBlockHolder {
     NSLog(@"waitforatleast starts");
     bool firstBlock;
     while(true) {
-        if (_streamBuffer.shuttingDown || _closed) {
+        if ((_streamBuffer.shuttingDown && !_noWait) || _closed) {
 	    // failed, so return false
             break;
         }
@@ -409,7 +409,7 @@ class MFANAqStreamBlockHolder {
     while(true) {
         // Abort if the buffer itself is being shutdown or the reader
         // was closed.
-        if (_streamBuffer.shuttingDown || _closed) {
+        if ((_streamBuffer.shuttingDown && !_noWait) || _closed) {
             pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
 	    NSLog(@"read done --> closed");
             return nil;
@@ -755,8 +755,7 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
 	blockCount = (uint32_t) [_streamFile.blocks count];
 	for(i=0;i<blockCount;i++) {
 	    block = _streamFile.blocks[i];
-	    if ( ms >= block.baseMs &&
-		 ms < block.baseMs + block.durationMs)
+	    if ( ms < block.baseMs + block.durationMs)
 		break;
 	}
 	// block is set to last one if none match condition, which is
