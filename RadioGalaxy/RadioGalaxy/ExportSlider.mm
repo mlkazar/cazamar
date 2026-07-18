@@ -79,7 +79,7 @@
 	labelFrame.size.width = frame.size.width * 0.80;
 
 	_midLabel = [[UILabel alloc] initWithFrame:labelFrame];
-	_midLabel.text = [self stringFromTime];
+	_midLabel.text = [self stringFromBufferTime];
 	[_midLabel setTextColor: [UIColor blackColor]];
 	_midLabel.textAlignment = NSTextAlignmentCenter;
 	[self addSubview: _midLabel];
@@ -104,7 +104,7 @@
     return _slider.value;
 }
 
-- (NSString *) stringFromTime {
+- (NSString *) stringFromBufferTime {
     float currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
     float sliderMins;
     float sliderSecs;
@@ -122,6 +122,18 @@
     return rval;
 }
 
++ (NSString *) stringFromTime: (float) arg {
+    float sliderMins;
+    float sliderSecs;
+
+    sliderMins = arg / 60;
+    sliderSecs = ((uint64_t) arg) % 60;
+
+    NSString *rval = [NSString stringWithFormat: @"%.f:%02.f",
+			       sliderMins, sliderSecs];
+    return rval;
+}
+
 - (void) updateStats: (id) junk {
     float currentEndPosition;
     float currentStartPosition;
@@ -129,7 +141,7 @@
     currentEndPosition = _buffer.lastPacketEndMs / 1000.0;
     currentStartPosition = _buffer.firstPacketStartMs / 1000.0;
 
-    _midLabel.text = [self stringFromTime];
+    _midLabel.text = [self stringFromBufferTime];
 
     _slider.minimumValue = currentStartPosition;
     _slider.maximumValue = currentEndPosition;

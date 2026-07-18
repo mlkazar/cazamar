@@ -1,5 +1,6 @@
 #import "Export.h"
 
+#import "ExportEntry.h"
 #import "ExportSlider.h"
 #import "HelpLabel.h"
 #import "MFANAqStreamBuffer.h"
@@ -14,30 +15,6 @@
 
 #include "osp.h"
 #include <pthread.h>
-
-@implementation ExportEntry {
-    // all properties
-}
-
-- (ExportEntry *) initWithStartTime: (float) start end: (float) end {
-    self = [super init];
-    if (self != nil) {
-	self.start = start;
-	self.end = end;
-	self.saved = false;
-    }
-
-    return self;
-}
-
-- (void) setSong: (NSString *) song  alt: (NSString *) alt {
-    _song = song;
-    if (alt != nil) {
-	_altSong = alt;
-    }
-}
-
-@end
 
 @implementation Export {
     ViewController *_vc;
@@ -119,7 +96,7 @@ static const float _kPlayDuration = 4.0;
     if (self != nil) {
 	pthread_mutex_init(&_populateLock, nullptr);
 
-	_recordings = [[NSMutableArray alloc] init];
+	_recordings = station.exportRecordings;
 	_vc = vc;
 	_station = station;
 
@@ -404,7 +381,7 @@ static const float _kPlayDuration = 4.0;
     [self stopSample];
 
     // remember what we're playing
-    _sampleIndex = ix;
+    _sampleIndex = (uint32_t) ix;
 
     ep = _recordings[ix];
     float duration = ep.end - ep.start;
@@ -422,6 +399,7 @@ static const float _kPlayDuration = 4.0;
 
 - (void) stopSample {
     NSLog(@"in stopsample");
+    _sampleIndex = -1;		// only set while playing an entry
     if (_sampleTimer != nil) {
 	[_sampleTimer invalidate];
 	_sampleTimer = nil;
@@ -455,6 +433,7 @@ static const float _kPlayDuration = 4.0;
 }
 
 - (void) donePressed: (id) junk1 {
+    [self stopSample];
     [_vc popTopView];
 }
 
@@ -504,6 +483,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     UITableViewCell *cell;
     UIView *backgroundView;
     ExportEntry *ep;
+    NSString *details;
 
     /* lookup section and row within section, all zero-based.  We
      * compute ix as the total depth into the combined array.  The
@@ -521,13 +501,14 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     backgroundView = [[UIView alloc] init];
     backgroundView.backgroundColor = [UIColor clearColor];
     cell.multipleSelectionBackgroundView = backgroundView;
-    cell.textLabel.text = ep.song;
+    cell.textLabel.text = ep.label;
     cell.textLabel.textColor = [UIColor blueColor];
     cell.textLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 20];
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
-    cell.detailTextLabel.text = ep.altSong;
-    cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 10];
+    details = [ExportSlider stringFromTime: ep.end - ep.start];
+    cell.detailTextLabel.text = details;
+    cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 16];
     cell.detailTextLabel.textColor = [UIColor colorWithRed: 0.0
 						     green: 0.5
 						      blue: 0.0
@@ -564,6 +545,11 @@ didSelectRowAtIndexPath:(NSIndexPath *) path {
     else
 	_selectedRow = row;
     [_songTable reloadData];
+
+    ExportEntry *ep = _recordings[row];
+
+    _startSlider.value = ep.start;
+    _endSlider.value = ep.end;
     NSLog(@"did selection row=%ld", row);
 }
 
@@ -586,7 +572,10 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		    [self saveFile: ep];
 		    complete(true);
 		}];
-	exportAction.backgroundColor = [UIColor greenColor];
+	exportAction.backgroundColor = [UIColor colorWithRed: 0.0
+						       green: 0.5
+							blue: 0.0
+						       alpha: 1.0];
     } else {
 	exportAction =
 	    [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
@@ -601,7 +590,10 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		    [self->_songTable reloadData];
 		    complete(true);
 		}];
-	exportAction.backgroundColor = [UIColor redColor];
+	exportAction.backgroundColor = [UIColor colorWithRed: 0.5
+						       green: 0.0
+							blue: 0.0
+						       alpha: 1.0];
     }
 
     UIContextualAction *playAction;
@@ -631,9 +623,49 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		complete(true);
 	    }];
     }
-    playAction.backgroundColor = [UIColor blueColor];
+    playAction.backgroundColor = [UIColor colorWithRed: 0.5
+						 green: 0.0
+						  blue: 0.0
+						 alpha: 1.0];
 
-    return [UISwipeActionsConfiguration configurationWithActions: @[exportAction, playAction]];
+    UIContextualAction *updateAction;
+    updateAction = [UIContextualAction
+		       contextualActionWithStyle:UIContextualActionStyleNormal
+					   title:@"Update times"
+					 handler:^(UIContextualAction *action,
+						   UIView *sourceView,
+						   void (^complete)(BOOL)) {
+	    // do the work for the action
+	    NSLog(@"performe update work");
+	    [self updateTimesForRow: row];
+	    complete(true);
+	}];
+
+    updateAction.backgroundColor = [UIColor colorWithRed: 0.0
+						   green: 0.0
+						    blue: 0.5
+						   alpha: 1.0];
+
+    return [UISwipeActionsConfiguration
+	       configurationWithActions: @[exportAction, playAction, updateAction]];
+}
+
+- (void) updateTimesForRow: (long) row {
+    float startTime;
+    float endTime;
+
+    ExportEntry *ep = _recordings[row];
+    startTime = [_startSlider getValue];
+    endTime = [_endSlider getValue];
+    if (startTime >= endTime) {
+	(void) [[TopAlert alloc] initWithMessage: @"Start slider time must precede end time"
+					duration: 1.5
+					viewCont: _vc];
+	return;
+    }
+
+    ep.start = startTime;
+    ep.end = endTime;
 }
 
 - (void) activateTopView {
@@ -654,6 +686,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 - (void) populatePressed: (id) junk {
     NSLog(@"write populate from file code");
+    [_recordings removeAllObjects];
     _populateDone = false;
     _populateCanceled = false;
     _scanThread = [[NSThread alloc] initWithTarget: self
@@ -729,7 +762,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    NSLog(@"=6= in addrangepart2 with %@", value);
 	    if ([value length] == 0)
 		return;
-	    ep.song = value;
+	    ep.label = value;
 	    [self->_recordings addObject: ep];
 	    [self->_songTable reloadData];
 	    [self saveFile: ep];
@@ -746,13 +779,20 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 - (NSString *) generateName: (ExportEntry *) ep isMp3: (bool) isMp3 {
     NSString *entryName;
-    NSArray<NSString *> *parsed = [ep.song componentsSeparatedByString: @"-"];
+    NSArray<NSString *> *parsed = [ep.label componentsSeparatedByString: @"-"];
     uint64_t parsedCount = [parsed count];
 
     if (parsedCount == 0)
 	return (isMp3? @"Unknown.mp3" : @"Unknown.aac");
-    entryName = [parsed[parsedCount-1] stringByTrimmingCharactersInSet:
-			   NSCharacterSet.whitespaceCharacterSet];
+    else if (parsedCount == 1) {
+	entryName = [parsed[0] stringByTrimmingCharactersInSet:
+			       NSCharacterSet.whitespaceCharacterSet];
+    } else {
+	// in 2 element, it is group-song, in 3 element it is
+	// group-song-album.
+	entryName = [parsed[1] stringByTrimmingCharactersInSet:
+			       NSCharacterSet.whitespaceCharacterSet];
+    }
     entryName = [entryName stringByAppendingString: (isMp3? @".mp3" : @".aac")];
     return fileNameForDoc(entryName);
 }
@@ -857,7 +897,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 }
 
 - (void) scanAsync: (id) junk {
-    NSString *startSong;
+    NSString *startLabel;
     uint64_t startMs = 0;
     uint64_t endMs = 0;
     bool first = true;
@@ -884,12 +924,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 	if (first) {
 	    startMs = endMs = p.startMs;
-	    startSong = p.playingSong;
+	    startLabel = p.playingSong;
 	    first = false;
 	    continue;
 	}
 
-	if ( [startSong isEqualToString: p.playingSong] ||
+	if ( [startLabel isEqualToString: p.playingSong] ||
 	     [p.playingSong length] == 0) {
 	    endMs = p.startMs + p.durationMs;
 	    continue;
@@ -898,17 +938,17 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	// new song
 	ep = [[ExportEntry alloc] initWithStartTime: startMs/1000.0
 						end: endMs/1000.0];
-	ep.song = startSong;
+	ep.label = startLabel;
 
 	pthread_mutex_lock(&_populateLock);
-	_populateSong = startSong;
+	_populateSong = startLabel;
 	[_recordings addObject: ep];
 	pthread_mutex_unlock(&_populateLock);
 
 	populateStartMs = _buffer.firstPacketStartMs;
 	populateEndMs = _buffer.lastPacketEndMs;
 
-	startSong = p.playingSong;
+	startLabel = p.playingSong;
 	startMs = p.startMs;
 	endMs = p.startMs + p.durationMs;
 

@@ -11,6 +11,7 @@
     UIImage *_iconImage;
     uint16_t _signIndex;
     uint32_t _fileId;
+    NSMutableArray *_exportRecordings;	// array of ExportEntry objects.
 
     uint32_t _streamRateKb;
 
@@ -54,6 +55,7 @@
 	self.isFrozen = false;
 	self.isSnapshot = false;
 	self.didRestoreBlocks = true;
+	self.exportRecordings = [[NSMutableArray alloc] init];
     }
     return self;
 }

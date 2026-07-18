@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property bool isSnapshot;
 @property bool didRestoreBlocks;
 @property uint32_t fileId;
+@property NSMutableArray *exportRecordings;
 
 // flags for the search operation
 @property bool verified;	// we've checked the station

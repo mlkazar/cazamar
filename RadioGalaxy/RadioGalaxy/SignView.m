@@ -1151,6 +1151,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
 	    if (self->_playingStation != nil) {
+		[self pause];
 		(void) [[Export alloc] initWithStation: self->_playingStation
 					      viewCont: self->_vc];
 	    }
@@ -1455,6 +1456,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (station.recordingBuffer != nil) {
 	[station.recordingBuffer erase];
     }
+    station.exportRecordings = [[NSMutableArray alloc] init];
 }
 
 - (void) createSnapshot: (SignStation *) station {

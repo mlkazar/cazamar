@@ -19,6 +19,8 @@ typedef void (^ExportSliderBlock)(float value);
 			   apply: (ExportSliderBlock) block
 			viewCont: (ViewController *) vc;
 
++ (NSString *) stringFromTime: (float) arg;
+
 - (void) setValue: (float) newPosition;
 
 - (float) getValue;
