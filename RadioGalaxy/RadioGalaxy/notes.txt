@@ -18,9 +18,19 @@ Ideas for Radio app
 
 ** warning when initially scanning streamed data
 
--- Modify Export to parse labels into group/song/album and use those
+** Modify Export to parse labels into group/song/album and use those
    when generating .mp3 data and file names (song.mp3).  Also use in
    _recordings and songTable.
+
+-- got crash from _dirtyBlocks > 0 in ioAsync: / cleanBlock:.  I
+   wonder if erase might race against someone having a pointer to a
+   block (in ioAsync for example), and it cleans a blocks whose
+   pointer was discarded, after dirtyCount is set to 0.  Should
+   instead remove each block pointer one at a time, turning off dirty
+   bit if dirty, under bufferLock.
+
+-- aac files OK with id3 tags?  Not really.  Need to support .m4a
+   container format.
 
 ** preserve recording info per stastion, with ExportInfo object holding
    our _recordings mutable array.

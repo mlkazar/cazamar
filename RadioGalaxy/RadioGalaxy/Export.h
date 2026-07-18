@@ -10,6 +10,13 @@
 #import "ViewController.h"
 #import "SignView.h"
 
+@interface ExportId3V2 : NSObject
+- (ExportId3V2 *) initWithGroup: (NSString *) group
+			   song: (NSString *) song
+			  album: (NSString *) album;
+- (NSData *) getId;
+@end
+
 @interface Export : UIView<TopViewInt, UITableViewDataSource, UITableViewDelegate>
 
 typedef void (^PromptContinuation)(NSString *value);

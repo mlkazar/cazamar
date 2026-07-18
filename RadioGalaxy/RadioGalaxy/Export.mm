@@ -569,7 +569,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 							    void (^complete)(BOOL)) {
 		    // do the work for the action
 		    NSLog(@"performe export work");
-		    [self saveFile: ep];
+		    [self saveFile2: ep];
 		    complete(true);
 		}];
 	exportAction.backgroundColor = [UIColor colorWithRed: 0.0
@@ -777,6 +777,40 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return;
 }
 
+- (void) splitLabel: (NSString *) label
+	      group: (NSString **) group
+	       song: (NSString **) song
+	      album: (NSString **) album {
+
+    NSArray<NSString *> *parsed = [label componentsSeparatedByString: @"-"];
+    uint64_t parsedCount = [parsed count];
+    if (parsedCount == 0) {
+	*group = @"Unknown";
+	*song = @"Unknown";
+	*album = @"Unknown";
+    } else if (parsedCount == 1) {
+	*group = @"Unknown";
+	*song = [parsed[0] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+	*album = @"";
+
+    } else if (parsedCount == 2) {
+	*group = [parsed[0] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+	*song = [parsed[1] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+	*album = @"";
+
+    } else {
+	*group = [parsed[0] stringByTrimmingCharactersInSet:
+			    NSCharacterSet.whitespaceCharacterSet];
+	*song = [parsed[1] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+	*album = [parsed[2] stringByTrimmingCharactersInSet:
+			    NSCharacterSet.whitespaceCharacterSet];
+    }
+}
+
 - (NSString *) generateName: (ExportEntry *) ep isMp3: (bool) isMp3 {
     NSString *entryName;
     NSArray<NSString *> *parsed = [ep.label componentsSeparatedByString: @"-"];
@@ -797,10 +831,43 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return fileNameForDoc(entryName);
 }
 
+- (int32_t) writeId3V2ToFile: (FILE *) filep
+		    entry: (ExportEntry *) ep {
+
+    NSString *groupName;
+    NSString *songName;
+    NSString *albumName;
+
+    [self splitLabel: ep.label
+	       group: &groupName
+		song: &songName
+	       album: &albumName];
+
+    ExportId3V2 *id3Writer = [[ExportId3V2 alloc] initWithGroup: groupName
+							   song: songName
+							  album: albumName];
+    NSData *idData = [id3Writer getId];
+    uint64_t count = [idData length];
+    const char *datap = (const char *) idData.bytes;
+    int64_t code = fwrite(datap, 1, count, filep);
+    if (code == count)
+	return 0;
+    else
+	return -1;
+}
+
 - (void) finishMp3File: (FILE *) filep
 		 entry: (ExportEntry *) ep {
     char tbuffer[130];
     char *tp;
+    NSString *groupName;
+    NSString *songName;
+    NSString *albumName;
+
+    [self splitLabel: ep.label
+	       group: &groupName
+		song: &songName
+	       album: &albumName];
 
     /* put out old style MP3 trailer (easiest to do) */
     memset(tbuffer, 0, sizeof(tbuffer));
@@ -810,11 +877,11 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     *tp++ = 'A';
     *tp++ = 'G';
 
-    strcpy(tp, "Unknown title");
+    strncpy(tp, [songName cStringUsingEncoding: NSUTF8StringEncoding], 30);
     tp += 30;
-    strcpy(tp, "Unknown artist");
+    strncpy(tp, [groupName cStringUsingEncoding: NSUTF8StringEncoding], 30);
     tp += 30;
-    strcpy(tp, "Unknown album");
+    strncpy(tp, [albumName cStringUsingEncoding: NSUTF8StringEncoding], 30);
     tp += 30;
 
     /* write out recordingYear */
@@ -828,7 +895,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     strcpy(tp, "Saved by RadioGalaxy");
     tp += 30;
 
-    *tp++ = 96;	/* big band :-) */
+    *tp++ = 92;	// prog rock
 
     /* write out MP3 v1 tag */
     fwrite(tbuffer, 1, 128, filep);
@@ -1034,4 +1101,175 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return 0;
 }
 
+- (int32_t) saveFile2: (ExportEntry *) ep {
+    const char *fileNamep;
+    NSString *fileName;
+    FILE *filep = nullptr;
+    MFANAqStreamReader *reader;
+    MFANAqStreamPacket *p;
+    AudioStreamBasicDescription dataFormat;
+    bool isMp3;
+    uint64_t bytesWritten;
+    uint64_t byteCount;
+    uint64_t packetSize;
+    uint64_t endMs;
+    int64_t code;
+    NSMutableData *adtsHeader;
+
+    [_buffer getDataFormat: &dataFormat];
+    isMp3 = (dataFormat.mFormatID == '.mp3');
+
+    reader = [[MFANAqStreamReader alloc]
+		  initWithBuffer: _buffer];
+    [reader seek: (uint64_t) (ep.start * 1000) whence: 0];
+    reader.noWait = true;
+
+    fileName = [self generateName: ep isMp3: isMp3];
+    fileNamep = [fileName cStringUsingEncoding: NSUTF8StringEncoding];
+
+    filep = fopen(fileNamep, "w");
+    if (filep == nullptr) {
+	return -1;
+    }
+
+    endMs = (uint64_t)(ep.end * 1000);
+
+    if (isMp3) {
+	// officially .aac files aren't support to have ID3 tags.
+	[self writeId3V2ToFile: filep entry:ep];
+    }
+
+    while(true) {
+	p = [reader read];
+	if (p == nil)
+	    break;
+	if (p.startMs >= endMs)
+	    break;
+	packetSize = [p getLength];
+
+	// if AAC file, write out the ADTS header, which we retrieve from
+	// the buffer.
+	if (!isMp3) {
+	    // must be aac
+	    adtsHeader = [_buffer getAdtsHeaderForLength: (int32_t) packetSize];
+	    byteCount = adtsHeader.length;
+	    bytesWritten = fwrite([adtsHeader bytes], 1, byteCount, filep);
+	    if (bytesWritten != byteCount)
+		return -1;
+	}
+
+	bytesWritten = fwrite([p getData], 1, packetSize, filep);
+	if (bytesWritten != packetSize) {
+	    [reader close];
+	    return -1;
+	}
+    }
+
+#if 0
+    if (isMp3) {
+	[self finishMp3File: filep entry: ep];
+    }
+#endif
+
+    code = fflush(filep);
+    fsync(fileno(filep));
+    code = fclose(filep);
+
+    ep.saved = true;
+
+    return 0;
+}
+@end
+
+@implementation ExportId3V2 {
+    NSMutableData *_buffer;
+}
+
+- (uint64_t) frameSizeForString: (NSString *) ins {
+    // we don't even append frames for empty strings
+    if ([ins length] == 0)
+	return 0;
+
+    // 4 bytes frame ID, 4 bytes size, 2 bytes flags, 1 byte encoding,
+    // one byte for terminating null in UTF-8 data (since we're
+    // writing version 2.4 tags).
+    return 12 + [ins length];
+}
+
+- (void) appendSyncSafe: (uint64_t) val {
+    char tdata[4];
+    tdata[0] = (val >> 21) & 0x7F;
+    tdata[1] = (val >> 14) & 0x7F;
+    tdata[2] = (val >> 7) & 0x7F;
+    tdata[3] = val & 0x7F;
+    [_buffer appendBytes: tdata length: 4];
+}
+
+- (void) appendFrameType: (const char *) type
+		   value: (NSString *) value {
+
+    const char *valueString = [value cStringUsingEncoding: NSUTF8StringEncoding];
+
+    // NSString length may not count multibyte characters as N bytes.
+    // the valueLength does include the null termination required for
+    // C strings and id3 v2.4 string tags.
+    uint64_t valueLength = strlen(valueString) + 1;
+
+    // we don't even put out empty frames.
+    if (valueLength <= 1)
+	return;
+
+    // the frame size includes the encoding byte (0x03 for UTF8), the
+    // contents and a terminating null (already counted in
+    // valueLength).
+    uint64_t frameSize = valueLength + 1;
+    [_buffer appendBytes: type length: 4];
+    [self appendSyncSafe: frameSize];
+
+    uint32_t zeroData = 0;
+
+    // append flags
+    [_buffer appendBytes: &zeroData length: 2];
+
+    char encoding = 0x03;
+    [_buffer appendBytes: &encoding length:  1];
+
+    // valueString and valueLength both include the null terminating
+    // byte required for v2.4 string frames.
+    [_buffer appendBytes: valueString length: valueLength];
+}
+
+- (ExportId3V2 *) initWithGroup: (NSString *) group
+			   song: (NSString *) song
+			  album: (NSString *) album {
+    self = [super init];
+    if (self != nil) {
+	_buffer = [[NSMutableData alloc] initWithCapacity: 256];
+
+	char header[6];
+	header[0] = 'I';
+	header[1] = 'D';
+	header[2] = '3';
+	header[3] = 4;		// version 2.4.0
+	header[4] = 0;
+	header[5] = 0;		// flags
+	[_buffer appendBytes: header length: sizeof(header)];
+
+	// the size field doesn't include the 10 byte header (the 6 bytes above
+	// plus the length of the entire tag.
+	uint64_t totalLength;
+	totalLength = [self frameSizeForString: group] + [self frameSizeForString: song] +
+	    [self frameSizeForString: album];
+	[self appendSyncSafe: totalLength];
+
+	[self appendFrameType: "TIT2" value: song];
+	[self appendFrameType: "TPE1" value: group];
+	[self appendFrameType: "TALB" value: album];
+    }
+    return self;
+}
+
+- (NSData *) getId {
+    return _buffer;
+}
 @end
