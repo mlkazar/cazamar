@@ -29,6 +29,12 @@ Ideas for Radio app
    instead remove each block pointer one at a time, turning off dirty
    bit if dirty, under bufferLock.
 
+-- got crash in reader:470 where loops is 11.  The problem is that
+   block[1228] has 70 packets, and the last one has base 11811190 and
+   duration 46, ending at 11811236.  And blocks[1229] has baseMs
+   11811420.  And we were looking for 1181236.  What happened to the
+   last 4 packets?  File offset is 23150592.
+
 -- aac files OK with id3 tags?  Not really.  Need to support .m4a
    container format.
 

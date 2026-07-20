@@ -1134,9 +1134,16 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     endMs = (uint64_t)(ep.end * 1000);
 
-    if (isMp3) {
-	// officially .aac files aren't support to have ID3 tags.
-	[self writeId3V2ToFile: filep entry:ep];
+    // officially .aac files aren't support to have ID3 tags.
+    [self writeId3V2ToFile: filep entry:ep];
+
+    if (!isMp3 && !_station.warnedAac) {
+	_station.warnedAac = true;
+	(void) [[TopAlert alloc]
+		   initWithMessage: @"Saving .aac file.  Can convert to .m4a with:\n"
+		   @"ffmpeg  -i foo.aac -c:a copy foo.m4a"
+			  duration: 10.0
+			  viewCont: _vc];
     }
 
     while(true) {

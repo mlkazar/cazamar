@@ -54,6 +54,7 @@
 	self.fileId = fileId;
 	self.isFrozen = false;
 	self.isSnapshot = false;
+	self.warnedAac = false;
 	self.didRestoreBlocks = true;
 	self.exportRecordings = [[NSMutableArray alloc] init];
     }

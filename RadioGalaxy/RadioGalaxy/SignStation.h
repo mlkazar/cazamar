@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property bool isLoaded;
 @property bool isFrozen;
 @property bool isSnapshot;
+@property bool warnedAac;
 @property bool didRestoreBlocks;
 @property uint32_t fileId;
 @property NSMutableArray *exportRecordings;
