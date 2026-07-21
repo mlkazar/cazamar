@@ -200,7 +200,6 @@ MFANAqStream_PacketsProc( void *contextp,
     Settings *settings = (Settings *) aqp->_vc.settings;
 
     uint32_t pruneMs = settings.streamBufferMinutes * 60000;
-    // uint32_t pruneMs = 2 * 60000; // TESTING
 
     NSLog(@"prunning to %d ms", pruneMs);
     [aqp->_buffer pruneOldestMs: pruneMs];

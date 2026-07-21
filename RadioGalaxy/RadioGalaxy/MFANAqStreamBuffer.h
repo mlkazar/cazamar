@@ -212,7 +212,7 @@
 
 - (int32_t) restoreBlocksFromFile;
 
-- (void) cleanBlock: (MFANAqStreamBlock *) block;
+- (void) cleanBlock: (MFANAqStreamBlock *) block isGc: (bool) isGc;
 
 - (MFANAqStreamBlock *) lastBlockSetIndex: (uint32_t *) indexp;
 

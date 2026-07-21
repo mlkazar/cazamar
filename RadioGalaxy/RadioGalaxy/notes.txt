@@ -29,14 +29,30 @@ Ideas for Radio app
    instead remove each block pointer one at a time, turning off dirty
    bit if dirty, under bufferLock.
 
--- got crash in reader:470 where loops is 11.  The problem is that
+** got crash in reader:470 where loops is 11.  The problem is that
    block[1228] has 70 packets, and the last one has base 11811190 and
    duration 46, ending at 11811236.  And blocks[1229] has baseMs
    11811420.  And we were looking for 1181236.  What happened to the
    last 4 packets?  File offset is 23150592.
 
--- aac files OK with id3 tags?  Not really.  Need to support .m4a
-   container format.
+   One other possibility is that the GC thread needs to clean any
+   block before it copies it.  Right now, that's not happening, so we
+   get an assert that the read is short when we get near the end of
+   the file.
+
+   Perhaps prune running during a GC file copy confuses copier?
+   FIXED.
+
+   Also, wasn't reopening files after doing a GC, so some threads were still
+   writing and reading from older files.
+
+** aac files OK with id3 tags?  Not really.  Need to support .m4a
+   container format.  Not sure I'm going to do this: .aac files with
+   id3v2 v 4 tags work fine and ffmpeg -c:a copy can create an .m4a
+   file easily if you want to put it into your itunes library.  And
+   AAC streams are relatively rare.
+
+-- use regular times on the slider.
 
 ** preserve recording info per stastion, with ExportInfo object holding
    our _recordings mutable array.
