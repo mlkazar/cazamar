@@ -1,4 +1,4 @@
-1;95;0c<#import <AudioToolbox/AudioToolbox.h>
+#import <AudioToolbox/AudioToolbox.h>
 #import <Foundation/Foundation.h>
 
 #import "MFANAqStreamBuffer.h"
@@ -828,6 +828,10 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
 
     NSLog(@"=p=streambuf starting check of %d blocks", blockCount);
 
+    // This isn't safe to do during normal operation, but during
+    // initialization there's nothing else going on, so we don't have
+    // to worry about other references to blocks that are dirty or
+    // valid.
     [_streamFile.blocks removeAllObjects];
     osp_assert(_dirtyBlocks == 0 && _validBlocks == 0);
     _firstPacketStartMs = 0;
@@ -1411,6 +1415,29 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     pthread_cond_broadcast(&_blockIoCv);
 }
 
+- (void) invalidateBlock: (MFANAqStreamBlock *) block {
+    while(true) {
+	if (block.ioRunning) {
+	    pthread_cond_wait(&_blockIoCv, &_bufferMutex);
+	    continue;
+	} else {
+	    break;
+	}
+    }
+
+    if (block.valid) {
+	block.valid = false;
+	_validBlocks--;
+    }
+
+    if (block.dirty) {
+	block.dirty = false;
+	_dirtyBlocks--;
+    }
+
+    [self fixLru: block];
+}
+
 - (void) cleanBlock: (MFANAqStreamBlock *) block
 	       isGc: (bool) isGc {
     // wait for both GC to finish and for block IO to be off
@@ -1718,6 +1745,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
 - (void) erase {
     MFANAqStreamBlock *newBlock;
+    uint32_t loops;
 
     // remove everything, but preserve the first block, since until
     // you start the stream again, it has the only copy of the stream
@@ -1735,8 +1763,27 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     // We will need to wait for the _blockMutex that protects changes
     // to the blocks array (except for adding new blocks to the end)
     // and copying operations on the data file itself.
+    for(loops = 0; loops < 100; loops++) {
+	// code works for block at end as well
+	uint32_t blockCount = (uint32_t) [_streamFile.blocks count];
+	uint32_t i;
+	MFANAqStreamBlock *block;
+	bool didWork;
+
+	didWork = false;
+	for(i=0;i<blockCount;i++) {
+	    block = _streamFile.blocks[i];
+	    if (block.dirty || block.valid || block.ioRunning) {
+		[self invalidateBlock: block];
+		didWork = true;
+	    }
+	}
+	if (!didWork)
+	    break;
+    }
+    osp_assert(loops < 100);
     [_streamFile.blocks removeAllObjects];
-    ftruncate(_streamFile.writeFd, _kBytesPerBlock);
+    ftruncate(_streamFile.writeFd, _kBytesPerBlock);	// leave header block alone
 
     // reset global state
     _dirtyBlocks = 0;
