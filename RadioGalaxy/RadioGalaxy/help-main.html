@@ -15,6 +15,8 @@
       <a href="#Basic">Basic Operation</a><br>
       <a href="#AddingStations">Adding and Editing Stations</a><br>
       <a href="#MenuOps">Menu operations</a><br>
+      <a href="#Settings">Settings</a><br>
+      <a href="#Exports">Exporting Music</a><br>
       <a href="#Acks">Acknowledgements</a><br>
       <a href="#Contact">Contact us</a><br>
     </p>
@@ -22,8 +24,8 @@
       The RadioGalaxy player lets you search for and play Internet
       Radio stations.  Once a station is selected, it begins
       streaming, and by default keeps streaming even if you switch to
-      another station.  When you return to the previous station,
-      playback resumes from the point where you left off.
+      listen to another station.  When you return to the previous
+      station, playback resumes from the point where you left off.
     </p>
     <p>
       If you want streaming to stop when you switch away from a
@@ -46,9 +48,9 @@
       <ul>
 	<li>Purple+Flashing</li>Currently playing radio station and
 	streaming data.
-	<li>Orange</li>Last playing radio station, but when the
-	station is no longer playing or streaming data.  Pressing the
-	'play' button will resume streaming and playing audio.
+	<li>Orange</li>Last playing radio station, but the station is
+	no longer playing or streaming data.  Pressing the 'play'
+	button will resume streaming and playing audio.
 	<li>Blue+Flashing</li>Not playing, but still streaming audio
 	in the background.
 	<li>Green</li>Idle station: neither playing nor streaming
@@ -63,6 +65,25 @@
       to remove the station entirely.
     </p>
     <p>
+      From this details page, you can immediately stop its streaming,
+      erase all the streamed music for the station, snapshot the
+      contents of a station's downloaded music or freeze downloads for
+      that station.
+    </p>
+    <p>
+      Creating a snapshot creates a new station icon with a copy of
+      the station's already streamed music.  No further changes are
+      made to the station -- no music is garbage collected no
+      matterhowold, nor are any downloads started again.  You can
+      however select the station by pressing its icon and see around
+      with the scroll bar.
+    </p>
+    <p>
+      A frozen station is one where no more downloads or garbage
+      ccollection occurs.  It can be unfrozen by toggling the freeze
+      station button again.
+    </p>
+    <p>
       The Highlight button on the main screen tells RadioGalaxy to
       highlight the currently playing song in the history list so you
       can later review music you found interesting.
@@ -74,8 +95,19 @@
       by name or keywords.  The search page has its own help pages
       that describe in detail how to search for and add radio
       stations, but you can search by name, keyword, country code,
-      city name and/or genre.  If you swipe left on a validated
-      station, you can listen to a sample of the station's stream.
+      city name and/or genre.  Note that not all of the station
+      directories distinguish between searching for keywords or
+      searching for titles.
+    </p>
+    <p>
+      Once the search has populated candidate stations into the
+      visible table view, just select the stations you want to add to
+      RadioGalaxy's home page by pressing on the station's table
+      entry; a check mark will be visible in the table.
+    </p>
+    <p>
+      If you swipe left on a validated station,
+      you can listen to a sample of the station's stream.
     </p>
     <p>
       If you long press a station's icon and then press the "Edit
@@ -104,7 +136,7 @@
       app's main screen, or when switching from the lock screen or
       CarPlay controls.
     </p>
-    <h2<a id="Menu Ops">Menu Operations</h2></a>
+    <h2><a id="Menu Ops">Menu Operations</h2></a>
     <p>
       If you press the "More..."  menu button under the station icons,
       it pops up a list of functions RadioGalaxy can perform.
@@ -112,6 +144,8 @@
 	<li>Manually add station</li> If a station is missing from all
 	of our databases, you can still add a station in manually as
 	long as you know its stream URL.
+	<li>Settings</li>Adjust settings like how much streamed music
+	to keep.  See settings section below.
 	<li>Help</li>Displays this text.
 	<li>Show history</li>RadioGalaxy tracks each song played on a
 	station, and logs it in a history file.  You can highlight
@@ -124,6 +158,99 @@
 	that require acknowledgement or other legal statements, and
 	those are listed here.
       </ul>
+    </p>
+    <h2><a id="Settings">Settings</h2></a>
+    There are several settings for RadioGalaxy
+    <ul>
+      <li>Stream even after switch</li> When enabled, tells
+      RadioGalaxy to keep streaming a station even after you switch
+      away from it.  If not enabled, switching away from a station
+      stops downloading music from that station.  Defaults to enabled.
+      <li>Stream even after CarPlay</li>Keep streaming after switching
+      to 'Next' or 'Prev' via CarPlay or the Lock Screen.
+      <li>Keep 2.5 hours of audio</li>Specifies in 0.5 hour increments
+      how long an audio recording is kept for each station.
+      <li>Limit search to N stations</li>Limit each directory to
+      returning no more than N stations.
+      <li>Animate streaming stations</li>The icons for currently
+      streaming stations fade in and out if this setting is enabled.
+      This feature burns through battery while the screen is visible.
+    </ul>
+    <h2><a id="Exports">Exporting Music</h2></a>
+    <p>
+      You can export music recorded by a station using the Export menu
+      item.  Some stations label each song played with ICY metadata,
+      and for those stations, you can simply press the 'Add all
+      recorded songs' button and all the songs present will appear in
+      the table at the top of the Export screen.  You can then simply
+      swipe left on the item and press 'Export' and the recording will
+      be saved.  You can also press 'Play' and listen to the entry.
+      Or you can press 'Update times' and adjust the start and end
+      times for the recording.
+    </p>
+    <p>
+      For stations that don't export the song metadata, you can use
+      the 'Start' and 'End' sliders to select a time range from the
+      streamed data to save.  When you move the 'Start' slider, you'll
+      hear the 5 seconds of audio starting at the selected time.  When
+      you move the 'End' slider you'll hear the last 5
+      seconds <b>ending</b> at the selected time.  Once you've
+      selected the desired range, press the 'Add from range' button,
+      and you'll be asked for the song name for the recording, and
+      then the audio will be saved.
+    </p>
+    <p>
+      Some stations export ICY metadata, but don't position the
+      metadata correctly: the metadata is only approximately
+      positioned.  For these stations, you can select the song you
+      wish to export by tapping the entry in the table.  RadioGalaxy
+      will highlight the entry and adjust the start and end scrollbar,
+      which you can adjust with the scroll bars as described above.
+      You can then swipe left on the entry and select 'Update times'
+      and the start and end times will be adjusted to match the scroll
+      bars.  Finally, you can select 'Export' from the swiped entry
+      and RadioGalaxy will export the audio into a file named by the
+      ICY metadata.  Alternatively, after adjusting the start and end
+      scroll bars, you can just press 'Add from range' and enter the
+      song name again; this will also add a new entry with the updated
+      times to the end of the table.
+    </p>
+    <p>
+      My apologies for the clunky user interface.
+    </p>
+    <h3>Accessing exported files</h3>
+    <p>
+      To access your exported files, plug your iPhone or iPad into a
+      Mac, and use the Finder to select the phone from the locations
+      on the left.  When the phone's details show up in the Finder,
+      select 'Files' from the Finder screen, and then scroll down to
+      RadioGalaxy's entry and click on the arrow to expand it.  You
+      can then drag and drop the file to your Mac's home directory and
+      then add it to your library with the Music app.
+    </p>
+    <p>
+      Noet that once you've expanded the files for RadioGalaxy, the
+      Mac Finder is too stupid to notice further updates without your
+      unplugging and re-plugging the phone in with a USB cable.
+    </p>
+    <p>
+      Note that stations that stream MP3 data will simply write MP3
+      files with the right metadata (but no album artwork, and
+      probably no album name).  But stations that stream AAC data will
+      write AAC files with the appropriate metadata.  You can play
+      those with VLC, but if you want to add them to your music
+      library, you should convert them to M4A files.  The easiest way
+      to do that is to use ffmpeg, which can be downloaded with
+      Homebrew.  You can then do:
+      <pre>
+	ffmpeg -i foo.aac -c:a foo.m4a
+      </pre>
+      to convert the file from a pure AAC file to an M4A, preserving
+      the song and album metadata written by RadioGalaxy.  Hopefully I
+      will get time to implement an M4A writer, but it's a bit of
+      pain.
+    </p>
+    <p>
     </p>
     <a id="Acks"<h2>Acknowledgements</h2></a>
     <p>

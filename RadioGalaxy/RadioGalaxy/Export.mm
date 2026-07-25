@@ -586,7 +586,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		    // do the work for the action
 		    NSLog(@"performe delete work");
 		    [self removeFile: ep];
-		    [self->_recordings removeObjectAtIndex:row];
 		    [self->_songTable reloadData];
 		    complete(true);
 		}];
@@ -646,8 +645,11 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 						    blue: 0.5
 						   alpha: 1.0];
 
-    return [UISwipeActionsConfiguration
-	       configurationWithActions: @[exportAction, playAction, updateAction]];
+    UISwipeActionsConfiguration *config =
+	[UISwipeActionsConfiguration
+	    configurationWithActions: @[exportAction, playAction, updateAction]];
+    config.performsFirstActionWithFullSwipe = false;
+    return config;
 }
 
 - (void) updateTimesForRow: (long) row {
@@ -913,10 +915,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     bool success = [[NSFileManager defaultManager] removeItemAtPath: fileName
 							      error: nil];
-    if (success)
+    if (success) {
+	ep.saved = false;
 	return 0;
-    else
+    } else {
 	return -1;
+    }
 }
 
 - (void) monitorScan {

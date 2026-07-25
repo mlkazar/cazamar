@@ -56,6 +56,15 @@
 	self.isSnapshot = false;
 	self.warnedAac = false;
 	self.didRestoreBlocks = true;
+
+	// this is set to true iff the station was already streaming
+	// audio when carplay selected it.  We do this so we can
+	// restore the setting when carplay moves away from it.
+	//
+	// Regular turning streaming on and off also updates this
+	// setting.
+	self.wasRecordingWhenSelected = false;
+
 	self.exportRecordings = [[NSMutableArray alloc] init];
     }
     return self;
