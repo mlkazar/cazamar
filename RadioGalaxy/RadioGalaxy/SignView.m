@@ -1235,6 +1235,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     // start new station if different.  Player and stream are nil
     // together, and stopRadio should have set to nil
+    newStation.wasRecordingWhenSelected = (newStation.recordingStream != nil);
     if (_player == nil) {
 	[self startStation: newStation];
 	_playingStation = newStation;
@@ -1540,6 +1541,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    if (station != nil && _player == nil) {
 		[self startStation: station];
 		_playingStation = station;
+		station.wasRecordingWhenSelected = true;
 	    }
 	} else {
 	    // random press
@@ -1605,7 +1607,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     Settings *settings = (Settings *) _vc.settings;
     bool keepStreaming;
     if (carPlay)
-	keepStreaming = settings.keepStreamingAfterCarPlay;
+	keepStreaming = (settings.keepStreamingAfterSwitch &&
+			 _playingStation.wasRecordingWhenSelected);
     else
 	keepStreaming = settings.keepStreamingAfterSwitch;
     if ( !doReset &&
@@ -1699,6 +1702,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     if (stream != nil) {
 	[stream shutdownAbortReaders: true];
 	station.recordingStream = nil;
+    }
+
+    if (station == _playingStation && _stream != nil) {
+	[_stream shutdownAbortReaders: false];
+	_stream = nil;
     }
     [self animationOn];
 }

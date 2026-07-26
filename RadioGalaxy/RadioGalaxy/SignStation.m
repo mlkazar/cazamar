@@ -57,12 +57,11 @@
 	self.warnedAac = false;
 	self.didRestoreBlocks = true;
 
-	// this is set to true iff the station was already streaming
-	// audio when carplay selected it.  We do this so we can
-	// restore the setting when carplay moves away from it.
-	//
-	// Regular turning streaming on and off also updates this
-	// setting.
+	// This setting is set to false only if the station wasn't
+	// playing when CarPlay (or the lock screen) selected it.  We
+	// use this to decide whether to stop recording when we select
+	// away from this station.  It is set to true every other time
+	// the currently playing station's identity is changed.
 	self.wasRecordingWhenSelected = false;
 
 	self.exportRecordings = [[NSMutableArray alloc] init];

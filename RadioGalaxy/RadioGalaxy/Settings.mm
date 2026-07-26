@@ -177,6 +177,7 @@ Settings *_globalSettings;
 	_button1.layer.cornerRadius = 16.0;
 	// _button1.clipsToBounds = YES;
 
+#if 0
 	////////////////////////////////////////////////////////////////
 	labelFrame.origin.y += labelFrame.size.height*1.3;
 	////////////////////////////////////////////////////////////////
@@ -206,6 +207,7 @@ Settings *_globalSettings;
 	_button2.backgroundColor = [UIColor blackColor];
 	_button2.layer.cornerRadius = 16.0;
 	// _button2.clipsToBounds = YES;
+#endif
 
 	////////////////////////////////////////////////////////////////
 	labelFrame.origin.y += labelFrame.size.height*1.3;

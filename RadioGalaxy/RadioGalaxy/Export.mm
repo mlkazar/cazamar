@@ -767,7 +767,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    ep.label = value;
 	    [self->_recordings addObject: ep];
 	    [self->_songTable reloadData];
-	    [self saveFile: ep];
+	    [self saveFile2: ep];
 	}];
 }
 
@@ -1034,6 +1034,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     pthread_exit(nullptr);
 }
 
+#if 0
 - (int32_t) saveFile: (ExportEntry *) ep {
     const char *fileNamep;
     NSString *fileName;
@@ -1104,6 +1105,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     return 0;
 }
+#endif
 
 - (int32_t) saveFile2: (ExportEntry *) ep {
     const char *fileNamep;

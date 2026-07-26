@@ -20,7 +20,7 @@
 	_isPlaying = false;
 
 	_silentPlayer = [[AVAudioPlayer alloc] initWithData: _silentData error:&setError];
-	_silentPlayer.volume = 0.2;
+	_silentPlayer.volume = 0.5;
 	if ([setError code] != 0)
 	    NSLog(@"! SilentPlayer init failed %d", (int) [setError code]);
 	[_silentPlayer setNumberOfLoops: -1];

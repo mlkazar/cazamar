@@ -249,8 +249,6 @@
 
 	[self setBackgroundColor: [UIColor whiteColor]];
 
-	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
-
 	[NSTimer scheduledTimerWithTimeInterval: 0.1
 					 target: self
 				       selector: @selector(continueInit:)
@@ -412,34 +410,6 @@
 
 - (void) deactivateTopView {
     return;
-}
-
-- (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
-    NSLog(@"- remotecontrolev = %d", (int) receivedEvent.type);
-    if (receivedEvent.type == UIEventTypeRemoteControl) {
-        switch (receivedEvent.subtype) {
-            case UIEventSubtypeRemoteControlPlay:
-            case UIEventSubtypeRemoteControlPause:
-            case UIEventSubtypeRemoteControlTogglePlayPause:
-		NSLog(@"=1= TopView play/pause %ld", (long) receivedEvent.subtype);
-		[self playInternal];
-                break;
-
-            case UIEventSubtypeRemoteControlPreviousTrack:
-		[_signView changeStationBy: -1];
-                break;
-
-            case UIEventSubtypeRemoteControlNextTrack:
-		[_signView changeStationBy: 1];
-                break;
-
-            default:
-		NSLog(@"!RMT mystery pressed %d", (int) receivedEvent.subtype);
-                break;
-        }
-
-	[[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
-    }
 }
 
 @end

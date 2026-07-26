@@ -99,11 +99,14 @@
 
 - (NSString *) stringFromTime: (float) time text: (NSString *) text{
     NSString *rval;
-    if (time >= 180) {
-	rval = [NSString stringWithFormat: @"%.f mins %@", time / 60.0, text];
-    } else {
-	rval = [NSString stringWithFormat: @"%.f secs %@", time, text];
-    }
+    float sliderMins;
+    float sliderSecs;
+
+    sliderMins = time / 60;
+    sliderSecs = ((uint64_t) time) % 60;
+
+    rval = [NSString stringWithFormat: @"%.f:%02.f %@", sliderMins, sliderSecs, text];
+
     return rval;
 }
 

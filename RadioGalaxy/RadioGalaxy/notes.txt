@@ -33,16 +33,27 @@ Ideas for Radio app
    And turn off performsFirstActionWithFullSwipe in
    UISwipeActionsConfiguration object.
 
--- Switching stations via CarPlay should remember if the station was
+** Switching stations via CarPlay should remember if the station was
    recording already, and switch back accordingly when leaving.
+
+** make sure names are properly processed for both recording adds and
+   range adds.
+
+** background app refresh
+
+-- log errors and times
 
 -- add play selection screen that uses an export screen-like view of
    the recordings and a regular scroll bar.  Or perhaps rename the
    export screen to 'recordings' and gray out one scroll bar when
    playing a song.
 
--- is remoteControlReceivedWithEvent correct when it treats pause / resume and toggle
+** is remoteControlReceivedWithEvent correct when it treats pause / resume and toggle
    all as the same?  Should be able to do better.
+
+** use regular times on the slider.
+
+** can we do better finding music that doesn't kill the app.
 
 ** write documentation for export screen
 
@@ -68,8 +79,6 @@ Ideas for Radio app
    id3v2 v 4 tags work fine and ffmpeg -c:a copy can create an .m4a
    file easily if you want to put it into your itunes library.  And
    AAC streams are relatively rare.
-
--- use regular times on the slider.
 
 ** preserve recording info per stastion, with ExportInfo object holding
    our _recordings mutable array.
@@ -235,13 +244,14 @@ name as well)
 
 ================Longer term items================
 
+-- view exported file list
+
+-- resync data stream on reconnect
+
+-- include a record of suspensions in recordings so we can warn about
+   damaged songs.
+
 -- modify MFANSocket to support https?
-
-** keep playing silent noise when downloading and nothing else playing
-
-** alarm clock functionality? can't do it on ios
-
--- Some way when saving a recording to edit the start and end times.
 
 -- smart record functionality -- by song boundary
 
