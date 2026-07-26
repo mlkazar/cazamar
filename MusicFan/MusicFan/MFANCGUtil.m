@@ -135,14 +135,14 @@ silentData(int seconds)
 {
     NSData *datap;
     char *newDatap;
-    static const int sampleRate = 8000;
+    static const int sampleRate = 24000;
     int nbytes;
     char *tp;
     long temp;
     int i;
 
     nbytes = 44 + sampleRate * seconds;
-    tp = newDatap = malloc(nbytes);
+    tp = newDatap = (char *) malloc(nbytes);
     memset(tp, 0, nbytes);
 
     strncpy(tp, "RIFF", 4); tp += 4;
@@ -172,14 +172,14 @@ silentData(int seconds)
     *tp++ = 0;
     
     /* sample rate */
-    *tp++ = sampleRate & 0xFF;
-    *tp++ = (sampleRate >> 8) & 0xFF;
+    *tp++ = (char) (sampleRate & 0xFF);
+    *tp++ = (char) ((sampleRate >> 8) & 0xFF);
     *tp++ = 0;
     *tp++ = 0;
 
     /* byte rate: same as sample rate if bits/sample is 8 and we're in mono */
-    *tp++ = sampleRate & 0xFF;
-    *tp++ = (sampleRate >> 8) & 0xFF;
+    *tp++ = (char) (sampleRate & 0xFF);
+    *tp++ = (char) ((sampleRate >> 8) & 0xFF);
     *tp++ = 0;
     *tp++ = 0;
 
@@ -195,13 +195,13 @@ silentData(int seconds)
 
     temp = sampleRate * seconds;
     *tp++ = temp & 0xFF;
-    *tp++ = (temp >> 8) & 0xff;
-    *tp++ = (temp >> 16) & 0xff;
+    *tp++ = (char) ((temp >> 8) & 0xff);
+    *tp++ = (char) ((temp >> 16) & 0xff);
     *tp++ = 0;
 
     /* rest of data is 0 from memset above */
     for(i=0;i<sampleRate*seconds;i++) {
-	tp[i] = 0;
+	tp[i] = ((i&1)? 0xff : 0);
     }
 
     datap = [NSData dataWithBytesNoCopy: newDatap length: nbytes freeWhenDone: NO];
