@@ -1147,7 +1147,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
     [alert addAction: action];
 
-    action = [UIAlertAction actionWithTitle:@"Export"
+    action = [UIAlertAction actionWithTitle:@"Export recordings"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
 	    if (self->_playingStation != nil) {
@@ -1165,7 +1165,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
     [alert addAction: action];
 
-    action = [UIAlertAction actionWithTitle:@"Show history"
+    action = [UIAlertAction actionWithTitle:@"View history"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
             NSLog(@"show history");
@@ -1173,6 +1173,20 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		// pop is done by TopView in its history done callback
 		[self.history showHistory];
 	    }
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"View error log"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+	    NSLog(@"not implemented yet");
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"View saved files"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+	    NSLog(@"not implemented yet");
 	}];
     [alert addAction: action];
 

@@ -43,7 +43,7 @@ Ideas for Radio app
 
 -- log errors and times
 
--- add play selection screen that uses an export screen-like view of
+** add play selection screen that uses an export screen-like view of
    the recordings and a regular scroll bar.  Or perhaps rename the
    export screen to 'recordings' and gray out one scroll bar when
    playing a song.

@@ -26,6 +26,8 @@
     UITableView *_songTable;
     UIStepper *_stepper;
     long _selectedRow;
+    HelpLabel *_startHelpLabel;
+    HelpLabel *_endHelpLabel;
 
     // useful buttons
     MFANIconButton *_exportButton;
@@ -56,6 +58,11 @@
     NSString *_populateSong;		// name of last song populated
     pthread_mutex_t _populateLock;
     NSTimer *_populateTimer;		// timer for probing
+
+    // We have a different UI while playing a full entry -- in playing
+    // mode, only the start slider is visible, and current playing
+    // time is reflected in the slider.
+    bool _playingMode;			// true if we're in playing mode
 }
 
 static const float _kPlayDuration = 4.0;
@@ -155,7 +162,7 @@ static const float _kPlayDuration = 4.0;
 	// else (like when using the position sliders).
 	_sampleIndex = -1;
 
-	viewOffset += viewHeight;
+	viewOffset += viewHeight + frame.size.height * .02;;
 	viewHeight = frame.size.height * .06;
 	startSliderFrame = frame;
 	startSliderFrame.origin.y = viewOffset;
@@ -168,7 +175,11 @@ static const float _kPlayDuration = 4.0;
 	_startSlider = [[ExportSlider alloc] initWithFrame: startSliderFrame
 						    buffer: _buffer
 						     apply: ^(float value) {
-		[self playFrom: value];
+		if (self->_playingMode) {
+		    [self playSeek: value];
+		} else {
+		    [self playFrom: value];
+		}
 	    }
 						  viewCont: _vc];
 	[self addSubview: _startSlider];
@@ -176,13 +187,13 @@ static const float _kPlayDuration = 4.0;
 	startLabelFrame = startSliderFrame;
 	startLabelFrame.origin.x = 0;
 	startLabelFrame.size.width = sliderLabelPct * frame.size.width;
-	HelpLabel *startHelpLabel = [[HelpLabel alloc]
-					   initWithFrame: startLabelFrame
-						  target: self
-						selector: @selector(startHelp:)];
-	[startHelpLabel setTitle: @"Start"
-			forState: UIControlStateNormal];
-	[self addSubview: startHelpLabel];
+	_startHelpLabel = [[HelpLabel alloc]
+			      initWithFrame: startLabelFrame
+				     target: self
+				   selector: @selector(startHelp:)];
+	[_startHelpLabel setTitle: @"Start"
+			 forState: UIControlStateNormal];
+	[self addSubview: _startHelpLabel];
 
 	viewOffset += labelHeightFactor * viewHeight;
 	viewHeight = labelHeight;
@@ -205,13 +216,13 @@ static const float _kPlayDuration = 4.0;
 	endLabelFrame = endSliderFrame;
 	endLabelFrame.origin.x = 0;
 	endLabelFrame.size.width = sliderLabelPct * frame.size.width;
-	HelpLabel *endHelpLabel = [[HelpLabel alloc]
-					   initWithFrame: endLabelFrame
-						  target: self
-						selector: @selector(endHelp:)];
-	[endHelpLabel setTitle: @"End"
+	_endHelpLabel = [[HelpLabel alloc]
+			    initWithFrame: endLabelFrame
+				   target: self
+				 selector: @selector(endHelp:)];
+	[_endHelpLabel setTitle: @"End"
 		      forState: UIControlStateNormal];
-	[self addSubview: endHelpLabel];
+	[self addSubview: _endHelpLabel];
 
 	CGRect marqueeFrame;
 	viewOffset += labelHeightFactor * viewHeight;
@@ -322,6 +333,7 @@ static const float _kPlayDuration = 4.0;
 	[_cancelButton addCallback: self withAction:@selector(donePressed:)];
 
 	_didNotify = false;
+	_playingMode = false;
 
 	[self setBackgroundColor: [UIColor whiteColor]];
 
@@ -331,8 +343,31 @@ static const float _kPlayDuration = 4.0;
     return self;
 }
 
+- (void) enterPlayingMode {
+    if (_playingMode)
+	return;
+
+    _playingMode = true;
+    [_endSlider removeFromSuperview];
+    [_startHelpLabel removeFromSuperview];
+    [_endHelpLabel removeFromSuperview];
+}
+
+- (void) leavePlayingMode {
+    if (!_playingMode)
+	return;
+
+    _playingMode = false;
+    [self addSubview: _endSlider];
+    [self addSubview: _startHelpLabel];
+    [self addSubview: _endHelpLabel];
+}
+
 - (void) stepperChanged: (UIStepper *) stepper {
     NSLog(@"%f value", stepper.value);
+
+    if (_playingMode)
+	return;
 
     float diff = stepper.value - _lastStepperValue;
     _lastStepperValue = stepper.value;
@@ -380,6 +415,8 @@ static const float _kPlayDuration = 4.0;
 
     [self stopSample];
 
+    [self enterPlayingMode];
+
     // remember what we're playing
     _sampleIndex = (uint32_t) ix;
 
@@ -390,15 +427,30 @@ static const float _kPlayDuration = 4.0;
     _samplePlayer = [[MFANStreamPlayer alloc]
 			initWithStreamBuffer: _buffer
 					  ms: (uint64_t) (ep.start * 1000.0)];
-    _sampleTimer = [NSTimer scheduledTimerWithTimeInterval: duration
-						    target: self
-						  selector: @selector(stopSampleTimer:)
-						  userInfo: nil
-						   repeats: NO];
+
+    _startSlider.value = ep.start;
+
+    if (_sampleTimer != nil) {
+	[_sampleTimer invalidate];
+	_sampleTimer = nil;
+    }
+}
+
+- (void) playSeek: (float) target {
+    [self stopSample];
+
+    _samplePlayer = [[MFANStreamPlayer alloc]
+			initWithStreamBuffer: _buffer
+					  ms: (uint64_t) target * 1000.0];
+    if (_sampleTimer != nil) {
+	[_sampleTimer invalidate];
+	_sampleTimer = nil;
+    }
 }
 
 - (void) stopSample {
     NSLog(@"in stopsample");
+
     _sampleIndex = -1;		// only set while playing an entry
     if (_sampleTimer != nil) {
 	[_sampleTimer invalidate];
@@ -429,11 +481,13 @@ static const float _kPlayDuration = 4.0;
 
 - (void) stopSampleTimer: (id) junk{
     NSLog(@"in stopsampletimer");
+    [self leavePlayingMode];
     [self stopSample];
 }
 
 - (void) donePressed: (id) junk1 {
     [self stopSample];
+    [self leavePlayingMode];
     [_vc popTopView];
 }
 
@@ -606,6 +660,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		// do the work for the action
 		NSLog(@"performe play work");
 		[self playIndex: row];
+		self->_sampleIndex = (int32_t) row;
 		complete(true);
 	    }];
     } else {
@@ -619,6 +674,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		// do the work for the action
 		NSLog(@"performe play work");
 		[self stopSample];
+		[self leavePlayingMode];
 		complete(true);
 	    }];
     }
@@ -673,6 +729,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 - (void) activateTopView {
     // if the edit command did a remove, don't stay on the status
     // page, since the station doesn't exist anymore.
+    [self leavePlayingMode];
     return;
 }
 
