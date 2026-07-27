@@ -1204,7 +1204,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	_station.warnedAac = true;
 	(void) [[TopAlert alloc]
 		   initWithMessage: @"Saving .aac file.  Can convert to .m4a with:\n"
-		   @"ffmpeg  -i foo.aac -c:a copy foo.m4a"
+		   @"ffmpeg -i foo.aac -c:a copy foo.m4a"
 			  duration: 10.0
 			  viewCont: _vc];
     }
