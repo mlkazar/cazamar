@@ -1,7 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 
-@interface Silence : NSObject
+@interface Silence : NSObject<AVAudioPlayerDelegate>
 - (Silence *) init;
 
 - (void) start;
