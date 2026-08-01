@@ -43,6 +43,11 @@ Ideas for Radio app
 
 -- log errors and times
 
+** failure callback restarts even after a stop operation on the same station
+
+** fast forward / backwards stepper should work with export screen in
+   'play' mode.
+
 ** add play selection screen that uses an export screen-like view of
    the recordings and a regular scroll bar.  Or perhaps rename the
    export screen to 'recordings' and gray out one scroll bar when
@@ -253,11 +258,11 @@ name as well)
 
 -- modify MFANSocket to support https?
 
--- smart record functionality -- by song boundary
+** smart record functionality -- by song boundary
 
--- hybrid stations consisting of sequence of songs from N stations?
+-- hybrid stations consisting of sequence of songs from N stations??
 
--- export recordings somehow
+** export recordings somehow
 
 ** use backing file for large streams
 

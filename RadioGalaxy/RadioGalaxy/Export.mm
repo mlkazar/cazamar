@@ -366,16 +366,24 @@ static const float _kPlayDuration = 4.0;
 - (void) stepperChanged: (UIStepper *) stepper {
     NSLog(@"%f value", stepper.value);
 
-    if (_playingMode)
-	return;
-
     float diff = stepper.value - _lastStepperValue;
     _lastStepperValue = stepper.value;
 
-    if (_startSlider.lastTouchMs >= _endSlider.lastTouchMs) {
-	[ _startSlider setValue: [_startSlider getValue] + diff];
+    if (_playingMode) {
+	if (_samplePlayer != nil) {
+	    uint64_t  currentTimestamp = [_samplePlayer getSeekTarget: 0.0];
+	    // Note that a single tap will come in with a diff of 0.
+	    if (diff >= 0)
+		[ _startSlider setValue: (currentTimestamp / 1000.0)  + diff + 2.0];
+	    else
+		[ _startSlider setValue: (currentTimestamp / 1000.0)  + diff  - 2.0];
+	}
     } else {
-	[ _endSlider setValue: [_endSlider getValue] + diff];
+	if (_startSlider.lastTouchMs >= _endSlider.lastTouchMs) {
+	    [ _startSlider setValue: [_startSlider getValue] + diff];
+	} else {
+	    [ _endSlider setValue: [_endSlider getValue] + diff];
+	}
     }
 }
 
@@ -887,6 +895,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 			       NSCharacterSet.whitespaceCharacterSet];
     }
     entryName = [entryName stringByAppendingString: (isMp3? @".mp3" : @".aac")];
+    entryName = [entryName stringByReplacingOccurrencesOfString: @"/" withString: @"-"];
     return fileNameForDoc(entryName);
 }
 

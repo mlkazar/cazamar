@@ -483,6 +483,12 @@ MFANAqStream_rsControlProc( void *contextp,
 
     _shuttingDown = YES;
 
+    // clear these out in case there's an operation that's going to
+    // timeout soon.  We don't want to upcall a failure to someone
+    // who's going to restart the download.
+    _failureCallbackObj = nil;
+    _failureCallbackSel = nil;
+
     // abort any readers, so that the streamplayer can be shutdown and
     // deleted.
     if (abortReaders)

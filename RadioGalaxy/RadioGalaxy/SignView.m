@@ -1176,6 +1176,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
     [alert addAction: action];
 
+#if 0
+    // Coming soon -- don't delete!
     action = [UIAlertAction actionWithTitle:@"View error log"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
@@ -1189,6 +1191,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    NSLog(@"not implemented yet");
 	}];
     [alert addAction: action];
+#endif
 
     action = [UIAlertAction actionWithTitle:@"Legal"
 				       style: UIAlertActionStyleDefault
