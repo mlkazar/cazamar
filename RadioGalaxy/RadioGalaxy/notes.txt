@@ -41,6 +41,11 @@ Ideas for Radio app
 
 ** background app refresh
 
+-- Look at BGContinuedProcessingTaskRequest and
+   BGProcessingTaskRequest to see if either can work to either
+   schedule a background task wakeup or to keep an app alive while it
+   does background streaming.
+
 -- log errors and times
 
 ** failure callback restarts even after a stop operation on the same station

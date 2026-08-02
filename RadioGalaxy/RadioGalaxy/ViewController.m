@@ -5,6 +5,7 @@
 //  Created by Michael Kazar on 11/25/25.
 //
 
+#import <BackgroundTasks/BackgroundTasks.h>
 #import "ViewController.h"
 #import "TopView.h"
 
@@ -52,6 +53,24 @@
 					ViewCont: self];
 
     [self.view addSubview: _activeView];
+
+    [self registerBackground];
+}
+
+// Should eventually move to BGContinuedProcessingTask, but that's
+// only supported on very new iOS versions.
+- (void) registerBackground {
+    [[BGTaskScheduler sharedScheduler]
+	registerForTaskWithIdentifier: @"com.Cazamar.RadioGalaxy.background"
+			   usingQueue: dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
+			launchHandler: ^(BGTask *_Nonnull task) {
+	    [self runBackgroundTask: (BGProcessingTask *) task];
+	}];
+}
+
+- (void) runBackgroundTask: (BGProcessingTask *) task {
+    NSLog(@"=1= running BACKGROUND task");
+    [NSThread sleepForTimeInterval: 1.0];
 }
 
 - (void) pushTopView: (UIView<TopViewInt> *) view {

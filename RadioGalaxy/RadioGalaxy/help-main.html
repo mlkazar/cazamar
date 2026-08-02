@@ -1,8 +1,8 @@
 <html>
   <head>
     <style>
-      p {font-family:arial;font-size:52px;}
-      body {font-family:arial;font-size:52px}
+      p {font-family:arial;font-size:60px;}
+      body {font-family:arial;font-size:60px}
       h1 {text-align:center;font-size:70px}
       h2 {text-align:center;font-size:66px}
       h3 {text-align:center;font-size:64px}
@@ -179,14 +179,17 @@
     <h2><a id="Exports">Exporting Music</h2></a>
     <p>
       You can export music recorded by a station using the Export menu
-      item.  Some stations label each song played with ICY metadata,
-      and for those stations, you can simply press the 'Add all
-      recorded songs' button and all the songs present will appear in
-      the table at the top of the Export screen.  You can then simply
-      swipe left on the item and press 'Export' and the recording will
-      be saved.  You can also press 'Play' and listen to the entry.
-      Or you can press 'Update times' and adjust the start and end
-      times for the recording.
+      item from the "More..." button on the main screen.
+    </p>
+    <p>
+      Some stations label each song played with ICY metadata, and for
+      those stations, you can simply press the 'Add all recorded
+      songs' button and all the songs present will appear in the table
+      at the top of the Export screen.  You can then simply swipe left
+      on the item and press 'Export' and the recording will be saved.
+      You can also press 'Play' and listen to the entry.  Or you can
+      press 'Update times' and adjust the start and end times for the
+      recording.
     </p>
     <p>
       For stations that don't export the song metadata, you can use
@@ -204,16 +207,17 @@
       metadata correctly: the metadata is only approximately
       positioned.  For these stations, you can select the song you
       wish to export by tapping the entry in the table.  RadioGalaxy
-      will highlight the entry and adjust the start and end scrollbar,
-      which you can adjust with the scroll bars as described above.
-      You can then swipe left on the entry and select 'Update times'
-      and the start and end times will be adjusted to match the scroll
-      bars.  Finally, you can select 'Export' from the swiped entry
-      and RadioGalaxy will export the audio into a file named by the
-      ICY metadata.  Alternatively, after adjusting the start and end
-      scroll bars, you can just press 'Add from range' and enter the
-      song name again; this will also add a new entry with the updated
-      times to the end of the table.
+      will highlight the entry and adjust the start and end
+      scrollbars, which you can adjust with the scroll bars as
+      described above.  You can then swipe left on the entry and
+      select 'Update times' and the start and end times will be
+      adjusted to match the scroll bars.  Finally, you can select
+      'Export' from the swiped entry and RadioGalaxy will export the
+      audio into a file named by the ICY metadata.  Alternatively,
+      after adjusting the start and end scroll bars, you can just
+      press 'Add from range' and enter the song name again; this will
+      also add a new entry with the updated times to the end of the
+      table.
     </p>
     <p>
       My apologies for the clunky user interface.
@@ -229,21 +233,21 @@
       then add it to your library with the Music app.
     </p>
     <p>
-      Noet that once you've expanded the files for RadioGalaxy, the
+      Note that once you've expanded the files for RadioGalaxy, the
       Mac Finder is too stupid to notice further updates without your
       unplugging and re-plugging the phone in with a USB cable.
     </p>
     <p>
-      Note that stations that stream MP3 data will simply write MP3
-      files with the right metadata (but no album artwork, and
-      probably no album name).  But stations that stream AAC data will
-      write AAC files with the appropriate metadata.  You can play
-      those with VLC, but if you want to add them to your music
-      library, you should convert them to M4A files.  The easiest way
-      to do that is to use ffmpeg, which can be downloaded with
-      Homebrew.  You can then do:
+      Stations that stream MP3 data will simply write MP3 files with
+      the right metadata (but no album artwork, and probably no album
+      name).  But stations that stream AAC data will write AAC files
+      with the appropriate metadata.  You can play those with VLC, but
+      if you want to add them to your music library, you should
+      convert them to M4A files, otherwise Apple thinks they're
+      audiobooks.  The easiest way to do that is to use ffmpeg, which
+      can be downloaded with Homebrew.  You can then do:
       <pre>
-	ffmpeg -i foo.aac -c:a foo.m4a
+	ffmpeg -i foo.aac -c:a copy foo.m4a
       </pre>
       to convert the file from a pure AAC file to an M4A, preserving
       the song and album metadata written by RadioGalaxy.  Hopefully I
