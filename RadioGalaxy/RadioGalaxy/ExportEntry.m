@@ -10,6 +10,7 @@
 	self.start = start;
 	self.end = end;
 	self.saved = false;
+	self.damaged = false;
     }
 
     return self;

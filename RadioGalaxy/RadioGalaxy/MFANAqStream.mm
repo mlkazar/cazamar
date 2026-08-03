@@ -46,6 +46,9 @@ static pthread_mutex_t _streamMutex;
 
     float _dataRate;            /* estimated data rate */
 
+    BOOL _setErrorFlag;		// have we set the error flag on a
+				// packet for this stream yet?
+
     BOOL _pthreadWaiters;
     NSThread *_radioStreamThread;
 
@@ -60,10 +63,6 @@ static pthread_mutex_t _streamMutex;
 
     id _failureCallbackObj;
     SEL _failureCallbackSel;
-
-    bool _failed;
-    uint32_t _failedWindowMs;       // window size for hard-failure detection
-    uint32_t _failedWindowCount;    // max failures within the window
 
     // The buffer that accumulates decoded packets.
     MFANAqStreamBuffer *_buffer;
@@ -181,6 +180,11 @@ MFANAqStream_PacketsProc( void *contextp,
             durationMs = (uint32_t)(aqp->_buffer.packetDuration * 1000);
         }
 
+	if (!aqp->_setErrorFlag) {
+	    aqp->_setErrorFlag = true;
+	    [packet setErrorCode: 1];
+	}
+
         [packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
         packet.playingSong = aqp->_currentPlaying;
 
@@ -188,7 +192,8 @@ MFANAqStream_PacketsProc( void *contextp,
             NSLog(@"packet framesInPacket=%lld duration=%f generic packet duration=%f",
                   framesInPacket, framesInPacket * aqp->_buffer.frameDuration, aqp->_buffer.packetDuration);
 
-	[aqp->_buffer addPacket: packet withDuration: durationMs];
+	[aqp->_buffer addPacket: packet
+		   withDuration: durationMs];
 
         packetsCopied++;
         bytesCopied += packetSize;
@@ -398,9 +403,7 @@ MFANAqStream_rsControlProc( void *contextp,
         _streamAttachCounter = 0;
         _pthreadWaiters = 0;
 
-        _failed = NO;
-        _failedWindowMs = 4000;
-        _failedWindowCount = 6;
+	_setErrorFlag = NO;
 
 	_radioStreamThread = [[NSThread alloc] initWithTarget: self
 						     selector: @selector(playAsync:)

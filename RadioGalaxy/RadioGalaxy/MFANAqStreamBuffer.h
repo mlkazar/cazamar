@@ -32,6 +32,8 @@
 @property uint32_t durationMs;
 @property bool read;
 @property AudioStreamPacketDescription descr;
+@property uint16_t flags;
+@property (class, readonly) uint16_t kMagicFlagError;
 
 - (int32_t) addData: (char *) data descr: (AudioStreamPacketDescription *) descr;
 
@@ -42,6 +44,8 @@
 - (void) getDescr: (AudioStreamPacketDescription *) descr;
 
 - (uint32_t) getLength;
+
+- (void) setErrorCode: (int32_t) error;
 
 - (MFANAqStreamPacket *) init;
 @end
@@ -156,7 +160,8 @@
 // -------------------------------------------------------------------
 
 // add a packet, updating global time information in buffer.
-- (void) addPacket: (MFANAqStreamPacket *) packet withDuration: (uint32_t) durationMs;
+- (void) addPacket: (MFANAqStreamPacket *) packet
+      withDuration: (uint32_t) durationMs;
 
 // Global mutex that guards packetArray and the condition variable.  A
 // single mutex is shared so that a mutex is not required in every

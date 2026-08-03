@@ -584,12 +584,20 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     /* make cell clear */
     UIColor *selectedColor = [UIColor colorWithRed: 1.0
 					     green: 1.0
-					      blue: 0.8
+					      blue: 0.7
 					     alpha: 1.0];
     if (_selectedRow == row) {
 	cell.contentView.backgroundColor = selectedColor;
+    } else if (ep.damaged) {
+	cell.contentView.backgroundColor = [UIColor colorWithRed: 1.0
+							   green: 0.7
+							    blue: 0.7
+							   alpha: 1.0];
     } else {
-	cell.contentView.backgroundColor = [UIColor clearColor];
+	cell.contentView.backgroundColor = [UIColor colorWithRed: 0.7
+							   green: 1.0
+							    blue: 0.7
+							   alpha: 1.0];
     }
     cell.backgroundView.backgroundColor = [UIColor clearColor];
     cell.multipleSelectionBackgroundView.backgroundColor = [UIColor clearColor];
@@ -823,9 +831,13 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	song = @"";
     }
 
+    NSString *prompt;
+    bool damaged = [self damagedEntry: ep];
+    prompt = (damaged? @"Song name (damaged)" : @"Song name");
+
     // I guess this is easier than building an entire screen to push
     // into the viewcontroller's stack, but I'm not sure.
-    [self promptFor:@"Song name" default: song handler:^(NSString *value) {
+    [self promptFor: prompt default: song handler:^(NSString *value) {
 	    NSLog(@"=6= in addrangepart2 with %@", value);
 	    if ([value length] == 0)
 		return;
@@ -1038,6 +1050,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     uint64_t startMs = 0;
     uint64_t endMs = 0;
     bool first = true;
+    bool bad;
     ExportEntry *ep;
     MFANAqStreamReader *reader;
     MFANAqStreamPacket *p;
@@ -1050,25 +1063,31 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     [reader seek: 0  whence: 0];
 
+    bad = false;
     while(true) {
 	p = [reader read];
-	if (p == nil)
+	if (p == nil) {
 	    break;
+	}
 
 	// canceled, stop early
 	if (_populateCanceled)
 	    break;
 
 	if (first) {
-	    startMs = endMs = p.startMs;
+	    startMs = p.startMs;
+	    endMs = startMs + p.durationMs;
 	    startLabel = p.playingSong;
 	    first = false;
+	    bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
 	    continue;
 	}
 
 	if ( [startLabel isEqualToString: p.playingSong] ||
 	     [p.playingSong length] == 0) {
 	    endMs = p.startMs + p.durationMs;
+	    if (p.flags & [MFANAqStreamPacket kMagicFlagError])
+		bad = true;
 	    continue;
 	}
 
@@ -1076,6 +1095,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	ep = [[ExportEntry alloc] initWithStartTime: startMs/1000.0
 						end: endMs/1000.0];
 	ep.label = startLabel;
+	if (bad)
+	    ep.damaged = true;
 
 	pthread_mutex_lock(&_populateLock);
 	_populateSong = startLabel;
@@ -1088,6 +1109,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	startLabel = p.playingSong;
 	startMs = p.startMs;
 	endMs = p.startMs + p.durationMs;
+	bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
 
 	_populatePct = (uint32_t) (100 * (endMs - populateStartMs) /
 				   (populateEndMs - populateStartMs));
@@ -1258,6 +1280,73 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     return 0;
 }
+
+- (bool) damagedEntry: (ExportEntry *) ep {
+    MFANAqStreamReader *reader;
+    MFANAqStreamPacket *p;
+    MFANAqStreamPacket *badPacket = nil;
+    AudioStreamBasicDescription dataFormat;
+    bool isMp3;
+    uint64_t packetSize;
+    uint64_t endMs;
+    bool bad;
+
+    [_buffer getDataFormat: &dataFormat];
+    isMp3 = (dataFormat.mFormatID == '.mp3');
+
+    reader = [[MFANAqStreamReader alloc]
+		  initWithBuffer: _buffer];
+    [reader seek: (uint64_t) (ep.start * 1000) whence: 0];
+    reader.noWait = true;
+
+    endMs = (uint64_t)(ep.end * 1000);
+
+    bad = false;
+    uint32_t badCount = 0;
+    uint32_t badLength = 0;
+    while(true) {
+	p = [reader read];
+	if (p == nil)
+	    break;
+	if (p.startMs >= endMs)
+	    break;
+	packetSize = [p getLength];
+	if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
+	    bad = true;
+	    if (badPacket == nil) {
+		badLength = [p getLength];
+		badPacket = p;
+		NSLog(@"=c= found first bad packet at ms=%lld", p.startMs);
+	    }
+	    badCount++;
+	}
+    }
+
+    NSLog(@"=c= found %d bad packets", badCount);
+
+    if (bad) {
+	[reader seek: (uint64_t) (ep.start * 1000) whence: 0];
+	while(true) {
+	    p = [reader read];
+	    if (p == nil)
+		break;
+	    if (p.startMs >= endMs)
+		break;
+	    if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
+		break;
+	    }
+
+	    if ( [p getLength] == badLength &&
+		 memcmp([p getData], [badPacket getData], badLength) == 0) {
+		NSLog(@"=c= found bad packet again at ms=%lld", p.startMs);
+		break;
+	    }
+	}
+    }
+
+    return bad;
+}
+
 @end
 
 @implementation ExportId3V2 {

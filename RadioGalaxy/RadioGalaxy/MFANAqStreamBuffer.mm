@@ -19,6 +19,10 @@ static pthread_mutex_t _bufferMutex;
 static const uint32_t _kBytesPerBlock = 16*1024;
 static const uint32_t _kTrailerBytes = 2;
 static const uint16_t _kMagic = 0x0301;			// for records
+static const uint16_t _kMagicMask = 0x0FFF;		// mask
+static const uint16_t _kMagicFlagsShift = 12;
+static const uint16_t _kMagicFlagsMask = 0xF;
+static const uint16_t _kMagicFlagError = 1;
 
 // if we find a bug that might have left corrupt files in place,
 // change this magic # to ensure the files' contents get reset.
@@ -35,6 +39,7 @@ static const uint32_t _kMaxDiskPct = 50;	// maximum unused disk space before rec
 @implementation MFANAqStreamPacket {
     uint64_t _startMs;
     uint32_t _durationMs;
+    uint16_t _flags;
 
     std::string _data;
     bool _read;
@@ -42,10 +47,30 @@ static const uint32_t _kMaxDiskPct = 50;	// maximum unused disk space before rec
     AudioStreamPacketDescription _descr;
 }
 
+uint16_t setMagicFlags(uint16_t magicFlags) {
+    return _kMagic | (magicFlags << _kMagicFlagsShift);
+}
+
+uint16_t getMagicFlags(uint16_t recordMagic) {
+    return (recordMagic >> _kMagicFlagsShift) & _kMagicFlagsMask;
+}
+
+- (void) setErrorCode: (int32_t) code {
+    if (code != 0)
+	_flags |= _kMagicFlagError;
+    else
+	_flags &= ~_kMagicFlagError;
+}
+
++ (uint16_t) kMagicFlagError {
+    return 0x1;
+}
+
 - (MFANAqStreamPacket *) init {
     self = [super init];
     if (self != nil) {
         _read = NO;
+	_flags = 0;
     }
     return self;
 }
@@ -1048,10 +1073,11 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	    return 0;
 	}
 
-	if (shortTemp != _kMagic) {
+	if ((shortTemp & _kMagicMask) != _kMagic) {
 	    NSLog(@"=p= read inconsistency after %d packets C", packetCount);
 	    return -2;
 	}
+	uint16_t magicFlags = getMagicFlags(shortTemp);
 
 	// packet data count
 	if (bytesRead < 2)
@@ -1066,6 +1092,9 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	}
 
 	MFANAqStreamPacket *packet = [[MFANAqStreamPacket alloc] init];
+
+	// remember the flags in the magic # field
+	packet.flags = magicFlags;
 
 	// copy out the packet data into the packet
 	[packet setData: std::string(datap, shortTemp)];
@@ -1162,8 +1191,8 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
     [self debugCheck: block];
     for(packet in block.packetArray) {
-	// write out magic #
-	shortTemp = _kMagic;
+	// write out magic # with flags
+	shortTemp = setMagicFlags(packet.flags);
 	memcpy(datap, &shortTemp, 2);
 	datap += 2;
 
