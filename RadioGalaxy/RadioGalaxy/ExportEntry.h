@@ -11,6 +11,7 @@
 @property float end;
 @property bool saved;
 @property bool damaged;
+@property bool fixable;
 
 - (ExportEntry *) initWithStartTime: (float) start end: (float) end;
 @end

@@ -569,6 +569,10 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
     details = [ExportSlider stringFromTime: ep.end - ep.start];
+    if (ep.fixable)
+	details = [details stringByAppendingString: @" fixable"];
+    else if (ep.damaged)
+	details = [details stringByAppendingString: @" damaged"];
     cell.detailTextLabel.text = details;
     cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 16];
     cell.detailTextLabel.textColor = [UIColor colorWithRed: 0.0
@@ -832,7 +836,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     }
 
     NSString *prompt;
-    bool damaged = [self damagedEntry: ep];
+    bool damaged = ([self damagedEntry: ep] > 0);
     prompt = (damaged? @"Song name (damaged)" : @"Song name");
 
     // I guess this is easier than building an entire screen to push
@@ -1056,6 +1060,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     MFANAqStreamPacket *p;
     uint64_t populateStartMs;
     uint64_t populateEndMs;
+    uint32_t damagedCount = 0;
 
     reader = [[MFANAqStreamReader alloc]
 		  initWithBuffer: _buffer];
@@ -1080,14 +1085,17 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    startLabel = p.playingSong;
 	    first = false;
 	    bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
+	    damagedCount = 0;
 	    continue;
 	}
 
 	if ( [startLabel isEqualToString: p.playingSong] ||
 	     [p.playingSong length] == 0) {
 	    endMs = p.startMs + p.durationMs;
-	    if (p.flags & [MFANAqStreamPacket kMagicFlagError])
+	    if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
+		damagedCount++;
 		bad = true;
+	    }
 	    continue;
 	}
 
@@ -1095,8 +1103,14 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	ep = [[ExportEntry alloc] initWithStartTime: startMs/1000.0
 						end: endMs/1000.0];
 	ep.label = startLabel;
-	if (bad)
+	if (bad) {
 	    ep.damaged = true;
+	    if (damagedCount <= 1) {
+		uint32_t damageReport = [self damagedEntry: ep];
+		if (damageReport & 2)
+		    ep.fixable = true;
+	    }
+	}
 
 	pthread_mutex_lock(&_populateLock);
 	_populateSong = startLabel;
@@ -1106,10 +1120,17 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	populateStartMs = _buffer.firstPacketStartMs;
 	populateEndMs = _buffer.lastPacketEndMs;
 
+	// reset state for next song.
 	startLabel = p.playingSong;
 	startMs = p.startMs;
 	endMs = p.startMs + p.durationMs;
 	bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
+	if (bad) {
+	    // song may be in the middle when we first started stream.
+	    damagedCount = 1;
+	} else {
+	    damagedCount = 0;
+	}
 
 	_populatePct = (uint32_t) (100 * (endMs - populateStartMs) /
 				   (populateEndMs - populateStartMs));
@@ -1281,7 +1302,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return 0;
 }
 
-- (bool) damagedEntry: (ExportEntry *) ep {
+// 1 bit means damaged, 2 bit means fixable
+- (uint32_t) damagedEntry: (ExportEntry *) ep {
     MFANAqStreamReader *reader;
     MFANAqStreamPacket *p;
     MFANAqStreamPacket *badPacket = nil;
@@ -1289,7 +1311,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     bool isMp3;
     uint64_t packetSize;
     uint64_t endMs;
-    bool bad;
+    int rval = 0;
 
     [_buffer getDataFormat: &dataFormat];
     isMp3 = (dataFormat.mFormatID == '.mp3');
@@ -1301,7 +1323,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     endMs = (uint64_t)(ep.end * 1000);
 
-    bad = false;
     uint32_t badCount = 0;
     uint32_t badLength = 0;
     while(true) {
@@ -1312,7 +1333,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    break;
 	packetSize = [p getLength];
 	if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
-	    bad = true;
+	    rval |= 1;
 	    if (badPacket == nil) {
 		badLength = [p getLength];
 		badPacket = p;
@@ -1324,27 +1345,34 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     NSLog(@"=c= found %d bad packets", badCount);
 
-    if (bad) {
+    if (badCount == 1) {
 	[reader seek: (uint64_t) (ep.start * 1000) whence: 0];
 	while(true) {
 	    p = [reader read];
 	    if (p == nil)
 		break;
-	    if (p.startMs >= endMs)
-		break;
+
+	    // There's only one bad packet in our range, so if we
+	    // encounter this packet again before finding a duplicate,
+	    // the song isn't salvageable.
 	    if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
 		break;
 	    }
 
+	    // found a duplicate.  This song can be salvaged by
+	    // removing the duplicates starting with this packet and
+	    // continuing up to but not including the packet with the
+	    // bad flag.
 	    if ( [p getLength] == badLength &&
 		 memcmp([p getData], [badPacket getData], badLength) == 0) {
 		NSLog(@"=c= found bad packet again at ms=%lld", p.startMs);
+		rval |= 2;
 		break;
 	    }
 	}
     }
 
-    return bad;
+    return rval;
 }
 
 @end

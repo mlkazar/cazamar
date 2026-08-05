@@ -16,3 +16,12 @@ wmbr
 real wers 17023.live.streamtheworld.com/WERSFMAAC.aac
 real wesa 16893 WESAFM.mp3
 real wyep 16893 WYEPFMAAC.aac
+
+podcasts:
+The unspeakeasy meghan daum
+new yorker radio hour
+better offline
+pivot
+death, sex & money
+slate money
+ezra klein show
