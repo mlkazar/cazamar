@@ -592,7 +592,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 					     alpha: 1.0];
     if (_selectedRow == row) {
 	cell.contentView.backgroundColor = selectedColor;
-    } else if (ep.damaged) {
+    } else if (ep.damaged && !ep.fixable) {
 	cell.contentView.backgroundColor = [UIColor colorWithRed: 1.0
 							   green: 0.7
 							    blue: 0.7
@@ -1230,6 +1230,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     uint64_t endMs;
     int64_t code;
     NSMutableData *adtsHeader;
+    bool skipping;
 
     [_buffer getDataFormat: &dataFormat];
     isMp3 = (dataFormat.mFormatID == '.mp3');
@@ -1261,12 +1262,38 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 			  viewCont: _vc];
     }
 
+    skipping = false;
     while(true) {
 	p = [reader read];
 	if (p == nil)
 	    break;
 	if (p.startMs >= endMs)
 	    break;
+
+	// If we encounter a splice, we stop copying when we hit
+	// spliceStart and resume again with the the packet at
+	// spliceEnd.  That is, spliceStart isn't copied and spliceEnd
+	// is copied.
+	if (skipping) {
+	    if (p.startMs < ep.spliceEnd)
+		continue;
+	    skipping = false;
+	    NSLog(@"=S= splicing ends at %lld (%lld)", p.startMs, ep.spliceEnd);
+	}
+
+	if (ep.fixable) {
+	    // note that after we're done splicing, p.startMs will be
+	    // much larger than ep.spliceStart.  But since we're not
+	    // changing the saved packets, don't turn off ep.fixable,
+	    // otherwise we won't be able to do a good export
+	    // operation of this song again.
+	    if (p.startMs == ep.spliceStart) {
+		skipping = true;
+		NSLog(@"=S= splicing starts at %lld", ep.spliceStart);
+		continue;
+	    }
+	}
+
 	packetSize = [p getLength];
 
 	// if AAC file, write out the ADTS header, which we retrieve from
@@ -1359,13 +1386,15 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		break;
 	    }
 
-	    // found a duplicate.  This song can be salvaged by
-	    // removing the duplicates starting with this packet and
-	    // continuing up to but not including the packet with the
-	    // bad flag.
+	    // found an earlier duplicate.  This song can be salvaged
+	    // by removing the duplicates starting with this packet
+	    // and continuing up to but not including the packet with
+	    // the bad flag.
 	    if ( [p getLength] == badLength &&
 		 memcmp([p getData], [badPacket getData], badLength) == 0) {
 		NSLog(@"=c= found bad packet again at ms=%lld", p.startMs);
+		ep.spliceStart = p.startMs;
+		ep.spliceEnd = badPacket.startMs;
 		rval |= 2;
 		break;
 	    }
