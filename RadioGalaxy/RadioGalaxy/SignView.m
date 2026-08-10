@@ -15,6 +15,7 @@
 #import "ManualStation.h"
 #import "EditStation.h"
 #import "Export.h"
+#import "ExportPlayer.h"
 #import "HelpView.h"
 #import "MFANAqStream.h"
 #import "MFANFileWriter.h"
@@ -29,6 +30,7 @@
 #import "StatusMon.h"
 
 #include "assert.h"
+#include <stdlib.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -975,6 +977,21 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
 }
 
+- (bool) anyDownloading {
+    SignStation *station;
+
+    // if someone's downloading, it'll be in _stream or a recordingStream.
+    if (_stream != nil)
+	return true;
+
+    for(station in _allStations) {
+	if (station.recordingStream != nil)
+	    return true;
+    }
+
+    return false;
+}
+
 - (void) cleanupGarbageFiles {
     NSArray *dirArray;
     NSString *dirName = dirNameForFiles();
@@ -1155,6 +1172,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		(void) [[Export alloc] initWithStation: self->_playingStation
 					      viewCont: self->_vc];
 	    }
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Play recordings"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+	    (void) [[ExportPlayer alloc] initWithViewCont: self->_vc];
 	}];
     [alert addAction: action];
 
@@ -1913,6 +1937,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	[_silence stop];
 	[self setupAudioSession: false];
     }
+
+    if (_isBackground &&
+	![self anyDownloading] && (_player == nil))
+	exit(0);
 }
 
 - (void) setupNotifications {

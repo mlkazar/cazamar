@@ -41,12 +41,19 @@ Ideas for Radio app
 
 ** background app refresh
 
--- Look at BGContinuedProcessingTaskRequest and
+** Look at BGContinuedProcessingTaskRequest and
    BGProcessingTaskRequest to see if either can work to either
    schedule a background task wakeup or to keep an app alive while it
-   does background streaming.
+   does background streaming.  No.
 
 -- log errors and times
+
+-- Way to view and play saved files.  Probably add a new screen for
+   managing saved files, including airdrop (see below).
+
+-- Airdrop support?  Looks pretty easy.
+
+-- exit if backgrounded when no stations are playing or downloading.
 
 ** failure callback restarts even after a stop operation on the same station
 
