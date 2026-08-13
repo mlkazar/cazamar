@@ -518,6 +518,10 @@ MFANAqStream_rsControlProc( void *contextp,
     // remains alive for as long as any holder retains a reference to it.
 }
 
+- (bool) isShutdown {
+    return _shuttingDown;
+}
+
 - (NSString *) getFinalUrl {
     if (_radioStreamp != nullptr) {
         std::string finalUrl = "http://" + *(_radioStreamp->getStreamUrl());

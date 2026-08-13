@@ -84,6 +84,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) createSnapshot: (SignStation *) station;
 
+- (bool) ok2Quit;
+
 @end
 
 NS_ASSUME_NONNULL_END

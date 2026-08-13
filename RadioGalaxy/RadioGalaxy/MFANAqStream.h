@@ -62,6 +62,8 @@
 
 - (void) getDataFormat: (AudioStreamBasicDescription *) format;
 
+- (bool) isShutdown;
+
 - (void) setFailureCallback: (id) callbackObj sel: (SEL) callbackSel;
 
 // Stops the stream thread and marks the buffer as complete.

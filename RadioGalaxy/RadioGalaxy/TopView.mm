@@ -412,4 +412,8 @@
     return;
 }
 
+- (bool) ok2Quit {
+    return [_signView ok2Quit];
+}
+
 @end

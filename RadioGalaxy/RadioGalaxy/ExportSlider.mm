@@ -70,6 +70,7 @@
     }
 }
 
+// called from base class when value changes
 - (void) updatedSlider: (BaseSlider *) slider {
     _callbackBlock([slider getValue]);
 }

@@ -981,11 +981,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     SignStation *station;
 
     // if someone's downloading, it'll be in _stream or a recordingStream.
-    if (_stream != nil)
+    if (_stream != nil && ![_stream isShutdown])
 	return true;
 
     for(station in _allStations) {
-	if (station.recordingStream != nil)
+	if (station.recordingStream != nil && ![station.recordingStream isShutdown])
 	    return true;
     }
 

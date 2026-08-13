@@ -391,6 +391,16 @@ static const float _kPlayDuration = 4.0;
     }
 }
 
+- (void) retrieveNameForEntry: (ExportEntry *) entry {
+    float duration = entry.end - entry.start;
+    float midPoint = entry.start + duration/2;
+    [self retrieveNameAt: midPoint];
+}
+
+- (void) songCallback: (NSString *) song {
+    [_marquee setText: song];
+}
+
 - (void) retrieveNameAt: (float) time {
     uint64_t ms = (uint64_t) (time * 1000);
     NSString *song;
@@ -403,7 +413,11 @@ static const float _kPlayDuration = 4.0;
     float playTarget;
     NSLog(@"playto %f", value);
     [self stopSample];
-    [self retrieveNameAt: value];
+
+    if (value > 5.0)
+	[self retrieveNameAt: value - 5];
+    else
+	[self retrieveNameAt: 0.0];
 
     if (value < _kPlayDuration)
 	playTarget = 0.0;
@@ -433,15 +447,18 @@ static const float _kPlayDuration = 4.0;
     _sampleIndex = (uint32_t) ix;
 
     ep = _recordings[ix];
-    float duration = ep.end - ep.start;
-    NSLog(@"playing entryIndex=%lld with duration=%f at start=%f",
-	  ix, duration, ep.start);
+
+    [self retrieveNameForEntry: ep];
+
+    NSLog(@"playing entryIndex=%lld at start=%f", ix, ep.start);
+
     _samplePlayer = [[MFANStreamPlayer alloc]
 			initWithStreamBuffer: _buffer
 					  ms: (uint64_t) (ep.start * 1000.0)];
 
     _startSlider.value = ep.start;
     [_startSlider monitor: _samplePlayer];
+    [_samplePlayer setSongCallback: self sel:@selector(songCallback:)];
 
     if (_sampleTimer != nil) {
 	[_sampleTimer invalidate];
@@ -630,6 +647,9 @@ didSelectRowAtIndexPath:(NSIndexPath *) path {
     [_songTable reloadData];
 
     ExportEntry *ep = _recordings[row];
+    [self retrieveNameForEntry: ep];
+
+    [self leavePlayingMode];
 
     _startSlider.value = ep.start;
     _endSlider.value = ep.end;
@@ -643,6 +663,11 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     ExportEntry *ep = self->_recordings[row];
 
     UIContextualAction *exportAction;
+
+    _selectedRow = row;
+    [_songTable reloadData];
+    [self retrieveNameForEntry: ep];
+
     if (!ep.saved) {
 	exportAction =
 	    [UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
@@ -653,6 +678,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		    // do the work for the action
 		    NSLog(@"performe export work");
 		    [self saveFile2: ep];
+		    [self leavePlayingMode];
 		    complete(true);
 		}];
 	exportAction.backgroundColor = [UIColor colorWithRed: 0.0
@@ -668,6 +694,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 							    void (^complete)(BOOL)) {
 		    // do the work for the action
 		    NSLog(@"performe delete work");
+		    [self leavePlayingMode];
 		    [self removeFile: ep];
 		    [self->_songTable reloadData];
 		    complete(true);
@@ -1156,79 +1183,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     pthread_exit(nullptr);
 }
 
-#if 0
-- (int32_t) saveFile: (ExportEntry *) ep {
-    const char *fileNamep;
-    NSString *fileName;
-    FILE *filep = nullptr;
-    MFANAqStreamReader *reader;
-    MFANAqStreamPacket *p;
-    AudioStreamBasicDescription dataFormat;
-    bool isMp3;
-    uint64_t bytesWritten;
-    uint64_t byteCount;
-    uint64_t packetSize;
-    uint64_t endMs;
-    int64_t code;
-    NSMutableData *adtsHeader;
-
-    [_buffer getDataFormat: &dataFormat];
-    isMp3 = (dataFormat.mFormatID == '.mp3');
-
-    reader = [[MFANAqStreamReader alloc]
-		  initWithBuffer: _buffer];
-    [reader seek: (uint64_t) (ep.start * 1000) whence: 0];
-    reader.noWait = true;
-
-    fileName = [self generateName: ep isMp3: isMp3];
-    fileNamep = [fileName cStringUsingEncoding: NSUTF8StringEncoding];
-
-    filep = fopen(fileNamep, "w");
-    if (filep == nullptr) {
-	return -1;
-    }
-
-    endMs = (uint64_t)(ep.end * 1000);
-    while(true) {
-	p = [reader read];
-	if (p == nil)
-	    break;
-	if (p.startMs >= endMs)
-	    break;
-	packetSize = [p getLength];
-
-	// if AAC file, write out the ADTS header, which we retrieve from
-	// the buffer.
-	if (!isMp3) {
-	    // must be aac
-	    adtsHeader = [_buffer getAdtsHeaderForLength: (int32_t) packetSize];
-	    byteCount = adtsHeader.length;
-	    bytesWritten = fwrite([adtsHeader bytes], 1, byteCount, filep);
-	    if (bytesWritten != byteCount)
-		return -1;
-	}
-
-	bytesWritten = fwrite([p getData], 1, packetSize, filep);
-	if (bytesWritten != packetSize) {
-	    [reader close];
-	    return -1;
-	}
-    }
-
-    if (isMp3) {
-	[self finishMp3File: filep entry: ep];
-    }
-
-    code = fflush(filep);
-    fsync(fileno(filep));
-    code = fclose(filep);
-
-    ep.saved = true;
-
-    return 0;
-}
-#endif
-
 - (int32_t) saveFile2: (ExportEntry *) ep {
     const char *fileNamep;
     NSString *fileName;
@@ -1326,12 +1280,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    return -1;
 	}
     }
-
-#if 0
-    if (isMp3) {
-	[self finishMp3File: filep entry: ep];
-    }
-#endif
 
     code = fflush(filep);
     fsync(fileno(filep));
