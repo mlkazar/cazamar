@@ -9,4 +9,6 @@
 - (void) activateTopView;
 
 - (void) deactivateTopView;
+
+// - (bool) ok2Quit;
 @end

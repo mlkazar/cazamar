@@ -28,4 +28,6 @@
 
 - (void) leaveBackground;
 
+- (bool) ok2Quit;
+
 @end

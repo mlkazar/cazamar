@@ -1,4 +1,4 @@
-#import "ExportSlider.h"
+#import "AudioSlider.h"
 
 #import "MFANCGUtil.h"
 #import "MFANWarn.h"
@@ -8,28 +8,25 @@
 
 #include "osp.h"
 
-@implementation ExportSlider {
+@implementation AudioSlider {
     ViewController *_vc;
-    MFANAqStreamBuffer *_buffer;
-    ExportSliderBlock _callbackBlock;
-    MFANStreamPlayer *_monitorPlayer;
+    AudioSliderBlock _callbackBlock;
+    AVAudioPlayer *_monitorPlayer;
 }
 
 // Says that these properties are implemented in the base class.
 @dynamic lastMusicSampleTime;
 @dynamic lastTouchMs;
 
-- (ExportSlider *) initWithFrame: (CGRect) frame
-			  buffer: (MFANAqStreamBuffer *) buffer
-			   apply: (ExportSliderBlock) block
-			viewCont: (ViewController *) vc {
+- (AudioSlider *) initWithFrame: (CGRect) frame
+			  apply: (AudioSliderBlock) block
+		       viewCont: (ViewController *) vc {
 
     self = [super initWithFrame: frame
 		       callback: self
 		       viewCont: vc];
     if (self != nil) {
 	_vc = vc;
-	_buffer = buffer;
 	_callbackBlock = block;
 	_monitorPlayer = nil;
 
@@ -42,7 +39,7 @@
     return self;
 }
 
-- (void) monitor: (MFANStreamPlayer *) player {
+- (void) monitor: (AVAudioPlayer *) player {
     _monitorPlayer = player;
 }
 
@@ -53,25 +50,30 @@
 
 // Interfaces for BaseSlider to get values
 - (float) getMinForSlider: (BaseSlider *) slider {
-    return _buffer.firstPacketStartMs / 1000.0;
+    return 0.0;
 }
 
 - (float) getMaxForSlider: (BaseSlider *) slider {
-    return _buffer.lastPacketEndMs / 1000.0;
+    if (_monitorPlayer != nil)
+	return _monitorPlayer.duration;
+    else
+	return 0;
 }
 
 - (float) getCurrentForSlider: (BaseSlider *) slider {
-    uint64_t currentMs;
     if (_monitorPlayer != nil) {
-	currentMs = [_monitorPlayer getSeekTarget: 0.0];
-	return currentMs / 1000.0;
-    } else {
-	return [super getValue];
-    }
+	return _monitorPlayer.currentTime;
+    } else
+	return 0;
 }
 
 - (void) updatedSlider: (BaseSlider *) slider {
-    _callbackBlock([slider getValue]);
+    float updatedPosition = [slider getValue];
+
+    if (_monitorPlayer != nil)
+	_monitorPlayer.currentTime = updatedPosition;
+
+    _callbackBlock(updatedPosition);
 }
 
 @end

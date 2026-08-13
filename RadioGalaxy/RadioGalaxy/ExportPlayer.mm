@@ -1,3 +1,4 @@
+#import "AudioSlider.h"
 #import "BufferSlider.h"
 #import "MFANCoreButton.h"
 #import "MFANIconButton.h"
@@ -8,6 +9,26 @@
 #import "ExportPlayer.h"
 
 #include "osp.h"
+
+@implementation ExportPlayerEntry
+
+- (ExportPlayerEntry *) initWithName: (NSString *) fileName {
+    self = [super init];
+    if (self != nil) {
+	self.fileName = fileName;
+	self.playing = false;
+	uint64_t tlen = [fileName length];
+	if (tlen > 4)
+	    self.name = [fileName substringToIndex: tlen - 4];
+	else
+	    self.name = fileName;
+    }
+
+    return self;
+}
+
+@end
+
 
 @implementation ExportPlayer {
     MarqueeLabel *_marquee;
@@ -21,10 +42,21 @@
     RadioHistory *_history;
     ViewController *_vc;
     NSMutableDictionary *_nowPlayingInfo;
-    BufferSlider *_sliderView;
+    AudioSlider *_sliderView;
     Settings *_settings;
     NSString *_playingSong;
     NSMutableArray *_recordings;
+    NSString *_docDirName;
+    AVAudioPlayer *_player;
+    ExportPlayerEntry *_playingEntry;
+    BOOL _isPlaying;
+    BOOL _isPaused;;
+    int32_t _selectedRow;
+    UIColor *_selectedColor;
+}
+
+- (NSString *) pathNameForFile: (NSString *) fileName {
+    return [NSString stringWithFormat: @"%@/%@", _docDirName, fileName];
 }
 
 - (ExportPlayer *) initWithViewCont: (ViewController *) vc {
@@ -41,6 +73,13 @@
 	      screenFrame.origin.x, screenFrame.origin.y);
 
 	_vc = vc;
+	_isPlaying = false;
+	_isPaused = false;
+	_selectedRow = -1;
+	_selectedColor = [UIColor colorWithRed: 1.0
+					 green: 1.0
+					  blue: 0.8
+					 alpha: 1.0];
 
 	CGRect fileFrame;
 
@@ -55,13 +94,14 @@
 
 	// remainder from signFrame height, divided by # of bars
 	float barFraction = (1.0-0.80) / 4;
+	float lineHeight = barFraction * usableHeight;
 
 	_fileTableView = [[UITableView alloc] initWithFrame: fileFrame
 						  style:UITableViewStylePlain];
 	[_fileTableView setAllowsMultipleSelection: YES];
 	[_fileTableView setDataSource: self];
 	[_fileTableView setDelegate: self];
-	[_fileTableView setRowHeight: 1.2 * usableHeight];
+	[_fileTableView setRowHeight: 1.8 * lineHeight];
 	[_fileTableView setSectionIndexMinimumDisplayRowCount: 20];
 	[_fileTableView setBackgroundColor: [UIColor whiteColor]];
 	_fileTableView.sectionIndexBackgroundColor = [UIColor clearColor];
@@ -75,25 +115,9 @@
 
 	CGRect startFrame = screenFrame;
 	startFrame.origin.y = fileFrame.size.height;
-	startFrame.size.height = usableHeight * barFraction;
-	startFrame.size.width = screenFrame.size.width / 3;
-	MFANCoreButton *_addButton= [[MFANCoreButton alloc]
-					  initWithFrame: startFrame
-						  title: @"None"
-						  color: [UIColor blackColor]
-					backgroundColor: [UIColor greenColor]];
-	[_addButton setBackgroundColor:
-		 [UIColor colorWithRed: 0.0
-				 green: 0.75
-				  blue:0.0
-				 alpha: 1.0]];
-	_addButton.layer.borderWidth = 2.0;
-	_addButton.layer.borderColor = borderColor.CGColor;
-	[_addButton setClearText: @"Edit Metadata"];
-	[_addButton addCallback: self withAction: @selector(editPressed:)];
-	[self addSubview: _addButton];
+	startFrame.size.height = lineHeight;
+	startFrame.size.width = screenFrame.size.width / 2;
 
-	startFrame.origin.x += screenFrame.size.width/3;
 	MFANCoreButton *_doneButton= [[MFANCoreButton alloc]
 					     initWithFrame: startFrame
 						     title: @"None"
@@ -110,7 +134,7 @@
 	[_doneButton addCallback: self withAction: @selector(donePressed:)];
 	[self addSubview: _doneButton];
 
-	startFrame.origin.x += screenFrame.size.width/3;
+	startFrame.origin.x += screenFrame.size.width / 2;
 
 	MFANCoreButton *_moreButton= [[MFANCoreButton alloc]
 					     initWithFrame: startFrame
@@ -130,7 +154,7 @@
 
 	CGRect marqueeFrame = screenFrame;
 	marqueeFrame.origin.y = startFrame.origin.y + startFrame.size.height;
-	marqueeFrame.size.height = usableHeight * barFraction;
+	marqueeFrame.size.height = lineHeight;
 	MarqueeLabel *marquee = [[MarqueeLabel alloc] initWithFrame: marqueeFrame];
 	_marquee = marquee;
 	[marquee setTextColor: [UIColor blackColor]];
@@ -146,17 +170,18 @@
 	CGRect sliderFrame;
 	sliderFrame = marqueeFrame;
 	sliderFrame.origin.y = marqueeFrame.origin.y + marqueeFrame.size.height;
-	sliderFrame.size.height = usableHeight * barFraction;
+	sliderFrame.size.height = lineHeight;
 
-#if 0
-	_sliderView = [[AVPlayerSlider alloc] initWithFrame: (CGRect) sliderFrame
-						   viewCont: (ViewController *) vc
-						   signView: (SignView *) signView];
+	_sliderView = [[AudioSlider alloc] initWithFrame: (CGRect) sliderFrame
+						   apply: ^(float value) {
+		// get rid of this if we don't use it
+		return;
+	    }
+						viewCont: (ViewController *) vc];
 	[self addSubview: _sliderView];
-#endif
 
 	CGRect buttonFrame = sliderFrame;
-	buttonFrame.origin.y += usableHeight * barFraction;
+	buttonFrame.origin.y += lineHeight;
 
 	float smallButtonWidth = buttonFrame.size.height;
 	float largeButtonWidth = 2*buttonFrame.size.height;
@@ -207,6 +232,10 @@
 
 	_recordings = [[NSMutableArray alloc] init];
 
+	NSArray *paths;
+	paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+	_docDirName = paths[0];
+
 	[self populateRecordings];
 
 	[self setBackgroundColor: [UIColor whiteColor]];
@@ -217,7 +246,204 @@
     return self;
 }
 
+- (void) tableView: (UITableView *) tview
+didSelectRowAtIndexPath:(NSIndexPath *) path {
+    long row = [path row];
+    if (row == _selectedRow)
+	_selectedRow = -1;
+    else
+	_selectedRow = (uint32_t) row;
+
+#if 0
+    [_fileTableView reloadRowsAtIndexPaths:
+		  [NSArray arrayWithObject: path]
+			  withRowAnimation: UITableViewRowAnimationAutomatic];
+#else
+    [_fileTableView reloadData];
+#endif
+
+    NSLog(@"did selection row=%ld", row);
+}
+
+- (UISwipeActionsConfiguration *) tableView: (UITableView *) tview
+trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
+{
+    long row = [path row];
+    ExportPlayerEntry *entry = _recordings[row];
+
+    _selectedRow = (uint32_t) row;
+
+    NSString *playString;
+    if (entry.playing) {
+	playString = @"Stop Playing";
+    } else {
+	playString = @"Play";
+    }
+
+    UIContextualAction *playAction =
+	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+						title:playString
+					      handler:^(UIContextualAction *action,
+							UIView *sourceView,
+							void (^complete)(BOOL)) {
+		NSLog(@"PLAY action");
+		if (entry.playing) {
+		    [self stopEntry: entry];
+		} else {
+		    [self playEntry: entry];
+		}
+		complete(true);
+	    }];
+    playAction.backgroundColor = [UIColor blueColor];
+
+    UIContextualAction *deleteAction =
+	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
+						title:@"Delete"
+					      handler:^(UIContextualAction *action,
+							UIView *sourceView,
+							void (^complete)(BOOL)) {
+		NSError *error = nil;
+		BOOL status;
+
+		NSLog(@"DELETE action");
+		status = [[NSFileManager defaultManager]
+			     removeItemAtPath: [self pathNameForFile: entry.fileName]
+					error: &error];
+		if (!status) {
+		    NSLog(@"failed to delete main file=%@", entry.fileName);
+		} else {
+		    [self->_recordings removeObjectAtIndex: row];
+		    self->_selectedRow = -1;
+		    [self->_fileTableView reloadData];
+		}
+		complete(true);
+	    }];
+    deleteAction.backgroundColor = [UIColor redColor];
+
+    UISwipeActionsConfiguration *config =
+	[UISwipeActionsConfiguration configurationWithActions: @[playAction, deleteAction]];
+
+    config.performsFirstActionWithFullSwipe = true;
+
+    return config;
+}
+
+- (void) stopEntry: (ExportPlayerEntry *) entry {
+    if (_player) {
+	[_player stop];
+	_player = nil;
+	[_sliderView monitor: nil];
+	entry.playing = false;
+    }
+}
+
+- (void) getMetadataForEntry: (ExportPlayerEntry *) entry {
+    NSString *entryPath = [NSString stringWithFormat: @"%@/%@", _docDirName, entry.fileName];
+    NSURL *musicUrl = [NSURL fileURLWithPath: entryPath];
+    AVURLAsset *asset = [AVURLAsset URLAssetWithURL: musicUrl options: nil];
+    NSArray *metadata = [asset commonMetadata];
+    NSString *album;
+    NSString *artist;
+    NSString *song;
+
+    for(AVMetadataItem *item in metadata) {
+	if ([[item commonKey] isEqualToString: AVMetadataCommonKeyTitle])
+	    song = (NSString *) [item value];
+	else if ([[item commonKey] isEqualToString: AVMetadataCommonKeyArtist])
+	    artist = (NSString *) [item value];
+	else if ([[item commonKey] isEqualToString: AVMetadataCommonKeyAlbumName])
+	    album = (NSString *) [item value];
+    }
+
+    entry.song = song;
+    entry.artist = artist;
+    entry.album = album;
+}
+
+- (void) playEntry: (ExportPlayerEntry *) entry {
+    if (_playingEntry != nil) {
+	[self stopEntry: _playingEntry];
+	_playingEntry = nil;
+    }
+
+    NSString *entryPath = [NSString stringWithFormat: @"%@/%@", _docDirName, entry.fileName];
+    NSError *error = nil;
+    NSURL *musicUrl = [NSURL fileURLWithPath: entryPath];
+
+    _player = [[AVAudioPlayer alloc] initWithContentsOfURL: musicUrl
+						     error: &error];
+    if (_player == nil) {
+	NSLog(@"file player creation failed");
+	return;
+    }
+
+    _player.delegate = self;
+
+    [_player prepareToPlay];
+
+    [_player play];
+
+    [_sliderView monitor: _player];
+
+    _player.volume = 1.0;
+    _player.numberOfLoops = 0;
+    _isPaused = false;
+    _isPlaying = true;
+    [self adjustPlayButton];
+
+    NSString *label;
+    if ([entry.album length] > 0)
+	label = [NSString stringWithFormat: @"%@ - %@ - %@",
+			  entry.artist, entry.song, entry.album];
+    else
+	label = [NSString stringWithFormat: @"%@ - %@",
+			  entry.artist, entry.song];
+
+    [_marquee setText: label];
+
+    entry.playing = true;
+    _playingEntry = entry;
+}
+
+- (void) audioPlayerDidFinishPlaying: (AVAudioPlayer *) player
+			successfully: (BOOL) success {
+    uint64_t count = [_recordings count];
+    uint64_t i;
+
+    if (_playingEntry != nil) {
+	for(i = 0;i<count;i++) {
+	    if (_recordings[i] == _playingEntry)
+		break;
+	}
+
+	if (++i >= count)
+	    i = 0;
+	ExportPlayerEntry *entry = (ExportPlayerEntry *) _recordings[i];
+	[self playEntry: entry];
+    }
+}
+
 - (void) populateRecordings {
+    NSArray *dirArray;
+    NSString *entry;
+
+    dirArray = [[NSFileManager defaultManager]
+		   contentsOfDirectoryAtPath: _docDirName
+				       error:nil];
+    if (dirArray != nil) {
+	for(entry in dirArray) {
+	    if ( [entry hasSuffix: @".mp3"] ||
+		 [entry hasSuffix: @".m4a"] ||
+		 [entry hasSuffix: @".aac"]) {
+
+		ExportPlayerEntry *exportEntry = [[ExportPlayerEntry alloc] initWithName: entry];
+		[_recordings addObject: exportEntry];
+
+		[self getMetadataForEntry: exportEntry];
+	    }
+	}
+    }
+
     return;
 }
 
@@ -245,6 +471,35 @@
 
     cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle
 				     reuseIdentifier: nil];
+    ExportPlayerEntry *entry = _recordings[row];
+    cell.textLabel.text = (NSString *) entry.song;
+    cell.textLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 24];
+    cell.textLabel.adjustsFontSizeToFitWidth = YES;
+    cell.textLabel.textColor = [UIColor blackColor];
+
+    if (_selectedRow == row) {
+	cell.contentView.backgroundColor = _selectedColor;
+    } else {
+	cell.contentView.backgroundColor = [UIColor whiteColor];
+    }
+
+    backgroundView = [[UIView alloc] init];
+    backgroundView.backgroundColor = [UIColor clearColor];
+    cell.multipleSelectionBackgroundView = backgroundView;
+
+    if ([entry.album length] > 0)
+	details = [NSString stringWithFormat: @"%@ - %@",
+			    entry.artist, entry.album];
+    else
+	details = entry.artist;
+
+    cell.detailTextLabel.text = details;
+    cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 14];
+    cell.detailTextLabel.textColor = [UIColor colorWithRed: 0.0
+						     green: 0.5
+						      blue: 0.0
+						     alpha: 1.0];
+    cell.detailTextLabel.adjustsFontSizeToFitWidth = YES;
 
     return cell;
 }
@@ -262,31 +517,44 @@
 }
 
 - (void) donePressed: (id) junk {
+    if (_playingEntry != nil) {
+	[self stopEntry: _playingEntry];
+	_playingEntry = nil;
+    }
     [_vc popTopView];
 }
 
 - (void) skipFwdPressed:(id) junk withData: junk2 {
     NSLog(@"+20");
-    // [_signView seek: +20.0 relative: true];
+    if (_player != nil) {
+	float current = _player.currentTime;
+	current += 20.0;
+	if (current >= _player.duration)
+	    current = _player.duration;
+	_player.currentTime = current;
+    }
 }
 
 - (void) skipBackPressed:(id) junk withData: junk2 {
     NSLog(@"-20");
-    // [_signView seek: -20.0 relative: true];
+    if (_player != nil) {
+	float current = _player.currentTime;
+	current -= 20.0;
+	if (current < 0.0)
+	    current = 0.0;
+	_player.currentTime = current;
+    }
 }
 
 - (void) stopPressed:(id) junk withData: junk2 {
-    // [_signView stopRadioResumeAtEnd];
+    if (_playingEntry != nil) {
+	[self stopEntry: _playingEntry];
+	_playingEntry = nil;
+    }
+    _isPaused = false;
+    _isPlaying = false;
+    [self adjustPlayButton];
     NSLog(@"STOP");
-}
-
-- (void) stateChanged: (id) aplayer {
-    MFANStreamPlayer *player = (MFANStreamPlayer *) aplayer;
-    NSLog(@"in state changed player=%p isPlaying=%d", player, [player isPlaying]);
-    if ([player isPlaying])
-	[_playButton setTitle:@"Pause"];
-    else
-	[_playButton setTitle:@"Play"];
 }
 
 - (void) updateIOSCenter: (NSString *) song {
@@ -324,38 +592,31 @@
 #endif
 }
 
-- (void) songChanged: (id) asong {
-#if 0
-    NSString *song = (NSString *) asong;
-    NSString *stationName = [_signView getPlayingStationName];
-    NSString *displayName;
-
-    if (song == nil)
-	song = @"[Unknown]";
-
-    if ([stationName length] > 18) {
-	displayName = [NSString stringWithFormat: @"%@ - %@",
-				[stationName substringToIndex: 18],
-				song];
+// This is really handling both play and pause
+- (void) playPressed: (id) sender withData: (NSNumber *)movement {
+    if (_isPlaying) {
+	_isPaused = true;
+	_isPlaying = false;
+	[_player pause];
+    } else if (_isPaused) {
+	_isPaused = false;
+	_isPlaying = true;
+	[_player play];
     } else {
-	displayName = [NSString stringWithFormat: @"%@ - %@", stationName, song];
+	if (_selectedRow >= 0) {
+	    ExportPlayerEntry *entry;
+	    entry = _recordings[_selectedRow];
+	    [self playEntry: entry];
+	}
     }
-
-    [self updateIOSCenter: displayName];
-
-    // we dont' want to add every song we scroll past to the history
-    uint64_t now = osp_time_ms();
-    if (now - _sliderView.lastMusicSampleTime > 2000) {
-	[_history addHistoryStation: stationName
-			   withSong: song];
-    }
-
-    _playingSong = song;
-    [_marquee setText: song];
-#endif
+    [self adjustPlayButton];
 }
 
-- (void) playPressed: (id) sender withData: (NSNumber *)movement {
+- (void) adjustPlayButton {
+    if (_isPlaying)
+	[_playButton setTitle:@"Pause"];
+    else
+	[_playButton setTitle:@"Play"];
 }
 
 - (void) activateTopView {
@@ -364,6 +625,10 @@
 
 - (void) deactivateTopView {
     return;
+}
+
+- (bool) ok2Quit {
+    return false;
 }
 
 @end

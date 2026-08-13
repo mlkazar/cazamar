@@ -175,11 +175,7 @@ static const float _kPlayDuration = 4.0;
 	_startSlider = [[ExportSlider alloc] initWithFrame: startSliderFrame
 						    buffer: _buffer
 						     apply: ^(float value) {
-		if (self->_playingMode) {
-		    [self playSeek: value];
-		} else {
-		    [self playFrom: value];
-		}
+		[self startSliderChanged: value];
 	    }
 						  viewCont: _vc];
 	[self addSubview: _startSlider];
@@ -343,6 +339,14 @@ static const float _kPlayDuration = 4.0;
     return self;
 }
 
+- (void) startSliderChanged: (float) value {
+    if (self->_playingMode) {
+	[self playSeek: value];
+    } else {
+	[self playFrom: value];
+    }
+}
+
 - (void) enterPlayingMode {
     if (_playingMode)
 	return;
@@ -437,6 +441,7 @@ static const float _kPlayDuration = 4.0;
 					  ms: (uint64_t) (ep.start * 1000.0)];
 
     _startSlider.value = ep.start;
+    [_startSlider monitor: _samplePlayer];
 
     if (_sampleTimer != nil) {
 	[_sampleTimer invalidate];
@@ -468,6 +473,10 @@ static const float _kPlayDuration = 4.0;
 	[_samplePlayer shutdown];
 	_samplePlayer = nil;
     }
+
+    // if we were in playing mode, we want to stop using that player's
+    // current value.
+    [_startSlider monitor: nil];
 }
 
 - (void) playFrom: (float) value {
@@ -568,7 +577,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     cell.textLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 20];
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
-    details = [ExportSlider stringFromTime: ep.end - ep.start];
+    details = [BaseSlider stringFromTime: ep.end - ep.start];
     if (ep.fixable)
 	details = [details stringByAppendingString: @" fixable"];
     else if (ep.damaged)
@@ -858,6 +867,10 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     [_endSlider shutdown];
     _endSlider = nil;
     return;
+}
+
+- (bool) ok2Quit {
+    return false;
 }
 
 - (void) splitLabel: (NSString *) label

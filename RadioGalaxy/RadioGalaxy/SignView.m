@@ -1932,15 +1932,23 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		[self setupAudioSession: false];
 	    }
 	}
+
+	// see if we should quit the app because of inactivity
+	if ([_vc ok2Quit])
+	    exit(0);
     } else {
 	// foreground, don't have to worry about being killed
 	[_silence stop];
 	[self setupAudioSession: false];
     }
+}
 
-    if (_isBackground &&
-	![self anyDownloading] && (_player == nil))
-	exit(0);
+- (bool) ok2Quit {
+    if ( _isBackground &&
+	 ![self anyDownloading] && (_player == nil))
+	return true;
+
+    return false;
 }
 
 - (void) setupNotifications {

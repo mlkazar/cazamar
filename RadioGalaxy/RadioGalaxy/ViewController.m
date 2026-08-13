@@ -86,6 +86,27 @@
     _activeView = view;
 }
 
+- (bool) ok2Quit {
+    UIView<TopViewInt> *view;
+    bool result;
+
+    if ([_activeView respondsToSelector: @selector(ok2Quit)]) {
+	result = [_activeView performSelector: @selector(ok2Quit)];
+	if (!result)
+	    return false;
+    }
+
+    for(view in _oldViews) {
+	if ([view respondsToSelector: @selector(ok2Quit)]) {
+	    result = [view performSelector:@selector(ok2Quit)];
+	    if (!result)
+		return false;
+	}
+    }
+
+    return true;
+}
+
 - (void) popTopView {
     UIView<TopViewInt> *prevView;
 
