@@ -180,13 +180,15 @@ MFANAqStream_PacketsProc( void *contextp,
             durationMs = (uint32_t)(aqp->_buffer.packetDuration * 1000);
         }
 
+        [packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
+        packet.playingSong = aqp->_currentPlaying;
+
 	if (!aqp->_setErrorFlag) {
 	    aqp->_setErrorFlag = true;
 	    [packet setErrorCode: 1];
+	    NSLog(@"=x= setting error on packet @%lld '%@'",
+		  packet.startMs, packet.playingSong);
 	}
-
-        [packet addData: ((char *)inDatap) + packetOffset descr: packetsp+i];
-        packet.playingSong = aqp->_currentPlaying;
 
         if (framesInPacket > 0)
             NSLog(@"packet framesInPacket=%lld duration=%f generic packet duration=%f",

@@ -48,12 +48,25 @@ Ideas for Radio app
 
 -- log errors and times
 
--- Way to view and play saved files.  Probably add a new screen for
+** Way to view and play saved files.  Probably add a new screen for
    managing saved files, including airdrop (see below).
 
 -- Airdrop support?  Looks pretty easy.
 
--- exit if backgrounded when no stations are playing or downloading.
+-- We mark the first packet after a connection restart, but the first
+   labeled packet arrives a bit later.  To splice things properly, we
+   need to search for that first packet.  But to determine if a song
+   is damaged, we need to see if the previous error was fixable (had
+   an earlier match).
+
+   Perhaps an even better idea is just to do the splice in real time
+   by reading the file backwards looking for the splice location as
+   soon as we get a packet in a new stream.  We could then truncate
+   the blocks, unseal the block with the records being truncated, and
+   then continue operation.  Scanning backwards for two minutes of
+   play time shouldn't take more than a couple of seconds.
+
+** exit if backgrounded when no stations are playing or downloading.
 
 ** failure callback restarts even after a stop operation on the same station
 

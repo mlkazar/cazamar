@@ -371,11 +371,16 @@ static const float _kPlayDuration = 4.0;
     NSLog(@"%f value", stepper.value);
 
     float diff = stepper.value - _lastStepperValue;
+    NSLog(@"playingmode=%d val=%f lastVal=%f",
+	  _playingMode, stepper.value, _lastStepperValue);
     _lastStepperValue = stepper.value;
 
     if (_playingMode) {
+	// In playing mode, current position is constantly updated, so we
+	// just add or subtract a fixed amount per step press.
 	if (_samplePlayer != nil) {
 	    uint64_t  currentTimestamp = [_samplePlayer getSeekTarget: 0.0];
+	    NSLog(@" current timestamp=%f", currentTimestamp/1000.0);
 	    // Note that a single tap will come in with a diff of 0.
 	    if (diff >= 0)
 		[ _startSlider setValue: (currentTimestamp / 1000.0)  + diff + 2.0];
@@ -472,6 +477,9 @@ static const float _kPlayDuration = 4.0;
     _samplePlayer = [[MFANStreamPlayer alloc]
 			initWithStreamBuffer: _buffer
 					  ms: (uint64_t) target * 1000.0];
+    [_startSlider monitor: _samplePlayer];
+    [_samplePlayer setSongCallback: self sel:@selector(songCallback:)];
+
     if (_sampleTimer != nil) {
 	[_sampleTimer invalidate];
 	_sampleTimer = nil;
