@@ -603,9 +603,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     cell.textLabel.adjustsFontSizeToFitWidth = YES;
 
     details = [BaseSlider stringFromTime: ep.end - ep.start];
-    if (ep.fixable)
-	details = [details stringByAppendingString: @" fixable"];
-    else if (ep.damaged)
+    if (ep.damaged)
 	details = [details stringByAppendingString: @" damaged"];
     cell.detailTextLabel.text = details;
     cell.detailTextLabel.font = [UIFont fontWithName: @"Arial-BoldMT" size: 16];
@@ -626,7 +624,7 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
 					     alpha: 1.0];
     if (_selectedRow == row) {
 	cell.contentView.backgroundColor = selectedColor;
-    } else if (ep.damaged && !ep.fixable) {
+    } else if (ep.damaged) {
 	cell.contentView.backgroundColor = [UIColor colorWithRed: 1.0
 							   green: 0.7
 							    blue: 0.7
@@ -1108,7 +1106,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     MFANAqStreamPacket *p;
     uint64_t populateStartMs;
     uint64_t populateEndMs;
-    uint32_t damagedCount = 0;
 
     reader = [[MFANAqStreamReader alloc]
 		  initWithBuffer: _buffer];
@@ -1133,7 +1130,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    startLabel = p.playingSong;
 	    first = false;
 	    bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
-	    damagedCount = 0;
 	    continue;
 	}
 
@@ -1141,7 +1137,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	     [p.playingSong length] == 0) {
 	    endMs = p.startMs + p.durationMs;
 	    if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
-		damagedCount++;
 		bad = true;
 	    }
 	    continue;
@@ -1153,11 +1148,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	ep.label = startLabel;
 	if (bad) {
 	    ep.damaged = true;
-	    if (damagedCount <= 1) {
-		uint32_t damageReport = [self damagedEntry: ep];
-		if (damageReport & 2)
-		    ep.fixable = true;
-	    }
 	}
 
 	pthread_mutex_lock(&_populateLock);
@@ -1173,12 +1163,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	startMs = p.startMs;
 	endMs = p.startMs + p.durationMs;
 	bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
-	if (bad) {
-	    // song may be in the middle when we first started stream.
-	    damagedCount = 1;
-	} else {
-	    damagedCount = 0;
-	}
 
 	_populatePct = (uint32_t) (100 * (endMs - populateStartMs) /
 				   (populateEndMs - populateStartMs));
@@ -1205,7 +1189,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     uint64_t endMs;
     int64_t code;
     NSMutableData *adtsHeader;
-    bool skipping;
 
     [_buffer getDataFormat: &dataFormat];
     isMp3 = (dataFormat.mFormatID == '.mp3');
@@ -1237,37 +1220,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 			  viewCont: _vc];
     }
 
-    skipping = false;
     while(true) {
 	p = [reader read];
 	if (p == nil)
 	    break;
 	if (p.startMs >= endMs)
 	    break;
-
-	// If we encounter a splice, we stop copying when we hit
-	// spliceStart and resume again with the the packet at
-	// spliceEnd.  That is, spliceStart isn't copied and spliceEnd
-	// is copied.
-	if (skipping) {
-	    if (p.startMs < ep.spliceEnd)
-		continue;
-	    skipping = false;
-	    NSLog(@"=S= splicing ends at %lld (%lld)", p.startMs, ep.spliceEnd);
-	}
-
-	if (ep.fixable) {
-	    // note that after we're done splicing, p.startMs will be
-	    // much larger than ep.spliceStart.  But since we're not
-	    // changing the saved packets, don't turn off ep.fixable,
-	    // otherwise we won't be able to do a good export
-	    // operation of this song again.
-	    if (p.startMs == ep.spliceStart) {
-		skipping = true;
-		NSLog(@"=S= splicing starts at %lld", ep.spliceStart);
-		continue;
-	    }
-	}
 
 	packetSize = [p getLength];
 
@@ -1298,14 +1256,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return 0;
 }
 
-// 1 bit means damaged, 2 bit means fixable
+// 1 bit in return code means damaged
 - (uint32_t) damagedEntry: (ExportEntry *) ep {
     MFANAqStreamReader *reader;
     MFANAqStreamPacket *p;
-    MFANAqStreamPacket *badPacket = nil;
     AudioStreamBasicDescription dataFormat;
     bool isMp3;
-    uint64_t packetSize;
     uint64_t endMs;
     int rval = 0;
 
@@ -1319,54 +1275,14 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     endMs = (uint64_t)(ep.end * 1000);
 
-    uint32_t badCount = 0;
-    uint32_t badLength = 0;
     while(true) {
 	p = [reader read];
 	if (p == nil)
 	    break;
 	if (p.startMs >= endMs)
 	    break;
-	packetSize = [p getLength];
 	if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
 	    rval |= 1;
-	    if (badPacket == nil) {
-		badLength = [p getLength];
-		badPacket = p;
-		NSLog(@"=c= found first bad packet at ms=%lld", p.startMs);
-	    }
-	    badCount++;
-	}
-    }
-
-    NSLog(@"=c= found %d bad packets", badCount);
-
-    if (badCount == 1) {
-	[reader seek: (uint64_t) (ep.start * 1000) whence: 0];
-	while(true) {
-	    p = [reader read];
-	    if (p == nil)
-		break;
-
-	    // There's only one bad packet in our range, so if we
-	    // encounter this packet again before finding a duplicate,
-	    // the song isn't salvageable.
-	    if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
-		break;
-	    }
-
-	    // found an earlier duplicate.  This song can be salvaged
-	    // by removing the duplicates starting with this packet
-	    // and continuing up to but not including the packet with
-	    // the bad flag.
-	    if ( [p getLength] == badLength &&
-		 memcmp([p getData], [badPacket getData], badLength) == 0) {
-		NSLog(@"=c= found bad packet again at ms=%lld", p.startMs);
-		ep.spliceStart = p.startMs;
-		ep.spliceEnd = badPacket.startMs;
-		rval |= 2;
-		break;
-	    }
 	}
     }
 

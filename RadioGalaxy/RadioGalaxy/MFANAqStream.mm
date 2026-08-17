@@ -184,10 +184,18 @@ MFANAqStream_PacketsProc( void *contextp,
         packet.playingSong = aqp->_currentPlaying;
 
 	if (!aqp->_setErrorFlag) {
-	    aqp->_setErrorFlag = true;
-	    [packet setErrorCode: 1];
-	    NSLog(@"=x= setting error on packet @%lld '%@'",
-		  packet.startMs, packet.playingSong);
+	    bool found;
+	    aqp->_setErrorFlag = true;	// we've done this test
+
+	    found = [aqp->_buffer truncateDuplicatesForPacket: packet];
+	    if (!found) {
+		[packet setErrorCode: 1];
+		NSLog(@"setting error on packet @%lld '%@'",
+		      packet.startMs, packet.playingSong);
+	    } else {
+		// packet is already in truncated block.
+		continue;
+	    }
 	}
 
         if (framesInPacket > 0)
@@ -208,7 +216,6 @@ MFANAqStream_PacketsProc( void *contextp,
 
     uint32_t pruneMs = settings.streamBufferMinutes * 60000;
 
-    NSLog(@"prunning to %d ms", pruneMs);
     [aqp->_buffer pruneOldestMs: pruneMs];
 }
 

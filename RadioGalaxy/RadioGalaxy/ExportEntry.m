@@ -11,7 +11,6 @@
 	self.end = end;
 	self.saved = false;
 	self.damaged = false;
-	self.fixable = false;
     }
 
     return self;

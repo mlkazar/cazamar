@@ -615,7 +615,10 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     MFANAqStreamFile *_streamFile;
     uint64_t _lastPacketEndMs;
     uint64_t _firstPacketStartMs;
-    uint64_t _fileSize;
+
+    // Note that fileSize includes both the header block and the
+    // unsealed block at the end of the file.
+    //    uint64_t _fileSize;
 
     // lock for protecting against file blocks being removed from disk
     // file or from blocks being removed from _streamFile.blocks
@@ -827,6 +830,150 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     return block;
 }
 
+// searches backwards for packet's data in the existing stream,
+// stopping after processing lookbackSecs.  Returns packetIndex
+// or -1 if not found.  If found, sets *blockp to the block.
+//
+// Must be called with the bufferMutex held
+- (int32_t) searchBackwardsForPacket: (MFANAqStreamPacket *) inPacket
+		     maxLookbackSecs: (uint32_t) lookbackSecs
+			  foundBlock: (MFANAqStreamBlock **) blockp
+			       index: (int32_t *) indexp {
+    int32_t blockIx;
+    int32_t packetIx;
+    MFANAqStreamBlock *block;
+    MFANAqStreamPacket *packet;
+    uint32_t inPacketLength = [inPacket getLength];
+    uint64_t startMs = 0;
+
+    NSLog(@"=s= splice searching for packet at t=%lld", inPacket.startMs);
+    bool first = true;
+    for( blockIx = (int32_t) [_streamFile.blocks count] - 1;
+	 blockIx >= 0; blockIx--) {
+
+	block = _streamFile.blocks[blockIx];
+	if (first) {
+	    startMs = block.baseMs;
+	    first = false;
+	}
+
+	if (startMs - block.baseMs > lookbackSecs * 1000) {
+	    NSLog(@"=s= failed to find in %d seconds of log", lookbackSecs);
+	    return -1;
+	}
+
+	// if not valid and not the end block (which is never sealed
+	// or valid).
+	if (!block.valid && block.sealed) {
+	    [self fillBlock: block];
+	}
+
+	for( packetIx = (int32_t) [block.packetArray count] - 1;
+	     packetIx >= 0;
+	     packetIx--) {
+	    packet = block.packetArray[packetIx];
+	    if ([packet getLength] == inPacketLength &&
+		memcmp([packet getData], [inPacket getData], inPacketLength) == 0) {
+		*blockp = block;
+		*indexp = (int32_t) blockIx;
+		NSLog(@"=s= found in blockix=%d packetix=%d", blockIx, packetIx);
+		return packetIx;
+	    }
+	}
+    }
+
+    // ran out of packets
+    NSLog(@"=s= failed to find in block array at all");
+    return -1;
+}
+
+// truncate the stream file to the specific block mentioned, and turn
+// that block into an *unsealed* block.  Truncate the file, the block
+// array and the packet array within the block.  Leaves the matching
+// packet in the array.
+//
+// Must be called with bufferMutex held.
+- (void) truncateBlockIx: (uint32_t) blockIx packetIx: (uint32_t) packetIx {
+    int32_t code;
+
+    MFANAqStreamBlock *block = _streamFile.blocks[blockIx];
+    code = ftruncate(_streamFile.writeFd, block.fileOffset);
+    osp_assert(code == 0);
+
+    uint32_t blockCount = (uint32_t) [_streamFile.blocks count];
+    uint32_t packetCount = (uint32_t) [block.packetArray count];
+
+    if (blockIx < blockCount-1) {
+	// leaves block at blockIx alone
+	[_streamFile.blocks removeObjectsInRange:
+			NSMakeRange(blockIx+1, blockCount - blockIx - 1)];
+    }
+
+    if (packetIx < packetCount-1) {
+	[block.packetArray removeObjectsInRange:
+		  NSMakeRange(packetIx+1, packetCount - packetIx - 1)];
+    }
+
+    // Now the block appears sealed, but it shouldn't be, unless this
+    // is the last block in the array.  Reset it to looking unsealed.
+    if (blockIx < blockCount-1) {
+	osp_assert(block.sealed);
+	block.sealed = false;
+	if (block.valid) {
+	    osp_assert(_validBlocks > 0);
+	    _validBlocks--;
+	    block.valid = false;
+	}
+	if (block.dirty) {
+	    block.dirty = false;
+	    osp_assert(_dirtyBlocks > 0);
+	    _dirtyBlocks--;
+	}
+	[self fixLru: block];
+    }
+
+    // Finally, recompute block.{diskBytesUsed,durationMs} and set
+    // _lastPacketEndMs
+    uint64_t newDurationMs = 0;
+    uint32_t newBytesUsed = 0;
+    MFANAqStreamPacket *packet;
+    for(packet in block.packetArray) {
+	newBytesUsed += [self packetDiskSize: packet];
+	newDurationMs += packet.durationMs;
+    }
+    block.diskBytesUsed = newBytesUsed;
+    block.durationMs = newDurationMs;
+    _lastPacketEndMs = block.baseMs + newDurationMs;
+
+    // baseMs and fileOffset are still set to their correct values.
+    //_fileSize = block.fileOffset + _kBytesPerBlock;	// unused?
+}
+
+// returns true if we found a duplicate packet and truncated the file,
+// still leaving the duplicate.
+- (bool) truncateDuplicatesForPacket: (MFANAqStreamPacket *) inPacket {
+    int32_t packetIx;
+    int32_t blockIx;
+    MFANAqStreamBlock *block;
+
+    pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
+    packetIx = [self searchBackwardsForPacket: inPacket
+			      maxLookbackSecs: 60
+				   foundBlock: &block
+					index: &blockIx];
+
+    // didn't find packet
+    if (packetIx < 0) {
+	pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+	return false;
+    }
+
+    [self truncateBlockIx: blockIx packetIx: packetIx];
+
+    pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
+    return true;
+}
+
 // Call after doing initFromFileId
 - (int32_t) restoreBlocksFromFile {
     struct stat tstat;
@@ -917,7 +1064,7 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     // see comment on 'if' above to see why in either failure or
     // success case, the next block is at the offset computed below.
     block.fileOffset = ix * _kBytesPerBlock;
-    _fileSize = block.fileOffset + _kBytesPerBlock;
+    // _fileSize = block.fileOffset + _kBytesPerBlock;
 
     _lastPacketEndMs = block.baseMs;	// no packets in it yet
 
@@ -1322,7 +1469,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     _pthreadDoWork = false;
     _validBlocks = 0;
     _dirtyBlocks = 0;
-    _fileSize = 2*_kBytesPerBlock;
+    // _fileSize = 2*_kBytesPerBlock;
     memset(&_adtsHeader, 0, sizeof(_adtsHeader));
 
     _streamFile = [[MFANAqStreamFile alloc] init];
@@ -1817,7 +1964,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     // reset global state
     _dirtyBlocks = 0;
     _validBlocks = 0;
-    _fileSize = _kBytesPerBlock;
+    // _fileSize = _kBytesPerBlock;
     _firstPacketStartMs = 0;
     _lastPacketEndMs = 0;
 
@@ -1952,7 +2099,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     NSLog(@"addBlockAndSeal sealed block startMs=%lld %lld packets newBlock startMs=%lld bix=%llu",
 	  prevBlock.baseMs, (uint64_t) [prevBlock.packetArray count],
 	  newBlock.baseMs, (uint64_t) [_streamFile.blocks count]);
-    _fileSize += _kBytesPerBlock;
+    // _fileSize += _kBytesPerBlock;
 
     return newBlock;
 }

@@ -241,6 +241,8 @@
 
 - (void) erase;
 
+- (bool) truncateDuplicatesForPacket: (MFANAqStreamPacket *) inPacket;
+
 - (bool) blockIx: (uint32_t) blockIx
 	packetIx: (uint32_t) packetIx
       containsMs: (uint64_t) ms;
