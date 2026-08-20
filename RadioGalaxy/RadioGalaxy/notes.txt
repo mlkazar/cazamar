@@ -53,7 +53,7 @@ Ideas for Radio app
 
 -- Airdrop support?  Looks pretty easy.
 
--- We mark the first packet after a connection restart, but the first
+** We mark the first packet after a connection restart, but the first
    labeled packet arrives a bit later.  To splice things properly, we
    need to search for that first packet.  But to determine if a song
    is damaged, we need to see if the previous error was fixable (had
@@ -274,11 +274,11 @@ name as well)
 
 ================Longer term items================
 
--- view exported file list
+** view exported file list
 
--- resync data stream on reconnect
+** resync data stream on reconnect
 
--- include a record of suspensions in recordings so we can warn about
+** include a record of suspensions in recordings so we can warn about
    damaged songs.
 
 -- modify MFANSocket to support https?

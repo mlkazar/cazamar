@@ -24,6 +24,7 @@
 @property (readonly) uint32_t streamBufferMinutes;
 @property (readonly) uint32_t maxSearchReturn;
 @property (readonly) bool animateIcons;
+@property (readonly) bool exitWhenIdle;
 
 - (Settings *) initWithViewController: (ViewController *) vc;
 

@@ -1944,9 +1944,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (bool) ok2Quit {
-    if ( _isBackground &&
-	 ![self anyDownloading] && (_player == nil))
-	return true;
+    if (_settings.exitWhenIdle) {
+	if ( _isBackground &&
+	     ![self anyDownloading] && (_player == nil))
+	    return true;
+    }
 
     return false;
 }

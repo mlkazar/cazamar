@@ -89,6 +89,8 @@
     UIStepper *_button4;
     SettingsLabel *_label5;
     UISwitch *_button5;
+    SettingsLabel *_label6;
+    UISwitch *_button6;
 
     CGRect _doneFrame;
     CGRect _cancelFrame;
@@ -100,6 +102,8 @@
     uint32_t _streamBufferMinutes;	// minutes of stream buffer to keep
     uint32_t _maxSearchReturn;		// max # of search results to return;
     bool _animateIcons;			// flash active downloading stations
+    bool _exitWhenIdle;			// exit when put in background
+					// w/no downloads & not playing
 }
 
 Settings *_globalSettings;
@@ -309,6 +313,37 @@ Settings *_globalSettings;
 	_button5.backgroundColor = [UIColor blackColor];
 	_button5.layer.cornerRadius = 16.0;
 	// _button5.clipsToBounds = YES;
+
+
+	////////////////////////////////////////////////////////////////
+	labelFrame.origin.y += labelFrame.size.height*1.3;
+	////////////////////////////////////////////////////////////////
+
+	buttonFrame = labelFrame;
+	buttonFrame.origin.x += _appWidth * labelPct;
+	buttonFrame.size.width = _appWidth * (1 - labelPct);
+	_label6 = [[SettingsLabel alloc] initWithFrame: labelFrame
+						target: self
+					      selector: @selector(helpExitWhenIdle:)];
+	tlabel = [_label6 titleLabel];
+	_label6.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+	[_label6 setTitle: @"Exit when idle" forState: UIControlStateNormal];
+	[_label6 setTitleColor: [UIColor blackColor] forState: UIControlStateNormal];
+	[_label6 setSelected: YES];
+	[tlabel setFont: [UIFont fontWithName: @"Arial-BoldMT"
+					 size: labelFrame.size.height * fontSizeScale]];
+	[tlabel setAdjustsFontSizeToFitWidth: YES];
+	[self addSubview: _label6];
+	_button6 = [[UISwitch alloc] initWithFrame: buttonFrame];
+
+	[_button6 addTarget: self
+		     action:@selector(exitWhenIdle:)
+	   forControlEvents:UIControlEventAllEvents];
+	[self addSubview: _button6];
+	[_button6 setOn: _exitWhenIdle animated: false];
+	_button6.backgroundColor = [UIColor blackColor];
+	_button6.layer.cornerRadius = 16.0;
+
 	/* ================================================================ */
 
 	_buttonWidth = _appWidth/5;
@@ -432,10 +467,29 @@ Settings *_globalSettings;
     _animateIcons = sender.on;
 }
 
+- (void) exitWhenIdle: (UISwitch *) sender {
+    _exitWhenIdle = sender.on;
+}
+
 - (void) helpAnimateIcons: (id) junk {
     UIAlertController *alert = [UIAlertController
 				   alertControllerWithTitle: @"Animate Icons"
 						    message:@"Flash icons of stations currently downloading from network."
+					     preferredStyle: UIAlertControllerStyleAlert];
+    UIAlertAction *action = [UIAlertAction actionWithTitle: @"Done"
+						     style:UIAlertActionStyleDefault
+						   handler: ^(UIAlertAction *act) {
+	    return;
+	}];
+    [alert addAction: action];
+    [_vc presentViewController: alert animated:true completion: nil];
+}
+
+- (void) helpExitWhenIdle: (id) junk {
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"Exit when Idle"
+						    message:@"Exit when no downloads active"
+				   @" and not playing music"
 					     preferredStyle: UIAlertControllerStyleAlert];
     UIAlertAction *action = [UIAlertAction actionWithTitle: @"Done"
 						     style:UIAlertActionStyleDefault
@@ -467,6 +521,7 @@ Settings *_globalSettings;
     _streamBufferMinutes = 150;	// 2.5 hours in minutes
     _maxSearchReturn = 64;
     _animateIcons = false;
+    _exitWhenIdle = false;
 
     xgmlp = new Xgml();
     rootNodep = NULL;
@@ -523,6 +578,9 @@ Settings *_globalSettings;
 	} else if (strcmp(attrp->_name.c_str(), "maxSearchReturn") == 0) {
 	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
 	    _maxSearchReturn = temp;
+	} else if (strcmp(attrp->_name.c_str(), "exitWhenIdle") == 0) {
+	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
+	    _exitWhenIdle = temp;
 	} else if (strcmp(attrp->_name.c_str(), "animateIcons") == 0) {
 	    code = sscanf(attrp->_value.c_str(), "%d", &temp);
 	    _animateIcons = temp;
@@ -571,6 +629,11 @@ Settings *_globalSettings;
     snprintf(tbuffer, sizeof(tbuffer), "%6lu", (long) _animateIcons);
     attrNodep = new Xgml::Attr();
     attrNodep->init("animateIcons", tbuffer);
+    rootNodep->appendAttr(attrNodep);
+
+    snprintf(tbuffer, sizeof(tbuffer), "%6lu", (long) _exitWhenIdle);
+    attrNodep = new Xgml::Attr();
+    attrNodep->init("exitWhenIdle", tbuffer);
     rootNodep->appendAttr(attrNodep);
 
     NSLog(@"- Saving settings to file %@", _associatedFile);
