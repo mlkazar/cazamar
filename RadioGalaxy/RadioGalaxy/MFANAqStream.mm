@@ -48,6 +48,9 @@ static pthread_mutex_t _streamMutex;
 
     BOOL _setErrorFlag;		// have we set the error flag on a
 				// packet for this stream yet?
+    BOOL _setPropagatedErrorFlag;	// we still need to propagate
+					// this error to a named
+					// packet.
 
     BOOL _pthreadWaiters;
     NSThread *_radioStreamThread;
@@ -187,15 +190,40 @@ MFANAqStream_PacketsProc( void *contextp,
 	    bool found;
 	    aqp->_setErrorFlag = true;	// we've done this test
 
+	    // First packet after an error event, mark the packet as bad if
+	    // we can't find the packet in the already recorded data.
 	    found = [aqp->_buffer truncateDuplicatesForPacket: packet];
 	    if (!found) {
 		[packet setErrorCode: 1];
 		NSLog(@"setting error on packet @%lld '%@'",
 		      packet.startMs, packet.playingSong);
+
+		// if this packet has a song, we don't have to scan
+		// for a packet with a song name.  If it doesn't have
+		// a song, we *do* have to flag the next packet with a
+		// song name.  Goal is to ensure that if we pick up a
+		// song in the middle after a conn reset, and the
+		// first packet is missing the song name, we still
+		// want to make sure the song is marked as bad, since
+		// that first packet was probably part of the song,
+		// even if the song name is only occasionally
+		// transmitted.
+		if ([packet.playingSong length] > 0)
+		    aqp->_setPropagatedErrorFlag = true;
 	    } else {
-		// packet is already in truncated block.
+		// packet is already in truncated block.  We
+		// successfully spliced the old and new streams
+		// together so We're not setting an error flag at all.
+		aqp->_setPropagatedErrorFlag = true;
 		continue;
 	    }
+	}
+
+	// we still have to propagate the error to the first named packet, and
+	// we just found a named packet.
+	if (!aqp->_setPropagatedErrorFlag && [packet.playingSong length] > 0) {
+	    aqp->_setPropagatedErrorFlag = true;
+	    [packet setErrorCode: 1];
 	}
 
         if (framesInPacket > 0)
@@ -412,7 +440,17 @@ MFANAqStream_rsControlProc( void *contextp,
         _streamAttachCounter = 0;
         _pthreadWaiters = 0;
 
+	// We set _setErrorFlag once we've set the error flag on the
+	// first packet after a reconnect (new stream).  It basically
+	// means we've considered setting the error flag on the first
+	// packet but we don't actually set the error flag if we can
+	// resplice the old stream and new together.
+	//
+	// Similarly, we set setPropagatedErrorFlag once we've considered
+	// setting the propagated error flag on the first packet with a
+	// _playingSong field set.
 	_setErrorFlag = NO;
+	_setPropagatedErrorFlag = NO;
 
 	_radioStreamThread = [[NSThread alloc] initWithTarget: self
 						     selector: @selector(playAsync:)
