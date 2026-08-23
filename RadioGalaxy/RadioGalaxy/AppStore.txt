@@ -1,3 +1,5 @@
+Screen labels:
+
 MAIN
 Search by name or genre
 Keep hours of audio
@@ -22,5 +24,5 @@ Adjust inaccurate start/end times
 Promotional text:
 Play/Record Internet Radio stations.  Completely free.
 
-Use photopea to create 1242x2688 images
+Use photopea to create iphone 1242x2688 images
 or ipad 2064x2752 images

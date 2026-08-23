@@ -1562,7 +1562,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    if (station == _playingStation) {
 		if (_player == nil) {
 		    [self startStation: station];
-		} else if ([_player isPaused]) {
+		} else if ([_player isPaused] || _stream == nil) {
+		    if (!station.isFrozen)
+			[self startStation: station];
 		    [_player resume];
 		} else {
 		    [self showPopStatus: station];
