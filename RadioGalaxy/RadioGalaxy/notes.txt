@@ -285,7 +285,7 @@ name as well)
 
 ** smart record functionality -- by song boundary
 
--- hybrid stations consisting of sequence of songs from N stations??
+** hybrid stations consisting of sequence of songs from N stations??  Not gonna do.
 
 ** export recordings somehow
 
