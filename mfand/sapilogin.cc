@@ -593,6 +593,8 @@ SApiLoginReq::MSLoginScreenMethod()
     if (cookiep == NULL) {
         cookiep = new SApiLoginCookie();
         setCookieKey("sapiLogin", cookiep);
+        strcpy(tbuffer, "Error -- no cookie in MSLoginScreenMethod");
+        obufferp = tbuffer;
     }
     else {
         if (cookiep->getActive())

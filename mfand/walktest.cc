@@ -14,6 +14,8 @@ mainCallback(void *contextp, std::string *pathp, struct stat *statp)
         typep = "file";
     else if ((statp->st_mode & S_IFMT) == S_IFLNK)
         typep = "symlink";
+    else
+        typep = "unknown";
     printf("%s at path=%s mode=%o size=%ld\n",
            typep, pathp->c_str(), statp->st_mode, (long) statp->st_size);
     if ((statp->st_mode & S_IFMT) != S_IFDIR && statp->st_nlink > 1)
