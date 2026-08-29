@@ -56,7 +56,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * michael.kazar@verizon.net's account; all it does is provide a
  * client ID and secret for our app.  The MSFT auth server will send
  * the login code (the first token in a series of tokens required to
- * be really authenticated) back to https://localhost:7700/login4ms by
+ * be really authenticated) back to http://localhost:7700/login4ms by
  * directing the browser to that page.  This eventually runs
  * keyLoginMethod in this file.  We're passed the authentication code
  * as an "&" parameter in the URL, which we save in the SApiLoginMs
@@ -208,7 +208,7 @@ SApiLoginMS::getLoginPage(std::string *outStringp, SApiLoginCookie *cookiep)
         redirectUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?";
         redirectUrl += "client_id=" + _clientId;
         redirectUrl += "&response_type=code";
-        redirectUrl += "&redirect_uri=https%3a%2f%2flocalhost:7700%2flogin4ms";
+        redirectUrl += "&redirect_uri=http%3a%2f%2flocalhost:7700%2flogin4ms";
         redirectUrl += "&response_mode=query";
         redirectUrl += "&scope=offline_access%20files.readwrite";
         redirectUrl += "&prompt=login"; // still need?
@@ -331,7 +331,7 @@ SApiLoginMS::refineAuthToken(std::string *atokenp, SApiLoginCookie *cookiep)
         postData = "client_id=" + _clientId;
         postData += "&scope=files.readwrite";
         postData += "&code=" + (*atokenp);
-        postData += "&redirect_uri=https%3a%2f%2flocalhost:7700%2flogin4ms";
+        postData += "&redirect_uri=http%3a%2f%2flocalhost:7700%2flogin4ms";
         postData += "&grant_type=authorization_code";
         postData += "&code_verifier=bosonbosonbosonbosonbosonbosonbosonboson1234";
 #if 0
@@ -410,7 +410,7 @@ SApiLoginMS::refresh()
     postData = "client_id=" + _clientId;
     postData += "&scope=files.readwrite";
     postData += "&refresh_token=" + _refreshToken;
-    postData += "&redirect_uri=https%3a%2f%2flocalhost:7700%2flogin4ms";
+    postData += "&redirect_uri=http%3a%2f%2flocalhost:7700%2flogin4ms";
     postData += "&grant_type=refresh_token";
 //    postData += "&client_secret=" + Rst::urlEncode(&_clientSecret);
     
@@ -528,7 +528,7 @@ SApiLoginMS::keyServer(int port)
 
     sapip = new SApi();
     sapip->setContext(this);
-    sapip->useTls();
+    // sapip->useTls();
     
     sapip->registerUrl("/login4ms",
                        (SApi::RequestFactory *) &SApiLoginKeyReq::keyFactory,
