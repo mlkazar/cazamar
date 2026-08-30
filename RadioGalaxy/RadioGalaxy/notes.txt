@@ -48,6 +48,12 @@ Ideas for Radio app
 
 -- log errors and times
 
+-- next / prev / togglePlayPause buttons should walk the view stack.
+   Maybe figure way for song updates to do so as well.  Add these
+   methods to TopViewInt, and have remoteReceiver do the dispatching
+   in ViewController.  Use 'respondsToSelector' to make these
+   functions optional.
+
 ** Way to view and play saved files.  Probably add a new screen for
    managing saved files, including airdrop (see below).
 

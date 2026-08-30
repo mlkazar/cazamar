@@ -16,7 +16,7 @@
 // have the full screen dimensions, and 
 
 @implementation ViewController {
-    NSMutableArray<UIView<TopViewInt> *> *_oldViews;	// of UIView objects
+    NSMutableArray<UIView<TopViewInt> *> *_viewStack;	// of UIView objects
     float _topMargin;
     float _bottomMargin;
     UIColor *_backgroundColor;
@@ -28,8 +28,9 @@
 
 // The view in self.view is a whole screen view painted black.  It
 // will be given child views with top and bottom margins, that will
-// typically be white.  The _oldViews array is a stack of previously
-// active views that can be restored as popup views terminate.
+// typically be white.  The _viewStack array is a stack of active
+// views that can be restored as popup views terminate; it includes
+// the activeView as the last element.
 
 - (void)viewDidLoad {
     CGRect rect = self.view.frame;
@@ -38,7 +39,7 @@
     [super viewDidLoad];
 
     // setup views and viewable areas
-    _oldViews = [[NSMutableArray alloc] init];
+    _viewStack = [[NSMutableArray alloc] init];
 
     _topMargin = 50;
     _bottomMargin = 50;
@@ -52,6 +53,7 @@
     _activeView = [[TopView alloc] initWithFrame: _activeFrame
 					ViewCont: self];
 
+    [_viewStack addObject: _activeView];
     [self.view addSubview: _activeView];
 
     [self registerBackground];
@@ -77,51 +79,46 @@
     // notify old view that it isn't active any more and remove it
     // from view chain.
     [_activeView deactivateTopView];
-    [_oldViews addObject: _activeView];
     [_activeView removeFromSuperview];
+
+    _activeView = view;
+    [_viewStack addObject: view];
 
     // notify new view it is active, and save it in _activeView.
     [self.view addSubview: view];
     [view activateTopView];
-    _activeView = view;
 }
 
+// return true unless any view in stack says no.
 - (bool) ok2Quit {
     UIView<TopViewInt> *view;
-    bool result;
+    bool result = true;
 
-    if ([_activeView respondsToSelector: @selector(ok2Quit)]) {
-	result = [_activeView performSelector: @selector(ok2Quit)];
-	if (!result)
-	    return false;
-    }
-
-    for(view in _oldViews) {
+    for(view in _viewStack) {
 	if ([view respondsToSelector: @selector(ok2Quit)]) {
 	    result = [view performSelector:@selector(ok2Quit)];
 	    if (!result)
-		return false;
+		break;
 	}
     }
 
-    return true;
+    return result;
 }
 
 - (void) popTopView {
     UIView<TopViewInt> *prevView;
 
     // deactivate current view and remove from chain
-    [_activeView removeFromSuperview];
     [_activeView deactivateTopView];
+    [_activeView removeFromSuperview];
 
-    // find previous view to reactivate
-    prevView = [_oldViews lastObject];
-    [_oldViews removeLastObject];
-
-    // remember it activeView and put it in the view chain, and
-    // then notify it.
+    // find previous view to reactivate, and put it in activeView
+    [_viewStack removeLastObject];
+    prevView = [_viewStack lastObject];
     _activeView = prevView;
-    [self.view addSubview: _activeView];
+
+    // Notify new active view.
+    [self.view addSubview: prevView];
     [prevView activateTopView];
 }
 
