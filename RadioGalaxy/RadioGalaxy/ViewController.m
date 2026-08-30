@@ -56,6 +56,8 @@
     [_viewStack addObject: _activeView];
     [self.view addSubview: _activeView];
 
+    [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+
     [self registerBackground];
 }
 
@@ -152,10 +154,49 @@
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
 }
 
-- (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
-    if (_remoteReceiver != nil) {
-	[_remoteReceiver remoteControlReceivedWithEvent: receivedEvent];
+- (void) applySelector: (SEL) sel {
+    int64_t count = [_viewStack count];
+    int64_t ix;
+    UIView<TopViewInt> *view;
+
+    for(ix = count-1; ix >= 0; ix--) {
+	view = _viewStack[ix];
+	// stop at first view that accepts selector
+	if ([view respondsToSelector: sel]) {
+	    [view performSelectorOnMainThread: sel
+				   withObject: nil
+				waitUntilDone: true];
+	    break;
+	}
     }
+}
+
+- (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
+    if (receivedEvent.type == UIEventTypeRemoteControl) {
+        switch (receivedEvent.subtype) {
+            case UIEventSubtypeRemoteControlPlay:
+            case UIEventSubtypeRemoteControlPause:
+            case UIEventSubtypeRemoteControlTogglePlayPause:
+		NSLog(@"=1= SignView play/pause %ld", (long) receivedEvent.subtype);
+		[self applySelector: @selector(playPauseSong)];
+                break;
+
+            case UIEventSubtypeRemoteControlPreviousTrack:
+		[self applySelector: @selector(prevSong)];
+                break;
+
+            case UIEventSubtypeRemoteControlNextTrack:
+		[self applySelector: @selector(nextSong)];
+                break;
+
+            default:
+                NSLog(@"!RMT mystery pressed %d", (int) receivedEvent.subtype);
+                break;
+        }
+
+        [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+    }
+
 }
 
 @end

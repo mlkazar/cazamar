@@ -10,5 +10,12 @@
 
 - (void) deactivateTopView;
 
-// - (bool) ok2Quit;
+@optional
+- (bool) ok2Quit;
+
+- (bool) playPauseSong;
+
+- (bool) nextSong;
+
+- (bool) prevSong;
 @end

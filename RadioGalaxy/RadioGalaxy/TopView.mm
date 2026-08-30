@@ -412,6 +412,20 @@
     return;
 }
 
+- (bool) playPauseSong {
+    bool rval =  [_signView playPauseSong];
+    [self updateIOSCenter: @"foo"];
+    return rval;
+}
+
+- (bool) nextSong {
+    return [_signView nextSong];
+}
+
+- (bool) prevSong {
+    return [_signView prevSong];
+}
+
 - (bool) ok2Quit {
     return [_signView ok2Quit];
 }
