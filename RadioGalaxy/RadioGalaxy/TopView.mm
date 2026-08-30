@@ -414,7 +414,6 @@
 
 - (bool) playPauseSong {
     bool rval =  [_signView playPauseSong];
-    [self updateIOSCenter: @"foo"];
     return rval;
 }
 

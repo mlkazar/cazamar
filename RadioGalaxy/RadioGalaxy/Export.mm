@@ -36,10 +36,11 @@
     MFANIconButton *_doneButton;
 
     MarqueeLabel *_marquee;
+    NSString *_currentLabel;
 
     MFANStreamPlayer *_samplePlayer;
     NSTimer *_sampleTimer;
-    int32_t _sampleIndex;
+    int64_t _sampleIndex;
 
     float _lastStepperValue;
 
@@ -404,6 +405,7 @@ static const float _kPlayDuration = 4.0;
 
 - (void) songCallback: (NSString *) song {
     [_marquee setText: song];
+    _currentLabel = song;
 }
 
 - (void) retrieveNameAt: (float) time {
@@ -683,7 +685,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 							    void (^complete)(BOOL)) {
 		    // do the work for the action
 		    NSLog(@"performe export work");
-		    [self saveFile2: ep];
+		    [self saveFile: ep];
 		    [self leavePlayingMode];
 		    complete(true);
 		}];
@@ -890,7 +892,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    ep.label = value;
 	    [self->_recordings addObject: ep];
 	    [self->_songTable reloadData];
-	    [self saveFile2: ep];
+	    [self saveFile: ep];
 	}];
 }
 
@@ -1074,6 +1076,71 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 						     repeats: YES];
 }
 
+- (uint64_t) getCurrentIx {
+    ExportEntry *entry;
+    uint64_t ix;
+    uint64_t count;
+
+    count = [_recordings count];
+    for(ix = 0; ix<count; ix++) {
+	entry = _recordings[ix];
+	if ([entry.label isEqualToString: _currentLabel]) {
+	    return ix;
+	}
+    }
+    return 0;
+}
+
+- (BOOL) playPauseSong {
+    if (_playingMode) {
+	if (_samplePlayer != nil) {
+	    [self stopSample];
+	} else {
+	    uint64_t ix = [self getCurrentIx];
+	    _sampleIndex = (uint32_t) ix;
+	    [self playIndex: ix];
+	}
+    }
+
+    return false;
+}
+
+- (BOOL) nextSong {
+    uint64_t ix;
+    uint64_t count;
+
+    count = [_recordings count];
+    ix = [self getCurrentIx];
+    [self stopSample];
+
+    if (++ix >= count)
+	ix = 0;
+
+    _sampleIndex = ix;
+    [self playIndex: (uint32_t) ix];
+
+    return false;
+}
+
+- (BOOL) prevSong {
+    uint64_t ix;
+    uint64_t count;
+
+    count = [_recordings count];
+    ix = [self getCurrentIx];
+    [self stopSample];
+
+    if (ix == 0)
+	ix = count - 1;
+    else
+	ix--;
+
+    _sampleIndex = ix;
+    [self playIndex: (uint32_t) ix];
+
+    return false;
+}
+
 - (void) monitorUpdate: (id) junk {
     NSString *updatedMessage;
 
@@ -1175,7 +1242,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     pthread_exit(nullptr);
 }
 
-- (int32_t) saveFile2: (ExportEntry *) ep {
+- (int32_t) saveFile: (ExportEntry *) ep {
     const char *fileNamep;
     NSString *fileName;
     FILE *filep = nullptr;

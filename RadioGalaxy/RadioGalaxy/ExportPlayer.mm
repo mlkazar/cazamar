@@ -631,4 +631,62 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return false;
 }
 
+- (uint64_t) getCurrentIndex {
+    if (_playingEntry != nil) {
+	uint64_t count;
+	uint64_t ix;
+	ExportPlayerEntry *entry;
+
+	count = [_recordings count];
+	for(ix = 0; ix<count; ix++) {
+	    entry = _recordings[ix];
+	    if (entry == _playingEntry)
+		return ix;
+	}
+	return 0;
+    } else {
+	return 0;
+    }
+}
+
+- (bool) playPauseSong {
+    [self playPressed: nil withData: nil];
+    return false;
+}
+
+- (bool) nextSong {
+    uint64_t count = [_recordings count];
+    int64_t ix = [self getCurrentIndex];
+    if (++ix >= count)
+	ix = 0;
+    if (_playingEntry != nil) {
+	[self stopEntry: _playingEntry];
+	_playingEntry = nil;
+    }
+
+    ExportPlayerEntry *entry = _recordings[ix];
+    [self playEntry: entry];
+
+    return false;
+}
+
+- (bool) prevSong {
+    uint64_t count = [_recordings count];
+    int64_t ix = [self getCurrentIndex];
+    if (ix == 0)
+	ix = count-1;
+    else
+	ix--;
+
+    if (_playingEntry != nil) {
+	[self stopEntry: _playingEntry];
+	_playingEntry = nil;
+    }
+
+    ExportPlayerEntry *entry = _recordings[ix];
+    [self playEntry: entry];
+
+    return false;
+}
+
 @end

@@ -2030,38 +2030,4 @@ NS_ASSUME_NONNULL_END
     [self changeStationBy: -1];
     return false;
 }
-
-#if 0
-- (void)remoteControlReceivedWithEvent:(UIEvent *)receivedEvent {
-   NSLog(@"- remotecontrolev = %d", (int) receivedEvent.type);
-    if (receivedEvent.type == UIEventTypeRemoteControl) {
-        switch (receivedEvent.subtype) {
-            case UIEventSubtypeRemoteControlPlay:
-            case UIEventSubtypeRemoteControlPause:
-            case UIEventSubtypeRemoteControlTogglePlayPause:
-               NSLog(@"=1= SignView play/pause %ld", (long) receivedEvent.subtype);
-               if (_playingStation != nil) {
-                   if (_player == nil) {
-                       [self startStation: _playingStation];
-                   } else if ([_player isPaused]) {
-                       [_player resume];
-                   } else {
-                       [_player pause];
-                   }
-               }
-                break;
-
-            case UIEventSubtypeRemoteControlPreviousTrack:
-               [self changeStationBy: -1];
-                break;
-
-	    default:
-		break;
-	}
-    } else {
-	NSLog(@"non remote control event %d", (int) receivedEvent.type);
-    }
-}
-#endif
-
 @end
