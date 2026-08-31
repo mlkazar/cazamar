@@ -619,15 +619,15 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	[_playButton setTitle:@"Play"];
 }
 
-- (void) activateTopView {
+- (void) tvActivate {
     [_marquee restartLabel];
 }
 
-- (void) deactivateTopView {
+- (void) tvDeactivate {
     return;
 }
 
-- (bool) ok2Quit {
+- (bool) tvOk2Quit {
     return false;
 }
 
@@ -649,12 +649,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     }
 }
 
-- (bool) playPauseSong {
+- (bool) tvPlayPauseSong {
     [self playPressed: nil withData: nil];
     return false;
 }
 
-- (bool) nextSong {
+- (bool) tvNextSong {
     uint64_t count = [_recordings count];
     int64_t ix = [self getCurrentIndex];
     if (++ix >= count)
@@ -670,7 +670,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return false;
 }
 
-- (bool) prevSong {
+- (bool) tvPrevSong {
     uint64_t count = [_recordings count];
     int64_t ix = [self getCurrentIndex];
     if (ix == 0)
@@ -686,6 +686,27 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     ExportPlayerEntry *entry = _recordings[ix];
     [self playEntry: entry];
 
+    return false;
+}
+
+- (bool) tvIsPlaying {
+    if (_player != nil && !_isPaused)
+	return true;
+    else
+	return false;
+}
+
+- (bool) tvPause {
+    if (_player != nil) {
+	[_player pause];
+    }
+    return false;
+}
+
+- (bool) tvResume {
+    if (_player != nil) {
+	[_player play];
+    }
     return false;
 }
 

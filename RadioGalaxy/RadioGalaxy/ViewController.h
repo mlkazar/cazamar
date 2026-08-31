@@ -22,8 +22,6 @@
 
 - (void) popTopView;
 
-- (void) setRemoteReceiver: (UIView<AudioInt> *) remoteReceiver;
-
 - (void) enterBackground;
 
 - (void) leaveBackground;

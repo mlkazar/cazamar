@@ -16,7 +16,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface SignView : UIView<AudioInt,TopViewInt>
+@interface SignView : UIView<TopViewInt>
 
 @property RadioHistory *history;
 @property ViewController *vc;
@@ -70,21 +70,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void) performAddOperation;
 
-- (void) setupAudioSession: (BOOL) mix;
-
-- (void) pause;
-
-- (void) activateTopView;
-
-- (void) deactivateTopView;
-
 - (void) freezeStation: (SignStation *) station frozen: (bool) freeze;
 
 - (void) eraseStation: (SignStation *) station;
 
 - (void) createSnapshot: (SignStation *) station;
 
-- (bool) ok2Quit;
+- (bool) tvPause;
+
+- (void) tvActivate;
+
+- (void) tvDeactivate;
+
+- (bool) tvOk2Quit;
 
 @end
 

@@ -523,7 +523,7 @@
     [self doNotify];
 }
 
-- (void) activateTopView {
+- (void) tvActivate {
     // if the edit command did a remove, don't stay on the status
     // page, since the station doesn't exist anymore.
     if (_editStation.doRemove) {
@@ -532,7 +532,7 @@
     return;
 }
 
-- (void) deactivateTopView {
+- (void) tvDeactivate {
     [_seekSlider shutdown];
     _seekSlider = nil;
     return;

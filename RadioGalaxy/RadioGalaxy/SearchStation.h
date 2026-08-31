@@ -15,9 +15,9 @@
 @property NSMutableArray *signStations;
 @property uint32_t maxReturn;
 
-- (void) activateTopView;
+- (void) tvActivate;
 
-- (void) deactivateTopView;
+- (void) tvDeactivate;
 
 - (SearchStation *) initWithFrame:(CGRect) frame ViewCont: (ViewController *) vc;
 

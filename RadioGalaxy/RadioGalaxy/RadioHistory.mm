@@ -382,11 +382,11 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return self;
 }
 
-- (void) activateTopView {
+- (void) tvActivate {
     return;
 }
 
-- (void) deactivateTopView {
+- (void) tvDeactivate {
     return;
 }
 

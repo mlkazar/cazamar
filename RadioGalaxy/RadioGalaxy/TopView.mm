@@ -401,32 +401,45 @@
     [self playInternal];
 }
 
-- (void) activateTopView {
+- (void) tvActivate {
     [_marquee restartLabel];
 
     // let signview know it is active again
-    [_signView activateTopView];
+    [_signView tvActivate];
 }
 
-- (void) deactivateTopView {
+- (void) tvDeactivate {
+    [_signView tvDeactivate];
     return;
 }
 
-- (bool) playPauseSong {
-    bool rval =  [_signView playPauseSong];
+- (bool) tvPlayPauseSong {
+    bool rval =  [_signView tvPlayPauseSong];
     return rval;
 }
 
-- (bool) nextSong {
-    return [_signView nextSong];
+- (bool) tvNextSong {
+    return [_signView tvNextSong];
 }
 
-- (bool) prevSong {
-    return [_signView prevSong];
+- (bool) tvPause {
+    return [_signView tvPause];
 }
 
-- (bool) ok2Quit {
-    return [_signView ok2Quit];
+- (bool) tvResume {
+    return [_signView tvResume];
+}
+
+- (bool) tvPrevSong {
+    return [_signView tvPrevSong];
+}
+
+- (BOOL) tvIsPlaying {
+    return [_signView tvIsPlaying];
+}
+
+- (bool) tvOk2Quit {
+    return [_signView tvOk2Quit];
 }
 
 @end

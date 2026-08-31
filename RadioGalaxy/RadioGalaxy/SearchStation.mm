@@ -812,11 +812,11 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     NSLog(@"in picker select %d", (int) row);
 }
 
-- (void) activateTopView {
+- (void) tvActivate {
     return;
 }
 
-- (void) deactivateTopView {
+- (void) tvDeactivate {
     return;
 }
 

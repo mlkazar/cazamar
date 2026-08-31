@@ -27,9 +27,4 @@
 @property (readonly) bool exitWhenIdle;
 
 - (Settings *) initWithViewController: (ViewController *) vc;
-
-- (void) activateTopView;
-
-- (void) deactivateTopView;
-
 @end

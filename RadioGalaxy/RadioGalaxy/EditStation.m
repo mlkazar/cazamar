@@ -254,11 +254,11 @@
     return YES;
 }
 
-- (void) activateTopView {
+- (void) tvActivate {
     return;
 }
 
-- (void) deactivateTopView {
+- (void) tvDeactivate {
     return;
 }
 

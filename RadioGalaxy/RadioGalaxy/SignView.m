@@ -26,7 +26,6 @@
 #import "SignView.h"
 #import "SignSave.h"
 #import "SignViewInt.h"
-#import "Silence.h"
 #import "StatusMon.h"
 
 #include "assert.h"
@@ -48,7 +47,6 @@ NS_ASSUME_NONNULL_BEGIN
     id<MTLFunction> _fragmentProc;
     id<MTLRenderPipelineState> _pipeline;
     CADisplayLink *_displayLink;
-    Silence *_silence;
     UIAlertController *_introAlert;
 
     NSMutableOrderedSet *_allStations;
@@ -85,7 +83,6 @@ NS_ASSUME_NONNULL_BEGIN
     PopStatus *_popStatus;
 
     BOOL _isPlaying;
-    BOOL _isInterrupted;	// another app is playing audio
     BOOL _isBackground;
 
     UIGestureRecognizer *_pressRecognizer;
@@ -860,7 +857,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	self.frame = frame;
 
 	_fireCount = 0;
-	_isInterrupted = false;
 
 	_vc = vc;
 	_allStations = [[NSMutableOrderedSet alloc] init];
@@ -947,10 +943,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 						 selector:@selector(sceneDidBecomeActive:)
 						     name:UISceneDidActivateNotification
 						   object:nil];
-
-	[vc setRemoteReceiver: self];
-
-	_silence = [[Silence alloc] init];
     }
 
     return self;
@@ -1168,7 +1160,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
 	    if (self->_playingStation != nil) {
-		[self pause];
+		[self tvPause];
 		(void) [[Export alloc] initWithStation: self->_playingStation
 					      viewCont: self->_vc];
 	    }
@@ -1200,22 +1192,12 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	}];
     [alert addAction: action];
 
-#if 0
-    // Coming soon -- don't delete!
-    action = [UIAlertAction actionWithTitle:@"View error log"
+    action = [UIAlertAction actionWithTitle:@"Erase all streamed data"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
-	    NSLog(@"not implemented yet");
+	    [self maybeEraseAllStations];
 	}];
     [alert addAction: action];
-
-    action = [UIAlertAction actionWithTitle:@"View saved files"
-				       style: UIAlertActionStyleDefault
-				     handler:^(UIAlertAction *act) {
-	    NSLog(@"not implemented yet");
-	}];
-    [alert addAction: action];
-#endif
 
     action = [UIAlertAction actionWithTitle:@"Legal"
 				       style: UIAlertActionStyleDefault
@@ -1501,6 +1483,38 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     station.exportRecordings = [[NSMutableArray alloc] init];
 }
 
+- (void) maybeEraseAllStations {
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"RadioStar"
+						    message: @"Erase *all*  streamed data?\n"
+				   @"Leaves exported music alone."
+					     preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction
+				actionWithTitle:@"Yes, erase"
+					  style: UIAlertActionStyleDefault
+					handler:^(UIAlertAction *act) {
+	    [self eraseAllStations];
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Cancel"
+                                      style: UIAlertActionStyleDefault
+                                    handler:^(UIAlertAction *act) {
+	    NSLog(@"Perform cancel");
+        }];
+    [alert addAction: action];
+
+    [_vc presentViewController: alert animated:YES completion: nil];
+}
+
+- (void) eraseAllStations {
+    SignStation *station;
+    for(station in _allStations) {
+	[self eraseStation: station];
+    }
+}
+
 - (void) createSnapshot: (SignStation *) station {
     NSLog(@"in create snapshot");
     SignStation *snapStation;
@@ -1772,63 +1786,20 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 // Operations for AudioInt
 ////////////////////////////////////////////////////////////////
 
-- (void) setupAudioSession: (BOOL) mix {
-    NSError *setError;
-    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-    if (_player != nil) {
-	NSLog(@"=1= setupAudioSession for player");
-	[_player setupAudioSession: mix];
-    } else if (mix) {
-	// can't setup callbacks, but setup the session
-	NSLog(@"=1= setupAudioSession mix");
-	[audioSession setCategory: AVAudioSessionCategoryPlayback
-		      withOptions: AVAudioSessionCategoryOptionMixWithOthers
-			    error: &setError];
-    } else {
-	NSLog(@"=1= setupAudioSession playback");
-        [audioSession setCategory: AVAudioSessionCategoryPlayback
-		      withOptions: 0
-			    error: &setError];
-    }
-
-    [audioSession setActive: true error: &setError];
-
-    // make sure we keep getting notifications for the new session.
-    // [self setupNotifications];
-}
-
 - (void) playerStateChanged: (id) aplayer {
     MFANStreamPlayer *player = (MFANStreamPlayer *) aplayer;
     NSLog(@"in state changed player=%p isPlaying=%d", player, [player isPlaying]);
 
     _isPlaying = [player isPlaying];
     NSLog(@"====player state changed to %d for player %p", _isPlaying, player);
-    // handle cases like if a player stops because of a route change,
-    // make sure we start the silence player again.
-    [self processBackgroundState];
 }
 
-- (void) enterBackground {
-    NSLog(@"=1= enter background");
-    _isBackground = true;
-    [self processBackgroundState];
-    [self animationOff: YES];
-}
-
-- (void) leaveBackground {
-    _isBackground = false;
-    NSLog(@"=1= leave background");
-    [self processBackgroundState];
+- (void) tvActivate {
     [self addRecognizers];
     [self animationOn];
 }
 
-- (void) activateTopView {
-    [self addRecognizers];
-    [self animationOn];
-}
-
-- (void) deactivateTopView {
+- (void) tvDeactivate {
     [self removeRecognizers];
 }
 
@@ -1872,80 +1843,14 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 }
 
-// Generally, we want the silence player running if we aren't playing
-// music, so that *something* is playing at all times, to avoid our
-// app being killed for lack of using the audio channels.
-//
-// Also, our app won't get killed if it is in the foreground (no lock
-// screen).
-//
-// Note that the lock screen / car play controls only work with mix
-// false.  If mix is false, however, a route change stops all audio,
-// and we eventually get killed, so we want to start a mix == true
-// player when we get interrupted with a route change.
-//
-// One problem we encounter is if we switch to a dead station, it
-// looks like we're not playing any more, we start the silence player
-// in mix mode and lose access to car play controls.  So, if we're not
-// playing but didn't hit pause, we leave the controls in place and
-// hope the jammed up player will continue before we get killed.
-//
-// In general, we can have mix set, in which case we can keep playing
-// music or keep the app running with silence, but car play controls
-// don't work.
-- (void) processBackgroundState {
-    NSLog(@"=1= PBS isBackground=%d isPlaying=%d player=%p playerPaused=%d interrupted=%d",
-	  _isBackground, _isPlaying, _player, [_player isPaused], _isInterrupted);
-    if (_player != nil && [_player isPlaying]) {
-	// player has been restarted.  We don't always get interruption ended events,
-	// so in this case we simulate one.
-	_isInterrupted = false;
-    }
-    if (_isBackground) {
-	// We want a stalled player (not playing but not paused) to
-	// keep the controls around (use mix == false) .  Such a
-	// player will timeout in 15 seconds or so, so we'll get a
-	// chance to start the silence player going before we get
-	// killed (hopefully).
-	if (!_isPlaying && (_player == nil || [_player isPaused])) {
-	    // if we were interrupted by another audio app, we have to use
-	    // mix == true so that the silent player keeps running.
-	    // to keep the app alive.
-	    //
-	    // Otherwise, we want to keep the non-mixing session, so that
-	    // the remote controls can keep working.
-	    [self setupAudioSession: _isInterrupted];
-	    [_silence start];
-	} else {
-	    // playing, so we don't need more things playing in order
-	    // to keep our process around.  Or we're not playing
-	    // because of a stall, which hopefully won't last long.
-	    if (!_isPlaying) {
-		// not playing, but not paused, use silence to keep us
-		// alive.  Keep controls visible.  Because mix is
-		// false, someone else starting audio during this time
-		// will probably stop our silence player.  We'll
-		// continue after the player wakes up again and either
-		// plays again or pauses.
-		[_silence start];
-		[self setupAudioSession: false];
-	    } else {
-		[_silence stop];
-		[self setupAudioSession: false];
-	    }
-	}
-
-	// see if we should quit the app because of inactivity
-	if ([_vc ok2Quit])
-	    exit(0);
-    } else {
-	// foreground, don't have to worry about being killed
-	[_silence stop];
-	[self setupAudioSession: false];
-    }
+- (BOOL) tvIsPlaying {
+    if (_player == nil || [_player isPaused])
+	return false;
+    else
+	return true;
 }
 
-- (bool) ok2Quit {
+- (bool) tvOk2Quit {
     if (_settings.exitWhenIdle) {
 	if ( _isBackground &&
 	     ![self anyDownloading] && (_player == nil))
@@ -1978,42 +1883,45 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	    NSLog(@"=1= resuming audio player");
 	    // also calls checkUpcallState
 	}
-	_isInterrupted = false;
     }
     else if (intType == AVAudioSessionInterruptionTypeBegan) {
 	NSLog(@"=1= audio interruption began");
 	// also calls checkUpcallState
-	_isInterrupted = true;
     }
     else {
 	NSLog(@"=1= audio interruption unknown type %ld", intType);
     }
-
-    [self processBackgroundState];
 }
 
 NS_ASSUME_NONNULL_END
 
-- (void) pause {
+- (bool) tvPause {
     if (_player != nil) {
 	if (![_player isPaused]) {
 	    [_player pause];
 	}
     }
+    return false;
 }
 
-- (bool) playPauseSong {
+- (bool) tvResume {
+    if (_player != nil) {
+	if ([_player isPaused]) {
+	    [_player resume];
+	}
+    }
+    return false;
+}
+
+- (bool) tvPlayPauseSong {
     NSLog(@"=1= SignView play/pause");
     if (_playingStation != nil) {
 	if (_player == nil) {
 	    [self startStation: _playingStation];
-	    [self setupAudioSession: false];
 	} else if ([_player isPaused]) {
 	    [_player resume];
-	    [self setupAudioSession: false];
 	} else {
 	    [_player pause];
-	    [self setupAudioSession: true];
 	}
     }
 
@@ -2021,12 +1929,12 @@ NS_ASSUME_NONNULL_END
     return false;
 }
 
-- (bool) nextSong {
+- (bool) tvNextSong {
     [self changeStationBy: +1];
     return false;
 }
 
-- (bool) prevSong {
+- (bool) tvPrevSong {
     [self changeStationBy: -1];
     return false;
 }

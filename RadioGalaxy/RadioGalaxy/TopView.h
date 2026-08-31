@@ -13,9 +13,9 @@
 
 - (TopView *) initWithFrame: (CGRect) frame ViewCont: (ViewController *) vc;
 
-- (void) activateTopView;
+- (void) tvActivate;
 
-- (void) deactivateTopView;
+- (void) tvDeactivate;
 
 - (void) songChanged: (id) player;
 

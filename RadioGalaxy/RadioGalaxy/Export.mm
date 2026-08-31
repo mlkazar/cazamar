@@ -790,7 +790,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     ep.end = endTime;
 }
 
-- (void) activateTopView {
+- (void) tvActivate {
     // if the edit command did a remove, don't stay on the status
     // page, since the station doesn't exist anymore.
     [self leavePlayingMode];
@@ -896,7 +896,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	}];
 }
 
-- (void) deactivateTopView {
+- (void) tvDeactivate {
     [_startSlider shutdown];
     _startSlider = nil;
     [_endSlider shutdown];
@@ -904,7 +904,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return;
 }
 
-- (bool) ok2Quit {
+- (bool) tvOk2Quit {
     return false;
 }
 
@@ -1091,7 +1091,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return 0;
 }
 
-- (BOOL) playPauseSong {
+- (bool) tvPlayPauseSong {
     if (_playingMode) {
 	if (_samplePlayer != nil) {
 	    [self stopSample];
@@ -1105,7 +1105,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return false;
 }
 
-- (BOOL) nextSong {
+- (bool) tvNextSong {
     uint64_t ix;
     uint64_t count;
 
@@ -1122,7 +1122,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return false;
 }
 
-- (BOOL) prevSong {
+- (bool) tvPrevSong {
     uint64_t ix;
     uint64_t count;
 
@@ -1354,6 +1354,27 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     }
 
     return rval;
+}
+
+- (bool) tvIsPlaying {
+    if (_samplePlayer == nil || ![_samplePlayer isPlaying])
+	return false;
+    else
+	return true;
+}
+
+- (bool) tvPause {
+    if (_samplePlayer != nil)
+	[_samplePlayer pause];
+
+    return false;
+}
+
+- (bool) tvResume {
+    if (_samplePlayer != nil)
+	[_samplePlayer resume];
+
+    return false;
 }
 
 @end

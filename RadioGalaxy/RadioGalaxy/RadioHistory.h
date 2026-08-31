@@ -36,9 +36,9 @@
 
 @property BOOL helpMode;
 
-- (void) deactivateTopView;
+- (void) tvActivate;;
 
-- (void) activateTopView;
+- (void) tvDeactivate;
 
 - (id)initWithViewController: (ViewController *) viewCont;
 

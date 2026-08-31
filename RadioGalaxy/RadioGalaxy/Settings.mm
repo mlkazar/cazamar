@@ -659,11 +659,11 @@ Settings *_globalSettings;
     NSLog(@"- Done with async part of save");
 }
 
-- (void) activateTopView {
+- (void) tvActivate {
     return;
 }
 
-- (void) deactivateTopView {
+- (void) tvDeactivate {
     return;
 }
 

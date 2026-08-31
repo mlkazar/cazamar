@@ -6,16 +6,24 @@
 //
 
 @protocol TopViewInt
-- (void) activateTopView;
+- (void) tvActivate;
 
-- (void) deactivateTopView;
+- (void) tvDeactivate;
 
 @optional
-- (bool) ok2Quit;
+- (bool) tvOk2Quit;
 
-- (bool) playPauseSong;
+// used by play/pause button
+- (bool) tvPlayPauseSong;
 
-- (bool) nextSong;
+- (bool) tvNextSong;
 
-- (bool) prevSong;
+- (bool) tvPrevSong;
+
+- (bool) tvIsPlaying;
+
+// these two are used for audio interruptions
+- (bool) tvPause;
+
+- (bool) tvResume;
 @end

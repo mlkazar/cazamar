@@ -21,8 +21,8 @@
 
 - (ExportPlayer *) initWithViewCont: (ViewController *) vc;
 
-- (void) activateTopView;
+- (void) tvActivate;
 
-- (void) deactivateTopView;
+- (void) tvDeactivate;
 
 @end

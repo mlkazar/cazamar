@@ -46,13 +46,25 @@ Ideas for Radio app
    schedule a background task wakeup or to keep an app alive while it
    does background streaming.  No.
 
+-- Add viewcontroller notification center interface so that export and
+   exportplayer report current songs.  Note that audiogalaxy uses
+   MFANPLayerView::updateSongState to manage nowPlayingInfo dictionary
+
 -- log errors and times
 
--- next / prev / togglePlayPause buttons should walk the view stack.
+** next / prev / togglePlayPause buttons should walk the view stack.
    Maybe figure way for song updates to do so as well.  Add these
    methods to TopViewInt, and have remoteReceiver do the dispatching
    in ViewController.  Use 'respondsToSelector' to make these
    functions optional.
+
+-- still don't set audiosession properly for export or exportplayer
+   screens. Also aren't setting notification center song updates.
+
+   Move enterbackground, leavebackgorund and processbackgroundstate to
+   viewcontroller and add 'isPlaying' method to TopViewInt, and call
+   it on the top of stack (no need to walk down the stack, I don't
+   think).
 
 ** Way to view and play saved files.  Probably add a new screen for
    managing saved files, including airdrop (see below).
