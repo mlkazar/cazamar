@@ -30,6 +30,12 @@
     Silence *_silence;
     BOOL _isBackground;
     BOOL _isInterrupted;
+
+    // for NowPlayingCenter
+    NSMutableDictionary *_nowPlayingInfo;
+    UIImage *_inputImage;
+    UIImage *_convertedImage;
+    int32_t _songIndex;
 }
 
 // The view in self.view is a whole screen view painted black.  It
@@ -53,6 +59,8 @@
     self.view = [[UIView alloc] initWithFrame: rect];
     self.view.backgroundColor = [UIColor blackColor];
 
+    _songIndex = 2000;
+
     _activeFrame = rect;
     _activeFrame.origin.y += _topMargin;
     _activeFrame.size.height -= _topMargin + _bottomMargin;
@@ -74,6 +82,96 @@
 					       object: nil];
 
     [self registerBackground];
+}
+
++ (void) splitLabel: (NSString *) label
+	      group: (NSString **) group
+	       song: (NSString **) song
+	      album: (NSString **) album {
+
+    NSArray<NSString *> *parsed = [label componentsSeparatedByString: @"-"];
+    uint64_t parsedCount = [parsed count];
+    if (parsedCount == 0) {
+	*group = @"Unknown";
+	*song = @"Unknown";
+	*album = @"Unknown";
+    } else if (parsedCount == 1) {
+	*group = @"Unknown";
+	*song = [parsed[0] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+	*album = @"";
+
+    } else if (parsedCount == 2) {
+	*group = [parsed[0] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+	*song = [parsed[1] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+	*album = @"";
+
+    } else {
+	*group = [parsed[0] stringByTrimmingCharactersInSet:
+			    NSCharacterSet.whitespaceCharacterSet];
+	*song = [parsed[1] stringByTrimmingCharactersInSet:
+			   NSCharacterSet.whitespaceCharacterSet];
+	*album = [parsed[2] stringByTrimmingCharactersInSet:
+			    NSCharacterSet.whitespaceCharacterSet];
+    }
+}
+
+- (MPMediaItemArtwork *) getArtworkForImage: (UIImage *) image {
+    MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc]
+				      initWithBoundsSize: image.size
+					  requestHandler: ^UIImage * _Nonnull(CGSize rect) {
+	    return image;
+	}];
+    return artwork;
+}
+
+- (void) updateNowPlayingCenter: (NSString *) label
+		      baseImage: (UIImage *) image
+		    currentTime: (float) currentTime
+		       duration: (float) durationTime
+		      songIndex: (int32_t) songIndex {
+    NSMutableDictionary *info = [[NSMutableDictionary alloc] init];
+    NSString *songTitle;
+    NSString *songArtist;
+    NSString *songAlbum;
+
+    // Always fills in all fields.
+    [ViewController splitLabel: label
+			 group: &songArtist
+			  song: &songTitle
+			 album: &songAlbum];
+
+    [info setObject: [NSNumber numberWithDouble: 1.0]
+	     forKey: MPNowPlayingInfoPropertyPlaybackRate];
+
+    [info setObject: [NSNumber numberWithFloat: currentTime]
+	     forKey: MPNowPlayingInfoPropertyElapsedPlaybackTime];
+
+    [info setObject: [NSNumber numberWithFloat: durationTime]
+	     forKey: MPMediaItemPropertyPlaybackDuration];
+
+    if (songIndex < 0)
+	songIndex = _songIndex++;
+
+    [info setObject: [NSNumber numberWithUnsignedInt: songIndex]
+	     forKey: MPNowPlayingInfoPropertyPlaybackQueueIndex];
+
+    // never want to have songIndex >= queueCount
+    [info setObject: [NSNumber numberWithUnsignedInt: (int) 8000]
+	     forKey: MPNowPlayingInfoPropertyPlaybackQueueCount];
+
+    [info setObject: songTitle forKey: MPMediaItemPropertyTitle];
+    [info setObject: songArtist forKey: MPMediaItemPropertyArtist];
+    [info setObject: songAlbum forKey: MPMediaItemPropertyAlbumTitle];
+
+    MPMediaItemArtwork *artWork = [self getArtworkForImage: image];
+    [info setObject: artWork forKey: MPMediaItemPropertyArtwork];
+
+    _nowPlayingInfo = info;
+    [[MPNowPlayingInfoCenter defaultCenter] setNowPlayingInfo: info];
+
 }
 
 - (void) resumePlayerAfterInterruption {

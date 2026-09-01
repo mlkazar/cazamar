@@ -404,8 +404,35 @@ static const float _kPlayDuration = 4.0;
 }
 
 - (void) songCallback: (NSString *) song {
+    NSString *groupName;
+    NSString *songName;
+    NSString *albumName;
+    ExportEntry *entry;
+
     [_marquee setText: song];
     _currentLabel = song;
+
+    [ViewController splitLabel: song
+			 group: &groupName
+			  song: &songName
+			 album: &albumName];
+
+    uint32_t songIndex;
+
+    if (_selectedRow >= 0)
+	songIndex = (uint32_t) _selectedRow;
+    else
+	songIndex = 0;
+
+    entry = _recordings[songIndex];
+    float durationTime = entry.end - entry.start;
+
+    [_vc updateNowPlayingCenter: song
+		      baseImage: _station.iconImage
+		    currentTime: 0.0
+		       duration: (float) durationTime
+		      songIndex: songIndex];
+
 }
 
 - (void) retrieveNameAt: (float) time {
@@ -970,10 +997,10 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     NSString *songName;
     NSString *albumName;
 
-    [self splitLabel: ep.label
-	       group: &groupName
-		song: &songName
-	       album: &albumName];
+    [ViewController splitLabel: ep.label
+			 group: &groupName
+			  song: &songName
+			 album: &albumName];
 
     ExportId3V2 *id3Writer = [[ExportId3V2 alloc] initWithGroup: groupName
 							   song: songName
@@ -996,10 +1023,10 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     NSString *songName;
     NSString *albumName;
 
-    [self splitLabel: ep.label
-	       group: &groupName
-		song: &songName
-	       album: &albumName];
+    [ViewController splitLabel: ep.label
+			 group: &groupName
+			  song: &songName
+			 album: &albumName];
 
     /* put out old style MP3 trailer (easiest to do) */
     memset(tbuffer, 0, sizeof(tbuffer));

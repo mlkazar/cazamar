@@ -53,6 +53,7 @@
     BOOL _isPaused;;
     int32_t _selectedRow;
     UIColor *_selectedColor;
+    UIImage *_recordImage;
 }
 
 - (NSString *) pathNameForFile: (NSString *) fileName {
@@ -232,6 +233,8 @@
 
 	_recordings = [[NSMutableArray alloc] init];
 
+	_recordImage = [UIImage imageNamed: @"record-152.png"];
+
 	NSArray *paths;
 	paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
 	_docDirName = paths[0];
@@ -400,6 +403,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 			  entry.artist, entry.song];
 
     [_marquee setText: label];
+
+    [_vc updateNowPlayingCenter: label
+		      baseImage: _recordImage
+		    currentTime: 0.0
+		       duration: _player.duration
+		      songIndex: -1];
 
     entry.playing = true;
     _playingEntry = entry;

@@ -325,6 +325,13 @@
 }
 
 - (void) updateIOSCenter: (NSString *) song {
+    [_vc updateNowPlayingCenter: song
+		      baseImage: [_signView getCurrentStation].iconImage
+		    currentTime: 0.0
+		       duration: (float) 300.0
+		      songIndex: -1];
+
+#if 0
     _nowPlayingInfo = [[NSMutableDictionary alloc] init];
     [_nowPlayingInfo setObject: [NSNumber numberWithDouble: 1.0]
 			forKey: MPNowPlayingInfoPropertyPlaybackRate];
@@ -355,7 +362,7 @@
     } else {
 	infoCenter.playbackState =  MPNowPlayingPlaybackStatePlaying;
     }
-
+#endif
 }
 
 - (void) songChanged: (id) asong {
@@ -374,7 +381,7 @@
 	displayName = [NSString stringWithFormat: @"%@ - %@", stationName, song];
     }
 
-    [self updateIOSCenter: displayName];
+    [self updateIOSCenter: song];
 
     // we dont' want to add every song we scroll past to the history
     uint64_t now = osp_time_ms();

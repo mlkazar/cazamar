@@ -18,6 +18,17 @@
 @property CGRect activeFrame;
 @property NSObject *settings;
 
++ (void) splitLabel: (NSString *) label
+	      group: (NSString **) group
+	       song: (NSString **) song
+	      album: (NSString **) album;
+
+- (void) updateNowPlayingCenter: (NSString *) label
+		      baseImage: (UIImage *) image
+		    currentTime: (float) currentTime
+		       duration: (float) durationTime
+		      songIndex: (int32_t) songIndex;
+
 - (void) pushTopView: (UIView<TopViewInt> *) view;
 
 - (void) popTopView;
