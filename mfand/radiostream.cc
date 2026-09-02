@@ -201,19 +201,22 @@ RadioStream::upcallMetaData()
     int32_t j;
     int tc;
     int found;
+    char *icyp;
 
     if (!_controlProcp)
         return;
 
     /* see if we can find a stream title in the meta data */
-    metaLen = (int32_t) strlen(_icyMetap);
+    icyp = _icyMetaBuffer;
+    metaLen = (int32_t) strlen(icyp);
     found = 0;
+    printf("=m= upcall raw metadata='%s'\n", icyp);
     for(i=0; i<metaLen - 12; i++) {
-        if (strncasecmp(_icyMetap+i, "StreamTitle='", 13) == 0) {
+        if (strncasecmp(icyp+i, "StreamTitle='", 13) == 0) {
             found = 1;
             /* pull out the actual title, ending with a single quote */
             for(j=i+13;j<metaLen;j++) {
-                tc = _icyMetap[j];
+                tc = icyp[j];
                 if (tc == 0)
                     break;
                 else if (tc == '\'') {
@@ -224,7 +227,7 @@ RadioStream::upcallMetaData()
                         /* no more characters */
                         break;
                     }
-                    else if (_icyMetap[j+1] == ';') {
+                    else if (icyp[j+1] == ';') {
                         /* if we have '; in the stream, this really is a terminating quote */
                         break;
                     }
@@ -234,7 +237,7 @@ RadioStream::upcallMetaData()
                     if (j == metaLen - 1)
                         break;
                     j++;
-                    tc = _icyMetap[j];
+                    tc = icyp[j];
                 }
 
                 changedData._song.append(1, tc);
@@ -243,7 +246,8 @@ RadioStream::upcallMetaData()
     }
 
     if (!found)
-        changedData._song = _icyMetap;
+        changedData._song = icyp;
+    printf("=m= upcalling final '%s'\n", changedData._song.c_str());
     _controlProcp(_contextp, this, eventSongChanged, &changedData);
 }
 
@@ -383,6 +387,9 @@ RadioStream::rcv( void *contextp,
                         /* and switch back to data processing */
                         radiop->_icyReadingMeta = 0;
                         radiop->_icyDataRemaining = radiop->_icyMetaInt;
+                    } else {
+                        printf("=m= partial copy of %d bytes leaving %d bytes\n",
+                               tlen, radiop->_icyMetaRemaining);
                     }
                 }
                 else {
