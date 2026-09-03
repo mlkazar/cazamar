@@ -380,6 +380,7 @@ RadioStream::rcv( void *contextp,
                     tlen = (radiop->_icyMetaRemaining < len? radiop->_icyMetaRemaining : len);
                     memcpy(radiop->_icyMetap, abufferp, tlen);
                     radiop->_icyMetaRemaining -= tlen;
+                    radiop->_icyMetap += tlen;
 
                     if (radiop->_icyMetaRemaining == 0) {
                         radiop->upcallMetaData();
