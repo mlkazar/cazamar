@@ -631,6 +631,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     pthread_mutex_lock(&_playerMutex);
     _songCallbackObj = callbackObj;
     _songCallbackSel = callbackSel;
+    _lastUpcalledSong = @"[Junk xyzzy]";	// won't match
     pthread_mutex_unlock(&_playerMutex);
 }
 

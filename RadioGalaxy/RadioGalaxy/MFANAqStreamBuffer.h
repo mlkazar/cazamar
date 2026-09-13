@@ -13,6 +13,7 @@
 // ---------------------------------------------------------------------------
 
 @class MFANAqStreamBlock;
+@class MFANAqStreamRecordings;
 
 @interface MFANAqStreamFile : NSObject
 @property NSMutableArray<MFANAqStreamBlock *> *blocks;
@@ -160,6 +161,8 @@ typedef void (^RecordingUpdateBlock)(int64_t row);
 @property uint32_t validBlocks;
 
 @property uint32_t dirtyBlocks;
+
+@property MFANAqStreamRecordings *streamRecordings;
 
 // -------------------------------------------------------------------
 // Fields written by the streamer's audio-stream parser callbacks.

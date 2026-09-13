@@ -26,6 +26,7 @@
 #import "SignView.h"
 #import "SignSave.h"
 #import "SignViewInt.h"
+#import "SongPlayer.h"
 #import "StatusMon.h"
 
 #include "assert.h"
@@ -1163,6 +1164,18 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		[self tvPause];
 		(void) [[Export alloc] initWithStation: self->_playingStation
 					      viewCont: self->_vc];
+	    }
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Test Song Popups"
+				       style: UIAlertActionStyleDefault
+				     handler:^(UIAlertAction *act) {
+	    if (self->_playingStation != nil) {
+		(void) [[SongPlayer alloc] initWithStation: self->_playingStation
+						    buffer: self->_playingStation.recordingBuffer
+						  signView: self
+						  viewCont: self->_vc];
 	    }
 	}];
     [alert addAction: action];

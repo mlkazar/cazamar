@@ -935,6 +935,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     return false;
 }
 
+#if 0
 - (void) splitLabel: (NSString *) label
 	      group: (NSString **) group
 	       song: (NSString **) song
@@ -968,6 +969,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 			    NSCharacterSet.whitespaceCharacterSet];
     }
 }
+#endif
 
 - (NSString *) generateName: (ExportEntry *) ep isMp3: (bool) isMp3 {
     NSString *entryName;

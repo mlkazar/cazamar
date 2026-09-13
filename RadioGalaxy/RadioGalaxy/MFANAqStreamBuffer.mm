@@ -712,7 +712,7 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     uint64_t _lastPacketEndMs;
     uint64_t _firstPacketStartMs;
 
-    MFANAqStreamRecordings *_recordings;
+    MFANAqStreamRecordings *_streamRecordings;
 
     // Note that fileSize includes both the header block and the
     // unsealed block at the end of the file.
@@ -1115,7 +1115,7 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
 	block.sealed = true;
 	block.valid = false;
 	block.diskBytesUsed = _kBytesPerBlock;
-	code = [self readPacketsFromBlock: block duration:&durationMs];
+	code = [self readPacketsFromBlock: block duration:&durationMs fromInit:true];
 
 	// make it look valid and sealed now that it is present
 	block.ioRunning = false;
@@ -1279,7 +1279,9 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	return 0;
 }
 
-- (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block duration: (uint32_t *) durationMsp {
+- (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block
+			duration: (uint32_t *) durationMsp
+			fromInit: (BOOL) fromInit {
     uint16_t shortTemp;
     uint32_t longTemp;
     char *tdatap;
@@ -1393,7 +1395,8 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	[block.packetArray addObject: packet];
 	packetCount++;
 
-	[_recordings addPacket: packet];
+	if (fromInit)
+	    [_streamRecordings addPacket: packet];
     } // loop over all packets
 
     // ran out of bytes before the trailer was encountered
@@ -1587,7 +1590,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 						    object: nil];
     [_streamBufferThread start];
 
-    _recordings = [[MFANAqStreamRecordings alloc] init];
+    _streamRecordings = [[MFANAqStreamRecordings alloc] init];
 }
 
 - (void) openFilesForFileId: (uint32_t) fileId {
@@ -1680,7 +1683,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     block.ioRunning = true;
 
     // do the IO without the lock, after setting ioRunning flag.
-    [self readPacketsFromBlock: block duration: nullptr];
+    [self readPacketsFromBlock: block duration: nullptr fromInit: false];
     [self debugCheck: block];
 
     NSLog(@"=p=fill done baseMs=%lld o=%llx pkts=%ld", block.baseMs,
@@ -2098,7 +2101,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     }
 
     // update the recordings structure.  Prune up to startMs.
-    [_recordings pruneTo: startMs];
+    [_streamRecordings pruneTo: startMs];
 
     // Remove whole blocks, since each block is perhaps 0.5 - 2.0 seconds, and
     // that's good enough.
@@ -2255,7 +2258,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     _pthreadDoWork = true;
     pthread_mutex_unlock(&_bufferMutex);
 
-    [_recordings addPacket: packet];
+    [_streamRecordings addPacket: packet];
 
     // wakeup anyone waiting for more data to read
     pthread_cond_broadcast(&_packetArrayCv);
