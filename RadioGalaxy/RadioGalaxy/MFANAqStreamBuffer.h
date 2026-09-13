@@ -103,6 +103,20 @@
 - (uint32_t) findPacketIx: (uint64_t) ms;
 @end
 
+@interface MFANAqStreamRecordings : NSObject
+@property NSMutableArray *recordings;
+
+typedef void (^RecordingUpdateBlock)(int64_t row);
+
+- (MFANAqStreamRecordings *) init;
+
+- (void) pruneTo: (uint64_t) earliestMs;
+
+- (void) setRecordingUpdateBlock: (RecordingUpdateBlock) block;
+
+- (void) addPacket: (MFANAqStreamPacket *) packet;
+@end
+
 // ---------------------------------------------------------------------------
 // MFANAqStreamBuffer
 //

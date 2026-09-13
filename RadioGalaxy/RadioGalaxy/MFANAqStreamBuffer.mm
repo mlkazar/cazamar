@@ -1,6 +1,7 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import <Foundation/Foundation.h>
 
+#import "ExportEntry.h"
 #import "MFANAqStreamBuffer.h"
 #import "MFANCGUtil.h"
 
@@ -600,6 +601,101 @@ class MFANAqStreamBlockHolder {
 @end
 
 // ---------------------------------------------------------------------------
+// MFANAqStreamRecordings
+// ---------------------------------------------------------------------------
+@implementation MFANAqStreamRecordings {
+    NSMutableArray *_recordings;
+    uint64_t _startMs;
+    uint64_t _endMs;
+    bool _firstPacket;
+    bool _bad;
+    NSString *_startLabel;
+    pthread_mutex_t _recordingsMutex;
+    RecordingUpdateBlock _block;
+}
+
+- (MFANAqStreamRecordings *) init {
+    self = [super init];
+    if (self != nil) {
+	pthread_mutex_init(&_recordingsMutex, NULL);
+	_recordings = [[NSMutableArray alloc] init];
+	_firstPacket = true;
+	_bad = false;
+	_startMs = 0;
+	_endMs = 0;
+	_startLabel = @"";
+    }
+
+    return self;
+}
+
+// Prune recording info so that any recording whose end time is <= earliestMs
+// is removed.
+- (void) pruneTo: (uint64_t) earliestMs {
+    ExportEntry *ep;
+    bool didAny = false;
+
+    pthread_mutex_lock(&_recordingsMutex);
+    while([_recordings count] > 0) {
+	ep = _recordings[0];
+	if (ep.end <= earliestMs / 1000.0) {
+	    [_recordings removeObjectAtIndex: 0];
+	    didAny = true;
+	} else {
+	    break;
+	}
+    }
+    pthread_mutex_unlock(&_recordingsMutex);
+
+    if (didAny) {
+	if (_block != nil)
+	    _block(-1);
+    }
+}
+
+- (void) setRecordingUpdateBlock: (RecordingUpdateBlock) block {
+    _block = block;
+}
+
+- (void) addPacket: (MFANAqStreamPacket *) p {
+    ExportEntry *ep;
+    if (_firstPacket) {
+	_startMs = p.startMs;
+	_endMs = _startMs + p.durationMs;
+	_startLabel = p.playingSong;
+	_firstPacket = false;
+	_bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
+    } else if ( [_startLabel isEqualToString: p.playingSong] ||
+		[p.playingSong length] == 0) {
+	_endMs = p.startMs + p.durationMs;
+	if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
+	    _bad = true;
+	}
+    } else {
+	// new song
+	ep = [[ExportEntry alloc] initWithStartTime: _startMs/1000.0
+						end: _endMs/1000.0];
+	ep.label = _startLabel;
+	if (_bad) {
+	    ep.damaged = true;
+	}
+
+	pthread_mutex_lock(&_recordingsMutex);
+	[_recordings addObject: ep];
+	pthread_mutex_unlock(&_recordingsMutex);
+	if (_block != nil)
+	    _block(-1);
+
+	// reset state for next song.
+	_startLabel = p.playingSong;
+	_startMs = p.startMs;
+	_endMs = p.startMs + p.durationMs;
+	_bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
+    }
+}
+@end
+
+// ---------------------------------------------------------------------------
 // MFANAqStreamBuffer
 // ---------------------------------------------------------------------------
 
@@ -615,6 +711,8 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     MFANAqStreamFile *_streamFile;
     uint64_t _lastPacketEndMs;
     uint64_t _firstPacketStartMs;
+
+    MFANAqStreamRecordings *_recordings;
 
     // Note that fileSize includes both the header block and the
     // unsealed block at the end of the file.
@@ -1294,6 +1392,8 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	// already present.
 	[block.packetArray addObject: packet];
 	packetCount++;
+
+	[_recordings addPacket: packet];
     } // loop over all packets
 
     // ran out of bytes before the trailer was encountered
@@ -1486,6 +1586,8 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 						  selector: @selector(ioAsync:)
 						    object: nil];
     [_streamBufferThread start];
+
+    _recordings = [[MFANAqStreamRecordings alloc] init];
 }
 
 - (void) openFilesForFileId: (uint32_t) fileId {
@@ -1995,6 +2097,9 @@ NSString *altFileNameForFileId(uint32_t fileId) {
         startMs = _lastPacketEndMs - pruneLength;
     }
 
+    // update the recordings structure.  Prune up to startMs.
+    [_recordings pruneTo: startMs];
+
     // Remove whole blocks, since each block is perhaps 0.5 - 2.0 seconds, and
     // that's good enough.
     while (true) {
@@ -2149,6 +2254,8 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     block.durationMs += packet.durationMs;
     _pthreadDoWork = true;
     pthread_mutex_unlock(&_bufferMutex);
+
+    [_recordings addPacket: packet];
 
     // wakeup anyone waiting for more data to read
     pthread_cond_broadcast(&_packetArrayCv);
