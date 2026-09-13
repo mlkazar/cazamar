@@ -1486,7 +1486,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) maybeEraseAllStations {
     UIAlertController *alert = [UIAlertController
 				   alertControllerWithTitle: @"RadioStar"
-						    message: @"Erase *all*  streamed data?\n"
+						    message: @"Erase *all* streamed data?\n"
 				   @"Leaves exported music alone."
 					     preferredStyle: UIAlertControllerStyleAlert];
 

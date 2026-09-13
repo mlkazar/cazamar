@@ -305,20 +305,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 					      handler:^(UIContextualAction *action,
 							UIView *sourceView,
 							void (^complete)(BOOL)) {
-		NSError *error = nil;
-		BOOL status;
-
-		NSLog(@"DELETE action");
-		status = [[NSFileManager defaultManager]
-			     removeItemAtPath: [self pathNameForFile: entry.fileName]
-					error: &error];
-		if (!status) {
-		    NSLog(@"failed to delete main file=%@", entry.fileName);
-		} else {
-		    [self->_recordings removeObjectAtIndex: row];
-		    self->_selectedRow = -1;
-		    [self->_fileTableView reloadData];
-		}
+		[self maybeDeleteFileForRow: row];
 		complete(true);
 	    }];
     deleteAction.backgroundColor = [UIColor redColor];
@@ -329,6 +316,49 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     config.performsFirstActionWithFullSwipe = true;
 
     return config;
+}
+
+- (void) deleteFileForRow: (uint64_t) row  {
+    ExportPlayerEntry *entry = _recordings[row];
+
+    NSError *error = nil;
+    BOOL status;
+
+    NSLog(@"DELETE action");
+    status = [[NSFileManager defaultManager]
+			     removeItemAtPath: [self pathNameForFile: entry.fileName]
+					error: &error];
+    if (!status) {
+	NSLog(@"failed to delete main file=%@", entry.fileName);
+    } else {
+	[self->_recordings removeObjectAtIndex: row];
+	self->_selectedRow = -1;
+	[self->_fileTableView reloadData];
+    }
+}
+
+- (void) maybeDeleteFileForRow: (uint64_t) row {
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"RadioStar"
+						    message: @"Delete file?"
+					     preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction
+				actionWithTitle:@"Yes, delete"
+					  style: UIAlertActionStyleDefault
+					handler:^(UIAlertAction *act) {
+	    [self deleteFileForRow: row];
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Cancel"
+                                      style: UIAlertActionStyleDefault
+                                    handler:^(UIAlertAction *act) {
+	    NSLog(@"Perform cancel");
+        }];
+    [alert addAction: action];
+
+    [_vc presentViewController: alert animated:YES completion: nil];
 }
 
 - (void) stopEntry: (ExportPlayerEntry *) entry {
