@@ -107,8 +107,8 @@
 	      signFrame.size.width, signFrame.size.height,
 	      signFrame.origin.x, signFrame.origin.y);
 
-	[signView setSongCallback: self sel:@selector(songChanged:)];
-	[signView setStateCallback: self sel:@selector(stateChanged:)];
+	[signView addSongCallback: self sel:@selector(songChanged:)];
+	[signView addStateCallback: self sel:@selector(stateChanged:)];
 
 	UIColor *borderColor = [UIColor colorWithRed: 0.0
 					       green: 0.5

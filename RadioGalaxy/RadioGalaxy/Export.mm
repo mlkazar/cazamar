@@ -492,7 +492,7 @@ static const float _kPlayDuration = 4.0;
 
     _startSlider.value = ep.start;
     [_startSlider monitor: _samplePlayer];
-    [_samplePlayer setSongCallback: self sel:@selector(songCallback:)];
+    [_samplePlayer addSongCallback: self sel:@selector(songCallback:)];
 
     if (_sampleTimer != nil) {
 	[_sampleTimer invalidate];
@@ -507,7 +507,7 @@ static const float _kPlayDuration = 4.0;
 			initWithStreamBuffer: _buffer
 					  ms: (uint64_t) target * 1000.0];
     [_startSlider monitor: _samplePlayer];
-    [_samplePlayer setSongCallback: self sel:@selector(songCallback:)];
+    [_samplePlayer addSongCallback: self sel:@selector(songCallback:)];
 
     if (_sampleTimer != nil) {
 	[_sampleTimer invalidate];

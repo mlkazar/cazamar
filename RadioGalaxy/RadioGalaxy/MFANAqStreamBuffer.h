@@ -228,7 +228,8 @@ typedef void (^RecordingUpdateBlock)(int64_t row);
 - (void) shutdown;
 
 - (int32_t) readPacketsFromBlock: (MFANAqStreamBlock *) block
-			duration: (uint32_t *) dp;
+			duration: (uint32_t *) dp
+			fromInit: (bool) fromInit;
 
 - (void) fillBlock: (MFANAqStreamBlock *) block;
 

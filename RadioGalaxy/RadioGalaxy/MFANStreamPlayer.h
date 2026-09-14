@@ -2,19 +2,10 @@
 #import <Foundation/Foundation.h>
 #import <MediaPlayer/MediaPlayer.h>
 
+#import "Callback.h"
 #import "MFANAqStream.h"
 
 NSString *MFANStreamPlayer_getUnknownString(void);
-
-@interface Callback : NSObject
-@property NSObject *callbackObj;
-@property SEL callbackSel;
-
-- (Callback *) init;
-
-- (Callback *) initWithObj: (NSObject *) obj sel:(SEL) sel;
-
-@end
 
 @interface MFANStreamPlayer : NSObject
 
@@ -35,7 +26,7 @@ NSString *MFANStreamPlayer_getUnknownString(void);
 
 - (void) addStateCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel;
 
-- (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel;
+- (void) addSongCallback: (id) callbackObj  sel: (SEL) callbackSel;
 
 - (void) shutdown;
 

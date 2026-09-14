@@ -11,6 +11,7 @@
 @import QuartzCore.CAMetalLayer;
 @import simd;
 
+#import "Callback.h"
 #import "GraphMath.h"
 #import "ManualStation.h"
 #import "EditStation.h"
@@ -105,6 +106,9 @@ NS_ASSUME_NONNULL_BEGIN
     Settings *_settings;
 
     NSTimer *_checkAnimate;
+
+    CallbackSet *_stateCallbacks;
+    CallbackSet *_songCallbacks;
 }
 
 // some defines for the images we're dealing with
@@ -914,6 +918,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		[self animationOn];
 	    }];
 
+	_songCallbacks = [[CallbackSet alloc] init];
+	_stateCallbacks = [[CallbackSet alloc] init];
+
 	[self computeLayout];
 
 	[self cleanupGarbageFiles];
@@ -1430,8 +1437,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     _player = [[MFANStreamPlayer alloc] initWithStreamBuffer: station.recordingBuffer
 							  ms: station.recordingPosition];
 
-    [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
-    [_player addStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+    [_player addSongCallback: self sel: @selector(dispatchSongChanged:)];
+    [_player addStateCallback: self sel: @selector(dispatchStateChanged:)];
     [_player addStateCallback: self sel: @selector(playerStateChanged:)];
 
     [self animationOn];
@@ -1724,20 +1731,28 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
     // and start a new player at the selected time code
     _player = [[MFANStreamPlayer alloc] initWithStreamBuffer: buffer ms:seekTargetMs];
-    [_player setSongCallback: _songCallbackObj sel: _songCallbackSel];
-    [_player addStateCallback: _stateCallbackObj sel: _stateCallbackSel];
+    [_player addSongCallback: self sel: @selector(dispatchSongChanged:)];
+    [_player addStateCallback: self sel: @selector(dispatchStateChanged:)];
     [_player addStateCallback: self sel: @selector(playerStateChanged:)];
     [self animationOn];
 }
 
-- (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel {
-    _songCallbackSel = callbackSel;
-    _songCallbackObj = callbackObj;
+- (void) addSongCallback: (id) callbackObj  sel: (SEL) callbackSel {
+    [_songCallbacks addCallbackWithObj: callbackObj
+				   sel: callbackSel];
 }
 
-- (void) setStateCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel {
-    _stateCallbackSel = callbackSel;
-    _stateCallbackObj = callbackObj;
+- (void) addStateCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel {
+    [_stateCallbacks addCallbackWithObj: callbackObj
+				    sel: callbackSel];
+}
+
+- (void) dispatchSongChanged: (NSString *) song {
+    [_songCallbacks applyWithParm: song];
+}
+
+- (void) dispatchStateChanged: (NSObject *) player {
+    [_stateCallbacks applyWithParm: player];
 }
 
 - (MFANStreamPlayer *) getCurrentPlayer {

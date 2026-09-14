@@ -146,24 +146,6 @@ MFANStreamPlayer_getUnknownString()
 
 #define _showIo false
 
-@implementation Callback {
-    NSObject *_callbackObj;
-    SEL _calbackSel;
-}
-- (Callback *) init {
-    self = [super init];
-    return self;
-}
-- (Callback *) initWithObj: (NSObject *) obj sel:(SEL) sel {
-    self = [super init];
-    if (self) {
-	_callbackObj = obj;
-	_callbackSel = sel;
-    }
-    return self;
-}
-@end
-
 @implementation MFANStreamPlayer {
     AudioQueueRef _audioQueue;
     AudioStreamBasicDescription _dataFormat;	/* detailed data format info from parser */
@@ -199,10 +181,8 @@ MFANStreamPlayer_getUnknownString()
 
     BOOL _upcalledShutdownState;
 
-    NSMutableArray<Callback *> *_stateCallbacks;
-
-    SEL _songCallbackSel;	/* who to notify, if anyone */
-    id _songCallbackObj;	/* ditto */
+    CallbackSet *_stateCallbacks;
+    CallbackSet *_songCallbacks;
 
     NSString *_lastUpcalledSong;
 
@@ -377,7 +357,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	_upcalledShutdownState = NO;
 	_isPlaying= YES;
 	_muted = NO;
-	_stateCallbacks = [[NSMutableArray alloc] init];
 
 	_availIx = 0;
 	_availCount = 0;
@@ -414,6 +393,9 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 	[self setupAudioSession: NO];	// don't mix with other audio
 
+	_stateCallbacks = [[CallbackSet alloc] init];
+	_songCallbacks = [[CallbackSet alloc] init];
+
 	pthread_mutex_lock(&_playerMutex);
 	[self checkUpcalledState: NO];
 	pthread_mutex_unlock(&_playerMutex);
@@ -427,19 +409,12 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 
 // flag says to upcall shutdown players
 - (void) checkUpcalledState: (BOOL) upcallShutdown {
-    Callback *tcallback;
     if ( (!_shutdown || upcallShutdown) &&
-	 [_stateCallbacks count] > 0 &&
+	 [_stateCallbacks haveCallbacks] &&
 	 _lastUpcalledIsPlaying != _isPlaying) {
 	_lastUpcalledIsPlaying = _isPlaying;
 	pthread_mutex_unlock(&_playerMutex);
-	for(tcallback in _stateCallbacks) {
-	    dispatch_async(dispatch_get_main_queue(), ^{
-		    [tcallback.callbackObj performSelectorOnMainThread: tcallback.callbackSel
-							    withObject: self
-							 waitUntilDone: true];
-		});
-	} // for
+	[_stateCallbacks applyWithParm: self];
 	pthread_mutex_lock(&_playerMutex);
     }
 }
@@ -510,6 +485,9 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     // drop the lock in case something we do during shutdown triggers a synchronous
     // callback.
     pthread_mutex_unlock(&_playerMutex);
+
+    [_songCallbacks shutdown];
+    [_stateCallbacks shutdown];
 
     /* we're shutting down the audio queue, thus it won't be paused afterwards */
     _paused = NO;
@@ -619,20 +597,13 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 }
 
 - (void) addStateCallback: (NSObject *) callbackObj  sel: (SEL) callbackSel {
-    Callback *temp;
-    temp = [[Callback alloc] initWithObj: callbackObj sel: callbackSel];
-
-    pthread_mutex_lock(&_playerMutex);
-    [_stateCallbacks addObject: temp];
-    pthread_mutex_unlock(&_playerMutex);
+    [_stateCallbacks addCallbackWithObj: callbackObj
+				    sel: callbackSel];
 }
 
-- (void) setSongCallback: (id) callbackObj  sel: (SEL) callbackSel {
-    pthread_mutex_lock(&_playerMutex);
-    _songCallbackObj = callbackObj;
-    _songCallbackSel = callbackSel;
-    _lastUpcalledSong = @"[Junk xyzzy]";	// won't match
-    pthread_mutex_unlock(&_playerMutex);
+- (void) addSongCallback: (id) callbackObj  sel: (SEL) callbackSel {
+    [_songCallbacks addCallbackWithObj: callbackObj
+				   sel: callbackSel];
 }
 
 - (BOOL) isPlaying {
@@ -691,13 +662,9 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 }
 
 - (void) checkUpcalledSong: (NSString *) playingSong {
-    if (_lastUpcalledSong != playingSong) {
+    if ( _lastUpcalledSong != playingSong) {
 	_lastUpcalledSong = playingSong;
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[self->_songCallbackObj performSelectorOnMainThread: self->_songCallbackSel
-							 withObject: playingSong
-						      waitUntilDone: true];
-	    });
+	[_songCallbacks applyWithParm: playingSong];
     }
 }
 
