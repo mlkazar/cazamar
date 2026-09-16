@@ -37,6 +37,10 @@
 
 - (float) getValue;
 
+- (void) setActive: (bool) isActive;
+
 - (void) shutdown;
+
+- (void) sliderValue:(UISlider *) slider;
 
 @end

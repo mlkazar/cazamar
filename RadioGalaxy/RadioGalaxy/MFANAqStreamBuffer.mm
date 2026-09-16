@@ -383,7 +383,6 @@ class MFANAqStreamBlockHolder {
     // return.
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
 
-    NSLog(@"hasData starts");
     blockCount = (uint32_t) [_streamBuffer.streamFile.blocks count];
 
     if (!self.indicesAreValid) {
@@ -435,7 +434,6 @@ class MFANAqStreamBlockHolder {
     uint32_t loops = 0;
 
     pthread_mutex_lock([MFANAqStreamBuffer bufferMutex]);
-    NSLog(@"read starts for recordMs=%lld", _recordMs);
     while(true) {
         // Abort if the buffer itself is being shutdown or the reader
         // was closed.
@@ -452,8 +450,6 @@ class MFANAqStreamBlockHolder {
 		  _blockIx, _packetIx, block.baseMs, block.fileOffset, _recordMs);
         } else {
 	    block = _streamBuffer.streamFile.blocks[_blockIx];
-	    NSLog(@"read index valid using bix=%d baseMs=%lld for recordMs=%lld",
-		  _blockIx, block.baseMs, _recordMs);
 	}
 
 	if (![block validContents]) {
@@ -510,8 +506,6 @@ class MFANAqStreamBlockHolder {
     }
     packet.read = YES;
     pthread_mutex_unlock([MFANAqStreamBuffer bufferMutex]);
-    NSLog(@"returned packet for recordMs=%lld w/start=%lld block start=%lld:%lld",
-	  _recordMs, packet.startMs, block.baseMs, block.durationMs);
     return packet;
 }
 
@@ -1071,8 +1065,6 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     blockCount = (uint32_t) (tstat.st_size / _kBytesPerBlock);
     uint64_t baseMs = 0;
 
-    NSLog(@"=p=streambuf starting check of %d blocks", blockCount);
-
     // This isn't safe to do during normal operation, but during
     // initialization there's nothing else going on, so we don't have
     // to worry about other references to blocks that are dirty or
@@ -1111,8 +1103,6 @@ MFANAqStreamBlockHolder::MFANAqStreamBlockHolder() {
     }
 
     if (blockCount >= 1 && ix == blockCount) {
-	NSLog(@"=p=streambuf restored all %d blocks successfully for fileId=%d",
-	      blockCount, _streamFile.fileId);
 	// If we had a block count of 2, for example, ix == 2, and we
 	// have a header block and the block with ix == 1.  The next
 	// block to allocate should have a file offset of
@@ -1267,8 +1257,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     char *datap;
     int32_t bytesRead;
 
-    NSLog(@"=p= reading block at o=%llx base=%lld dur=%llu",
-	  block.fileOffset, block.baseMs, block.durationMs);
     osp_assert(block.sealed && !block.dirty);
 
     lseek(_streamFile.readFd, block.fileOffset, SEEK_SET);
@@ -1277,7 +1265,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     durationMs = 0;
     datap = diskBlock.data();
     bytesRead = (int32_t) read(_streamFile.readFd, datap, _kBytesPerBlock);
-    NSLog(@"readpacketsfromblock read %d bytes", bytesRead);
     if (bytesRead <= 0)
 	return -1;
 
@@ -1289,7 +1276,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
 	if (shortTemp == _kTrailerMagic) {
 	    // block should end with a trailer magic
-	    NSLog(@"=p= read success (no inconsistency) with packetcount=%d B", packetCount);
 	    if (durationMsp != nullptr)
 		*durationMsp = durationMs;
 	    return 0;
@@ -1661,8 +1647,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     [self readPacketsFromBlock: block duration: nullptr fromInit: false];
     [self debugCheck: block];
 
-    NSLog(@"=p=fill done baseMs=%lld o=%llx pkts=%ld", block.baseMs,
-	  block.fileOffset, (long) [block.packetArray count]);
     block.ioRunning = false;
     osp_assert(!block.valid);
     block.valid = true;
@@ -1718,11 +1702,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
     // once we set ioRunning, no one else should turn off _dirty
     block.ioRunning = true;
-    NSLog(@"=p= cleaning block o=%llx base=%lld dur=%lld pkts=%lu",
-          block.fileOffset, block.baseMs, block.durationMs,
-	  (unsigned long)[block.packetArray count]);
     [self writePacketsToBlock: block];
-    NSLog(@"=p= clean done block o=%llx base=%lld", block.fileOffset, block.baseMs);
 
     // allow new IOs to start
     block.ioRunning = false;
@@ -1813,7 +1793,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	}
 
 	if (block.dirty) {
-	    NSLog(@"=p= GC cleaning block off=%llx base=%lld", block.fileOffset, block.baseMs);
 	    [self cleanBlock: block isGc:true ]; // so there'll be something to copy.
 	}
 
@@ -1830,7 +1809,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 
 	// now copy the block
 	lseek(_gcOldFd, block.fileOffset, SEEK_SET);
-	NSLog(@"=p= GC reading block off=%llx base=%lld", block.fileOffset, block.baseMs);
 	code = (int32_t) read(_gcOldFd, diskBlock.data(), _kBytesPerBlock);
 	if (code < _kBytesPerBlock) {
 	    if (code < 0) {
@@ -1854,10 +1832,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
 	    failed = true;
 	    break;
 	}
-
-	NSLog(@"=g=p= GC moved block from o=%llx to o=%llx base=%lld dur=%lld bix=%u",
-	      block.fileOffset, block.fileOffset-gcByteShift,
-	      block.baseMs, block.durationMs, blockIx);
 
 	// and relock now that the work is done.
 	pthread_mutex_lock(&_bufferMutex);
@@ -2172,9 +2146,6 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     osp_assert(!prevBlock.dirty);
     prevBlock.dirty = true;
     _dirtyBlocks++;
-    NSLog(@"=p=g= sealed block o=%llx bix=%ld base=%lld dur=%lld pkts=%ld",
-	  prevBlock.fileOffset, [_streamFile.blocks count]-1,
-	  prevBlock.baseMs, prevBlock.durationMs, [prevBlock.packetArray count]);
 
     newBlock.baseMs = prevBlock.durationMs + prevBlock.baseMs;
     newBlock.fileOffset = prevBlock.fileOffset + _kBytesPerBlock;

@@ -173,7 +173,7 @@ static const float _kPlayDuration = 4.0;
 	_endSlider = [[ExportSlider alloc] initWithFrame: endSliderFrame
 						  buffer: _buffer
 						   apply: ^(float value) {
-		[self playTo: value];
+		[self endSliderChanged: value];
 	    }
 						viewCont: _vc];
 	[self addSubview: _endSlider];
@@ -299,6 +299,24 @@ static const float _kPlayDuration = 4.0;
 	[self playSeek: value];
     } else {
 	[self playFrom: value];
+    }
+    [self highlightStartSlider: true];
+}
+
+- (void) endSliderChanged: (float) value {
+    [self playTo: value];
+    [self highlightStartSlider: false];
+}
+
+- (void) highlightStartSlider: (bool) startSlider {
+    // we want to mark startSlider as active if startSlider is true, otherwise
+    // mark the endSlider as active
+    if (startSlider) {
+	[_startSlider setActive: true];
+	[_endSlider setActive: false];
+    } else {
+	[_startSlider setActive: false];
+	[_endSlider setActive: true];
     }
 }
 

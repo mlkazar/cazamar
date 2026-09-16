@@ -160,6 +160,9 @@
 - (void) sliderTouch: (UISlider *) slider {
     uint64_t now = osp_time_ms();
     _lastTouchMs = now;
+
+    // So we can track which slider is the active one.
+    [self updateCallback];
 }
 
 - (void) updateCallback {
@@ -169,6 +172,30 @@
     if (now - _lastMusicSampleTime > 200) {
 	_lastMusicSampleTime = now;
 	[_callback updatedSlider: self];
+    }
+}
+
+- (void) setActive: (bool) isActive {
+    if (isActive) {
+	_slider.minimumTrackTintColor = [UIColor greenColor];
+	_slider.maximumTrackTintColor = [UIColor blueColor];
+	_slider.thumbTintColor = [UIColor colorWithRed: 0.0
+						 green: 1.0
+						  blue: 1.0
+						 alpha: 0.8];
+    } else {
+	_slider.minimumTrackTintColor = [UIColor colorWithRed: 0.8
+							green: 0.8
+							 blue: 0.8
+							alpha: 1.0];
+	_slider.maximumTrackTintColor = [UIColor colorWithRed: 0.7
+							green: 0.7
+							 blue: 0.7
+							alpha: 1.0];
+	_slider.thumbTintColor = [UIColor colorWithRed: 0.5
+						 green: 0.5
+						  blue: 0.5
+						 alpha: 0.8];
     }
 }
 

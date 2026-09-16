@@ -1861,8 +1861,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (bool) tvOk2Quit {
     if (_settings.exitWhenIdle) {
-	if ( _isBackground &&
-	     ![self anyDownloading] && (_player == nil))
+	if (![self anyDownloading] && (_player == nil))
 	    return true;
     }
 
