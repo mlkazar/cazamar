@@ -732,8 +732,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 - (uint64_t) findItemInStation: (NSString *) stationName
 			  song: (NSString *) song {
-    uint64_t count;
-    uint64_t ix;
+    int64_t count;
+    int64_t ix;
     MFANHistoryItem *item;
 
     count = [_histItems count];

@@ -50,7 +50,7 @@ Ideas for Radio app
    exportplayer report current songs.  Note that audiogalaxy uses
    MFANPLayerView::updateSongState to manage nowPlayingInfo dictionary
 
--- log errors and times
+** log errors and times -- not going to do.
 
 ** next / prev / togglePlayPause buttons should walk the view stack.
    Maybe figure way for song updates to do so as well.  Add these
@@ -73,6 +73,12 @@ Ideas for Radio app
 
 -- Song view when playing a station, including automatically updating
    as songs stream.
+
+-- slider in song view doesn't work
+
+-- gray out inactive export toolbar
+
+-- next / prev buttons should work on song view
 
 ** We mark the first packet after a connection restart, but the first
    labeled packet arrives a bit later.  To splice things properly, we

@@ -1,6 +1,7 @@
 #import "AudioSlider.h"
 #import "BaseSlider.h"
 #import "BufferSlider.h"
+#import "Export.h"
 #import "ExportEntry.h"
 #import "MFANCoreButton.h"
 #import "MFANIconButton.h"
@@ -12,6 +13,7 @@
 
 #import "SongPlayer.h"
 
+#include "math.h"
 #include "osp.h"
 
 @implementation SongPlayer {
@@ -33,11 +35,11 @@
     NSString *_docDirName;
     AVAudioPlayer *_player;
     ExportEntry *_playingEntry;
-    BOOL _isPlaying;
-    BOOL _isPaused;;
     int32_t _selectedRow;
+    int32_t _lastSelectedRow;
     UIColor *_selectedColor;
     UIImage *_recordImage;
+    uint32_t _lastUpcalledRow;
 
     // basic context info
     MFANAqStreamRecordings *_streamRecordings;
@@ -70,12 +72,10 @@
 	_vc = vc;
 	_signView = signView;
 
-	_isPlaying = false;
-	_isPaused = false;
 	_selectedRow = -1;
-	_selectedColor = [UIColor colorWithRed: 1.0
-					 green: 1.0
-					  blue: 0.8
+	_selectedColor = [UIColor colorWithRed: 0.7
+					 green: 0.7
+					  blue: 1.0
 					 alpha: 1.0];
 
 	CGRect fileFrame;
@@ -236,6 +236,15 @@
 	[self setBackgroundColor: [UIColor whiteColor]];
 
 	[_vc pushTopView: self];
+
+	[_signView addSongCallback: self sel:@selector(songChanged:)];
+	[_signView addStateCallback: self sel:@selector(stateChanged:)];
+
+	[_marquee setText: _signView.lastSongUpcalled];
+
+	_lastUpcalledRow = ~0U;
+
+	[self adjustPlayButton];
     }
 
     return self;
@@ -291,8 +300,24 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    }];
     playAction.backgroundColor = [UIColor blueColor];
 
+    UIContextualAction *exportAction =
+	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleNormal
+						title:@"Export"
+					      handler:^(UIContextualAction *action,
+							UIView *sourceView,
+							void (^complete)(BOOL)) {
+		NSLog(@"EXPORT action");
+		[self->_signView tvPause];
+		(void) [[Export alloc] initWithStation: self->_station
+					   exportEntry: entry
+					      viewCont: self->_vc];
+		
+		complete(true);
+	    }];
+    exportAction.backgroundColor = [UIColor greenColor];
+
     UISwipeActionsConfiguration *config =
-	[UISwipeActionsConfiguration configurationWithActions: @[playAction]];
+	[UISwipeActionsConfiguration configurationWithActions: @[playAction, exportAction]];
 
     config.performsFirstActionWithFullSwipe = true;
 
@@ -347,6 +372,11 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
     if (_selectedRow == row) {
 	cell.contentView.backgroundColor = _selectedColor;
+    } else if (entry.damaged) {
+	cell.contentView.backgroundColor = [UIColor colorWithRed: 1.0
+							   green: 0.7
+							    blue: 0.7
+							   alpha: 1.0];
     } else {
 	cell.contentView.backgroundColor = [UIColor whiteColor];
     }
@@ -400,12 +430,12 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 // This is really handling both play and pause
 - (void) playPressed: (id) sender withData: (NSNumber *)movement {
-    [self adjustPlayButton];
     [_signView tvPlayPauseSong];
+    [self adjustPlayButton];
 }
 
 - (void) adjustPlayButton {
-    if (_isPlaying)
+    if ([_signView tvIsPlaying])
 	[_playButton setTitle:@"Pause"];
     else
 	[_playButton setTitle:@"Play"];
@@ -482,10 +512,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 }
 
 - (bool) tvIsPlaying {
-    if (_player != nil && !_isPaused)
-	return true;
-    else
-	return false;
+    return [_signView tvIsPlaying];
 }
 
 - (bool) tvPause {
@@ -500,6 +527,43 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	[_player play];
     }
     return false;
+}
+
+- (uint32_t) findByStartTime: (float) startTime {
+    uint32_t i;
+    uint32_t count = (uint32_t) [_recordings count];
+    ExportEntry *ep;
+    for(i=0;i<count;i++) {
+	ep = _recordings[i];
+	if (startTime >= ep.start - 0.1 && startTime < ep.end)
+	    return i;
+    }
+
+    return 0;
+}
+
+- (void) songChanged: (MFANAqStreamPacket *) packet {
+    float startTime = packet.startMs / 1000.0;
+    uint32_t ix = [self findByStartTime: startTime];
+
+    // if we've already upcalled the row, don't change the selected
+    // row again so if someone is playing around with another row, we
+    // won't change the selection on them.
+    if (ix == _lastUpcalledRow)
+	return;
+
+    _selectedRow = ix;
+    _lastUpcalledRow = ix;
+    [_marquee setText: packet.playingSong];
+
+    // don't do this too often, or it is hard to select anything since
+    // the selected row keeps moving.
+    [_fileTableView reloadData];
+}
+
+// MFANStreamPlayer changed state
+- (void) stateChanged: (NSObject *) aplayer {
+    [self adjustPlayButton];
 }
 
 @end

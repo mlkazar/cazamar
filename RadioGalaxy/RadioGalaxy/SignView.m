@@ -107,6 +107,8 @@ NS_ASSUME_NONNULL_BEGIN
 
     NSTimer *_checkAnimate;
 
+    NSString *_lastSongUpcalled;
+
     CallbackSet *_stateCallbacks;
     CallbackSet *_songCallbacks;
 }
@@ -958,7 +960,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 - (void) slowInit {
     (void) [[StatusMon alloc]
-	       initWithMessage: @"Parsing streamed music"
+	       initWithMessage: @"Analyzing streamed music"
 			 timer: 4.0
 		      viewCont: _vc
 			 block: ^void (StatusMon *mon) {
@@ -1161,29 +1163,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 				    handler:^(UIAlertAction *act) {
 	    Settings *settings = (Settings *)self->_vc.settings;
 	    [self->_vc pushTopView: settings];
-	}];
-    [alert addAction: action];
-
-    action = [UIAlertAction actionWithTitle:@"Export recordings"
-				       style: UIAlertActionStyleDefault
-				     handler:^(UIAlertAction *act) {
-	    if (self->_playingStation != nil) {
-		[self tvPause];
-		(void) [[Export alloc] initWithStation: self->_playingStation
-					      viewCont: self->_vc];
-	    }
-	}];
-    [alert addAction: action];
-
-    action = [UIAlertAction actionWithTitle:@"Test Song Popups"
-				       style: UIAlertActionStyleDefault
-				     handler:^(UIAlertAction *act) {
-	    if (self->_playingStation != nil) {
-		(void) [[SongPlayer alloc] initWithStation: self->_playingStation
-						    buffer: self->_playingStation.recordingBuffer
-						  signView: self
-						  viewCont: self->_vc];
-	    }
 	}];
     [alert addAction: action];
 
@@ -1747,8 +1726,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 				    sel: callbackSel];
 }
 
-- (void) dispatchSongChanged: (NSString *) song {
-    [_songCallbacks applyWithParm: song];
+- (void) dispatchSongChanged: (MFANAqStreamPacket *) packet {
+    if ([packet.playingSong length] > 0)
+	_lastSongUpcalled = packet.playingSong;
+    [_songCallbacks applyWithParm: packet];
 }
 
 - (void) dispatchStateChanged: (NSObject *) player {

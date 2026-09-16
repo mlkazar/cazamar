@@ -605,11 +605,6 @@ class MFANAqStreamBlockHolder {
 // ---------------------------------------------------------------------------
 @implementation MFANAqStreamRecordings {
     NSMutableArray *_recordings;
-    uint64_t _startMs;
-    uint64_t _endMs;
-    bool _firstPacket;
-    bool _bad;
-    NSString *_startLabel;
     pthread_mutex_t _recordingsMutex;
     RecordingUpdateBlock _block;
 }
@@ -619,11 +614,6 @@ class MFANAqStreamBlockHolder {
     if (self != nil) {
 	pthread_mutex_init(&_recordingsMutex, NULL);
 	_recordings = [[NSMutableArray alloc] init];
-	_firstPacket = true;
-	_bad = false;
-	_startMs = 0;
-	_endMs = 0;
-	_startLabel = @"";
     }
 
     return self;
@@ -657,40 +647,25 @@ class MFANAqStreamBlockHolder {
     _block = block;
 }
 
+// unlike the export code, this creates an entry for the currently
+// being streamed song.
 - (void) addPacket: (MFANAqStreamPacket *) p {
     ExportEntry *ep;
-    if (_firstPacket) {
-	_startMs = p.startMs;
-	_endMs = _startMs + p.durationMs;
-	_startLabel = p.playingSong;
-	_firstPacket = false;
-	_bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
-    } else if ( [_startLabel isEqualToString: p.playingSong] ||
-		[p.playingSong length] == 0) {
-	_endMs = p.startMs + p.durationMs;
+    ExportEntry *lastEp;
+    lastEp = [_recordings lastObject];
+    if ( lastEp != nil && ([lastEp.label isEqualToString: p.playingSong] ||
+			   [p.playingSong length] == 0)) {
+	lastEp.end = (p.startMs + p.durationMs) / 1000.0;
 	if (p.flags & [MFANAqStreamPacket kMagicFlagError]) {
-	    _bad = true;
+	    lastEp.damaged = true;
 	}
     } else {
-	// new song
-	ep = [[ExportEntry alloc] initWithStartTime: _startMs/1000.0
-						end: _endMs/1000.0];
-	ep.label = _startLabel;
-	if (_bad) {
+	ep = [[ExportEntry alloc] initWithStartTime: p.startMs / 1000.0
+						end: (p.startMs + p.durationMs) / 1000.0];
+	if (p.flags & [MFANAqStreamPacket kMagicFlagError])
 	    ep.damaged = true;
-	}
-
-	pthread_mutex_lock(&_recordingsMutex);
+	ep.label = p.playingSong;
 	[_recordings addObject: ep];
-	pthread_mutex_unlock(&_recordingsMutex);
-	if (_block != nil)
-	    _block(-1);
-
-	// reset state for next song.
-	_startLabel = p.playingSong;
-	_startMs = p.startMs;
-	_endMs = p.startMs + p.durationMs;
-	_bad = (p.flags & [MFANAqStreamPacket kMagicFlagError]);
     }
 }
 @end

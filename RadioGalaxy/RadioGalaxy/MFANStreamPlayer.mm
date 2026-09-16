@@ -661,10 +661,10 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return audioQueue;
 }
 
-- (void) checkUpcalledSong: (NSString *) playingSong {
-    if ( _lastUpcalledSong != playingSong) {
-	_lastUpcalledSong = playingSong;
-	[_songCallbacks applyWithParm: playingSong];
+- (void) checkUpcalledSong: (MFANAqStreamPacket *) packet {
+    if ( _lastUpcalledSong != packet.playingSong) {
+	_lastUpcalledSong = packet.playingSong;
+	[_songCallbacks applyWithParm: packet];
     }
 }
 
@@ -781,7 +781,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 		}
 	    }
 
-	    [self checkUpcalledSong: packet.playingSong];
+	    [self checkUpcalledSong: packet];
 
 	    // once we have a packet, we can find out the stream type,
 	    // which is required for creating the queue.

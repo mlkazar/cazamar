@@ -17,13 +17,16 @@
 - (NSData *) getId;
 @end
 
-@interface Export : UIView<TopViewInt, UITableViewDataSource, UITableViewDelegate>
+@interface Export : UIView<TopViewInt>
 
 typedef void (^PromptContinuation)(NSString *value);
 
 - (Export *) initWithStation: (SignStation *) station
+		 exportEntry: (ExportEntry *) entry
 		    viewCont: (ViewController *) vc;
 
+#if 0
 - (void) setCallback: (id) obj withSel: (SEL) sel;
+#endif
 @end
 

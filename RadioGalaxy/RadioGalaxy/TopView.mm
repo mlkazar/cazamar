@@ -5,6 +5,7 @@
 #import "MarqueeLabel.h"
 #import "MFANStreamPlayer.h"
 #import "Settings.h"
+#import "SongPlayer.h"
 
 #include "osp.h"
 
@@ -60,6 +61,7 @@
     MFANCoreButton *_startButton;
     MFANCoreButton *_addButton;
     MFANCoreButton *_highlightButton;
+    MFANCoreButton *_songsButton;
     SignView *_signView;
     RadioHistory *_history;
     ViewController *_vc;
@@ -118,7 +120,7 @@
 	CGRect startFrame = screenFrame;
 	startFrame.origin.y = signFrame.size.height;
 	startFrame.size.height = usableHeight * barHeight;
-	startFrame.size.width = screenFrame.size.width / 3;
+	startFrame.size.width = screenFrame.size.width / 4;
 	MFANCoreButton *_addButton= [[MFANCoreButton alloc]
 					  initWithFrame: startFrame
 						  title: @"None"
@@ -135,7 +137,24 @@
 	[_addButton addCallback: self withAction: @selector(addPressed:)];
 	[self addSubview: _addButton];
 
-	startFrame.origin.x += screenFrame.size.width/3;
+	startFrame.origin.x += screenFrame.size.width/4;
+	MFANCoreButton *_songsButton= [[MFANCoreButton alloc]
+					     initWithFrame: startFrame
+						     title: @"None"
+						     color: [UIColor blackColor]
+					   backgroundColor: [UIColor greenColor]];
+	[_songsButton setBackgroundColor:
+		   [UIColor colorWithRed: 0.0
+				   green: 0.75
+				    blue:0.0
+				   alpha: 1.0]];
+	_songsButton.layer.borderWidth = 2.0;
+	_songsButton.layer.borderColor = borderColor.CGColor;
+	[_songsButton setClearText: @"Songs"];
+	[_songsButton addCallback: self withAction: @selector(songsPressed:)];
+	[self addSubview: _songsButton];
+
+	startFrame.origin.x += screenFrame.size.width/4;
 	MFANCoreButton *_highlightButton= [[MFANCoreButton alloc]
 					     initWithFrame: startFrame
 						     title: @"None"
@@ -152,7 +171,7 @@
 	[_highlightButton addCallback: self withAction: @selector(highlightPressed:)];
 	[self addSubview: _highlightButton];
 
-	startFrame.origin.x += screenFrame.size.width/3;
+	startFrame.origin.x += screenFrame.size.width/4;
 
 	MFANCoreButton *_startButton= [[MFANCoreButton alloc]
 					     initWithFrame: startFrame
@@ -275,6 +294,16 @@
     [_signView performAddOperation];
 }
 
+- (void) songsPressed: (id) junk {
+    SignStation *playingStation = _signView.playingStation;
+    if (playingStation != nil) {
+	(void) [[SongPlayer alloc] initWithStation: playingStation
+					    buffer: playingStation.recordingBuffer
+					  signView: _signView
+					  viewCont: _vc];
+    }
+}
+
 - (void) highlightPressed: (id) junk {
     SignStation *playingStation = _signView.playingStation;
     if (playingStation == nil) {
@@ -365,8 +394,8 @@
 #endif
 }
 
-- (void) songChanged: (id) asong {
-    NSString *song = (NSString *) asong;
+- (void) songChanged: (MFANAqStreamPacket *) packet {
+    NSString *song = packet.playingSong;
     NSString *stationName = [_signView getPlayingStationName];
     NSString *displayName;
 
