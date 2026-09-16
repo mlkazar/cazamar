@@ -71,14 +71,14 @@ Ideas for Radio app
 
 -- Airdrop support?  Looks pretty easy.
 
--- Song view when playing a station, including automatically updating
+** Song view when playing a station, including automatically updating
    as songs stream.
 
--- slider in song view doesn't work
+** slider in song view doesn't work
 
--- gray out inactive export toolbar
+** gray out inactive export toolbar
 
--- next / prev buttons should work on song view
+** next / prev buttons should work on song view
 
 ** We mark the first packet after a connection restart, but the first
    labeled packet arrives a bit later.  To splice things properly, we

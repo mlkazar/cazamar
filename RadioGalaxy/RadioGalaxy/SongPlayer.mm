@@ -28,7 +28,7 @@
     RadioHistory *_history;
     ViewController *_vc;
     NSMutableDictionary *_nowPlayingInfo;
-    AudioSlider *_sliderView;
+    BufferSlider *_sliderView;
     Settings *_settings;
     NSString *_playingSong;
     NSMutableArray *_recordings;
@@ -169,12 +169,9 @@
 	sliderFrame.origin.y = marqueeFrame.origin.y + marqueeFrame.size.height;
 	sliderFrame.size.height = lineHeight;
 
-	_sliderView = [[AudioSlider alloc] initWithFrame: (CGRect) sliderFrame
-						   apply: ^(float value) {
-		// get rid of this if we don't use it
-		return;
-	    }
-						viewCont: (ViewController *) vc];
+	_sliderView = [[BufferSlider alloc] initWithFrame: (CGRect) sliderFrame
+						 viewCont: (ViewController *) vc
+						 signView: (SignView *) _signView];
 	[self addSubview: _sliderView];
 
 	CGRect buttonFrame = sliderFrame;
@@ -330,7 +327,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 }
 
 - (void) playEntry: (ExportEntry *) entry {
-    return;
+    [_signView seek: entry.start relative: false];
 }
 
 - (void) historyDone: (id) junk {
@@ -450,7 +447,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 }
 
 - (bool) tvOk2Quit {
-    return false;
+    return [_signView tvOk2Quit];
 }
 
 - (uint64_t) getCurrentIndex {
@@ -472,19 +469,20 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 }
 
 - (bool) tvPlayPauseSong {
-    [self playPressed: nil withData: nil];
-    return false;
+    bool rval =  [_signView tvPlayPauseSong];
+    return rval;
 }
 
 - (bool) tvNextSong {
     uint64_t count = [_recordings count];
-    int64_t ix = [self getCurrentIndex];
-    if (++ix >= count)
+    uint64_t ix;
+
+    if (count == 0)
+	return false;
+
+    ix = _selectedRow+1;
+    if (ix >= count)
 	ix = 0;
-    if (_playingEntry != nil) {
-	[self stopEntry: _playingEntry];
-	_playingEntry = nil;
-    }
 
     ExportEntry *entry = _recordings[ix];
     [self playEntry: entry];
@@ -494,16 +492,14 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 
 - (bool) tvPrevSong {
     uint64_t count = [_recordings count];
-    int64_t ix = [self getCurrentIndex];
+    uint64_t ix;
+
+    if (count == 0)
+	return false;
+
+    ix = _selectedRow-1;
     if (ix == 0)
 	ix = count-1;
-    else
-	ix--;
-
-    if (_playingEntry != nil) {
-	[self stopEntry: _playingEntry];
-	_playingEntry = nil;
-    }
 
     ExportEntry *entry = _recordings[ix];
     [self playEntry: entry];
@@ -516,17 +512,11 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 }
 
 - (bool) tvPause {
-    if (_player != nil) {
-	[_player pause];
-    }
-    return false;
+    return [_signView tvPause];
 }
 
 - (bool) tvResume {
-    if (_player != nil) {
-	[_player play];
-    }
-    return false;
+    return [_signView tvResume];
 }
 
 - (uint32_t) findByStartTime: (float) startTime {
