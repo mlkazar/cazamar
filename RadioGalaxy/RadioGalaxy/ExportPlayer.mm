@@ -352,8 +352,6 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 - (void) airdropForRow: (uint64_t) row  {
     ExportPlayerEntry *entry = _recordings[row];
 
-    NSError *error = nil;
-    BOOL status;
     NSString *fileName = [self pathNameForFile: entry.fileName];
     NSURL *fileUrl = [NSURL fileURLWithPath: fileName];
 
