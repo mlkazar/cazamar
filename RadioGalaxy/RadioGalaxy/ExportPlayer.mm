@@ -299,6 +299,17 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	    }];
     playAction.backgroundColor = [UIColor blueColor];
 
+    UIContextualAction *dropAction =
+	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
+						title:@"Air drop"
+					      handler:^(UIContextualAction *action,
+							UIView *sourceView,
+							void (^complete)(BOOL)) {
+		[self airdropForRow: row];
+		complete(true);
+	    }];
+    dropAction.backgroundColor = [UIColor greenColor];
+
     UIContextualAction *deleteAction =
 	[UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
 						title:@"Delete"
@@ -311,7 +322,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
     deleteAction.backgroundColor = [UIColor redColor];
 
     UISwipeActionsConfiguration *config =
-	[UISwipeActionsConfiguration configurationWithActions: @[playAction, deleteAction]];
+	[UISwipeActionsConfiguration configurationWithActions:
+					 @[playAction, dropAction, deleteAction]];
 
     config.performsFirstActionWithFullSwipe = true;
 
@@ -335,6 +347,28 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	self->_selectedRow = -1;
 	[self->_fileTableView reloadData];
     }
+}
+
+- (void) airdropForRow: (uint64_t) row  {
+    ExportPlayerEntry *entry = _recordings[row];
+
+    NSError *error = nil;
+    BOOL status;
+    NSString *fileName = [self pathNameForFile: entry.fileName];
+    NSURL *fileUrl = [NSURL fileURLWithPath: fileName];
+
+    NSLog(@"DROP action");
+
+    UIActivityViewController *activityVc = [[UIActivityViewController alloc] 
+					       initWithActivityItems:@[fileUrl] 
+					       applicationActivities:nil];
+    
+    if ([activityVc respondsToSelector:@selector(popoverPresentationController)]) {
+        activityVc.popoverPresentationController.sourceView = _vc.view;
+    }
+    
+    // 4. Present the share sheet
+    [_vc presentViewController:activityVc animated:YES completion:nil];
 }
 
 - (void) maybeDeleteFileForRow: (uint64_t) row {
