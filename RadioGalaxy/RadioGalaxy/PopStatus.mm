@@ -46,6 +46,7 @@
     id _callbackObj;
     SEL _callbackSel;
     bool _didNotify;
+    bool _doRemove;
 }
 
 - (void) setCallback: (id) obj withSel: (SEL) sel {
@@ -75,6 +76,7 @@
     CGRect boxFrame;
     CGRect labelFrame;
     CGRect buttonFrame;
+    CGRect remButtonFrame;
 
     self.frame = vc.activeFrame;
     frame = vc.activeFrame;
@@ -206,6 +208,7 @@
 	// indent from each end
 	float textLabelWidth = (2.0/3.0 * (frame.size.width - 2*indent));
 	float switchWidth = (frame.size.width - 2*indent) - textLabelWidth;
+	float extraVerticalSpace = frame.size.width * 0.015;
 	CGRect eraseTextFrame;
 	CGRect snapshotTextFrame;
 	CGRect recordTextFrame;
@@ -225,7 +228,7 @@
 
 	// Stream in background button
 	recordTextFrame = frame;
-	recordTextFrame.origin.y += labelFrame.origin.y + labelHeight + frame.size.height * 0.03;
+	recordTextFrame.origin.y += labelFrame.origin.y + labelHeight + extraVerticalSpace;
 	recordTextFrame.origin.x = indent;
 	recordTextFrame.size.height = labelHeight;
 	recordTextFrame.size.width = textLabelWidth;
@@ -253,7 +256,7 @@
 	// Erase contents button
 	eraseTextFrame.origin.x = indent;
 	eraseTextFrame.origin.y = recordTextFrame.origin.y +
-	    labelHeight + frame.size.height * 0.03;
+	    labelHeight + extraVerticalSpace;
 	eraseTextFrame.size.height = labelHeight;
 	eraseTextFrame.size.width = textLabelWidth;
 	eraseHelpLabel = [[HelpLabel alloc]
@@ -279,7 +282,7 @@
 	// Snapshot contents button
 	snapshotTextFrame.origin.x = indent;
 	snapshotTextFrame.origin.y = eraseTextFrame.origin.y +
-	    labelHeight + frame.size.height * 0.03;
+	    labelHeight + extraVerticalSpace;
 	snapshotTextFrame.size.height = labelHeight;
 	snapshotTextFrame.size.width = textLabelWidth;
 	snapshotHelpLabel = [[HelpLabel alloc]
@@ -306,7 +309,7 @@
 	freezeLabelFrame.origin.x = indent;
 	freezeLabelFrame.size.width = frame.size.width * 3 / 5;
 	freezeLabelFrame.origin.y = snapshotTextFrame.origin.y +
-	    labelHeight + frame.size.height * 0.03;
+	    labelHeight + extraVerticalSpace;
 	freezeLabelFrame.size.height = labelHeight;
 	freezeHelpLabel = [[HelpLabel alloc]
 			      initWithFrame: freezeLabelFrame
@@ -333,7 +336,7 @@
 	// Edit station button
 	buttonFrame.origin.x = frame.size.width / 5;
 	buttonFrame.size.width = frame.size.width * 3 / 5;
-	buttonFrame.origin.y = freezeLabelFrame.origin.y + labelHeight + frame.size.height * 0.03;
+	buttonFrame.origin.y = freezeLabelFrame.origin.y + labelHeight + extraVerticalSpace;
 	buttonFrame.size.height = labelHeight;
 
 	MFANCoreButton *recordButton;
@@ -346,6 +349,23 @@
 	[recordButton addCallback: self
 		       withAction: @selector(editPressed:withData:)];
 	[self addSubview: recordButton];
+
+	// Remove station button
+	remButtonFrame.origin.x = frame.size.width / 5;
+	remButtonFrame.size.width = frame.size.width * 3 / 5;
+	remButtonFrame.origin.y = buttonFrame.origin.y + labelHeight + extraVerticalSpace;
+	remButtonFrame.size.height = labelHeight;
+
+	MFANCoreButton *remButton;
+	remButton = [[MFANCoreButton alloc] initWithFrame: remButtonFrame
+						    title: @"Border"
+						    color: [UIColor redColor]
+					  backgroundColor: labelColor];
+	[remButton setFillColor: labelColor];
+	[remButton setClearText: @"Remove station"];
+	[remButton addCallback: self
+		       withAction: @selector(removePressed:withData:)];
+	[self addSubview: remButton];
 
 	buttonFrame.origin.y = frame.size.height - labelHeight;
 	buttonFrame.origin.x = frame.size.width/2 - okButtonWidth/2;
@@ -364,6 +384,7 @@
 	_startTimeMs = osp_time_ms();
 
 	_didNotify = false;
+	_doRemove = false;
 
 	[self setBackgroundColor: [UIColor whiteColor]];
 
@@ -396,6 +417,32 @@
 
 - (void) editPressed: (id) junk1 withData: (id) junk2 {
     [_vc pushTopView: _editStation];
+}
+
+- (void) removePressed: (id) junk1 withData: (id) junk2 {
+    UIAlertController *alert = [UIAlertController
+				   alertControllerWithTitle: @"RadioStar"
+						    message: @"Are you sure?"
+					     preferredStyle: UIAlertControllerStyleAlert];
+
+    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Remove station"
+                                                     style: UIAlertActionStyleDefault
+                                                   handler:^(UIAlertAction *act) {
+	    [self->_timer invalidate];
+	    self->_timer = nil;
+
+	    self->_doRemove = YES;
+	    [self doNotify];
+	}];
+    [alert addAction: action];
+
+    action = [UIAlertAction actionWithTitle:@"Cancel remove"
+				      style:UIAlertActionStyleDefault
+				    handler:^(UIAlertAction *act) {
+	}];
+    [alert addAction: action];
+
+    [_vc presentViewController: alert animated:YES completion: nil];
 }
 
 - (void) freezeHelp: (id) junk {
@@ -526,9 +573,6 @@
 - (void) tvActivate {
     // if the edit command did a remove, don't stay on the status
     // page, since the station doesn't exist anymore.
-    if (_editStation.doRemove) {
-	[self donePressed: nil];
-    }
     return;
 }
 

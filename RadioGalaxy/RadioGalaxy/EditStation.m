@@ -31,7 +31,6 @@
     SEL _callbackSel;
 
     BOOL _canceled;
-    BOOL _doRemove;
 }
 
 - (void) setCallback: (id) obj withSel: (SEL) sel {
@@ -68,7 +67,6 @@
 	_streamUrl = [NSString stringWithString: station.streamUrl];
 
 	_canceled = NO;
-	_doRemove = NO;
 
 	labelFrame = frame;
 	labelFrame.origin.x = indent;
@@ -152,12 +150,11 @@
 
 	/* now add Done button */
 	float buttonWidth = frame.size.width/8;
-	float removeButtonWidth = frame.size.width/3;
 
 	buttonFrame = frame;
 	buttonFrame.origin.y = 0.9*frame.size.height;
 	buttonFrame.size.height = buttonWidth;	// square buttons
-	buttonFrame.origin.x = frame.size.width/6 - buttonWidth/2;
+	buttonFrame.origin.x = frame.size.width/3 - buttonWidth/2;
 	buttonFrame.size.width = buttonWidth;
 	_doneButton = [[MFANIconButton alloc] initWithFrame: buttonFrame
 					      title: @"Done"
@@ -170,20 +167,8 @@
 		     withAction: @selector(donePressed:withData:)];
 	[self addSubview: _doneButton];
     
-	buttonFrame.origin.x = frame.size.width*3/6 - removeButtonWidth/2;
-	buttonFrame.size.width = removeButtonWidth;
-	_removeButton = [[MFANCoreButton alloc] initWithFrame: buttonFrame
-							title: @"Border"
-							color: [UIColor redColor]
-					      backgroundColor: [UIColor clearColor]];
-	[_removeButton setFillColor: [UIColor clearColor]];
-	[_removeButton setClearText: @"Remove"];
-	[_removeButton addCallback: self
-		     withAction: @selector(removePressed:withData:)];
-	[self addSubview: _removeButton];
-
 	/* and cancel button */
-	buttonFrame.origin.x = frame.size.width*5/6 - buttonWidth/2;
+	buttonFrame.origin.x = frame.size.width*2/3 - buttonWidth/2;
 	buttonFrame.size.width = buttonWidth;
 	_cancelButton = [[MFANIconButton alloc] initWithFrame: buttonFrame
 						title: @"Cancel"
@@ -208,31 +193,6 @@
 				       withObject: nil
 				    waitUntilDone: true];
     }
-}
-
-- (void) removePressed: (id) junk1 withData: (id) junk2 {
-    UIAlertController *alert = [UIAlertController
-				   alertControllerWithTitle: @"RadioStar"
-						    message: @"Are you sure?"
-					     preferredStyle: UIAlertControllerStyleAlert];
-
-    UIAlertAction *action = [UIAlertAction actionWithTitle:@"Remove station"
-                                                     style: UIAlertActionStyleDefault
-                                                   handler:^(UIAlertAction *act) {
-	    self->_doRemove = YES;
-	    [self doNotify];
-	}];
-    [alert addAction: action];
-
-    action = [UIAlertAction actionWithTitle:@"Cancel remove"
-				      style:UIAlertActionStyleDefault
-				    handler:^(UIAlertAction *act) {
-	    self->_canceled = YES;
-	    [self doNotify];
-	}];
-    [alert addAction: action];
-
-    [_vc presentViewController: alert animated:YES completion: nil];
 }
 
 - (void) donePressed: (id) junk1 withData: (id) junk2 {

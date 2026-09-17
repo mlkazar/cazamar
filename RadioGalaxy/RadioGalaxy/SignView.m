@@ -1337,16 +1337,13 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 - (void) editDone: (id) junk {
     [_vc popTopView];
     if (!_editStation.canceled) {
-	if (_editStation.doRemove) {
-	    [self removeStation: _stationToEdit];
-	} else {
-	    // copy updated info
-	    _stationToEdit.stationName = _editStation.stationName;
-	    _stationToEdit.shortDescr = _editStation.shortDescr;
-	    _stationToEdit.streamUrl = _editStation.streamUrl;
-	    _stationToEdit.iconImage = nil;	// force regeneration
-	    [_stationToEdit setIconImageFromUrl: YES];
-	}
+	// copy updated info
+	_stationToEdit.stationName = _editStation.stationName;
+	_stationToEdit.shortDescr = _editStation.shortDescr;
+	_stationToEdit.streamUrl = _editStation.streamUrl;
+	_stationToEdit.iconImage = nil;	// force regeneration
+	[_stationToEdit setIconImageFromUrl: YES];
+
 	[[SignSave alloc] initSaveToFile: _allStations];
 	[self animationOn];
     }
@@ -1636,6 +1633,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 }
 
 - (void) popStatusDone {
+    if (_popStatus.doRemove)
+	[self removeStation: _stationToEdit];
+
     _popStatus = nil;
     [_vc popTopView];
     [self addRecognizers];

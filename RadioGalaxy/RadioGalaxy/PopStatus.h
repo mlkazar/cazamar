@@ -10,6 +10,7 @@
 #import "SignView.h"
 
 @interface PopStatus : UIView<TopViewInt>
+@property bool doRemove;
 
 - (PopStatus *) initWithFrame: (CGRect) frame
 		  editStation: (EditStation *) editStation

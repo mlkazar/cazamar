@@ -11,7 +11,6 @@
 @property NSString *shortDescr;
 @property NSString *streamUrl;
 @property BOOL canceled;
-@property BOOL doRemove;
 
 - (EditStation *) initWithFrame: (CGRect) frame
 			station: (SignStation *) station
