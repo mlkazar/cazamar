@@ -913,8 +913,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 
 	[self addRecognizers];
 
-	[self setupNotifications];
-
 	[[SignSave alloc] initRestoreFromFile: _allStations
 				   completion: ^() {
 		[self animationOn];
@@ -1866,39 +1864,6 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 
     return false;
-}
-
-- (void) setupNotifications {
-    [[NSNotificationCenter defaultCenter] addObserver: self
-					     selector: @selector(audioInterruption:)
-						 name: AVAudioSessionInterruptionNotification
-					       object: nil];
-}
-
-- (void) audioInterruption: (NSNotification *) notification {
-    NSDictionary *userInfo = [notification userInfo];
-    NSNumber *intKey;
-    NSNumber *optKey;
-    long intType;
-
-    intKey = (NSNumber *) userInfo[AVAudioSessionInterruptionTypeKey];
-    optKey = (NSNumber *) userInfo[AVAudioSessionInterruptionOptionKey];
-
-    intType = [intKey longValue];
-    if (intType == AVAudioSessionInterruptionTypeEnded) {
-	NSLog(@"=1= audio interruption ended");
-	if ([optKey longValue] & AVAudioSessionInterruptionOptionShouldResume) {
-	    NSLog(@"=1= resuming audio player");
-	    // also calls checkUpcallState
-	}
-    }
-    else if (intType == AVAudioSessionInterruptionTypeBegan) {
-	NSLog(@"=1= audio interruption began");
-	// also calls checkUpcallState
-    }
-    else {
-	NSLog(@"=1= audio interruption unknown type %ld", intType);
-    }
 }
 
 NS_ASSUME_NONNULL_END

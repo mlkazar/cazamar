@@ -76,12 +76,16 @@
 
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
 
+    [self setupNotifications];
+
+    [self registerBackground];
+}
+
+- (void) setupNotifications {
     [[NSNotificationCenter defaultCenter] addObserver: self
 					     selector: @selector(audioInterruption:)
 						 name: AVAudioSessionInterruptionNotification
 					       object: nil];
-
-    [self registerBackground];
 }
 
 + (void) splitLabel: (NSString *) label
@@ -196,8 +200,10 @@
     intType = [intKey longValue];
     if (intType == AVAudioSessionInterruptionTypeEnded) {
 	NSLog(@"=1= audio interruption ended");
-	if ([optKey longValue] & AVAudioSessionInterruptionOptionShouldResume) {
-	    NSLog(@"=1= resuming audio player");
+	if (/* [optKey longValue] & AVAudioSessionInterruptionOptionShouldResume*/ 1) {
+	    NSLog(@"=1= resuming audio player %ld/%d",
+		  [optKey longValue],
+		  (int) AVAudioSessionInterruptionOptionShouldResume);
 	    // also calls checkUpcallState
 	    [self applySelector: @selector(tvResume)];
 	}
@@ -409,7 +415,7 @@
     [audioSession setActive: true error: &setError];
 
     // make sure we keep getting notifications for the new session.
-    // [self setupNotifications];
+    [self setupNotifications];
 }
 
 
