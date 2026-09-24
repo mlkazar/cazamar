@@ -7,13 +7,13 @@
 #include <string>
 #include <stdio.h>
 
-#include <dqueue.h>
+#include "dqueue.h"
 #include "bufsocket.h"
 #include "rst.h"
 #include "json.h"
 #include "xapi.h"
 #include "oasha1.h"
-#include <xgml.h>
+#include "xgml.h"
 #include "upnp.h"
 
 static int32_t
