@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.12)
 
 project(Vaccine)
 
-find_package(OpenSSL REQUIRED)
-find_package(CURL REQUIRED)
-
 ################################
 # Define zipdecode
 ################################
@@ -49,8 +46,6 @@ target_sources(ritecheck
 )
 target_link_libraries(ritecheck
   PRIVATE
-    ext
-    rpc
     core
     rst
     OpenSSL::SSL
@@ -67,8 +62,6 @@ target_sources(walcheck
 )
 target_link_libraries(walcheck
   PRIVATE
-    ext
-    rpc
     core
     rst
     OpenSSL::SSL

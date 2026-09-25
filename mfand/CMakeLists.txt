@@ -2,21 +2,6 @@ cmake_minimum_required(VERSION 3.12)
 
 project(MusicFanD)
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  message(STATUS "Building for Linux")
-  set(SSL_INCL "/usr/local/ssl/include")
-  set(SSL_LIB "/usr/lib/aarch64-linux-gnu/libssl.a")
-  set(CRYPTO_LIB "/usr/lib/aarch64-linux-gnu/libcrypto.a")
-else()
-  message(STATUS "Building for MacOS / not Linux")
-  set(SSL_INCL "/opt/homebrew/include")
-  set(SSL_LIB "/opt/homebrew/lib/libssl.a")
-  set(CRYPTO_LIB "/opt/homebrew/lib/libcrypto.a")
-endif()
-
-find_package(CURL REQUIRED)
-find_package(OpenSSL REQUIRED)
-
 ################################
 # define contents of liboauth
 ################################
