@@ -6,6 +6,7 @@
 //
 
 #import <BackgroundTasks/BackgroundTasks.h>
+
 #import "Settings.h"
 #import "Silence.h"
 #import "TopView.h"
@@ -30,12 +31,17 @@
     Silence *_silence;
     BOOL _isBackground;
     BOOL _isInterrupted;
+    BOOL _silencePlaying;	// we WANT the silence player running.
+    BOOL _wasPlayingWhenInterrupted;
 
     // for NowPlayingCenter
     NSMutableDictionary *_nowPlayingInfo;
     UIImage *_inputImage;
     UIImage *_convertedImage;
     int32_t _songIndex;
+
+    // for call monitoring
+    CXCallObserver *_callObserver;
 }
 
 // The view in self.view is a whole screen view painted black.  It
@@ -70,9 +76,13 @@
     [_viewStack addObject: _activeView];
     [self.view addSubview: _activeView];
 
-    _silence = [[Silence alloc] init];
+    _silence = [[Silence alloc] initWithViewController: self];
     _isBackground = false;
     _isInterrupted = false;
+    _silencePlaying = false;
+
+    _callObserver = [[CXCallObserver alloc] init];
+    [_callObserver setDelegate: self queue:dispatch_get_main_queue()];
 
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
 
@@ -86,6 +96,11 @@
 					     selector: @selector(audioInterruption:)
 						 name: AVAudioSessionInterruptionNotification
 					       object: nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                          selector:@selector(audioRouteChanged:)
+                                          name:AVAudioSessionRouteChangeNotification
+                                          object:nil];
 }
 
 + (void) splitLabel: (NSString *) label
@@ -146,6 +161,7 @@
 			 group: &songArtist
 			  song: &songTitle
 			 album: &songAlbum];
+    NSLog(@"=1= updateNowPlayingCenter for song=%@", songTitle);
 
     [info setObject: [NSNumber numberWithDouble: 1.0]
 	     forKey: MPNowPlayingInfoPropertyPlaybackRate];
@@ -178,12 +194,6 @@
 
 }
 
-- (void) resumePlayerAfterInterruption {
-    _isInterrupted = true;
-    [self setupAudioSession: true];
-    [_silence start];
-}
-
 - (BOOL) isPlaying {
     return [self applySelector: @selector(tvIsPlaying)];
 }
@@ -198,24 +208,33 @@
     optKey = (NSNumber *) userInfo[AVAudioSessionInterruptionOptionKey];
 
     intType = [intKey longValue];
+    NSLog(@"=1= audio interruption intKey=%ld optKey=%ld", intType, [optKey longValue]);
     if (intType == AVAudioSessionInterruptionTypeEnded) {
 	NSLog(@"=1= audio interruption ended");
+	// I don't like how frequently Apple tells me not to resume.
 	if (/* [optKey longValue] & AVAudioSessionInterruptionOptionShouldResume*/ 1) {
 	    NSLog(@"=1= resuming audio player %ld/%d",
 		  [optKey longValue],
 		  (int) AVAudioSessionInterruptionOptionShouldResume);
 	    // also calls checkUpcallState
-	    [self applySelector: @selector(tvResume)];
+	    _isInterrupted = false;
+	    if (_wasPlayingWhenInterrupted)
+		[self applySelector: @selector(tvResume)];
 	}
     }
     else if (intType == AVAudioSessionInterruptionTypeBegan) {
 	NSLog(@"=1= audio interruption began");
 	// also calls checkUpcallState
-	_isInterrupted = true;
+	if (!_isInterrupted) {
+	    _wasPlayingWhenInterrupted = [self isPlaying];
+	    NSLog(@"=1= interruption saved wasPlayingWhenInt=%d", _wasPlayingWhenInterrupted);
+	    _isInterrupted = true;
+	}
 	[self applySelector: @selector(tvPause)];
     }
     else {
 	NSLog(@"=1= audio interruption unknown type %ld", intType);
+	_isInterrupted = false;	// conservative?
     }
 
     // adjust session state.
@@ -293,10 +312,12 @@
 
 - (void) enterBackground {
     _isBackground = true;
+    NSLog(@"=1= isBackground set to true");
     [self processBackgroundState];
 }
 
 - (void) leaveBackground {
+    NSLog(@"=1= isBackground set to false");
     _isBackground = false;
     [self processBackgroundState];
 }
@@ -361,13 +382,14 @@
 	// player has been restarted.  We don't always get interruption ended events,
 	// so in this case we simulate one.
 	_isInterrupted = false;
+	NSLog(@"=1= PBS turns off isInterrupted because player playing");
     }
     if (_isBackground) {
 	// We want a stalled player (not playing but not paused) to
 	// keep the controls around (use mix == false) .  Such a
 	// player will timeout in 15 seconds or so, so we'll get a
 	// chance to start the silence player going before we get
-	// killed (hopefully).
+ 	// killed (hopefully).
 	if (!isPlaying) {
 	    // if we were interrupted by another audio app, we have to use
 	    // mix == true so that the silent player keeps running.
@@ -376,12 +398,14 @@
 	    // Otherwise, we want to keep the non-mixing session, so that
 	    // the remote controls can keep working.
 	    [self setupAudioSession: _isInterrupted];
+	    _silencePlaying = true;
 	    [_silence start];
 	} else {
 	    // playing, so we don't need more things playing in order
 	    // to keep our process around.  Or we're not playing
 	    // because of a stall, which hopefully won't last long.
 	    [_silence stop];
+	    _silencePlaying = false;
 	    [self setupAudioSession: false];
 	}
 
@@ -391,7 +415,7 @@
     } else {
 	// foreground, don't have to worry about being killed
 	[_silence stop];
-	_isInterrupted = false;
+	_silencePlaying = false;
 	[self setupAudioSession: false];
     }
 }
@@ -423,28 +447,32 @@
     if (receivedEvent.type == UIEventTypeRemoteControl) {
         switch (receivedEvent.subtype) {
             case UIEventSubtypeRemoteControlPlay:
+		NSLog(@"=1= RemoteControl play %ld", (long) receivedEvent.subtype);
 		[self applySelector: @selector(tvResume)];
 		break;
 
             case UIEventSubtypeRemoteControlPause:
+		NSLog(@"=1= RemoteControl pause %ld", (long) receivedEvent.subtype);
 		[self applySelector: @selector(tvPause)];
 		break;
 
             case UIEventSubtypeRemoteControlTogglePlayPause:
-		NSLog(@"=1= SignView play/pause %ld", (long) receivedEvent.subtype);
+		NSLog(@"=1= RemoteControl play/pause %ld", (long) receivedEvent.subtype);
 		[self applySelector: @selector(tvPlayPauseSong)];
                 break;
 
             case UIEventSubtypeRemoteControlPreviousTrack:
+		NSLog(@"=1= RemoteControl previous %ld", (long) receivedEvent.subtype);
 		[self applySelector: @selector(tvPrevSong)];
                 break;
 
             case UIEventSubtypeRemoteControlNextTrack:
+		NSLog(@"=1= RemoteControl next %ld", (long) receivedEvent.subtype);
 		[self applySelector: @selector(tvNextSong)];
                 break;
 
             default:
-                NSLog(@"!RMT mystery pressed %d", (int) receivedEvent.subtype);
+                NSLog(@"=1= RemoteControl mystery pressed %d", (int) receivedEvent.subtype);
                 break;
         }
 
@@ -455,4 +483,33 @@
 
 }
 
+- (void) audioRouteChanged: (NSNotification *) notification
+{
+    NSDictionary *userInfo = [notification userInfo];
+    NSNumber *reasonKey;
+    long reason;
+
+    reasonKey = (NSNumber *) userInfo[AVAudioSessionRouteChangeReasonKey];
+    reason = [reasonKey longValue];
+    if ( reason == AVAudioSessionRouteChangeReasonOldDeviceUnavailable) {
+	NSLog(@"=1= audio route unavailable");
+	[self applySelector: @selector(tvPause)];
+    } else if ( reason == AVAudioSessionRouteChangeReasonNewDeviceAvailable) {
+	NSLog(@"=1= audio route newly available");
+	[self applySelector: @selector(tvResume)];
+    }
+}
+
+- (void)callObserver:(CXCallObserver *)callObserver callChanged:(CXCall *)call {
+    NSLog(@"=1= phone call interruped=%d ended=%d",
+	  _isInterrupted, call.hasEnded);
+
+    if (_isInterrupted && call.hasEnded) {
+	NSLog(@"=1= call ended");
+	_isInterrupted = false;
+	[self processBackgroundState];
+	if (_wasPlayingWhenInterrupted)
+	    [self applySelector: @selector(tvResume)];
+    }
+}
 @end

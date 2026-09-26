@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		7F40AC9F2F1EF70D001B1EE8 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F40AC9E2F1EF70D001B1EE8 /* AudioToolbox.framework */; };
 		7F40ACA12F1EF716001B1EE8 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F40ACA02F1EF716001B1EE8 /* CoreAudio.framework */; };
+		7F53944B306808B3009F0D6B /* CallKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F53944A306808B3009F0D6B /* CallKit.framework */; };
 		7F8417F62F1EF3BD00B497E8 /* MFANSocket.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8417F52F1EF3BD00B497E8 /* MFANSocket.cc */; };
 		7F8417FB2F1EF40E00B497E8 /* bufsocket.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8417FA2F1EF40E00B497E8 /* bufsocket.cc */; };
 		7F8417FC2F1EF40E00B497E8 /* bufgen.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7F8417F82F1EF40E00B497E8 /* bufgen.cc */; };
@@ -33,6 +34,7 @@
 		7F1E14C12ED6A80D00D08908 /* RadioGalaxy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RadioGalaxy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7F40AC9E2F1EF70D001B1EE8 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		7F40ACA02F1EF716001B1EE8 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
+		7F53944A306808B3009F0D6B /* CallKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CallKit.framework; path = System/Library/Frameworks/CallKit.framework; sourceTree = SDKROOT; };
 		7F8417F32F1EF39200B497E8 /* MFANCGUtil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANCGUtil.h; path = ../MusicFan/MusicFan/MFANCGUtil.h; sourceTree = SOURCE_ROOT; };
 		7F8417F42F1EF3BD00B497E8 /* MFANSocket.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MFANSocket.h; path = ../MusicFan/MusicFan/MFANSocket.h; sourceTree = SOURCE_ROOT; };
 		7F8417F52F1EF3BD00B497E8 /* MFANSocket.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MFANSocket.cc; path = ../MusicFan/MusicFan/MFANSocket.cc; sourceTree = SOURCE_ROOT; };
@@ -105,6 +107,7 @@
 			files = (
 				7F40ACA12F1EF716001B1EE8 /* CoreAudio.framework in Frameworks */,
 				7F40AC9F2F1EF70D001B1EE8 /* AudioToolbox.framework in Frameworks */,
+				7F53944B306808B3009F0D6B /* CallKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -173,6 +176,7 @@
 		7F40AC9D2F1EF70D001B1EE8 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				7F53944A306808B3009F0D6B /* CallKit.framework */,
 				7F40ACA02F1EF716001B1EE8 /* CoreAudio.framework */,
 				7F40AC9E2F1EF70D001B1EE8 /* AudioToolbox.framework */,
 			);

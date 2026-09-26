@@ -3,8 +3,10 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 
+#import "ViewController.h"
+
 @interface Silence : NSObject<AVAudioPlayerDelegate>
-- (Silence *) init;
+- (Silence *) initWithViewController: (ViewController *) vc;
 
 - (void) start;
 

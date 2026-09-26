@@ -414,6 +414,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
 	 _lastUpcalledIsPlaying != _isPlaying) {
 	_lastUpcalledIsPlaying = _isPlaying;
 	pthread_mutex_unlock(&_playerMutex);
+	NSLog(@"=1= StreamPlayer upcalling state change");
 	[_stateCallbacks applyWithParm: self];
 	pthread_mutex_lock(&_playerMutex);
     }
@@ -956,50 +957,6 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     return _paused;
 }
 
-- (void) audioRouteChanged: (NSNotification *) notification
-{
-    NSDictionary *userInfo = [notification userInfo];
-    NSNumber *reasonKey;
-    long reason;
-
-    reasonKey = (NSNumber *) userInfo[AVAudioSessionRouteChangeReasonKey];
-    reason = [reasonKey longValue];
-    if ( reason == AVAudioSessionRouteChangeReasonOldDeviceUnavailable) {
-	[self pause];
-    } else if ( reason == AVAudioSessionRouteChangeReasonNewDeviceAvailable) {
-	[self resume];
-    }
-}
-
-- (void) audioInterruption: (NSNotification *) notification
-{
-    NSDictionary *userInfo = [notification userInfo];
-    NSNumber *intKey;
-    NSNumber *optKey;
-    long intType;
-
-    intKey = (NSNumber *) userInfo[AVAudioSessionInterruptionTypeKey];
-    optKey = (NSNumber *) userInfo[AVAudioSessionInterruptionOptionKey];
-
-    intType = [intKey longValue];
-    if (intType == AVAudioSessionInterruptionTypeEnded) {
-	NSLog(@"- audio interruption ended");
-	if ([optKey longValue] & AVAudioSessionInterruptionOptionShouldResume) {
-	    NSLog(@"- resuming audio player");
-	    // also calls checkUpcallState
-	    [self resume];
-	}
-    }
-    else if (intType == AVAudioSessionInterruptionTypeBegan) {
-	NSLog(@"- audio interruption began");
-	// also calls checkUpcallState
-	[self pause];
-    }
-    else {
-	NSLog(@"! audio interruption unknown type %ld", intType);
-    }
-}
-
 // get the millisecond timestamp of the packet to play that's offset
 // seconds after (or before if negative) the packet currently being
 // played by the AudioQueue.  We estimate the timestamp being played
@@ -1049,8 +1006,7 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     _muted = true;
 }
 
-- (void) setupAudioSession: (BOOL) mix
-{
+- (void) setupAudioSession: (BOOL) mix {
     NSError *setError;
 
     setError = nil;
@@ -1070,14 +1026,5 @@ MFANStreamPlayer_handleOutput( void *acontextp,
     }
 
     [audioSession setActive: true error: &setError];
-
-    [[NSNotificationCenter defaultCenter] addObserver: self
-                                          selector: @selector(audioInterruption:)
-                                          name: AVAudioSessionInterruptionNotification
-                                          object: nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                          selector:@selector(audioRouteChanged:)
-                                          name:AVAudioSessionRouteChangeNotification
-                                          object:nil];
 }
 @end

@@ -1,5 +1,6 @@
 #import "MFANCGUtil.h"
 #import "Silence.h"
+#import "ViewController.h"
 
 #include "osp.h"
 
@@ -11,9 +12,9 @@
     uint32_t _nloops;
     uint32_t _loopTime;
     uint64_t _lastStartSecs;
-    BOOL _interrupted;	// true if interrupted since last start
+    ViewController *_vc;
 }
-- (Silence *) init {
+- (Silence *) initWithViewController: (ViewController *) vc {
     NSError *setError;
 
     self = [super init];
@@ -22,10 +23,10 @@
 	_loopTime = 10;
 	_lastStartSecs = 0;
 	_timer = nil;
+	_vc = vc;
 
 	_silentData = silentData(_loopTime);
 	_isPlaying = false;
-	_interrupted = false;
 
 	_silentPlayer = [[AVAudioPlayer alloc] initWithData: _silentData error:&setError];
 	_silentPlayer.volume = 0.5;
@@ -42,7 +43,7 @@
     NSLog(@"=1= silent player done isPlaying=%d", _isPlaying);
 
     if (_isPlaying) {
-	[self setupAudioSession: _interrupted];	// setup for mixing audio if interrupted
+	[_vc setupAudioSession: _vc.isInterrupted];	// setup for mixing audio if interrupted
 
 	[_silentPlayer setNumberOfLoops: _nloops];
 	[_silentPlayer play];		// resume playing
@@ -51,32 +52,13 @@
     }
 }
 
-- (void) setupAudioSession: (bool) mix {
-    NSError *setError;
-    AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-
-    // can't setup callbacks, but setup the session
-    NSLog(@"=1= setupAudioSession silence mix");
-    if (mix) {
-	[audioSession setCategory: AVAudioSessionCategoryPlayback
-		      withOptions: AVAudioSessionCategoryOptionMixWithOthers
-			    error: &setError];
-    } else {
-        [audioSession setCategory: AVAudioSessionCategoryPlayback
-		      withOptions: 0
-			    error: &setError];
-    }
-
-    [audioSession setActive: true error: &setError];
-}
-
 - (void) start {
     bool started;
 
     NSLog(@"=1= starting bkg, prev state isPlaying=%d", _isPlaying);
 
     _isPlaying = true;
-    [self setupAudioSession: false];
+    [_vc setupAudioSession: _vc.isInterrupted];
     started = [_silentPlayer play];
     if (started) {
 	_lastStartSecs = osp_time_sec();
@@ -88,28 +70,11 @@
 	[_timer invalidate];
     }
 
-    [[NSNotificationCenter defaultCenter] addObserver: self
-					     selector: @selector(audioInterruption:)
-						 name: AVAudioSessionInterruptionNotification
-					       object: nil];
-
     _timer = [NSTimer scheduledTimerWithTimeInterval: _loopTime
 					      target: self
 					    selector: @selector(checkRunning:)
 					    userInfo: nil
 					     repeats: YES];
-}
-
-- (void) resumePlayerAfterInterruption {
-    _interrupted = true;
-    [self setupAudioSession: true];
-    [_silentPlayer play];
-    _lastStartSecs = osp_time_sec();
-}
-
-- (void) audioInterruption: (NSNotification *) notification {
-    if (_isPlaying)
-	[self resumePlayerAfterInterruption];
 }
 
 - (void) stop {
@@ -120,6 +85,12 @@
 	_timer = nil;
     }
     [_silentPlayer stop];
+}
+
+- (void) resumePlayerAfterInterruption {
+    [_vc setupAudioSession: _vc.isInterrupted];
+    [_silentPlayer play];
+    _lastStartSecs = osp_time_sec();
 }
 
 - (void) checkRunning: (id) junk {

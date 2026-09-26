@@ -69,7 +69,20 @@ Ideas for Radio app
 ** Way to view and play saved files.  Probably add a new screen for
    managing saved files, including airdrop (see below).
 
--- Airdrop support?  Looks pretty easy.
+** Check callers of setupAudioSession, and then see why interruptions
+   turn on mixWithOthers, causing the lock screen to disappear.  Check
+   silence and MFANStreamPlayer.  Make sure streamplayer upcalls its
+   state properly.
+
+   Algorithm should be keep mix off while playing, or until
+   interruption begins.  When interruption ends, or playing starts
+   again, turn mix off.  Keep track of whether we're currently
+   interrupted.
+
+** Do something reasonable with audio route changed in ViewController
+   instead of MFANStreamPlayer.
+
+** Airdrop support?  Looks pretty easy.
 
 ** Song view when playing a station, including automatically updating
    as songs stream.

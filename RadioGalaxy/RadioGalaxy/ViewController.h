@@ -5,18 +5,21 @@
 //  Created by Michael Kazar on 11/25/25.
 //
 
+#import <CallKit/CXCallObserver.h>
+#import <CallKit/CXCall.h>
 #import <UIKit/UIKit.h>
 
 #import "AudioInt.h"
 #import "TopViewInt.h"
 
-@interface ViewController : UIViewController
+@interface ViewController : UIViewController<CXCallObserverDelegate>
 
 @property float topMargin;
 @property float bottomMargin;
 @property UIColor *backgroundColor;
 @property CGRect activeFrame;
 @property NSObject *settings;
+@property bool isInterrupted;
 
 + (void) splitLabel: (NSString *) label
 	      group: (NSString **) group
@@ -28,6 +31,8 @@
 		    currentTime: (float) currentTime
 		       duration: (float) durationTime
 		      songIndex: (int32_t) songIndex;
+
+- (void) setupAudioSession: (BOOL) mix;
 
 - (void) pushTopView: (UIView<TopViewInt> *) view;
 

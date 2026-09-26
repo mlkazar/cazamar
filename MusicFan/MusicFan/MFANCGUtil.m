@@ -135,7 +135,7 @@ silentData(int seconds)
 {
     NSData *datap;
     char *newDatap;
-    static const int sampleRate = 24000;
+    static const int sampleRate = 12;
     int nbytes;
     char *tp;
     long temp;
