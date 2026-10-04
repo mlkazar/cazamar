@@ -2028,7 +2028,7 @@ NSString *altFileNameForFileId(uint32_t fileId) {
     newBlock.baseMs = 0;
     newBlock.fileOffset = _kBytesPerBlock;
 
-    [_streamRecordings pruneTo: 0];	// remove the stream recording list
+    [_streamRecordings pruneTo: 0x7FFFFFFFFFFFFFFFULL];	// remove the stream recording list
 
     pthread_mutex_unlock(&_bufferMutex);
     pthread_mutex_unlock(&_blockMutex);
