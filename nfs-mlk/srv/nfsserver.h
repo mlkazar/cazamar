@@ -11,6 +11,7 @@
 class NfsServer {
 public:
     static const uint32_t _maxForeSlots = 16;
+    typedef std::array<char, NFS4_SESSIONID_SIZE> StdSessionId4;
     class Client {
         friend class NfsServer;
     public:
@@ -23,10 +24,11 @@ public:
     class Session {
         friend class NfsServer;
         Client *_clientp;
-        sessionid4 _sessionId;
+        StdSessionId4 _sessionId;
         uint16_t _foreSlots;
         uint16_t _backSlots;
         uint32_t _csa_flags;    // from the create
+        uint32_t _nextCallSequence[_maxForeSlots];  // next slot
 
         Session(NfsServer *serverp, Client *clientp);
     };
@@ -34,7 +36,7 @@ public:
     // Map client owner, and client ID, to client
     std::map<std::string, Client *> _clientOwnerMap;
     std::map<uint64_t, Client *> _clientIdMap;
-    std::map<sessionid4, Session *> _sessionMap;
+    std::map<StdSessionId4, Session *> _sessionMap;
 
     uint64_t _nextClientId;
     uint64_t _nextSessionCounter;
@@ -48,6 +50,10 @@ public:
     int32_t opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req);
 
     int32_t opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req);
+
+    int32_t opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req);
+
+    int32_t opSequence(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req);
 };
 
 extern "C"  COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,

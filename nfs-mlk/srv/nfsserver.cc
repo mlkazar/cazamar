@@ -124,6 +124,54 @@ NfsServer::opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
 }
 
 int32_t
+NfsServer::opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
+    RECLAIM_COMPLETE4args *arg = &op->nfs_argop4_u.opreclaim_complete;
+    RECLAIM_COMPLETE4res *subResp;
+    subResp = &resp->nfs_resop4_u.opreclaim_complete;
+    subResp->rcr_status = NFS4_OK;
+    return 0;
+}
+
+int32_t
+NfsServer::opSequence(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
+    SEQUENCE4args *arg = &op->nfs_argop4_u.opsequence;
+    SEQUENCE4res *subResp;
+    subResp = &resp->nfs_resop4_u.opsequence;
+    subResp->sr_status = NFS4_OK;
+    SEQUENCE4resok *okResp = &subResp->SEQUENCE4res_u.sr_resok4;
+
+    // This is better in C++20, but let's aim for the previous decade.
+    StdSessionId4 sessionKey;
+    memcpy(sessionKey.data(), arg->sa_sessionid, NFS4_SESSIONID_SIZE);
+
+    Session *sessionp = _sessionMap[sessionKey];
+    if (sessionp == nullptr) {
+        subResp->sr_status = NFS4ERR_SEQ_MISORDERED;
+        return -1;
+    }
+
+    uint32_t nextCallSequence = sessionp->_nextCallSequence[arg->sa_slotid];
+    if (nextCallSequence == arg->sa_sequenceid) {
+        sessionp->_nextCallSequence[arg->sa_slotid]++;
+        memcpy(&okResp->sr_sessionid, &arg->sa_sessionid, sizeof(sessionid4));
+        okResp->sr_sequenceid = arg->sa_sequenceid;
+        okResp->sr_slotid = arg->sa_slotid;
+        okResp->sr_highest_slotid = _maxForeSlots;
+        okResp->sr_target_highest_slotid = _maxForeSlots;
+        okResp->sr_status_flags = 0;
+    } else if (arg->sa_sequenceid == nextCallSequence-1) {
+        // TODO: retransmission -- figure out how to resend a
+        // response.
+    } else {
+        // bad sequence
+        subResp->sr_status = NFS4ERR_SEQ_MISORDERED;
+        return NFS4ERR_SEQ_MISORDERED;
+    }
+
+    return 0;
+}
+
+int32_t
 NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
     CREATE_SESSION4args *arg = &op->nfs_argop4_u.opcreate_session;
     CREATE_SESSION4res *subResp;
@@ -175,9 +223,19 @@ NfsServer::Session::Session(NfsServer *serverp, Client *clientp) {
     _clientp = clientp;
 
     // init a new session ID
-    memcpy(&_sessionId, &serverp->_bootTime, 8);
-    memcpy(((char *) &_sessionId)+8, &serverp->_nextSessionCounter, 8);
+    StdSessionId4 stdSession;
+    char *tp = stdSession.data();
+
+    memcpy(tp, &serverp->_bootTime, 8);
+    memcpy(tp+8, &serverp->_nextSessionCounter, 8);
     serverp->_nextSessionCounter++;
+    _sessionId = stdSession;
+    serverp->_sessionMap[stdSession] = this;
+
+    uint32_t i;
+    for(i=0;i<_maxForeSlots;i++) {
+        _nextCallSequence[i] = 1;
+    }
 }
 
 /* static */
@@ -310,6 +368,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_SECINFO_NO_NAME:
                 break;
             case OP_SEQUENCE:
+                serverp->opSequence(op, resp, req);
                 break;
             case OP_SET_SSV:
                 break;
@@ -320,6 +379,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_DESTROY_CLIENTID:
                 break;
             case OP_RECLAIM_COMPLETE:
+                serverp->opReclaimComplete(op, resp, req);
                 break;
 
             default:
