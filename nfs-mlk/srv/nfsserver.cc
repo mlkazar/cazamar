@@ -1,6 +1,7 @@
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
 
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,7 +67,73 @@ void *cb_null_1_svc(void *args, struct svc_req *req) {
 }
 
 int32_t
-NfsServer::opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
+NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    GETATTR4args *arg = &op->nfs_argop4_u.opgetattr;
+    GETATTR4res *subResp;
+    subResp = &resp->nfs_resop4_u.opgetattr;
+    subResp->status = NFS4_OK;
+    GETATTR4resok *okResp = &subResp->GETATTR4res_u.resok4;
+    uint32_t *tp;
+    uint32_t *vp;
+    uint32_t attrValSize = 0;
+
+    printf("getattr attrlen=%d %x.%x.%x.%x\n",
+           arg->attr_request.bitmap4_len,
+           arg->attr_request.bitmap4_val[0],
+           arg->attr_request.bitmap4_val[1],
+           arg->attr_request.bitmap4_val[2],
+           arg->attr_request.bitmap4_val[3]);
+
+    // return the subset of this stuff that we feel like returning
+    okResp->obj_attributes.attrmask.bitmap4_len = 3;
+    okResp->obj_attributes.attrmask.bitmap4_val = tp = (uint32_t *) malloc(12);
+    tp[0] = 0;
+    tp[1] = 0;
+    tp[2] = 0;
+
+    // prepare target of homegrown xdr of attributes
+    okResp->obj_attributes.attr_vals.attrlist4_len = 0;
+    vp  = (uint32_t *) malloc(100);
+    okResp->obj_attributes.attr_vals.attrlist4_val = (char *) vp;
+
+    tp[0] |= (1<<1);    // type
+    *vp++ = htonl(NF4DIR);
+    attrValSize += 4;
+
+    tp[0] |= (1<<4);    // size;
+    *vp++ = htonl(0);
+    *vp++ = htonl(8192);
+    attrValSize += 8;
+
+    tp[0] |= (1<<8);    // fsid
+    *vp++ = htonl(0);   // major dev
+    *vp++ = htonl(23);
+    *vp++ = htonl(0);   // minor dev
+    *vp++ = htonl(1);
+    attrValSize += 16;
+
+    tp[0] |= (1<<19);    // fh
+    *vp++ = htonl(4);
+    memcpy(vp, "ROOT", 4);
+    vp++;
+    attrValSize += 8;
+
+    tp[0] |= (1<<20);   // file id
+    *vp++ = htonl(0);
+    *vp++ = htonl(1027);
+    attrValSize += 8;
+
+    tp[1] |= (1<<1);    // mode in slot 33
+    *vp++ = htonl(0775);
+    attrValSize += 4;
+
+    okResp->obj_attributes.attr_vals.attrlist4_len = attrValSize;
+
+    return 0;
+}
+
+int32_t
+NfsServer::opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     // should implement a hash table
     EXCHANGE_ID4args *arg = &op->nfs_argop4_u.opexchange_id;
     client_owner4 *owner = &arg->eia_clientowner;
@@ -124,7 +191,7 @@ NfsServer::opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
 }
 
 int32_t
-NfsServer::opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
+NfsServer::opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     RECLAIM_COMPLETE4args *arg = &op->nfs_argop4_u.opreclaim_complete;
     RECLAIM_COMPLETE4res *subResp;
     subResp = &resp->nfs_resop4_u.opreclaim_complete;
@@ -133,7 +200,7 @@ NfsServer::opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *r
 }
 
 int32_t
-NfsServer::opSequence(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
+NfsServer::opSequence(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     SEQUENCE4args *arg = &op->nfs_argop4_u.opsequence;
     SEQUENCE4res *subResp;
     subResp = &resp->nfs_resop4_u.opsequence;
@@ -172,7 +239,7 @@ NfsServer::opSequence(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
 }
 
 int32_t
-NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req) {
+NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     CREATE_SESSION4args *arg = &op->nfs_argop4_u.opcreate_session;
     CREATE_SESSION4res *subResp;
     subResp = &resp->nfs_resop4_u.opcreate_session;
@@ -215,6 +282,24 @@ NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req
     okResp->csr_fore_chan_attrs.ca_maxrequests = foreSlots;
     okResp->csr_back_chan_attrs = arg->csa_back_chan_attrs;
     printf("created session with flags %x\n", arg->csa_flags);
+
+    return 0;
+}
+
+int32_t
+NfsServer::opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    // TODO: define Vn layer
+    char *tp;
+
+    compStatep->_currentFh.nfs_fh4_len = 4;
+    compStatep->_currentFh.nfs_fh4_val = tp = (char *) malloc(4);
+    strncpy(tp, "ROOT", 4);
+
+    PUTROOTFH4res *subResp;
+    subResp = &resp->nfs_resop4_u.opputrootfh;
+    subResp->status = NFS4_OK;
+
+    subResp->status = NFS4_OK;
 
     return 0;
 }
@@ -262,6 +347,9 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
     resp = resps->resarray.resarray_val = (nfs_resop4 *) malloc(tlen * sizeof(nfs_resop4));
     memset(resps->resarray.resarray_val, 0, tlen * sizeof(nfs_resop4));
 
+    // and state for the operation
+    NfsServer::CompoundState compoundState;
+
     for(uint32_t i=0;i<args->argarray.argarray_len; i++, op++, resp++) {
         printf("operation %d\n", op->argop);
         switch(op->argop) {
@@ -278,6 +366,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_DELEGRETURN:
                 break;
             case OP_GETATTR:
+                serverp->opGetAttr(op, resp, &compoundState);
                 break;
             case OP_GETFH:
                 break;
@@ -308,6 +397,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_PUTPUBFH:
                 break;
             case OP_PUTROOTFH:
+                serverp->opPutRootFh(op, resp, &compoundState);
                 break;
             case OP_READ:
                 break;
@@ -344,10 +434,10 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_BIND_CONN_TO_SESSION:
                 break;
             case OP_EXCHANGE_ID:
-                serverp->opExchangeId(op, resp, req);
+                serverp->opExchangeId(op, resp, &compoundState);
                 break;
             case OP_CREATE_SESSION:
-                serverp->opCreateSession(op, resp, req);
+                serverp->opCreateSession(op, resp, &compoundState);
                 break;
             case OP_DESTROY_SESSION:
                 break;
@@ -368,7 +458,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_SECINFO_NO_NAME:
                 break;
             case OP_SEQUENCE:
-                serverp->opSequence(op, resp, req);
+                serverp->opSequence(op, resp, &compoundState);
                 break;
             case OP_SET_SSV:
                 break;
@@ -379,7 +469,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_DESTROY_CLIENTID:
                 break;
             case OP_RECLAIM_COMPLETE:
-                serverp->opReclaimComplete(op, resp, req);
+                serverp->opReclaimComplete(op, resp, &compoundState);
                 break;
 
             default:

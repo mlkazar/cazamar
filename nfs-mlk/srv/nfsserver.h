@@ -33,6 +33,22 @@ public:
         Session(NfsServer *serverp, Client *clientp);
     };
 
+    // This is per-compound operation state.
+    class CompoundState {
+    public:
+        nfs_fh4 _currentFh;
+        nfs_fh4 _savedFh;
+        stateid4 _currentStateId;
+        stateid4 _savedStateId;
+
+        CompoundState() {
+            memset(&_currentFh, 0, sizeof(_currentFh));
+            memset(&_savedFh, 0, sizeof(_savedFh));
+            memset(&_currentStateId, 0, sizeof(stateid4));
+            memset(&_savedStateId, 0, sizeof(stateid4));
+        }
+    };
+
     // Map client owner, and client ID, to client
     std::map<std::string, Client *> _clientOwnerMap;
     std::map<uint64_t, Client *> _clientIdMap;
@@ -47,13 +63,17 @@ public:
 
     void start();
 
-    int32_t opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req);
+    int32_t opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
-    int32_t opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req);
+    int32_t opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
-    int32_t opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req);
+    int32_t opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
-    int32_t opSequence(nfs_argop4 *op, nfs_resop4 *resp, struct svc_req *req);
+    int32_t opSequence(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
+
+    int32_t opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
+
+    int32_t opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 };
 
 extern "C"  COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
