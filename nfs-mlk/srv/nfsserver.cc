@@ -2,12 +2,14 @@
 #include <rpc/pmap_clnt.h>
 
 #include <arpa/inet.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "nfsserver.h"
 #include "nfsv41.h"
+#include "vn.h"
 
 extern "C" {
 void nfs4_program_4();
@@ -64,6 +66,392 @@ CB_COMPOUND4res *cb_compound_1_svc(CB_COMPOUND4args *args,
 void *cb_null_1_svc(void *args, struct svc_req *req) {
     printf("in cb null\n");
     return nullptr;
+}
+
+std::string
+NfsServer::translate_uid(uint32_t uid) {
+    // TODO: use C library
+    return std::string("root");
+}
+
+std::string
+NfsServer::translate_gid(uint32_t gid) {
+    // TODO: use C library
+    return std::string("root");
+}
+
+// copy out file attributes into an fattr4
+void
+NfsServer::copyToFattr( fattr4 *outp,
+                        uint32_t *inMaskp,
+                        Vn *vp,
+                        Vn::Attr *attrsp,
+                        Vfs::FsAttr *fsAttrsp) {
+    static const uint32_t attrMaskWords = 3;
+    static const uint32_t attrListBytes = 2048;
+    uint32_t i;
+    uint32_t ltemp;
+    uint64_t lltemp;
+    uint32_t *outMaskp;
+    uint32_t *supMaskp; // where we generate the supported mask, if requested
+    ////////////////////////////////////////////////////////////////
+    // CHANGE THIS COMMENT IF WE SUPPORT MORE ATTRIBUTES!
+    ////////////////////////////////////////////////////////////////
+    // attrListDatap is supposed to contain the XDR data for each
+    // marshalled field, all concatenated.  We summarize the space used
+    // for all the fields we might output:
+    //  0:  4 words for attrMask
+    //  1:  1 word type bits
+    //  2:  1 word persist handle
+    //  3:  1 word change data
+    //  4:  2 words size
+    //  5:  1 word link-p
+    //  6:  1 word symlink-p
+    //  7:  1 word namedattr-p
+    //  8:  4 words fsdev
+    //  9:  1 word unique handles-p
+    // 10:  1 word lease time
+    // 11:  1 word
+    // 15:  1 word can set time-p
+    // 16:  1 word case insensitive-p
+    // 17:  1 word case preserving-p
+    // 18:  1 word chown restricted-p
+    // 19: *1 word plus rounded FH len
+    // 20:  2 words fileid
+    // 27:  2 words max file size
+    // 28:  1 word max links
+    // 29:  1 word max name size
+    // 30:  1 word max read bytes
+    // 31:  1 word max write bytes
+    // 33:  1 word unix mode bits
+    // 35:  1 word nlinks
+    // 36: *1 word plus user name
+    // 37: *1 word plus group name
+    // 47:  2 words atime
+    // 53:  2 words mtime
+    // 76:  1 words fs char set
+    // (*) means add in length of opaque data.
+    // TOTAL: 41 words + rounded_lengthOf{fh,user,group}
+
+    // Setup output bytes for fattr.attr_vals
+    char *ap;
+    char *attrListDatap = (char *) malloc(attrListBytes);
+    memset(attrListDatap, 0, attrListBytes);
+    ap = attrListDatap;       // for appending
+
+    // Setup output bitmap in outMaskp, where we'll collect the bits
+    // to return.  It'll be a subset of the bits requested by the
+    // caller in inMaskp.
+    uint32_t *bitmapDatap = (uint32_t *) malloc(12);
+    memset(bitmapDatap, 0, 12);
+    outp->attrmask.bitmap4_len = 3;     // 3 words
+    outp->attrmask.bitmap4_val = bitmapDatap;
+    outMaskp = bitmapDatap;
+
+    // generate supported attributes
+    supMaskp[0] |= (1<<0);
+    if (inMaskp[0] & (1<<0)) {
+        outMaskp[0] |= (1<<0);
+        ltemp = htonl(attrMaskWords);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+
+        // Remember where to patch the returned attributes
+        ap += sizeof(ltemp);
+        supMaskp = (uint32_t *) ap;
+        ap += attrMaskWords * sizeof(uint32_t);
+    }
+
+    // file type
+    supMaskp[0] |= (1<<1);
+    if (inMaskp[0] & (1<<1)) {
+        outMaskp[0] |= (1<<1);
+        if (attrsp->ftype == Vn::VN_DIR)
+            ltemp = htonl(NF4DIR);
+        else if (attrsp->ftype == Vn::VN_REG)
+            ltemp = htonl(NF4REG);
+        else if (attrsp->ftype == Vn::VN_SYMLINK)
+            ltemp = htonl(NF4LNK);
+        else
+            ltemp = htonl(NF4REG);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // file handle expiration type: persistent file handles
+    supMaskp[0] |= (1<<2);
+    if (inMaskp[0] & (1<<2)) {
+        outMaskp[0] |= (1<<2);
+        ltemp = htonl(FH4_PERSISTENT);
+        memcpy(ap, &ltemp, sizeof(uint32_t));
+        ap += sizeof(ltemp);
+    }
+
+    // change field -- we use ctime-derived
+    supMaskp[0] |= (1<<3);
+    if (inMaskp[0] & (1<<3)) {
+        outMaskp[0] |= (1<<3);
+        ltemp = (attrsp->ctime.secs << 32) | attrsp->ctime.nsecs;
+        ltemp = htonl(ltemp);
+        memcpy(ap, &ltemp, sizeof(uint32_t));
+        ap += sizeof(uint32_t);
+    }
+
+    // file size
+    supMaskp[0] |= (1<<4);
+    if (inMaskp[0] & (1<<4)) {
+        outMaskp[0] |= (1<<4);
+        lltemp = htonll(attrsp->size);
+        memcpy(ap, &lltemp, sizeof(uint64_t));
+        ap += sizeof(lltemp);
+    }
+
+    // is link supported
+    supMaskp[0] |= (1<<5);
+    if (inMaskp[0] & (1<<5)) {
+        outMaskp[0] |= (1<<5);
+        ltemp = htonl(1);
+        memcpy(ap, &ltemp, sizeof(uint32_t));
+        ap += sizeof(uint32_t);
+    }
+
+    // is symlink supported
+    supMaskp[0] |= (1<<6);
+    if (inMaskp[0] & (1<<6)) {
+        outMaskp[0] |= (1<<6);
+        ltemp = htonl(1);
+        memcpy(ap, &ltemp, sizeof(uint32_t));
+        ap += sizeof(uint32_t);
+    }
+
+    // is named_attr supported
+    supMaskp[0] |= (1<<7);
+    if (inMaskp[0] & (1<<7)) {
+        outMaskp[0] |= (1<<7);
+        ltemp = htonl(0);
+        memcpy(ap, &ltemp, sizeof(uint32_t));
+        ap += sizeof(uint32_t);
+    }
+
+    // fsid
+    supMaskp[0] |= (1<<8);
+    if (inMaskp[0] & (1<<8)) {
+        outMaskp[0] |= (1<<8);
+        lltemp = htonll(attrsp->fsid.major);
+        memcpy(ap, &lltemp, sizeof(lltemp));
+        ap += sizeof(lltemp);
+        lltemp = htonll(attrsp->fsid.minor);
+        memcpy(ap, &lltemp, sizeof(lltemp));
+        ap += sizeof(lltemp);
+    }
+
+    // unique handles
+    supMaskp[0] |= (1<<9);
+    if (inMaskp[0] & (1<<9)) {
+        outMaskp[0] |= (1<<9);
+        ltemp = htonl(1);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // lease time in seconds
+    supMaskp[0] |= (1<<10);
+    if (inMaskp[0] & (1<<10)) {
+        outMaskp[0] |= (1<<10);
+        ltemp = htonl(fsAttrsp->leaseSecs);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // rdattr error
+    supMaskp[0] |= (1<<11);
+    if (inMaskp[0] & (1<<11)) {
+        outMaskp[0] |= (1<<11);
+        ltemp = htonl(0);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // can set time
+    supMaskp[0] |= (1<<15);
+    if (inMaskp[0] & (1<<15)) {
+        outMaskp[0] |= (1<<15);
+        ltemp = htonl(1);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // case insensitive
+    supMaskp[0] |= (1<<16);
+    if (inMaskp[0] & (1<<16)) {
+        outMaskp[0] |= (1<<16);
+        ltemp = htonl(fsAttrsp->caseInsensitive);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // case preserving
+    supMaskp[0] |= (1<<17);
+    if (inMaskp[0] & (1<<17)) {
+        outMaskp[0] |= (1<<17);
+        ltemp = htonl(1);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // chown restricted is true
+    supMaskp[0] |= (1<<18);
+    if (inMaskp[0] & (1<<18)) {
+        outMaskp[0] |= (1<<18);
+        ltemp = htonl(1);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // fh
+    supMaskp[0] |= (1<<19);
+    if (inMaskp[0] & (1<<19)) {
+        outMaskp[0] |= (1<<19);
+        ltemp = htonl(vp->_fh.length());
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+        memcpy(ap, vp->_fh.data(), ltemp);
+        ap += ((ltemp - 1) | 3) + 1;       // padded length
+    }
+
+    // file ID field
+    supMaskp[0] |= (1<<20);
+    if (inMaskp[0] & (1<<20)) {
+        outMaskp[0] |= (1<<20);
+        lltemp = htonll(attrsp->fileid);
+        memcpy(ap, &lltemp, sizeof(lltemp));
+        ap += sizeof(lltemp);
+    }
+
+    // max file size (27)
+    supMaskp[0] |= (1<<27);
+    if (inMaskp[0] & (1<<27)) {
+        outMaskp[0] |= (1<<27);
+        lltemp = htonll(fsAttrsp->maxFileSize);
+        memcpy(ap, &lltemp, sizeof(lltemp));
+        ap += sizeof(lltemp);
+    }
+
+    // max link count(28)
+    supMaskp[0] |= (1<<28);
+    if (inMaskp[0] & (1<<28)) {
+        outMaskp[0] |= (1<<28);
+        ltemp = htonl(fsAttrsp->maxLink);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // max name size (29)
+    supMaskp[0] |= (1<<29);
+    if (inMaskp[0] & (1<<29)) {
+        outMaskp[0] |= (1<<29);
+        ltemp = htonl(fsAttrsp->maxName);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // max read bytes (30)
+    supMaskp[0] |= (1<<30);
+    if (inMaskp[0] & (1<<30)) {
+        outMaskp[0] |= (1<<30);
+        lltemp = htonll(fsAttrsp->maxReadBytes);
+        memcpy(ap, &lltemp, sizeof(lltemp));
+        ap += sizeof(lltemp);
+    }
+
+    // max write bytes (31)
+    supMaskp[0] |= (1<<31);
+    if (inMaskp[0] & (1<<31)) {
+        outMaskp[0] |= (1<<31);
+        lltemp = htonll(fsAttrsp->maxWriteBytes);
+        memcpy(ap, &lltemp, sizeof(lltemp));
+        ap += sizeof(lltemp);
+    }
+
+    // mode bits (33)
+    supMaskp[1] |= (1<<(33-32));
+    if (inMaskp[1] & (1<<(33-32))) {
+        outMaskp[1] |= (1<<(33-32));
+        ltemp = htonl(attrsp->mode);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // num links bits (35)
+    supMaskp[1] |= (1<<(35-32));
+    if (inMaskp[1] & (1<<(35-32))) {
+        outMaskp[1] |= (1<<(35-32));
+        ltemp = htonl(attrsp->nlinks);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    supMaskp[1] |= (1<<(36-32));
+    if (inMaskp[1] & (1<<(36-32))) {
+        outMaskp[1] |= (1<<(36-32));
+        std::string tname = translate_uid(attrsp->uid);
+        ltemp = tname.length();
+        ltemp = htonl(ltemp);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+        memcpy(ap, tname.data(), ltemp);
+        ltemp = ((ltemp - 1) | 3) + 1;
+        ap += ltemp;
+    }
+
+    supMaskp[1] |= (1<<(37-32));
+    if (inMaskp[1] & (1<<(37-32))) {
+        outMaskp[1] |= (1<<(37-32));
+        std::string tname = translate_gid(attrsp->gid);
+        ltemp = tname.length();
+        ltemp = htonl(ltemp);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+        memcpy(ap, tname.data(), ltemp);
+        ltemp = ((ltemp - 1) | 3) + 1;
+        ap += ltemp;
+    }
+
+    // access time (47)
+    supMaskp[1] |= (1<<(47-32));
+    if (inMaskp[1] & (1<<(47-32))) {
+        outMaskp[1] |= (1<<(47-32));
+        ltemp = htonl(attrsp->atime.secs);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+        ltemp = htonl(attrsp->atime.nsecs);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // mod time (53)
+    supMaskp[1] |= (1<<(53-32));
+    if (inMaskp[1] & (1<<(53-32))) {
+        outMaskp[1] |= (1<<(53-32));
+        ltemp = htonl(attrsp->mtime.secs);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+        ltemp = htonl(attrsp->mtime.nsecs);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // fs charset cap should be 2 -- utf8 supported
+    supMaskp[2] |= (1<<(76-64));
+    if (inMaskp[2] & (1<<(76-64))) {
+        outMaskp[2] |= (1<<(76-64));
+        ltemp = htonl(2);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
+    // fill in fattr fields
+    outp->attr_vals.attrlist4_len = (ap-attrListDatap);
+    assert(outp->attr_vals.attrlist4_len <= attrListBytes);
 }
 
 int32_t

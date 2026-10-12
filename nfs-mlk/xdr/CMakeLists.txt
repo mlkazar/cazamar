@@ -1,3 +1,7 @@
+cmake_minimum_required(VERSION 3.12)
+
+project(NfsXdr)
+
 set(XDR_X "${CMAKE_CURRENT_SOURCE_DIR}/nfsv41.x")
 set(XDR_H "${CMAKE_CURRENT_BINARY_DIR}/nfsv41.h")
 set(XDR_C "${CMAKE_CURRENT_BINARY_DIR}/nfsv41.c")

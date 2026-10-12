@@ -7,4 +7,5 @@ set(CMAKE_BUILD_TYPE "Debug")
 find_package(OpenSSL REQUIRED)
 
 add_subdirectory(xdr)
+add_subdirectory(vn)
 add_subdirectory(srv)

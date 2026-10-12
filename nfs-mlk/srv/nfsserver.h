@@ -7,6 +7,7 @@
 #include <sys/time.h>
 
 #include "nfsv41.h"
+#include "vn.h"
 
 class NfsServer {
 public:
@@ -62,6 +63,16 @@ public:
     NfsServer();
 
     void start();
+
+    std::string translate_uid(uint32_t uid);
+
+    std::string translate_gid(uint32_t gid);
+
+    void copyToFattr( fattr4 *outp,
+                      uint32_t *inMaskp,
+                      Vn *vp,
+                      Vn::Attr *attrsp,
+                      Vfs::FsAttr *fsAttrsp);
 
     int32_t opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 

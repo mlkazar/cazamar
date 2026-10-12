@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
+project(NfsServer)
+
 ################################
 # Define nfs4_test
 ################################
@@ -21,4 +23,6 @@ target_sources(nfs4_test
 target_link_libraries(nfs4_test
   PRIVATE
     nfssvc
+    vn
+    vntest
 )
