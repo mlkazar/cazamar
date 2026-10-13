@@ -1,3 +1,6 @@
+#include <string>
+#include <memory>
+
 #include <rpc/rpc.h>
 #include <rpc/pmap_clnt.h>
 
@@ -10,6 +13,7 @@
 #include "nfsserver.h"
 #include "nfsv41.h"
 #include "vn.h"
+#include "vntest.h"
 
 extern "C" {
 void nfs4_program_4();
@@ -18,7 +22,7 @@ int _rpcsvcdirty = 0;
 
 NfsServer *mainNfsServerp;
 
-NfsServer::NfsServer () {
+NfsServer::NfsServer (Vfs *vfsp) {
     SVCXPRT *transp;
 
     pmap_unset(NFS4_PROGRAM, NFS_V4);
@@ -47,10 +51,14 @@ NfsServer::NfsServer () {
     struct timeval tv;
     gettimeofday(&tv, nullptr);
     _bootTime = tv;
+
+    _vfsp = vfsp;
 }
 
 void NfsServer::start() {
     printf("Sun RPC Server running...\n");
+    _vfsp->root(&_vfsRootp);
+    _vfsp->getFsAttr(&_fsAttrs);
     svc_run(); 
     printf("svc_run returned\n");
 }
@@ -87,13 +95,13 @@ NfsServer::copyToFattr( fattr4 *outp,
                         Vn *vp,
                         Vn::Attr *attrsp,
                         Vfs::FsAttr *fsAttrsp) {
-    static const uint32_t attrMaskWords = 3;
     static const uint32_t attrListBytes = 2048;
     uint32_t i;
     uint32_t ltemp;
     uint64_t lltemp;
     uint32_t *outMaskp;
     uint32_t *supMaskp; // where we generate the supported mask, if requested
+    uint32_t dummySup[_attrMaskWords];
     ////////////////////////////////////////////////////////////////
     // CHANGE THIS COMMENT IF WE SUPPORT MORE ATTRIBUTES!
     ////////////////////////////////////////////////////////////////
@@ -149,16 +157,20 @@ NfsServer::copyToFattr( fattr4 *outp,
     outMaskp = bitmapDatap;
 
     // generate supported attributes
-    supMaskp[0] |= (1<<0);
     if (inMaskp[0] & (1<<0)) {
         outMaskp[0] |= (1<<0);
-        ltemp = htonl(attrMaskWords);
+        ltemp = htonl(_attrMaskWords);
         memcpy(ap, &ltemp, sizeof(ltemp));
 
         // Remember where to patch the returned attributes
         ap += sizeof(ltemp);
         supMaskp = (uint32_t *) ap;
-        ap += attrMaskWords * sizeof(uint32_t);
+        ap += _attrMaskWords * sizeof(uint32_t);
+        supMaskp[0] |= (1<<0);  // do it here since supMask is set above
+    } else {
+        // setup a dummy supMask; easier than checking each time if
+        // supMaskp is null
+        supMaskp = dummySup;
     }
 
     // file type
@@ -190,10 +202,10 @@ NfsServer::copyToFattr( fattr4 *outp,
     supMaskp[0] |= (1<<3);
     if (inMaskp[0] & (1<<3)) {
         outMaskp[0] |= (1<<3);
-        ltemp = (attrsp->ctime.secs << 32) | attrsp->ctime.nsecs;
-        ltemp = htonl(ltemp);
-        memcpy(ap, &ltemp, sizeof(uint32_t));
-        ap += sizeof(uint32_t);
+        lltemp = (attrsp->ctime.secs << 32) | attrsp->ctime.nsecs;
+        lltemp = htonll(lltemp);
+        memcpy(ap, &lltemp, sizeof(uint64_t));
+        ap += sizeof(uint64_t);
     }
 
     // file size
@@ -313,6 +325,7 @@ NfsServer::copyToFattr( fattr4 *outp,
         outMaskp[0] |= (1<<19);
         ltemp = htonl(vp->_fh.length());
         memcpy(ap, &ltemp, sizeof(ltemp));
+        ltemp = vp->_fh.length();       // back to host order
         ap += sizeof(ltemp);
         memcpy(ap, vp->_fh.data(), ltemp);
         ap += ((ltemp - 1) | 3) + 1;       // padded length
@@ -394,10 +407,10 @@ NfsServer::copyToFattr( fattr4 *outp,
     if (inMaskp[1] & (1<<(36-32))) {
         outMaskp[1] |= (1<<(36-32));
         std::string tname = translate_uid(attrsp->uid);
-        ltemp = tname.length();
-        ltemp = htonl(ltemp);
+        ltemp = htonl(tname.length());
         memcpy(ap, &ltemp, sizeof(ltemp));
         ap += sizeof(ltemp);
+        ltemp = tname.length(); // host order
         memcpy(ap, tname.data(), ltemp);
         ltemp = ((ltemp - 1) | 3) + 1;
         ap += ltemp;
@@ -407,10 +420,10 @@ NfsServer::copyToFattr( fattr4 *outp,
     if (inMaskp[1] & (1<<(37-32))) {
         outMaskp[1] |= (1<<(37-32));
         std::string tname = translate_gid(attrsp->gid);
-        ltemp = tname.length();
-        ltemp = htonl(ltemp);
+        ltemp = htonl(tname.length());
         memcpy(ap, &ltemp, sizeof(ltemp));
         ap += sizeof(ltemp);
+        ltemp = tname.length();
         memcpy(ap, tname.data(), ltemp);
         ltemp = ((ltemp - 1) | 3) + 1;
         ap += ltemp;
@@ -420,9 +433,9 @@ NfsServer::copyToFattr( fattr4 *outp,
     supMaskp[1] |= (1<<(47-32));
     if (inMaskp[1] & (1<<(47-32))) {
         outMaskp[1] |= (1<<(47-32));
-        ltemp = htonl(attrsp->atime.secs);
-        memcpy(ap, &ltemp, sizeof(ltemp));
-        ap += sizeof(ltemp);
+        lltemp = htonll(attrsp->atime.secs);
+        memcpy(ap, &lltemp, sizeof(lltemp));
+        ap += sizeof(lltemp);
         ltemp = htonl(attrsp->atime.nsecs);
         memcpy(ap, &ltemp, sizeof(ltemp));
         ap += sizeof(ltemp);
@@ -432,9 +445,9 @@ NfsServer::copyToFattr( fattr4 *outp,
     supMaskp[1] |= (1<<(53-32));
     if (inMaskp[1] & (1<<(53-32))) {
         outMaskp[1] |= (1<<(53-32));
-        ltemp = htonl(attrsp->mtime.secs);
-        memcpy(ap, &ltemp, sizeof(ltemp));
-        ap += sizeof(ltemp);
+        lltemp = htonll(attrsp->mtime.secs);
+        memcpy(ap, &lltemp, sizeof(lltemp));
+        ap += sizeof(lltemp);
         ltemp = htonl(attrsp->mtime.nsecs);
         memcpy(ap, &ltemp, sizeof(ltemp));
         ap += sizeof(ltemp);
@@ -452,6 +465,7 @@ NfsServer::copyToFattr( fattr4 *outp,
     // fill in fattr fields
     outp->attr_vals.attrlist4_len = (ap-attrListDatap);
     assert(outp->attr_vals.attrlist4_len <= attrListBytes);
+    outp->attr_vals.attrlist4_val = attrListDatap;
 }
 
 int32_t
@@ -461,9 +475,31 @@ NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
     subResp = &resp->nfs_resop4_u.opgetattr;
     subResp->status = NFS4_OK;
     GETATTR4resok *okResp = &subResp->GETATTR4res_u.resok4;
-    uint32_t *tp;
-    uint32_t *vp;
-    uint32_t attrValSize = 0;
+
+    int32_t code;
+    uint32_t i;
+    uint32_t inMask[_attrMaskWords];
+    for(i=0;i<_attrMaskWords;i++) {
+        if (i < arg->attr_request.bitmap4_len)
+            inMask[i] = arg->attr_request.bitmap4_val[i];
+        else
+            inMask[i] = 0;
+    }
+
+    std::string currentFh = std::string(compStatep->_currentFh.nfs_fh4_val,
+                                        compStatep->_currentFh.nfs_fh4_len);
+    Vn *vp;
+    Vn::Attr attrs;
+    _vfsp->vget(currentFh, &vp);
+
+    code = vp->getAttr(&attrs);
+    vp->release();
+    if (code != 0) {
+        subResp->status = NFS4ERR_INVAL;
+        return NFS4ERR_INVAL;
+    }
+
+    copyToFattr(&okResp->obj_attributes, inMask, vp, &attrs, &_fsAttrs);
 
     printf("getattr attrlen=%d %x.%x.%x.%x\n",
            arg->attr_request.bitmap4_len,
@@ -471,51 +507,6 @@ NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
            arg->attr_request.bitmap4_val[1],
            arg->attr_request.bitmap4_val[2],
            arg->attr_request.bitmap4_val[3]);
-
-    // return the subset of this stuff that we feel like returning
-    okResp->obj_attributes.attrmask.bitmap4_len = 3;
-    okResp->obj_attributes.attrmask.bitmap4_val = tp = (uint32_t *) malloc(12);
-    tp[0] = 0;
-    tp[1] = 0;
-    tp[2] = 0;
-
-    // prepare target of homegrown xdr of attributes
-    okResp->obj_attributes.attr_vals.attrlist4_len = 0;
-    vp  = (uint32_t *) malloc(100);
-    okResp->obj_attributes.attr_vals.attrlist4_val = (char *) vp;
-
-    tp[0] |= (1<<1);    // type
-    *vp++ = htonl(NF4DIR);
-    attrValSize += 4;
-
-    tp[0] |= (1<<4);    // size;
-    *vp++ = htonl(0);
-    *vp++ = htonl(8192);
-    attrValSize += 8;
-
-    tp[0] |= (1<<8);    // fsid
-    *vp++ = htonl(0);   // major dev
-    *vp++ = htonl(23);
-    *vp++ = htonl(0);   // minor dev
-    *vp++ = htonl(1);
-    attrValSize += 16;
-
-    tp[0] |= (1<<19);    // fh
-    *vp++ = htonl(4);
-    memcpy(vp, "ROOT", 4);
-    vp++;
-    attrValSize += 8;
-
-    tp[0] |= (1<<20);   // file id
-    *vp++ = htonl(0);
-    *vp++ = htonl(1027);
-    attrValSize += 8;
-
-    tp[1] |= (1<<1);    // mode in slot 33
-    *vp++ = htonl(0775);
-    attrValSize += 4;
-
-    okResp->obj_attributes.attr_vals.attrlist4_len = attrValSize;
 
     return 0;
 }
@@ -676,17 +667,16 @@ NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *comp
 
 int32_t
 NfsServer::opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
-    // TODO: define Vn layer
     char *tp;
+    uint32_t length;
 
-    compStatep->_currentFh.nfs_fh4_len = 4;
+    compStatep->_currentFh.nfs_fh4_len = length = _vfsRootp->_fh.length();
     compStatep->_currentFh.nfs_fh4_val = tp = (char *) malloc(4);
-    strncpy(tp, "ROOT", 4);
+    memcpy(tp, _vfsRootp->_fh.data(), length);
 
     PUTROOTFH4res *subResp;
-    subResp = &resp->nfs_resop4_u.opputrootfh;
-    subResp->status = NFS4_OK;
 
+    subResp = &resp->nfs_resop4_u.opputrootfh;
     subResp->status = NFS4_OK;
 
     return 0;

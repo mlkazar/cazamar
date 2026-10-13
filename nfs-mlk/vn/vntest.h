@@ -7,14 +7,13 @@ class VfsTest;
 
 class VnTest : public Vn {
 public:
-    VfsTest *_vfsp;
     Attr _attrs;
 
     int32_t getAttr(Attr *attrp);
 
-    VnTest(VfsTest *vfsp) {
-        _vfsp = vfsp;
-    };
+    VnTest(VfsTest *vfsp);
+
+    void release() {};
 };
 
 class VfsTest : public Vfs {
@@ -26,9 +25,9 @@ public:
 
     int32_t getFsAttr(FsAttr *attrp);
 
-    VfsTest() {
-        
-    }
+    int32_t vget(std::string fh, Vn **vpp);
+
+    VfsTest();
 };
 
 #endif // _VNTEST_H_ENV__

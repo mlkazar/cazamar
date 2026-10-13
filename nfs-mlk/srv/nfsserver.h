@@ -12,6 +12,8 @@
 class NfsServer {
 public:
     static const uint32_t _maxForeSlots = 16;
+    static const uint32_t _attrMaskWords = 3;
+
     typedef std::array<char, NFS4_SESSIONID_SIZE> StdSessionId4;
     class Client {
         friend class NfsServer;
@@ -60,7 +62,11 @@ public:
 
     struct timeval _bootTime;
 
-    NfsServer();
+    Vfs *_vfsp;
+    Vn *_vfsRootp;
+    Vfs::FsAttr _fsAttrs;
+
+    NfsServer(Vfs *vfsp);
 
     void start();
 

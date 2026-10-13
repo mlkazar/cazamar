@@ -7,12 +7,16 @@
 
 #include "nfsserver.h"
 #include "nfsv41.h"
+#include "vntest.h"
 
 int
 main(int argc, char **argv) {
     NfsServer *serverp;
+    VfsTest *vfsp;
 
-    serverp = new NfsServer();
+    vfsp = new VfsTest();
+
+    serverp = new NfsServer(vfsp);
     serverp->start();
 
     return 0;

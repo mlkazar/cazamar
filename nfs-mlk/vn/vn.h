@@ -5,6 +5,8 @@
 
 #include <inttypes.h>
 
+class Vfs;
+
 // per file attributes
 class Vn {
 public:
@@ -58,9 +60,12 @@ public:
     };
 
     std::string _fh;            // no null termination
+    Vfs *_vfsp;
 
     // whole file system attributes that aren't obvious
     virtual int32_t getAttr(Attr *attrp) = 0;
+
+    virtual void release() = 0;
 };
 
 class Vfs {
@@ -87,6 +92,8 @@ public:
         uint64_t maxReadBytes;       //(max bytes in a read)
         uint64_t maxWriteBytes;      //(max bytes in a read)
     };
+
+    virtual int32_t vget(std::string fh, Vn **vpp) = 0;
 
     virtual int32_t root(Vn **rootpp) = 0;
 
