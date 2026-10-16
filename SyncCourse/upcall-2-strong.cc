@@ -11,8 +11,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-// ****Modify this to use strong references to reader from callbacks
-
 // This version has internal locking, and tries to stop upcalls from
 // the Selector class, but still has races where a pending event gets
 // delivered to a deleted object.  It doesn't make use of reference
@@ -142,12 +140,15 @@ public:
     uint64_t _lastPrinted;
     Selector *_selp;
     Selector::FdHandle _monitorHandle;
+    uint32_t *_counterp;
 
-    Reader(int fd, Selector *selp) {
+    Reader(int fd, Selector *selp, uint32_t *counterp) {
         int32_t code;
         _magic = kMagic;
         _fd = fd;
         _selp = selp;
+        _counterp = counterp;
+        (*counterp)++;
     }
 
     void init() {
@@ -163,15 +164,15 @@ public:
         _callbacks = 0;
         _lastPrinted = 0;
         
-        std::weak_ptr<Reader> weak_this(shared_from_this());
-        _monitorHandle = _selp->monitor(_fd, [weak_this](int _fd) {
+        std::shared_ptr<Reader> strong_this(shared_from_this());
+        _monitorHandle = _selp->monitor(_fd, [strong_this](int _fd) {
             char tbuffer[64];
             int32_t code;
             uint32_t spins;
 
             // turn into a strong reference, and detect if the object
             // (us) was actually already deleted.
-            std::shared_ptr<Reader> moi = weak_this.lock();
+            std::shared_ptr<Reader> moi = strong_this;
             if (moi == nullptr)
                 return;
 
@@ -186,22 +187,22 @@ public:
 
                 // sometimes we can't keep up with the writer, so we spin
                 // here forever.  But we want to print out.
-                if (++spins > 1000)
+                if (++spins > 10000000)
                     break;
             }
 
             uint64_t now = time(0);;
             if (now > moi->_lastPrinted + 4) {
-                printf("fd=%d: %lld bytes in %lld calls\n",
-                       moi->_fd, moi->_bytesRead, moi->_callbacks);
+                printf("fd=%d: %lld bytes in %lld calls (objs=%d)\n",
+                       moi->_fd, moi->_bytesRead, moi->_callbacks, *(moi->_counterp));
                 moi->_lastPrinted = now;
             }});
     }
 
-    static std::shared_ptr<Reader> create(int fd, Selector *selp) {
+    static std::shared_ptr<Reader> create(int fd, Selector *selp, uint32_t *counterp) {
         // we have to split creation into two parts so that we have a good shared
         // pointer before we try (in init) to make a weak pointer from it.
-        std::shared_ptr<Reader> p = std::make_shared<Reader>(fd, selp);
+        std::shared_ptr<Reader> p = std::make_shared<Reader>(fd, selp, counterp);
         p->init();
         return p;
     }
@@ -219,6 +220,7 @@ public:
     }
 
     ~Reader() {
+        (*_counterp)--;
         stop();
         _magic = kMagic+1;
     }
@@ -273,10 +275,12 @@ public:
     std::shared_ptr<Reader> _readers[_maxIOs];
     Writer *_writers[_maxIOs];
     std::thread *_writerThreadp[_maxIOs];
+    uint32_t _counter;
 
     Tester(Selector *selp) {
         uint32_t i;
         _selp = selp;
+        _counter = 0;
     }
 
     void start(bool doDeletes) {
@@ -286,7 +290,7 @@ public:
         
         for(i=0;i<_maxIOs;i++) {
             pipe(pipePair);
-            _readers[i] = Reader::create(pipePair[0], _selp);
+            _readers[i] = Reader::create(pipePair[0], _selp, &_counter);
 
             _writers[i] = writerp = new Writer(pipePair[1]);
             _writerThreadp[i]= new std::thread([this, writerp]() {
@@ -313,7 +317,7 @@ public:
 
             // and recreate
             pipe(pipePair);
-            _readers[ix] = Reader::create(pipePair[0], _selp);
+            _readers[ix] = Reader::create(pipePair[0], _selp, &_counter);
             writerp = new Writer(pipePair[1]);
             _writers[ix] = writerp;
             _writerThreadp[ix] = new std::thread([this, writerp]() {
