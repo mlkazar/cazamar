@@ -18,6 +18,16 @@
 
 typedef std::function<void(int)> FdCallback;
 
+class SharedState {
+public:
+    std::mutex _demo;
+    uint32_t _counter;
+
+    SharedState() {
+        _counter = 0;
+    }
+};
+
 class Selector {
 public:
     class FdInfo {
@@ -140,16 +150,18 @@ public:
     uint64_t _lastPrinted;
     Selector *_selp;
     Selector::FdHandle _monitorHandle;
-    uint32_t *_counterp;
+    SharedState *_sharedp;
     std::mutex _demo;
 
-    Reader(int fd, Selector *selp, uint32_t *counterp) {
+    Reader(int fd, Selector *selp, SharedState *sharedp) {
         int32_t code;
         _magic = kMagic;
         _fd = fd;
         _selp = selp;
-        _counterp = counterp;
-        (*counterp)++;
+        _sharedp = sharedp;
+        sharedp->_demo.lock();
+        sharedp->_counter++;
+        sharedp->_demo.unlock();
     }
 
     void init() {
@@ -178,6 +190,7 @@ public:
                 return;
 
             assert(moi->_magic == kMagic);
+            moi->_sharedp->_demo.lock();
             spins = 0;
             while (true) {
                 code = read(moi->_fd, tbuffer, sizeof(tbuffer));
@@ -188,22 +201,25 @@ public:
 
                 // sometimes we can't keep up with the writer, so we spin
                 // here forever.  But we want to print out.
-                if (++spins > 10000000)
+                if (++spins > 1000000)
                     break;
             }
+
+            uint32_t stableCounter = moi->_sharedp->_counter;
+            moi->_sharedp->_demo.unlock();
 
             uint64_t now = time(0);;
             if (now > moi->_lastPrinted + 4) {
                 printf("fd=%d: %lld bytes in %lld calls (objs=%d)\n",
-                       moi->_fd, moi->_bytesRead, moi->_callbacks, *(moi->_counterp));
+                       moi->_fd, moi->_bytesRead, moi->_callbacks, stableCounter);
                 moi->_lastPrinted = now;
             }});
     }
 
-    static std::shared_ptr<Reader> create(int fd, Selector *selp, uint32_t *counterp) {
+    static std::shared_ptr<Reader> create(int fd, Selector *selp, SharedState *sharedp) {
         // we have to split creation into two parts so that we have a good shared
         // pointer before we try (in init) to make a weak pointer from it.
-        std::shared_ptr<Reader> p = std::make_shared<Reader>(fd, selp, counterp);
+        std::shared_ptr<Reader> p = std::make_shared<Reader>(fd, selp, sharedp);
         p->init();
         return p;
     }
@@ -221,9 +237,11 @@ public:
     }
 
     ~Reader() {
-        (*_counterp)--;
-        stop();
-        _magic = kMagic+1;
+        _sharedp->_demo.lock();
+        (_sharedp->_counter)--;
+         stop();
+         _magic = kMagic+1;
+        _sharedp->_demo.unlock();
     }
 };
 
@@ -276,12 +294,11 @@ public:
     std::shared_ptr<Reader> _readers[_maxIOs];
     Writer *_writers[_maxIOs];
     std::thread *_writerThreadp[_maxIOs];
-    uint32_t _counter;
+    SharedState _shared;
 
     Tester(Selector *selp) {
         uint32_t i;
         _selp = selp;
-        _counter = 0;
     }
 
     void start(bool doDeletes) {
@@ -291,7 +308,7 @@ public:
         
         for(i=0;i<_maxIOs;i++) {
             pipe(pipePair);
-            _readers[i] = Reader::create(pipePair[0], _selp, &_counter);
+            _readers[i] = Reader::create(pipePair[0], _selp, &_shared);
 
             _writers[i] = writerp = new Writer(pipePair[1]);
             _writerThreadp[i]= new std::thread([this, writerp]() {
@@ -318,7 +335,7 @@ public:
 
             // and recreate
             pipe(pipePair);
-            _readers[ix] = Reader::create(pipePair[0], _selp, &_counter);
+            _readers[ix] = Reader::create(pipePair[0], _selp, &_shared);
             writerp = new Writer(pipePair[1]);
             _writers[ix] = writerp;
             _writerThreadp[ix] = new std::thread([this, writerp]() {
