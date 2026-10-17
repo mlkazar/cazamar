@@ -22,9 +22,11 @@ class SharedState {
 public:
     std::mutex _demo;
     uint32_t _counter;
+    uint32_t _races;
 
     SharedState() {
         _counter = 0;
+        _races = 0;
     }
 };
 
@@ -151,7 +153,7 @@ public:
     Selector *_selp;
     Selector::FdHandle _monitorHandle;
     SharedState *_sharedp;
-    std::mutex _demo;
+    std::mutex _readerLock;
 
     Reader(int fd, Selector *selp, SharedState *sharedp) {
         int32_t code;
@@ -178,7 +180,7 @@ public:
         _lastPrinted = 0;
         
         std::weak_ptr<Reader> weak_this(shared_from_this());
-        _monitorHandle = _selp->monitor(_fd, [weak_this](int _fd) {
+        _monitorHandle = _selp->monitor(_fd, [weak_this](int fd) {
             char tbuffer[64];
             int32_t code;
             uint32_t spins;
@@ -189,8 +191,13 @@ public:
             if (moi == nullptr)
                 return;
 
+            std::lock_guard<std::mutex> guard(moi->_readerLock);
+            if (moi->_fd < 0) {
+                moi->_sharedp->_races++;
+                return;
+            }
+
             assert(moi->_magic == kMagic);
-            moi->_sharedp->_demo.lock();
             spins = 0;
             while (true) {
                 code = read(moi->_fd, tbuffer, sizeof(tbuffer));
@@ -205,13 +212,15 @@ public:
                     break;
             }
 
+            moi->_sharedp->_demo.lock();
             uint32_t stableCounter = moi->_sharedp->_counter;
             moi->_sharedp->_demo.unlock();
 
             uint64_t now = time(0);;
             if (now > moi->_lastPrinted + 4) {
-                printf("fd=%d: %lld bytes in %lld calls (objs=%d)\n",
-                       moi->_fd, moi->_bytesRead, moi->_callbacks, stableCounter);
+                printf("fd=%d: %lld bytes in %lld calls (objs=%d, races=%d)\n",
+                       moi->_fd, moi->_bytesRead, moi->_callbacks, stableCounter,
+                       moi->_sharedp->_races);
                 moi->_lastPrinted = now;
             }});
     }
@@ -225,6 +234,8 @@ public:
     }
 
     void stop() {
+        std::lock_guard<std::mutex> guard(_readerLock);
+
         if (_fd >= 0) {
             close(_fd);
             _fd = -1;
@@ -239,9 +250,10 @@ public:
     ~Reader() {
         _sharedp->_demo.lock();
         (_sharedp->_counter)--;
+        _sharedp->_demo.unlock();
+
          stop();
          _magic = kMagic+1;
-        _sharedp->_demo.unlock();
     }
 };
 

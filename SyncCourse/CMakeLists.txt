@@ -28,3 +28,12 @@ target_sources(upcall3
   PRIVATE
     upcall-3-weak.cc
 )
+
+################################
+# Define upcall4
+################################
+add_executable(upcall4)
+target_sources(upcall4
+  PRIVATE
+    upcall-4-flags.cc
+)
