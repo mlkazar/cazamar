@@ -85,6 +85,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (bool) tvOk2Quit;
 
+- (void) usePlayingStation: (SignStation *)station;
+
 @end
 
 NS_ASSUME_NONNULL_END

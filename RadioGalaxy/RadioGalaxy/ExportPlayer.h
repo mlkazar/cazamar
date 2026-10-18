@@ -1,6 +1,8 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
+
+#import "SignView.h"
 #import "ViewController.h"
 
 @interface ExportPlayerEntry : NSObject
@@ -19,7 +21,8 @@
 @interface ExportPlayer : UIView<TopViewInt, UITableViewDelegate, UITableViewDataSource,
 				     AVAudioPlayerDelegate>
 
-- (ExportPlayer *) initWithViewCont: (ViewController *) vc;
+- (ExportPlayer *) initWithViewCont: (ViewController *) vc
+			   signView: (SignView *) signView;
 
 - (void) tvActivate;
 

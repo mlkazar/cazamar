@@ -5,6 +5,7 @@
 #import "MFANIconButton.h"
 #import "MFANWarn.h"
 #import "SignView.h"
+#import "SongPlayer.h"
 #import "ViewController.h"
 #import "MarqueeLabel.h"
 
@@ -77,6 +78,7 @@
     CGRect labelFrame;
     CGRect buttonFrame;
     CGRect remButtonFrame;
+    CGRect songsButtonFrame;
 
     self.frame = vc.activeFrame;
     frame = vc.activeFrame;
@@ -350,10 +352,27 @@
 		       withAction: @selector(editPressed:withData:)];
 	[self addSubview: recordButton];
 
+	// Songs button
+	songsButtonFrame.origin.x = frame.size.width / 5;
+	songsButtonFrame.size.width = frame.size.width * 3 / 5;
+	songsButtonFrame.origin.y = buttonFrame.origin.y + labelHeight + extraVerticalSpace;
+	songsButtonFrame.size.height = labelHeight;
+
+	MFANCoreButton *songsButton;
+	songsButton = [[MFANCoreButton alloc] initWithFrame: songsButtonFrame
+						      title: @"Border"
+						      color: [UIColor blackColor]
+					    backgroundColor: labelColor];
+	[songsButton setFillColor: labelColor];
+	[songsButton setClearText: @"Songs"];
+	[songsButton addCallback: self
+		      withAction: @selector(songsPressed:withData:)];
+	[self addSubview: songsButton];
+
 	// Remove station button
 	remButtonFrame.origin.x = frame.size.width / 5;
 	remButtonFrame.size.width = frame.size.width * 3 / 5;
-	remButtonFrame.origin.y = buttonFrame.origin.y + labelHeight + extraVerticalSpace;
+	remButtonFrame.origin.y = songsButtonFrame.origin.y + labelHeight + extraVerticalSpace;
 	remButtonFrame.size.height = labelHeight;
 
 	MFANCoreButton *remButton;
@@ -417,6 +436,13 @@
 
 - (void) editPressed: (id) junk1 withData: (id) junk2 {
     [_vc pushTopView: _editStation];
+}
+
+- (void) songsPressed: (id) junk1 withData: (id) junk2 {
+	(void) [[SongPlayer alloc] initWithStation: _station
+					    buffer: _station.recordingBuffer
+					  signView: _signView
+					  viewCont: _vc];
 }
 
 - (void) removePressed: (id) junk1 withData: (id) junk2 {

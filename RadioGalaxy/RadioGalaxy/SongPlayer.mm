@@ -291,6 +291,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 		if (entry.playing) {
 		    [self->_signView stopRadioForceReset: false fromCarPlay: false];
 		} else {
+		    [self->_signView usePlayingStation: self->_station];
 		    [self->_signView seek: entry.start relative: false];
 		}
 		complete(true);
@@ -335,6 +336,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 }
 
 - (void) morePressed: (id) junk {
+    [_signView displayAppOptions];
 }
 
 - (UITableViewCell *) tableView: (UITableView *) tview cellForRowAtIndexPath: (NSIndexPath *)path

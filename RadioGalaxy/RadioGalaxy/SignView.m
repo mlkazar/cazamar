@@ -1167,7 +1167,8 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     action = [UIAlertAction actionWithTitle:@"Play recordings"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
-	    (void) [[ExportPlayer alloc] initWithViewCont: self->_vc];
+	    (void) [[ExportPlayer alloc] initWithViewCont: self->_vc
+						 signView: self];
 	}];
     [alert addAction: action];
 
@@ -1864,6 +1865,11 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     }
 
     return false;
+}
+
+// if we call it set, we have just written a setter
+- (void) usePlayingStation: (SignStation *)station {
+    _playingStation = station;
 }
 
 NS_ASSUME_NONNULL_END

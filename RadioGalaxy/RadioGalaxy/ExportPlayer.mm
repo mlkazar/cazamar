@@ -5,6 +5,7 @@
 #import "MarqueeLabel.h"
 #import "MFANStreamPlayer.h"
 #import "Settings.h"
+#import "SignView.h"
 
 #import "ExportPlayer.h"
 
@@ -41,6 +42,7 @@
     UITableView *_fileTableView;
     RadioHistory *_history;
     ViewController *_vc;
+    SignView *_signView;
     NSMutableDictionary *_nowPlayingInfo;
     AudioSlider *_sliderView;
     Settings *_settings;
@@ -60,7 +62,8 @@
     return [NSString stringWithFormat: @"%@/%@", _docDirName, fileName];
 }
 
-- (ExportPlayer *) initWithViewCont: (ViewController *) vc {
+- (ExportPlayer *) initWithViewCont: (ViewController *) vc
+			   signView: (SignView *) signView {
     self.frame = vc.activeFrame;
     CGRect frame = vc.activeFrame;
 
@@ -74,6 +77,7 @@
 	      screenFrame.origin.x, screenFrame.origin.y);
 
 	_vc = vc;
+	_signView = signView;
 	_isPlaying = false;
 	_isPaused = false;
 	_selectedRow = -1;
@@ -523,6 +527,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 }
 
 - (void) morePressed: (id) junk {
+    [_signView displayAppOptions];
 }
 
 - (UITableViewCell *) tableView: (UITableView *) tview cellForRowAtIndexPath: (NSIndexPath *)path
