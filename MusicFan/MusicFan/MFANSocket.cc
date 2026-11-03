@@ -507,6 +507,12 @@ MFANSocket::setup()
     writeContext.release = NULL;
     writeContext.copyDescription = NULL;
 
+    if (_secure) {
+        CFReadStreamSetProperty(_readStreamCF,
+                                kCFStreamPropertySocketSecurityLevel, 
+                                kCFStreamSocketSecurityLevelNegotiatedSSL);
+    }
+
     result = CFReadStreamSetClient( _readStreamCF,
                                     ( kCFStreamEventHasBytesAvailable |
                                       kCFStreamEventErrorOccurred |
@@ -560,6 +566,10 @@ MFANSocket::init(char *namep, uint32_t defaultPort)
     setup();
 }
 
+MFANSocket::MFANSocket() {
+    _secure = false;
+}
+
 MFANSocket::~MFANSocket()
 {
     delete _inp;
@@ -576,10 +586,10 @@ MFANSocket::setTimeoutMs(uint32_t ms)
 BufGen *
 MFANSocketFactory::allocate(int secure)
 {
+    MFANSocket *socketp = new MFANSocket();
     if (secure)
-        return NULL;
-    else
-        return new MFANSocket();
+        socketp->setSecure();
+    return socketp;
 }
 
 void

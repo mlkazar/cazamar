@@ -44,11 +44,7 @@ RadioStream::scanForLocationHeader( Rst::Call *callp, const char *hostNamep, std
                 *resultp = hdrp->_value;
             }
             else if (strncmp(hdrp->_value.c_str(), "https:", 6) == 0) {
-                // *resultp = hdrp->_value;
-                /* HTTPS unsupported at present */
-                printf("radiostream: https unsupported in '%s'\n", hdrp->_value.c_str());
-                resultp->erase();
-                return -1;
+                *resultp = hdrp->_value;
             }
             else {
                 /* relative */
@@ -481,11 +477,12 @@ RadioStream::init( BufGenFactory *factoryp,
     std::string path;
     std::string url;
     int32_t loops;
+    int isSecure;
 
     /* parse incoming string */
     url = urlp;
     _defaultPort = 80;
-    Rst::splitUrl(url, &hostName, &path, &_defaultPort, NULL, /* forceInsecure */ 1);
+    Rst::splitUrl(url, &hostName, &path, &_defaultPort, &isSecure);
     hostNamep = hostName.c_str();
     pathp = path.c_str();
     
@@ -511,7 +508,7 @@ RadioStream::init( BufGenFactory *factoryp,
             break;
         }
 
-        _bufSocketp = factoryp->allocate(0);
+        _bufSocketp = factoryp->allocate(isSecure);
         _bufSocketp->init((char *) hostNamep, _defaultPort);
         _bufSocketp->setTimeoutMs(_baseTimeoutMs);
         if ((code = _bufSocketp->getError()) != 0) {
@@ -587,7 +584,7 @@ RadioStream::init( BufGenFactory *factoryp,
         playlistUrlp = &_playlistHost;
         if ( playlistUrlp->length() > 0) {
             /* playlist received and directs us to a new host */
-            code = Rst::splitUrl(*playlistUrlp, &hostName, &path, &_defaultPort);
+            code = Rst::splitUrl(*playlistUrlp, &hostName, &path, &_defaultPort, &isSecure);
             cleanup();
             if (code) {
                 break;

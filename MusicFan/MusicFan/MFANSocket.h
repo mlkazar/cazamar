@@ -17,6 +17,7 @@ class MFANSocket : public BufGen {
     uint8_t _closed;
     uint8_t _connected;
     uint8_t _verbose;
+    uint8_t _secure;
     uint8_t _eof;
     OspMBuf *_inp;
     OspMBuf *_outp;
@@ -37,6 +38,10 @@ class MFANSocket : public BufGen {
     uint32_t _writersWaiting;
 
     void init(struct sockaddr *sockAddrp, int socklen);
+
+    void setSecure() {
+        _secure = true;
+    }
 
     int32_t listen();
 
@@ -93,6 +98,8 @@ class MFANSocket : public BufGen {
     void releaseNL();
 
     void holdNL();
+
+    MFANSocket();
 
     ~MFANSocket();
 };
