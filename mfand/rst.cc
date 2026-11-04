@@ -252,7 +252,11 @@ Rst::Common::sendData()
         code = socketp->write("\r\n", 2);       /* CRLF at end of transfer */
         if (code != 2)
             return RST_ERR_IO;
-        socketp->flush();
+
+        code = socketp->flush();
+        if (code != 0)
+            return RST_ERR_IO;
+
         return 0;
     }
     else {
@@ -278,7 +282,11 @@ Rst::Common::sendData()
             }
             _sawDataRecently = 1;
         }
-        socketp->flush();
+
+        code = socketp->flush();
+        if (code != 0)
+            return RST_ERR_IO;
+
         osp_assert(remaining == 0);
         return 0;
     }
