@@ -30,12 +30,7 @@ class MFANSocket : public BufGen {
      * only have one read or write in progress.
      */
     pthread_cond_t _cond;
-    uint8_t _safeToRead;
-    uint8_t _safeToWrite;
-    uint8_t _readInProgress;
-    uint8_t _writeInProgress;
-    uint32_t _readersWaiting;
-    uint32_t _writersWaiting;
+    uint32_t _waiters;
 
     void init(struct sockaddr *sockAddrp, int socklen);
 
@@ -67,7 +62,7 @@ class MFANSocket : public BufGen {
 
     int32_t putc(const char tbuffer);
 
-    int32_t condWait(pthread_cond_t *condp, pthread_mutex_t *mutexp);
+    int32_t condWait(pthread_cond_t *condp, pthread_mutex_t *mutexp, struct timeval *tv);
 
     int32_t write(const char *tbuffer, int32_t acount);
 

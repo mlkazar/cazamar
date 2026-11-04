@@ -46,16 +46,15 @@ MFANSocket::accept(BufGen **remotepp)
 
 /* return 0 on successful wait, -1 if base time exceeded */
 int32_t
-MFANSocket::condWait(pthread_cond_t *condp, pthread_mutex_t *mutexp)
+MFANSocket::condWait(pthread_cond_t *condp, pthread_mutex_t *mutexp, struct timeval *startTvp)
 {
     int32_t code;
-    struct timeval tv;
     struct timespec endTs;
+    struct timeval tv;
 
     code = 0;
-    gettimeofday(&tv, NULL);
-    endTs.tv_sec = tv.tv_sec + _baseTimeoutMs / 1000;
-    endTs.tv_nsec = tv.tv_usec * 1000;
+    endTs.tv_sec = startTvp->tv_sec + _baseTimeoutMs / 1000;
+    endTs.tv_nsec = startTvp->tv_usec * 1000;
     while(1) {
         code = pthread_cond_timedwait(condp, mutexp, &endTs);
         if (code == 0)
@@ -67,34 +66,42 @@ MFANSocket::condWait(pthread_cond_t *condp, pthread_mutex_t *mutexp)
     }
 }
 
-/* return 0 if read bytes or at EOF, and a negative error
- * code if something went wrong with the socket.
+/* return 0 if read bytes or at EOF, and a negative error code if
+ * something went wrong with the socket.  Sets _error to 0 if EOF, or
+ * -1 if a failure occurred.
  */
 int32_t
 MFANSocket::fillFromSocket(OspMBuf *mbp)
 {
     int32_t code;
+    int safeToRead;
+    struct timeval tv;
 
     if (_closed)
-        return -1;
+        return (_error == 0? 0 : -1);
 
     osp_assert(mbp->dataBytes() == 0);
     mbp->reset();
 
     pthread_mutex_lock(&MFANSocket_mutex);
     code = 0;
-    _safeToRead = CFReadStreamHasBytesAvailable(_readStreamCF);
-    while (_closed == 0 && _error == 0 && (!_safeToRead || _readInProgress)) {
-        _readersWaiting++;
-        code = condWait(&_cond, &MFANSocket_mutex);
-        _readersWaiting--;
-        if (code != 0)
+    gettimeofday(&tv, nullptr);
+    while(true) {
+        safeToRead = CFReadStreamHasBytesAvailable(_readStreamCF);
+        if (safeToRead || _error != 0 || _closed)
             break;
+        _waiters++;
+        code = condWait(&_cond, &MFANSocket_mutex, &tv);
+        _waiters--;
+        if (code != 0) {
+            // timeout
+            _error = -1;
+            break;
+        }
     }
-    _readInProgress = 1;
     pthread_mutex_unlock(&MFANSocket_mutex);
 
-    if (_closed == 0 && code == 0 && _error == 0) {
+    if (_closed == 0 && safeToRead && _error == 0) {
         // we should only be here if we think there's data available.
         code = (int32_t) CFReadStreamRead(_readStreamCF,
                                           (UInt8 *) mbp->data(),
@@ -105,18 +112,22 @@ MFANSocket::fillFromSocket(OspMBuf *mbp)
     }
 
     pthread_mutex_lock(&MFANSocket_mutex);
-    _readInProgress = 0;
-    if (_readersWaiting > 0)
+    if (_waiters > 0)
         pthread_cond_broadcast(&_cond);
-    pthread_mutex_unlock(&MFANSocket_mutex);
 
     if (code <= 0) {
         if (code < 0)
-            _error = errno;
+            _error = -1;
+        else
+            _error = 0;         // EOF
         _closed = 1;
+        pthread_mutex_unlock(&MFANSocket_mutex);
+        if (_waiters > 0)
+            pthread_cond_broadcast(&_cond);
     }
     else {
         /* read some data */
+        pthread_mutex_unlock(&MFANSocket_mutex);
         if (_verbose) {
             printf("bufsocket: incoming data: %s\n", mbp->data());
         }
@@ -154,7 +165,8 @@ MFANSocket::disconnect()
 
     pthread_mutex_unlock(&MFANSocket_mutex);
 
-    pthread_cond_broadcast(&_cond);
+    if (_waiters > 0)
+        pthread_cond_broadcast(&_cond);
 }
 
 void
@@ -212,7 +224,7 @@ MFANSocket::getc()
     if (_inp->dataBytes() <= 0) {
         if (!_inp)
             _inp = OspMBuf::alloc(0);
-        code = fillFromSocket(_inp);
+        code = fillFromSocket(_inp);    // returns 0 or -1 on error
         if (code != 0)
             return code;
         if (_closed)
@@ -251,7 +263,7 @@ MFANSocket::read(char *bufferp, int32_t acount)
             /* buffer is empty, refill */
             code = fillFromSocket(_inp);
             if (code != 0)
-                return code;
+                return -1;
             if (_closed) {
                 /* read a number of bytes before hitting EOF */
                 return origCount - acount;
@@ -281,9 +293,7 @@ MFANSocket::readLine(char *bufferp, int32_t acount)
                 /* hit EOF, so terminate the buffer and return success if we've already
                  * received some data.  Otherwise, return ERR_EOF.
                  */
-                if (acount == origCount)
-                    return RST_ERR_EOF;
-                break;
+                return 0;
             }
             else {
                 /* got an error */
@@ -361,33 +371,45 @@ MFANSocket::flush()
 {
     int32_t code;
     int32_t nbytes;
+    struct timeval tv;
 
     nbytes = _outp->dataBytes();
 
-    pthread_mutex_lock(&MFANSocket_mutex);
     code = 0;
-    while (_error == 0 && (!_safeToWrite || _writeInProgress)) {
-        _writersWaiting++;
-        code = condWait(&_cond, &MFANSocket_mutex);
-        _writersWaiting--;
-        if (code != 0)
-            break;
-    }
-    _writeInProgress = 1;
-    pthread_mutex_unlock(&MFANSocket_mutex);
+    gettimeofday(&tv, nullptr);
 
-    if (code == 0) {
-        code = (int32_t) CFWriteStreamWrite( _writeStreamCF, (UInt8 *) _outp->data(), nbytes);
-    }
+    char *tp = _outp->data();
+    int32_t bytesLeft = nbytes;
 
     pthread_mutex_lock(&MFANSocket_mutex);
-    _writeInProgress = 0;
-    if (_writersWaiting > 0)
-        pthread_cond_broadcast(&_cond);
+
+    while(bytesLeft > 0) {
+        pthread_mutex_unlock(&MFANSocket_mutex);
+        if (CFWriteStreamCanAcceptBytes(_writeStreamCF))
+            code = (int32_t) CFWriteStreamWrite( _writeStreamCF, (UInt8 *) tp, nbytes);
+        else
+            code = 0;
+        pthread_mutex_lock(&MFANSocket_mutex);
+        if (code < 0 || _error != 0) {
+            _error = -1;
+            break;
+        }
+
+        if (code > 0) {
+            bytesLeft -= code;
+            tp += code;
+            continue;
+        }
+
+        // code is zero (no room in socket) and no error
+        _waiters++;
+        code = condWait(&_cond, &MFANSocket_mutex, &tv);
+        _waiters--;
+    }
+
     pthread_mutex_unlock(&MFANSocket_mutex);
 
-    if (code != nbytes) {
-        printf("- MFANSocket: write code is %d should be %d\n", code, nbytes);
+    if (_error != 0) {
         return -1;
     }
     else {
@@ -412,17 +434,15 @@ MFANSocket::readStreamCallback( CFReadStreamRef stream, CFStreamEventType ev, vo
 
     if ( (ev & kCFStreamEventHasBytesAvailable) ||
          (ev & kCFStreamEventEndEncountered)) {
-        socketp->_safeToRead = 1;
-        if (socketp->_readersWaiting) {
+        if (socketp->_waiters) {
             pthread_cond_broadcast(&socketp->_cond);
         }
     }
 
     if ( (ev & kCFStreamEventErrorOccurred)) {
         printf("- MFANSocket callback read error flags 0x%x\n", (int) ev);
-        socketp->_error = 1;
-        socketp->_safeToRead = 0;
-        if (socketp->_readersWaiting) {
+        socketp->_error = -1;
+        if (socketp->_waiters) {
             pthread_cond_broadcast(&socketp->_cond);
         }
     }
@@ -446,8 +466,7 @@ MFANSocket::writeStreamCallback( CFWriteStreamRef stream, CFStreamEventType ev, 
 
     if ( (ev & kCFStreamEventCanAcceptBytes) ||
          (ev & kCFStreamEventEndEncountered)) {
-        socketp->_safeToWrite = 1;
-        if (socketp->_writersWaiting) {
+        if (socketp->_waiters) {
             pthread_cond_broadcast(&socketp->_cond);
         }
     }
@@ -455,8 +474,7 @@ MFANSocket::writeStreamCallback( CFWriteStreamRef stream, CFStreamEventType ev, 
     if ( (ev & kCFStreamEventErrorOccurred)) {
         printf("- MFANSocket callback write error ev=0x%x\n", (int) ev);
         socketp->_error = -1;
-        socketp->_safeToWrite = 0;
-        if (socketp->_writersWaiting) {
+        if (socketp->_waiters) {
             pthread_cond_broadcast(&socketp->_cond);
         }
     }
@@ -471,12 +489,7 @@ MFANSocket::setup()
     CFStreamClientContext readContext;
     CFStreamClientContext writeContext;
 
-    _safeToRead = 0;
-    _safeToWrite = 0;
-    _readInProgress = 0;
-    _writeInProgress = 0;
-    _readersWaiting = 0;
-    _writersWaiting = 0;
+    _waiters = 0;
 
     _baseTimeoutMs = _defaultBaseTimeoutMs;
     _error = 0;
@@ -595,5 +608,6 @@ MFANSocketFactory::allocate(int secure)
 void
 MFANSocket::abort()
 {
+    _error = -1;
     disconnect();
 }
