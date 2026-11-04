@@ -478,6 +478,8 @@ RadioStream::init( BufGenFactory *factoryp,
     std::string url;
     int32_t loops;
     int isSecure;
+    const uint32_t kMaxRedirects = 6;
+    uint32_t redirects;
 
     /* parse incoming string */
     url = urlp;
@@ -492,6 +494,7 @@ RadioStream::init( BufGenFactory *factoryp,
     _streaming = 0;     /* have we started streaming audio yet */
     _bufSocketp = NULL;
     _callp = NULL;
+    redirects = 0;
 
     /* save parameters */
     _dataProcp = dataProcp;
@@ -565,6 +568,10 @@ RadioStream::init( BufGenFactory *factoryp,
         if (_callp->_httpError >= 301 && _callp->_httpError <= 302) {
             _playlistHost.erase();
             scanForLocationHeader(_callp, hostNamep, &_playlistHost);
+            if (++redirects > kMaxRedirects) {
+                code = -1;
+                break;
+            }
         }
         else if (_streaming) {
             /* if we failed while streaming, it could just be that we switched

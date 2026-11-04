@@ -1446,6 +1446,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 		break;
 	}
     }
+    NSLog(@"=s= restartstation with stream=%p", stream);
     [stream shutdownAbortReaders: false];	// don't abort readers from the associated buffer
 
     if (station == nil) {
@@ -1674,6 +1675,7 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
 	_stream = nil;
     } else {
 	if (_stream != nil) {
+	    NSLog(@"=s= shutting down stream=%p from stopRadio", _stream);
 	    [_stream shutdownAbortReaders: true];
 	    _stream = nil;
 	}

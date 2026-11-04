@@ -472,6 +472,7 @@ MFANAqStream_rsControlProc( void *contextp,
         _radioStreamp = new RadioStream();
         pthread_mutex_unlock(&_streamMutex);
 
+	NSLog(@"=s= starting new radiostream stream=%p", self);
         _radioStreamp->init( &socketFactory,
                              (char *) [_urlString cStringUsingEncoding: NSUTF8StringEncoding],
                              MFANAqStream_rsDataProc,
@@ -498,7 +499,7 @@ MFANAqStream_rsControlProc( void *contextp,
 
     NSLog(@"===aqstream shutting down %p failureCallback=%p", self, self->_failureCallbackObj);
     if (!_shuttingDown && _failureCallbackObj != nil) {
-	NSLog(@"====about to dispatch to failure callback");
+	NSLog(@"=s===about to dispatch to failure callback for stream=%p", self);
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[self->_failureCallbackObj performSelectorOnMainThread: self->_failureCallbackSel
 							    withObject: self
@@ -513,7 +514,7 @@ MFANAqStream_rsControlProc( void *contextp,
 }
 
 - (void) shutdownAbortReaders: (bool) abortReaders {
-    NSLog(@"in MFAqStream shutdown");
+    NSLog(@"=s= in MFAqStream shutdown stream=%p", self);
     pthread_mutex_lock(&_streamMutex);
 
     if (_shuttingDown && _pthreadDone) {
@@ -538,6 +539,7 @@ MFANAqStream_rsControlProc( void *contextp,
     // who's going to restart the download.
     _failureCallbackObj = nil;
     _failureCallbackSel = nil;
+    NSLog(@"=s= clearing callbacks for stream=%p", self);
 
     // abort any readers, so that the streamplayer can be shutdown and
     // deleted.
