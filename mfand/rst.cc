@@ -594,6 +594,7 @@ Rst::Call::sendOperation()
     code = (int32_t) socketp->write((char *) firstLine.c_str(),
                                     (int32_t) firstLine.length());
     if (code < 0) {
+        _error = 99;
         finished();
         return code;
     }
@@ -608,7 +609,7 @@ Rst::Call::sendOperation()
     if ((_op == "PUT" || _op == "POST") && _sendContentLength != 0) {
         code = sendData();
         if (code < 0) {
-            _error = 100;
+            _error = 101;
             finished();
             return code;
         }
@@ -616,7 +617,7 @@ Rst::Call::sendOperation()
 
     code = socketp->readLine(tbuffer, sizeof(tbuffer));
     if (code < 0) {
-        _error = 100;
+        _error = 102;
         finished();
         return code;
     }

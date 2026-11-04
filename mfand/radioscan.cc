@@ -71,8 +71,10 @@ RadioScanStation::streamApply( std::string url,
 
     while(1) {
         code = Rst::splitUrl(url, &host, &path, &defaultPort, &isSecure);
-        if (code)
+        if (code) {
+            printf("=s= split failed\n");
             return code;
+        }
 
         if (queryp != nullptr)
             queryp->_verifyingUrl = url;
@@ -83,8 +85,10 @@ RadioScanStation::streamApply( std::string url,
                 /* try forcing http instead of https */
                 code = Rst::splitUrl(url, &host, &path, &defaultPort, &isSecure,
                                      /* force http */ 1);
-                if (code)
+                if (code) {
+                    code = -1;
                     break;
+                }
 
                 bufGenp = _scanp->_factoryp->allocate( isSecure);
                 if (!bufGenp) {
@@ -106,6 +110,7 @@ RadioScanStation::streamApply( std::string url,
         reqp->startCall(clientConnp, path.c_str(), /* isGet */ XApi::reqGet);
         code = reqp->waitForHeadersDone();
         if (code != 0) {
+            code = -3;
             delete reqp;
             break;
         }
@@ -120,10 +125,12 @@ RadioScanStation::streamApply( std::string url,
             code = reqp->findIncomingHeader("location", &url);
             if (code) {
                 delete reqp;
+                code = -4;
                 break;
             }
             if (queryp->isAborted()) {
-                return -1;
+                printf("=s= search aborted\n");
+                return -5;
             }
             if ( ++redirects >= RadioScan::_maxRedirects) {
                 code = -3;
@@ -141,6 +148,7 @@ RadioScanStation::streamApply( std::string url,
              */
             code = reqp->findIncomingHeader("content-type", &contentType);
             if (code) {
+                code = -6;
                 delete reqp;
                 break;
             }
@@ -161,14 +169,14 @@ RadioScanStation::streamApply( std::string url,
                  */
                 printf("Unrecognized content type '%s', ignored\n", contentType.c_str());
                 delete reqp;
-                code = -1;
+                code = -7;
                 break;
             }
         }
         else {
             /* got an error like 404, return failure */
             delete reqp;
-            code = -1;
+            code = -8;
             break;
         }
 
@@ -209,7 +217,7 @@ RadioScanStation::streamApply( std::string url,
                     truncatedRead = 1;
                     printf("Content type %s sent us too much data, probably a stream\n",
                            contentType.c_str());
-                    code = -4;
+                    code = -9;
                     break;
                 }
             };
@@ -242,6 +250,7 @@ RadioScanStation::streamApply( std::string url,
 
     if (queryp != nullptr)
         queryp->_verifyingUrl = "";
+    printf("=s= streamapply returns %d for url=%s\n", code, url.c_str());
     return code;
     
 }
@@ -1541,10 +1550,16 @@ RadioScanQuery::verifyStationThread(RadioScanThread *threadp) {
             break;
         _verifyingUrl = stationp->_sourceUrl;
         RadioScan::releaseLock();
+        printf("=s= %p aboout to do streamapply for station=%s url=%s\n",
+               stationp,
+               stationp->_stationName.c_str(),
+               stationp->_sourceUrl.c_str());
         code = stationp->streamApply(stationp->_sourceUrl,
                                      RadioScanStation::stwCallback,
                                      stationp,
                                      this);
+        printf("=s= back from first search station=%s code=%d\n",
+               stationp->_stationName.c_str(), code);
         if (code != 0) {
             _verifyingUrl = stationp->_altSourceUrl;
             if (stationp->_altSourceUrl.size() > 0) {
@@ -1552,6 +1567,10 @@ RadioScanQuery::verifyStationThread(RadioScanThread *threadp) {
                                               RadioScanStation::stwCallback,
                                               stationp,
                                               this);
+                printf("=s= back from second search station=%s alturl=%s code=%d\n",
+                       stationp->_stationName.c_str(),
+                       stationp->_altSourceUrl.c_str(),
+                       code);
             }
         }
 

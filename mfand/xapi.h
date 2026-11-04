@@ -50,6 +50,7 @@ class XApi : public CThread {
         reqPut = 2};
 
     static const uint32_t _numUserThreads = 4;
+    static const uint32_t _numClientThreads = 8;
 
  private:
     /* protects userThread lists, and associated _userThreadCV for allocating a
@@ -65,6 +66,8 @@ class XApi : public CThread {
 
     uint16_t _port;     /* listening port for incoming API requests */
     BufGen *_lsocketp;  /* listening socket */
+
+    bool _clientThreadsSetup;
 
  public:
     typedef ServerReq *(ServerFactory)(std::string *opcodep);
@@ -569,6 +572,7 @@ class XApi : public CThread {
 
     XApi() : _userThreadCV(&_lock) {
         _lsocketp = NULL;
+        _clientThreadsSetup = false;
         return;
     }
 

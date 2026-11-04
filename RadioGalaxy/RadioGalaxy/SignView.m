@@ -1089,8 +1089,10 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     SearchStationResults *iterator = [[SearchStationResults alloc]
 					 initWithSearchStation: _searchStation];
     while((station = [iterator getNext]) != nil) {
-	if (station.isSelected && station.verified && station.verifiedWorking)
+	if (station.isSelected && station.verified && station.verifiedWorking) {
+	    [station tryLoadFromUrl];
 	    [_allStations addObject: station];
+	}
     }
 
     [self computeLayout];

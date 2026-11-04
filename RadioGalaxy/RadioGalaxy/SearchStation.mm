@@ -402,8 +402,6 @@
 - (void) queryMonitor: (id) junk {
     bool doAdd = NO;
 
-    NSLog(@"QM new invocation self=%p ", self);
-
     _queryTimer = nil;
     if (!_queryp->_verifying) {
 	// TODO: figure out where to put the status, returned as a
@@ -643,8 +641,9 @@ accessoryButtonTappedForRowWithIndexPath: (NSIndexPath *) path {
     else
 	cell.accessoryType = UITableViewCellAccessoryNone;
 
-    // make sure we've done a URL load
-    [station tryLoadFromUrl];
+    // Don't do this inline, as it slows down searches outrageously,
+    // esp.  for stations that no longer exist.
+    // [station tryLoadFromUrl];
 
     UIImage *scaledImage = resizeImage(station.iconImage, 60);
 

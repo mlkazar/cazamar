@@ -384,12 +384,11 @@ MFANSocket::flush()
     pthread_mutex_lock(&MFANSocket_mutex);
 
     while(bytesLeft > 0) {
-        pthread_mutex_unlock(&MFANSocket_mutex);
         if (CFWriteStreamCanAcceptBytes(_writeStreamCF))
             code = (int32_t) CFWriteStreamWrite( _writeStreamCF, (UInt8 *) tp, nbytes);
         else
             code = 0;
-        pthread_mutex_lock(&MFANSocket_mutex);
+
         if (code < 0 || _error != 0) {
             _error = -1;
             break;
@@ -405,6 +404,10 @@ MFANSocket::flush()
         _waiters++;
         code = condWait(&_cond, &MFANSocket_mutex, &tv);
         _waiters--;
+        if (code < 0) {
+            _error = -1;
+            break;
+        }
     }
 
     pthread_mutex_unlock(&MFANSocket_mutex);

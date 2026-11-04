@@ -438,8 +438,13 @@ XApi::addClientConn(BufGen *bufGenp)
     XApi::UserThread *utp;
 
     /* create a client thread for each outstanding connection; perhaps this is overkill? */
-    utp = new UserThread();
-    utp->init(this);
+    if (!_clientThreadsSetup) {
+        _clientThreadsSetup = true;
+        for(uint32_t i=0; i<_numClientThreads; i++) {
+            utp = new UserThread();
+            utp->init(this);
+        }
+    }
 
     connp = new ClientConn(this, bufGenp);
     connp->_xapip = this;
