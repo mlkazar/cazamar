@@ -524,6 +524,25 @@ MFANSocket::setup()
         CFReadStreamSetProperty(_readStreamCF,
                                 kCFStreamPropertySocketSecurityLevel, 
                                 kCFStreamSocketSecurityLevelNegotiatedSSL);
+
+        // and allow self-signed certificates
+        const void* keys[] = { kCFStreamSSLValidatesCertificateChain };
+        const void* values[] = { kCFBooleanFalse }; // Disable default validation
+
+        // Create a dictionary with the settings to disable SSL certificate checking
+        CFDictionaryRef sslSettings =
+            CFDictionaryCreate( kCFAllocatorDefault,
+                                keys,
+                                values,
+                                1, // Number of key-value pairs
+                                &kCFTypeDictionaryKeyCallBacks,
+                                &kCFTypeDictionaryValueCallBacks);
+
+        // set the properties from the dicctionary
+        CFReadStreamSetProperty(_readStreamCF, kCFStreamPropertySSLSettings, sslSettings);
+
+        // Clean up our local dictionary reference
+        CFRelease(sslSettings);
     }
 
     result = CFReadStreamSetClient( _readStreamCF,

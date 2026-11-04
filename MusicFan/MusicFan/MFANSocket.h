@@ -4,6 +4,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFSocket.h>
+#include <Security/Security.h>
+#include <CFNetwork/CFNetwork.h>
 #include "bufgen.h"
 
 class MFANSocket : public BufGen {
