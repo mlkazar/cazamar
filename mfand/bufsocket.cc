@@ -338,6 +338,12 @@ BufSocket::doConnect()
     return 0;
 }
 
+// only meaningful for client conns
+int
+BufSocket::isConnected() {
+    return (!_closed) && _connected;
+}
+
 /* return -1 on error or EOF (error will be 0 on normal EOF),
  * or a byte of data from the socket.
  */

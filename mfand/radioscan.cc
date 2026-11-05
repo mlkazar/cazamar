@@ -30,8 +30,8 @@ RadioScan::init(BufGenFactory *factoryp, std::string dirPrefix)
     _xapip = new XApi();
 
     _stwBufp = factoryp->allocate(0);
-    _stwBufp->init(const_cast<char *>("playerservices.streamtheworld.com"), 80);
     _stwBufp->setTimeoutMs(15000);
+    _stwBufp->init(const_cast<char *>("playerservices.streamtheworld.com"), 80);
     _stwConnp = _xapip->addClientConn(_stwBufp);
     _strictLicense = false;
 }
@@ -102,9 +102,14 @@ RadioScanStation::streamApply( std::string url,
             }
         }
 
-        bufGenp->init(const_cast<char *>(host.c_str()), defaultPort);
         bufGenp->setTimeoutMs(10000);
+        bufGenp->init(const_cast<char *>(host.c_str()), defaultPort);
         clientConnp = _scanp->_xapip->addClientConn(bufGenp);
+
+        if (!bufGenp->isConnected()) {
+            code = -10;
+            break;
+        }
 
         reqp = new XApi::ClientReq();
         reqp->startCall(clientConnp, path.c_str(), /* isGet */ XApi::reqGet);
@@ -287,8 +292,8 @@ RadioScan::retrieveContents(std::string url , std::string *strp)
             return -1;
         }
 
-        bufGenp->init(const_cast<char *>(host.c_str()), defaultPort);
         bufGenp->setTimeoutMs(10000);
+        bufGenp->init(const_cast<char *>(host.c_str()), defaultPort);
         connp = _xapip->addClientConn(bufGenp);
 
         reqp = new XApi::ClientReq();

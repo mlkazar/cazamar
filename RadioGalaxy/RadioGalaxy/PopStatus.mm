@@ -599,6 +599,7 @@
 - (void) tvActivate {
     // if the edit command did a remove, don't stay on the status
     // page, since the station doesn't exist anymore.
+    _didNotify = false;
     return;
 }
 

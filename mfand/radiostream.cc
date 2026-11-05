@@ -512,8 +512,8 @@ RadioStream::init( BufGenFactory *factoryp,
         }
 
         _bufSocketp = factoryp->allocate(isSecure);
-        _bufSocketp->init((char *) hostNamep, _defaultPort);
         _bufSocketp->setTimeoutMs(_baseTimeoutMs);
+        _bufSocketp->init((char *) hostNamep, _defaultPort);
         if ((code = _bufSocketp->getError()) != 0) {
             /* basically, constructor failed */
             printf("RadioStream: socket failed for host '%s'\n", hostNamep);

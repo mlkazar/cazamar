@@ -73,6 +73,8 @@ class BufGen {
 
     virtual int atEof() = 0;
 
+    virtual int isConnected() = 0;
+
     virtual void disconnect() = 0;
 
     /* you can override this to provide your own memory management scheme, as is

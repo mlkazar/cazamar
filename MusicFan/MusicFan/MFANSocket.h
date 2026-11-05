@@ -17,13 +17,13 @@ class MFANSocket : public BufGen {
     CFStringRef _hostCF;
     uint32_t _baseTimeoutMs;
     uint8_t _closed;
-    uint8_t _connected;
     uint8_t _verbose;
     uint8_t _secure;
     uint8_t _eof;
     OspMBuf *_inp;
     OspMBuf *_outp;
     int32_t _refCount;
+    int _socket;
 
     /* keep track of whether we can do a or a write safely; note that
      * since we get a callback notification when it is safe to read or
@@ -78,6 +78,8 @@ class MFANSocket : public BufGen {
         return _error;
     }
 
+    int isConnected();
+
     int atEof() {
         return (_eof || _closed);
     }
@@ -87,6 +89,11 @@ class MFANSocket : public BufGen {
     static void writeStreamCallback( CFWriteStreamRef stream,
                                      CFStreamEventType ev,
                                      void *contextp);
+
+    int connectWithSecs(int sockFd,
+                        const struct sockaddr *addr,
+                        socklen_t addrLen,
+                        int timeoutSec);
 
     void init(char *namep, uint32_t defaultPort);
 

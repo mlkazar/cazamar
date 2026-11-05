@@ -65,6 +65,8 @@ class BufSocket : public BufGen {
 
     int32_t doSetup(uint16_t srcPort);
 
+    int isConnected();
+
     int32_t doConnect();
 
     int32_t flush();

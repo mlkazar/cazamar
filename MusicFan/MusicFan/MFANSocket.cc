@@ -1,7 +1,10 @@
 #include "bufsocket.h"
+
+#include <netdb.h>
 #include <stdio.h>
 #include <string>
 #include <pthread.h>
+#include <string.h>
 #include <sys/time.h>
 
 #include "MFANSocket.h"
@@ -160,7 +163,6 @@ MFANSocket::disconnect()
         CFWriteStreamClose(_writeStreamCF);
     }
 
-    _connected = 0;
     _closed = 1;
 
     pthread_mutex_unlock(&MFANSocket_mutex);
@@ -185,6 +187,11 @@ MFANSocket::releaseNL()
         if (_hostCF) {
             CFRelease(_hostCF);
             _hostCF = NULL;
+        }
+
+        if (_socket >= 0) {
+            close(_socket);
+            _socket = -1;
         }
     }
 }
@@ -373,6 +380,9 @@ MFANSocket::flush()
     int32_t nbytes;
     struct timeval tv;
 
+    if (_error != 0)
+        return -1;
+
     nbytes = _outp->dataBytes();
 
     code = 0;
@@ -390,6 +400,10 @@ MFANSocket::flush()
             code = 0;
 
         if (code < 0 || _error != 0) {
+            CFErrorRef eref = CFWriteStreamCopyError(_writeStreamCF);
+            CFIndex errorCode = CFErrorGetCode(eref);
+            printf("=s= error %ld\n", errorCode);
+            CFRelease(eref);
             _error = -1;
             break;
         }
@@ -485,31 +499,118 @@ MFANSocket::writeStreamCallback( CFWriteStreamRef stream, CFStreamEventType ev, 
     pthread_mutex_unlock(&MFANSocket_mutex);
 }
 
+// Written by Claude due to my laziness.
+int
+MFANSocket::connectWithSecs(int sockFd,
+                            const struct sockaddr *addr,
+                            socklen_t addrLen,
+                            int timeoutSec) {
+    // 1. Get current flags and set non-blocking
+    int flags = fcntl(sockFd, F_GETFL, 0);
+    fcntl(sockFd, F_SETFL, flags | O_NONBLOCK);
+
+    int res = connect(sockFd, addr, addrLen);
+    if (res < 0) {
+        if (errno == EINPROGRESS) {
+            fd_set myset;
+            struct timeval tv;
+            FD_ZERO(&myset);
+            FD_SET(sockFd, &myset);
+
+            tv.tv_sec = timeoutSec;
+            tv.tv_usec = 0;
+
+            // 2. Wait for socket to be writable
+            res = select(sockFd + 1, NULL, &myset, NULL, &tv);
+            if (res > 0) {
+                // Socket selected, check for any underlying socket errors
+                int sockerr = 0;
+                socklen_t len = sizeof(sockerr);
+                if (getsockopt(sockFd, SOL_SOCKET, SO_ERROR, &sockerr, &len) < 0 || sockerr != 0) {
+                    errno = sockerr ? sockerr : ECONNREFUSED;
+                    res = -1;
+                } else
+                    res = 0;
+            } else if (res == 0) {
+                // Timeout reached
+                errno = ETIMEDOUT;
+                res = -1;
+            } else {
+                // select() error
+                res = -1;
+            }
+        }
+    }
+
+    if (res != 0) {
+        printf("=s= mfansocket connect failed errno=%d\n", errno);
+    }
+
+    // 3. Restore original flags
+    fcntl(sockFd, F_SETFL, flags);
+    return res;
+}
+
 void
 MFANSocket::setup()
 {
     int result;
     CFStreamClientContext readContext;
     CFStreamClientContext writeContext;
+    struct hostent *hostp;
+    int code;
 
     _waiters = 0;
 
-    _baseTimeoutMs = _defaultBaseTimeoutMs;
     _error = 0;
     _eof = 0;
     _closed = 0;
-    _connected = 0;
     _listening = 0;
     _verbose = 0;
     _refCount = 1;
     
+    hostp = gethostbyname2(_hostName.c_str(), AF_INET);
+    if (hostp == nullptr) {
+        printf("=s= MFANSocket::setup can't find host '%s'\n", _hostName.c_str());
+        return;
+    }
+
+    struct sockaddr_in taddr;
+
+    memset(&taddr, 0, sizeof(taddr));
+    taddr.sin_family = AF_INET;
+    memcpy(&taddr.sin_addr, hostp->h_addr_list[0], sizeof(taddr.sin_addr));
+    taddr.sin_port = htons(_port);
+
+    _socket = socket(PF_INET, SOCK_STREAM, 0);
+    code = connectWithSecs(_socket,
+                           (struct sockaddr *) &taddr,
+                           sizeof(taddr),
+                           _baseTimeoutMs/1000);
+    if (code != 0) {
+        printf("=s= connect failed\n");
+        close(_socket);
+        _socket = -1;
+        _error = -1;
+        _closed = true;
+        return;
+    }
+
     _hostCF = CFStringCreateWithCString(NULL, _hostName.c_str(), kCFStringEncodingUTF8);
 
-    CFStreamCreatePairWithSocketToHost( NULL,   /* default allocator */
-                                        _hostCF,
-                                        _port,
-                                        &_readStreamCF,
-                                        &_writeStreamCF);
+    CFStreamCreatePairWithSocket( kCFAllocatorDefault,
+                                  _socket,
+                                  &_readStreamCF,
+                                  &_writeStreamCF);
+
+    if (_readStreamCF == nullptr || _writeStreamCF == nullptr) {
+        printf("=s= CreatePairWithSocket failed\n");
+        _closed = true;
+        close(_socket);
+        _socket = -1;
+        _error = -1;
+        return;
+    }
 
     readContext.version = 0;
     readContext.info = this;
@@ -528,18 +629,16 @@ MFANSocket::setup()
                                 kCFStreamPropertySocketSecurityLevel, 
                                 kCFStreamSocketSecurityLevelNegotiatedSSL);
 
-        // and allow self-signed certificates
-        const void* keys[] = { kCFStreamSSLValidatesCertificateChain };
-        const void* values[] = { kCFBooleanFalse }; // Disable default validation
-
         // Create a dictionary with the settings to disable SSL certificate checking
-        CFDictionaryRef sslSettings =
-            CFDictionaryCreate( kCFAllocatorDefault,
-                                keys,
-                                values,
-                                1, // Number of key-value pairs
-                                &kCFTypeDictionaryKeyCallBacks,
-                                &kCFTypeDictionaryValueCallBacks);
+        CFMutableDictionaryRef sslSettings =
+            CFDictionaryCreateMutable( kCFAllocatorDefault,
+                                       0,
+                                       &kCFTypeDictionaryKeyCallBacks,
+                                       &kCFTypeDictionaryValueCallBacks);
+
+        CFDictionarySetValue(sslSettings, kCFStreamSSLValidatesCertificateChain, kCFBooleanFalse);
+        CFDictionarySetValue(sslSettings, kCFStreamSSLPeerName, _hostCF);
+
 
         // set the properties from the dicctionary
         CFReadStreamSetProperty(_readStreamCF, kCFStreamPropertySSLSettings, sslSettings);
@@ -574,8 +673,6 @@ MFANSocket::setup()
 
     result = CFReadStreamOpen(_readStreamCF);
     result = CFWriteStreamOpen(_writeStreamCF);
-
-    _connected = 1;
 }
 
 void
@@ -601,8 +698,14 @@ MFANSocket::init(char *namep, uint32_t defaultPort)
     setup();
 }
 
+int
+MFANSocket::isConnected() {
+    return (_error == 0);
+}
+
 MFANSocket::MFANSocket() {
     _secure = false;
+    _baseTimeoutMs = _defaultBaseTimeoutMs;
 }
 
 MFANSocket::~MFANSocket()
