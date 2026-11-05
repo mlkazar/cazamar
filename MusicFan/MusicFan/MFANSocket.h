@@ -72,6 +72,8 @@ class MFANSocket : public BufGen {
 
     void setTimeoutMs(uint32_t ms);
 
+    void markFailed();
+
     int32_t flush();
 
     int32_t getError() {

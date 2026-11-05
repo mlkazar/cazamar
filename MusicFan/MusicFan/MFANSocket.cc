@@ -552,6 +552,19 @@ MFANSocket::connectWithSecs(int sockFd,
 }
 
 void
+MFANSocket::markFailed() {
+    // close all FD resources.
+    if (_socket >= 0) {
+        close(_socket);
+        _socket = -1;
+    }
+    _closed = true;
+
+    // and mark the socket as failed
+    _error = -1;
+}
+
+void
 MFANSocket::setup()
 {
     int result;
@@ -572,6 +585,7 @@ MFANSocket::setup()
     hostp = gethostbyname2(_hostName.c_str(), AF_INET);
     if (hostp == nullptr) {
         printf("=s= MFANSocket::setup can't find host '%s'\n", _hostName.c_str());
+        markFailed();
         return;
     }
 
@@ -589,10 +603,7 @@ MFANSocket::setup()
                            _baseTimeoutMs/1000);
     if (code != 0) {
         printf("=s= connect failed\n");
-        close(_socket);
-        _socket = -1;
-        _error = -1;
-        _closed = true;
+        markFailed();
         return;
     }
 
@@ -605,10 +616,7 @@ MFANSocket::setup()
 
     if (_readStreamCF == nullptr || _writeStreamCF == nullptr) {
         printf("=s= CreatePairWithSocket failed\n");
-        _closed = true;
-        close(_socket);
-        _socket = -1;
-        _error = -1;
+        markFailed();
         return;
     }
 
