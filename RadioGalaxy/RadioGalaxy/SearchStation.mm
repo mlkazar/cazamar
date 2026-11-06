@@ -712,6 +712,9 @@ trailingSwipeActionsConfigurationForRowAtIndexPath: (NSIndexPath *) path
 	[self stopSampler];
     }
 
+    if (station.streamUrl == nil)
+	return;
+
     // if we selected a different station to sample, or if there was
     // no station being sampled, start sampling now.
     if (origStation != station) {
