@@ -152,6 +152,11 @@ main(int argc, char **argv) {
             createProcp = Reader4::create;
     }
 
+    if (createProcp == nullptr) {
+        printf("usage: upcall -[1234] [-n (doDeletes)]\n");
+        return -1;
+    }
+
     signal(SIGPIPE, SIG_IGN);
     testerp->start(createProcp, doDeletes);
     while(true)
