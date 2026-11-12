@@ -1169,6 +1169,9 @@ SignCoord SignCoordMake(uint8_t x,uint8_t y) {
     action = [UIAlertAction actionWithTitle:@"Play recordings"
 				       style: UIAlertActionStyleDefault
 				     handler:^(UIAlertAction *act) {
+	    if (_player != nil)
+		[_player pause];
+
 	    (void) [[ExportPlayer alloc] initWithViewCont: self->_vc
 						 signView: self];
 	}];
