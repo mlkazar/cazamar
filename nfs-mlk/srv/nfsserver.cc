@@ -88,7 +88,21 @@ NfsServer::translate_gid(uint32_t gid) {
     return std::string("root");
 }
 
-// copy out file attributes into an fattr4
+// free internal pointers in an fattr4 structure
+void
+NfsServer::freeFattr4(fattr4 *ap) {
+    free(ap->attr_vals.attrlist4_val);
+    free(ap->attrmask.bitmap4_val);
+}
+
+// free internal pointers in an entry4 structure
+void
+NfsServer::freeEntry4(entry4 *ep) {
+    free(ep->name.utf8string_val);
+    freeFattr4(&ep->attrs);
+}
+
+// copy out file attributes into an fattr4.  Return # of bytes copied.
 void
 NfsServer::copyToFattr( fattr4 *outp,
                         uint32_t *inMaskp,
@@ -322,12 +336,13 @@ NfsServer::copyToFattr( fattr4 *outp,
     // fh
     supMaskp[0] |= (1<<19);
     if (inMaskp[0] & (1<<19)) {
+        std::string fh = vp->getFh();
         outMaskp[0] |= (1<<19);
-        ltemp = htonl(vp->_fh.length());
+        ltemp = htonl(fh.length());
         memcpy(ap, &ltemp, sizeof(ltemp));
-        ltemp = vp->_fh.length();       // back to host order
+        ltemp = fh.length();       // back to host order
         ap += sizeof(ltemp);
-        memcpy(ap, vp->_fh.data(), ltemp);
+        memcpy(ap, fh.data(), ltemp);
         ap += ((ltemp - 1) | 3) + 1;       // padded length
     }
 
@@ -403,6 +418,7 @@ NfsServer::copyToFattr( fattr4 *outp,
         ap += sizeof(ltemp);
     }
 
+    // User name
     supMaskp[1] |= (1<<(36-32));
     if (inMaskp[1] & (1<<(36-32))) {
         outMaskp[1] |= (1<<(36-32));
@@ -416,6 +432,7 @@ NfsServer::copyToFattr( fattr4 *outp,
         ap += ltemp;
     }
 
+    // Group name
     supMaskp[1] |= (1<<(37-32));
     if (inMaskp[1] & (1<<(37-32))) {
         outMaskp[1] |= (1<<(37-32));
@@ -469,6 +486,112 @@ NfsServer::copyToFattr( fattr4 *outp,
 }
 
 int32_t
+NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    READDIR4args *arg = &op->nfs_argop4_u.opreaddir;
+    READDIR4res *subResp;
+    subResp = &resp->nfs_resop4_u.opreaddir;
+    subResp->status = NFS4_OK;
+    READDIR4resok *okResp = &subResp->READDIR4res_u.resok4;
+    int32_t code;
+
+    std::string currentFh = std::string(compStatep->_currentFh.nfs_fh4_val,
+                                        compStatep->_currentFh.nfs_fh4_len);
+    Vn *vp;
+    Vn::Attr attrs;
+    _vfsp->vget(currentFh, &vp);
+
+    // copy out some entries.  Dircount holds the name and cookie
+    // value sizes, after xdr'ing.  So, the name has a 4 byte count
+    // and the name bytes rounded up to next 4 bytes, and the cookie
+    // value is a fixed 8 bytes.
+    //
+    // maxBytesLeft has the total bytes in xdr format for the entire
+    // response, so it contains 8 bytes of cookie verifier, 4 bytes of
+    // EOF flag, the dircount bytes, the per entry attrs and the
+    // '*next' field, which is really just an embedded 4 byte boolean
+    // value preceding the entry.  There is an extra 4 bytes for the
+    // flag indicating that there are no more entries in the linked
+    // list.
+    uint32_t maxDirBytes = arg->dircount;
+    uint32_t maxTotalBytes = arg->maxcount;
+    uint32_t usedDirBytes = 0;
+    uint32_t usedTotalBytes = 0;
+    uint32_t tlen;
+    Vn::DirEnt dirEntry;
+    entry4 *ep;
+    Vn::Attr entryAttrs;
+    uint32_t inMaskAll[3];
+    entry4 **lastEpp;
+    bool atEof;
+    VnTest *evp;
+
+    inMaskAll[0] = inMaskAll[1] = inMaskAll[2] = ~0;
+
+    atEof = false;
+    lastEpp = &okResp->reply.entries;
+    while (true) {
+        code = vp->readdir(arg->cookie, &dirEntry);
+        if (code != 0)
+            break;
+        if (dirEntry._name.length() == 0) {
+            // EOF
+            code = 0;
+            atEof = true;
+            break;
+        }
+
+        code = vp->lookup(dirEntry._name, (Vn **) &evp);
+        if (code != 0)
+            break;
+
+        code = evp->getAttr(&entryAttrs);
+        if (code)
+            break;
+
+        ep = (entry4 *) malloc(sizeof(*ep));
+        memset(ep, 0, sizeof(*ep));
+        ep->cookie = dirEntry._cookie;
+        ep->name.utf8string_len = tlen = dirEntry._name.length();
+        ep->name.utf8string_val = (char *) malloc(tlen);
+        memcpy(ep->name.utf8string_val, dirEntry._name.data(), tlen);
+        copyToFattr(&ep->attrs,
+                    inMaskAll,
+                    evp,
+                    &entryAttrs,
+                    &_fsAttrs);
+
+        // adjust usages conservatively.  XDR count of entry is XDR of
+        // 8 byte cookie, plus XDR of length field (4 bytes) ) and XDR
+        // of name bytes padded to multiple of 4.  We just add 4 bytes
+        // instead of rounding, which is generous.
+        uint32_t entryDirBytes = sizeof(nfs_cookie4) + 4 + dirEntry._name.length() + 4;
+        usedDirBytes += entryDirBytes;
+
+        // XDR of whole entry: the directory info (name and cookie), the
+        // fattr4 (4 bytes of length, and then those bytes padded by 4)
+        // and bitmap4 (4 bytes of vector length, then 4*vector count)
+        usedTotalBytes += (entryDirBytes + ep->attrs.attr_vals.attrlist4_len + 8 +
+                           ep->attrs.attrmask.bitmap4_len * 4 + 4);
+
+        if (usedDirBytes > maxDirBytes || usedTotalBytes > maxTotalBytes) {
+            freeEntry4(ep);     // only frees internals
+            free(ep);
+            break;
+        } else {
+            *lastEpp = ep;
+            lastEpp = &ep->nextentry;
+        }
+    }
+
+    if (code == 0) {
+        memcpy(&okResp->cookieverf, _vfsp->getCookieVerifier().data(), NFS4_VERIFIER_SIZE);
+        okResp->reply.eof = atEof;
+    }
+
+    return code;
+}
+
+int32_t
 NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     GETATTR4args *arg = &op->nfs_argop4_u.opgetattr;
     GETATTR4res *subResp;
@@ -491,6 +614,8 @@ NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
     Vn *vp;
     Vn::Attr attrs;
     _vfsp->vget(currentFh, &vp);
+
+    printf("nfsserver::getattr vp=%p\n", vp);
 
     code = vp->getAttr(&attrs);
     vp->release();
@@ -669,14 +794,36 @@ int32_t
 NfsServer::opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     char *tp;
     uint32_t length;
+    std::string fh = _vfsRootp->getFh();
 
-    compStatep->_currentFh.nfs_fh4_len = length = _vfsRootp->_fh.length();
-    compStatep->_currentFh.nfs_fh4_val = tp = (char *) malloc(4);
-    memcpy(tp, _vfsRootp->_fh.data(), length);
+    compStatep->_currentFh.nfs_fh4_len = length = fh.length();
+    compStatep->_currentFh.nfs_fh4_val = tp = (char *) malloc(length);
+    memcpy(tp, fh.data(), length);
 
     PUTROOTFH4res *subResp;
 
     subResp = &resp->nfs_resop4_u.opputrootfh;
+    subResp->status = NFS4_OK;
+
+    return 0;
+}
+
+int32_t
+NfsServer::opPutFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    char *tp;
+    uint32_t length;
+
+    PUTFH4args *arg = &op->nfs_argop4_u.opputfh;
+
+    length = arg->object.nfs_fh4_len;
+
+    compStatep->_currentFh.nfs_fh4_len = length;
+    compStatep->_currentFh.nfs_fh4_val = tp = (char *) malloc(length);
+    memcpy(tp, arg->object.nfs_fh4_val, length);
+
+    PUTFH4res *subResp;
+
+    subResp = &resp->nfs_resop4_u.opputfh;
     subResp->status = NFS4_OK;
 
     return 0;
@@ -771,6 +918,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_OPEN_DOWNGRADE:
                 break;
             case OP_PUTFH:
+                serverp->opPutFh(op, resp, &compoundState);
                 break;
             case OP_PUTPUBFH:
                 break;
@@ -780,6 +928,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
             case OP_READ:
                 break;
             case OP_READDIR:
+                serverp->opReaddir(op, resp, &compoundState);
                 break;
             case OP_READLINK:
                 break;

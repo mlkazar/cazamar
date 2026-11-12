@@ -1,0 +1,57 @@
+		Disk format
+
+	Data.fileUUID.startOffset.endOffset
+
+contains raw data within that range.  Perhaps a 4K header?  If
+missing, header indicates this.
+
+	Dir.fileUUID.startOffset.endOffset
+
+contains readdir entries.  See below for readdir cookie management.
+
+	Inode.startInode.endInode
+
+contains set of inode TLVs giving basic info and variable sized data
+as well.  Should we make this a fixed sized basic object with offset
+into spare part of the file for extended attributes?  Extended
+attributes should have back pointer to inode pointing to it.
+
+	   	Dir Updates
+
+The tricky thing here is keeping the file system consistent across
+things like hard links and renames.  We need to maintain a log across
+these operations which record Dir block ID + entry name being added or
+removed, and inode with old and new link counts.
+
+	   	Cloud Representation
+
+To upload stuff to the cloud, we create a snapshot where the metadata
+and data files that get updated after snapshot creation push the old
+data into snap files.  We then upload the snap files and release the
+snapshot.
+
+Q: should we come up with a scheme to create longer term snapshots, so
+we can maintain a set of snapshots on the cloud?  Perhaps we really
+want to have at least two snapshots on the cloud, one being currently
+updated and one that's stable that others can read?  That way, we
+could support lazy replicated snapshots, a la AFS 3.
+
+		Snapshot Representation Choices
+
+We start off with .infinity and when a snapshot is first created, the
+snapId is set to 0.  As files are updated, we rename foo.infinity to
+foo.0 and then update foo.infinity.  When we next create a snapshot,
+its ID goes to 1, and our renmaes go from .infinity to .1.  When
+searching for a file, we start with the snapId for the snapshot and
+check out foo.snapId, foo.snapId+1, etc until we reach infinity.  Note
+that we're not allowing writable versions branching off; the snapshots
+are a linear sequence.
+
+TODO: We can upload any of these to the cloud.  We generally want to
+upload entire snapshots, but we have to special case filling data from
+the .infinity file for the first snapshot.  If we're reading a
+snapshot that happens to result in accessing the .infinity file we
+need to ensure we keep using a frozen copy when a new write occusr to
+a file in the cache.  If we use Unix renames to save the snapshot
+file, then someone who has a .infinity file open will seamlessly
+continue to access the frozen data even as new writes are permitted.

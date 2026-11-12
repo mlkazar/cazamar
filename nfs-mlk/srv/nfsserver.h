@@ -80,6 +80,10 @@ public:
                       Vn::Attr *attrsp,
                       Vfs::FsAttr *fsAttrsp);
 
+    void freeFattr4(fattr4 *ap);
+
+    void freeEntry4(entry4 *ep);
+
     int32_t opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
     int32_t opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
@@ -90,7 +94,13 @@ public:
 
     int32_t opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
+    int32_t opPutFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
     int32_t opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    int32_t opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    int32_t opLookup(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 };
 
 extern "C"  COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,

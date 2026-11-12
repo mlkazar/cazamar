@@ -59,13 +59,25 @@ public:
         // don't set dir*_notify_delay
     };
 
-    std::string _fh;            // no null termination
+    class DirEnt {
+    public:
+        std::string _name;
+        uint64_t _cookie;
+        uint64_t _fileId;
+    };
+
     Vfs *_vfsp;
 
     // whole file system attributes that aren't obvious
     virtual int32_t getAttr(Attr *attrp) = 0;
 
     virtual void release() = 0;
+
+    virtual int32_t readdir(uint64_t cookie, DirEnt *entryp) = 0;
+
+    virtual int32_t lookup(std::string name, Vn **vpp) = 0;
+
+    virtual std::string getFh() = 0;
 };
 
 class Vfs {
@@ -98,6 +110,8 @@ public:
     virtual int32_t root(Vn **rootpp) = 0;
 
     virtual int32_t getFsAttr(FsAttr *fsAttrp) = 0;
+
+    virtual std::string getCookieVerifier() = 0;
 };
 
 #endif /* __VN_H_ENV__ */
