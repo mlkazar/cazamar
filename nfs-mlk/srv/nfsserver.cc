@@ -85,7 +85,7 @@ NfsServer::translate_uid(uint32_t uid) {
 std::string
 NfsServer::translate_gid(uint32_t gid) {
     // TODO: use C library
-    return std::string("root");
+    return std::string("staff");
 }
 
 // free internal pointers in an fattr4 structure
@@ -101,6 +101,53 @@ NfsServer::freeEntry4(entry4 *ep) {
     free(ep->name.utf8string_val);
     freeFattr4(&ep->attrs);
 }
+
+void
+NfsServer::stringToNfs4Fh(std::string instr, nfs_fh4 *fhp) {
+    uint32_t tlen = instr.length();
+    fhp->nfs_fh4_len = tlen;
+    fhp->nfs_fh4_val = (char *) malloc(tlen);
+    memcpy(fhp->nfs_fh4_val, instr.data(), tlen);
+}
+
+nfsstat4
+NfsServer::opLookup(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    LOOKUP4args *arg = &op->nfs_argop4_u.oplookup;
+    LOOKUP4res *subResp;
+    subResp = &resp->nfs_resop4_u.oplookup;
+    subResp->status = NFS4_OK;
+
+    Vn *vp;
+    Vn::Attr attrs;
+    int32_t code;
+    code = _vfsp->vget(compStatep->_currentFh, &vp);
+    if (code) {
+        subResp->status = NFS4ERR_STALE;
+        printf("nfsserver::lookup failed with estale\n");
+        return NFS4ERR_STALE;
+    }
+
+    VnTest *childVp;
+
+    std::string name = std::string(arg->objname.utf8string_val,
+                                   arg->objname.utf8string_len);
+    code = vp->lookup(name, (Vn **)(&childVp));
+    if (code) {
+        subResp->status = NFS4ERR_NOENT;
+        printf("nfsserver::lookup name lookup failed for '%s'\n", name.c_str());
+        return NFS4ERR_NOENT;
+    }
+
+    compStatep->_currentFh = childVp->getFh();
+
+    printf("nfsserver::lookup name lookup succeeds for '%s'\n", name.c_str());
+
+    childVp->release();
+    vp->release();
+
+    return NFS4_OK;
+}
+
 
 // copy out file attributes into an fattr4.  Return # of bytes copied.
 void
@@ -179,6 +226,7 @@ NfsServer::copyToFattr( fattr4 *outp,
         // Remember where to patch the returned attributes
         ap += sizeof(ltemp);
         supMaskp = (uint32_t *) ap;
+        memset(ap, 0, _attrMaskWords * sizeof(uint32_t));
         ap += _attrMaskWords * sizeof(uint32_t);
         supMaskp[0] |= (1<<0);  // do it here since supMask is set above
     } else {
@@ -355,6 +403,15 @@ NfsServer::copyToFattr( fattr4 *outp,
         ap += sizeof(lltemp);
     }
 
+    // hidden boolean
+    supMaskp[0] |= (1<<25);
+    if (inMaskp[0] & (1<<25)) {
+        outMaskp[0] |= (1<<25);
+        ltemp = htonl(0);
+        memcpy(ap, &ltemp, sizeof(ltemp));
+        ap += sizeof(ltemp);
+    }
+
     // max file size (27)
     supMaskp[0] |= (1<<27);
     if (inMaskp[0] & (1<<27)) {
@@ -485,7 +542,7 @@ NfsServer::copyToFattr( fattr4 *outp,
     outp->attr_vals.attrlist4_val = attrListDatap;
 }
 
-int32_t
+nfsstat4
 NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     READDIR4args *arg = &op->nfs_argop4_u.opreaddir;
     READDIR4res *subResp;
@@ -494,11 +551,9 @@ NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
     READDIR4resok *okResp = &subResp->READDIR4res_u.resok4;
     int32_t code;
 
-    std::string currentFh = std::string(compStatep->_currentFh.nfs_fh4_val,
-                                        compStatep->_currentFh.nfs_fh4_len);
     Vn *vp;
     Vn::Attr attrs;
-    _vfsp->vget(currentFh, &vp);
+    _vfsp->vget(compStatep->_currentFh, &vp);
 
     // copy out some entries.  Dircount holds the name and cookie
     // value sizes, after xdr'ing.  So, the name has a 4 byte count
@@ -588,10 +643,10 @@ NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
         okResp->reply.eof = atEof;
     }
 
-    return code;
+    return NFS4ERR_INVAL;
 }
 
-int32_t
+nfsstat4
 NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     GETATTR4args *arg = &op->nfs_argop4_u.opgetattr;
     GETATTR4res *subResp;
@@ -609,17 +664,22 @@ NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
             inMask[i] = 0;
     }
 
-    std::string currentFh = std::string(compStatep->_currentFh.nfs_fh4_val,
-                                        compStatep->_currentFh.nfs_fh4_len);
+    printf("nfsserver: getattr %d words\n", arg->attr_request.bitmap4_len);
+    for(i=0;i<arg->attr_request.bitmap4_len;i++) {
+        printf("%08x ", arg->attr_request.bitmap4_val[i]);
+    }
+    printf("\n");
+
     Vn *vp;
     Vn::Attr attrs;
-    _vfsp->vget(currentFh, &vp);
+    _vfsp->vget(compStatep->_currentFh, &vp);
 
     printf("nfsserver::getattr vp=%p\n", vp);
 
     code = vp->getAttr(&attrs);
     vp->release();
     if (code != 0) {
+        printf("nfsserver: getattr failure code=%d\n", code);
         subResp->status = NFS4ERR_INVAL;
         return NFS4ERR_INVAL;
     }
@@ -633,10 +693,89 @@ NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
            arg->attr_request.bitmap4_val[2],
            arg->attr_request.bitmap4_val[3]);
 
-    return 0;
+    return NFS4_OK;
 }
 
-int32_t
+nfsstat4
+NfsServer::opGetFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    GETFH4res *subResp;
+    subResp = &resp->nfs_resop4_u.opgetfh;
+    subResp->status = NFS4_OK;
+    GETFH4resok *okResp = &subResp->GETFH4res_u.resok4;
+    int32_t code;
+    uint32_t tlen;
+    char *datap;
+
+    tlen = compStatep->_currentFh.length();
+    printf("nfsserver::getfh returning %d byte file handle\n", tlen);
+    okResp->object.nfs_fh4_len = tlen;
+    datap = (char *) malloc(tlen);
+    memcpy(datap, compStatep->_currentFh.data(), tlen);
+    okResp->object.nfs_fh4_val = datap;
+    return NFS4_OK;
+}
+
+nfsstat4
+NfsServer::opAccess(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    ACCESS4args *arg = &op->nfs_argop4_u.opaccess;
+    ACCESS4res *subResp;
+    subResp = &resp->nfs_resop4_u.opaccess;
+    subResp->status = NFS4_OK;
+    ACCESS4resok *okResp = &subResp->ACCESS4res_u.resok4;
+    int32_t code;
+
+    Vn *vp;
+    Vn::Attr attrs;
+    _vfsp->vget(compStatep->_currentFh, &vp);
+
+    printf("nfsserver::access vp=%p\n", vp);
+
+    uint32_t nfsAccessFlags = arg->access;
+    uint32_t vnAccessFlags = 0;
+    uint32_t vnResultsFlags = 0;
+    uint32_t nfsResultsFlags = 0;
+
+    if (nfsAccessFlags & (ACCESS4_LOOKUP | ACCESS4_READ)) {
+        vnAccessFlags |= 4;
+    }
+    if (nfsAccessFlags & (ACCESS4_MODIFY | ACCESS4_EXTEND | ACCESS4_DELETE)) {
+        vnAccessFlags |= 2;
+    }
+    if (nfsAccessFlags & (ACCESS4_EXECUTE)) {
+        vnAccessFlags |= 1;
+    }
+
+    code = vp->access(vnAccessFlags, &vnResultsFlags);
+    vp->release();
+    if (code != 0) {
+        subResp->status = NFS4ERR_INVAL;
+        return NFS4ERR_INVAL;
+    }
+
+    // turn the bits back into NFS land bits, being careful not to set
+    // any bits in the results that weren't in the original request.
+    if (vnResultsFlags & 4) {
+        nfsResultsFlags |= (nfsAccessFlags & (ACCESS4_LOOKUP | ACCESS4_READ));
+    }
+    if (vnResultsFlags & 2) {
+        nfsResultsFlags |= (nfsAccessFlags &
+                            (ACCESS4_MODIFY | ACCESS4_EXTEND | ACCESS4_DELETE));
+    }
+    if (vnResultsFlags & 1) {
+        nfsResultsFlags |= (nfsAccessFlags & ACCESS4_EXECUTE);
+    }
+
+    // send back the results; we support everything.
+    okResp->access = nfsResultsFlags;
+    okResp->supported = nfsResultsFlags;
+
+    printf("nfs-mlk: returning access flags=%x->%x\n",
+           nfsAccessFlags, okResp->access);
+
+    return NFS4_OK;
+}
+
+nfsstat4
 NfsServer::opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     // should implement a hash table
     EXCHANGE_ID4args *arg = &op->nfs_argop4_u.opexchange_id;
@@ -691,19 +830,49 @@ NfsServer::opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compSta
     okResp->eir_server_impl_id.eir_server_impl_id_len = 0;
     okResp->eir_server_impl_id.eir_server_impl_id_val = nullptr;
 
-    return 0;
+    return NFS4_OK;
 }
 
-int32_t
+nfsstat4
+NfsServer::opSecinfoNoName(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    SECINFO4res *subResp;
+    subResp = &resp->nfs_resop4_u.opsecinfo;
+    subResp->status = NFS4_OK;
+    SECINFO4resok *okResp = &subResp->SECINFO4res_u.resok4;
+
+    okResp->SECINFO4resok_len = 2;
+    okResp->SECINFO4resok_val = (secinfo4 *) malloc(2 * sizeof(secinfo4));
+    okResp->SECINFO4resok_val[0].flavor = 0;    // AUTH_NONE
+    okResp->SECINFO4resok_val[1].flavor = 1;    // AUTH_SYS
+
+    return NFS4_OK;
+}
+
+nfsstat4
+NfsServer::opSecinfo(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    SECINFO4res *subResp;
+    subResp = &resp->nfs_resop4_u.opsecinfo;
+    subResp->status = NFS4_OK;
+    SECINFO4resok *okResp = &subResp->SECINFO4res_u.resok4;
+
+    okResp->SECINFO4resok_len = 2;
+    okResp->SECINFO4resok_val = (secinfo4 *) malloc(2 * sizeof(secinfo4));
+    okResp->SECINFO4resok_val[0].flavor = 0;    // AUTH_NONE
+    okResp->SECINFO4resok_val[1].flavor = 1;    // AUTH_SYS
+
+    return NFS4_OK;
+}
+
+nfsstat4
 NfsServer::opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     RECLAIM_COMPLETE4args *arg = &op->nfs_argop4_u.opreclaim_complete;
     RECLAIM_COMPLETE4res *subResp;
     subResp = &resp->nfs_resop4_u.opreclaim_complete;
     subResp->rcr_status = NFS4_OK;
-    return 0;
+    return NFS4_OK;
 }
 
-int32_t
+nfsstat4
 NfsServer::opSequence(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     SEQUENCE4args *arg = &op->nfs_argop4_u.opsequence;
     SEQUENCE4res *subResp;
@@ -718,7 +887,7 @@ NfsServer::opSequence(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compState
     Session *sessionp = _sessionMap[sessionKey];
     if (sessionp == nullptr) {
         subResp->sr_status = NFS4ERR_SEQ_MISORDERED;
-        return -1;
+        return NFS4ERR_SEQ_MISORDERED;
     }
 
     uint32_t nextCallSequence = sessionp->_nextCallSequence[arg->sa_slotid];
@@ -739,10 +908,10 @@ NfsServer::opSequence(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compState
         return NFS4ERR_SEQ_MISORDERED;
     }
 
-    return 0;
+    return NFS4_OK;
 }
 
-int32_t
+nfsstat4
 NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     CREATE_SESSION4args *arg = &op->nfs_argop4_u.opcreate_session;
     CREATE_SESSION4res *subResp;
@@ -756,7 +925,7 @@ NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *comp
     Client *clientp = _clientIdMap[arg->csa_clientid];
     if (clientp == nullptr) {
         subResp->csr_status = NFS4ERR_STALE_CLIENTID;
-        return -1;
+        return NFS4ERR_STALE_CLIENTID;
     }
 
     if (arg->csa_sequence == clientp->_sessionSequenceId) {
@@ -764,7 +933,7 @@ NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *comp
     } else if (arg->csa_sequence != clientp->_sessionSequenceId + 1) {
         // failure due to bad ordering
         subResp->csr_status = NFS4ERR_SEQ_MISORDERED;
-        return -1;
+        return NFS4ERR_SEQ_MISORDERED;;
     }
 
     Session *sessionp = new Session(this, clientp);
@@ -787,47 +956,59 @@ NfsServer::opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *comp
     okResp->csr_back_chan_attrs = arg->csa_back_chan_attrs;
     printf("created session with flags %x\n", arg->csa_flags);
 
-    return 0;
+    return NFS4_OK;
 }
 
-int32_t
+nfsstat4
 NfsServer::opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     char *tp;
     uint32_t length;
     std::string fh = _vfsRootp->getFh();
 
-    compStatep->_currentFh.nfs_fh4_len = length = fh.length();
-    compStatep->_currentFh.nfs_fh4_val = tp = (char *) malloc(length);
-    memcpy(tp, fh.data(), length);
+    compStatep->_currentFh = fh;
 
     PUTROOTFH4res *subResp;
 
     subResp = &resp->nfs_resop4_u.opputrootfh;
     subResp->status = NFS4_OK;
 
-    return 0;
+    return NFS4_OK;
 }
 
-int32_t
+nfsstat4
 NfsServer::opPutFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     char *tp;
     uint32_t length;
 
     PUTFH4args *arg = &op->nfs_argop4_u.opputfh;
 
-    length = arg->object.nfs_fh4_len;
-
-    compStatep->_currentFh.nfs_fh4_len = length;
-    compStatep->_currentFh.nfs_fh4_val = tp = (char *) malloc(length);
-    memcpy(tp, arg->object.nfs_fh4_val, length);
+    compStatep->_currentFh = std::string(arg->object.nfs_fh4_val,
+                                         arg->object.nfs_fh4_len);
 
     PUTFH4res *subResp;
 
     subResp = &resp->nfs_resop4_u.opputfh;
     subResp->status = NFS4_OK;
 
-    return 0;
+    return NFS4_OK;
 }
+
+// unimplemented operation.  We need to use *some* union, since the
+// status is part of every union instead of in a common structure. So,
+// we use DELEGRETURN just because it has a status field and nothing
+// else in the return structure.
+nfsstat4
+NfsServer::opBad(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    DELEGRETURN4res *subResp;
+
+    printf("nfs-mlk: bad operation received\n");
+
+    subResp = &resp->nfs_resop4_u.opdelegreturn;
+    subResp->status = NFS4ERR_INVAL;
+
+    return NFS4ERR_INVAL;
+}
+
 
 NfsServer::Session::Session(NfsServer *serverp, Client *clientp) {
     _clientp = clientp;
@@ -854,6 +1035,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
     printf("in compound with ct=%d\n", args->argarray.argarray_len);
     nfs_argop4 *op = args->argarray.argarray_val;
     uint32_t tlen;
+    nfsstat4 code;
     char *tp;
 
     NfsServer *serverp = mainNfsServerp;
@@ -877,134 +1059,192 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
 
     for(uint32_t i=0;i<args->argarray.argarray_len; i++, op++, resp++) {
         printf("operation %d\n", op->argop);
+        code = NFS4_OK;
         switch(op->argop) {
             case OP_ACCESS:
+                code = serverp->opAccess(op, resp, &compoundState);
                 break;
             case OP_CLOSE:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_COMMIT:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_CREATE:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_DELEGPURGE:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_DELEGRETURN:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_GETATTR:
-                serverp->opGetAttr(op, resp, &compoundState);
+                code = serverp->opGetAttr(op, resp, &compoundState);
                 break;
             case OP_GETFH:
+                code = serverp->opGetFh(op, resp, &compoundState);
                 break;
             case OP_LINK:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_LOCK:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_LOCKT:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_LOCKU:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_LOOKUP:
+                code = serverp->opLookup(op, resp, &compoundState);
                 break;
             case OP_LOOKUPP:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_NVERIFY:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_OPEN:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_OPENATTR:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_OPEN_CONFIRM:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_OPEN_DOWNGRADE:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_PUTFH:
-                serverp->opPutFh(op, resp, &compoundState);
+                code = serverp->opPutFh(op, resp, &compoundState);
                 break;
             case OP_PUTPUBFH:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_PUTROOTFH:
-                serverp->opPutRootFh(op, resp, &compoundState);
+                code = serverp->opPutRootFh(op, resp, &compoundState);
                 break;
             case OP_READ:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_READDIR:
-                serverp->opReaddir(op, resp, &compoundState);
+                code = serverp->opReaddir(op, resp, &compoundState);
                 break;
             case OP_READLINK:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_REMOVE:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_RENAME:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_RENEW:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_RESTOREFH:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_SAVEFH:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_SECINFO:
+                code = serverp->opSecinfo(op, resp, &compoundState);
                 break;
             case OP_SETATTR:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_SETCLIENTID:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_SETCLIENTID_CONFIRM:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_VERIFY:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_WRITE:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_RELEASE_LOCKOWNER:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_BACKCHANNEL_CTL:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_BIND_CONN_TO_SESSION:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_EXCHANGE_ID:
-                serverp->opExchangeId(op, resp, &compoundState);
+                code = serverp->opExchangeId(op, resp, &compoundState);
                 break;
             case OP_CREATE_SESSION:
-                serverp->opCreateSession(op, resp, &compoundState);
+                code = serverp->opCreateSession(op, resp, &compoundState);
                 break;
             case OP_DESTROY_SESSION:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_FREE_STATEID:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_GET_DIR_DELEGATION:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_GETDEVICEINFO:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_GETDEVICELIST:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_LAYOUTCOMMIT:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_LAYOUTGET:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_LAYOUTRETURN:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_SECINFO_NO_NAME:
+                code = serverp->opSecinfoNoName(op, resp, &compoundState);
                 break;
             case OP_SEQUENCE:
-                serverp->opSequence(op, resp, &compoundState);
+                code = serverp->opSequence(op, resp, &compoundState);
                 break;
             case OP_SET_SSV:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_TEST_STATEID:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_WANT_DELEGATION:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_DESTROY_CLIENTID:
+                code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_RECLAIM_COMPLETE:
-                serverp->opReclaimComplete(op, resp, &compoundState);
+                code = serverp->opReclaimComplete(op, resp, &compoundState);
                 break;
 
             default:
+                code = NFS4ERR_INVAL;
                 break;
         }
         resp->resop = op->argop;
+
+        // stop on first subrequest error.
+        if (code != 0) {
+            resps->status = code;
+            resps->resarray.resarray_len = i+1;
+            printf("nfsserver: setting compound error to %d\n", (int) code);
+            break;
+        }
     }
-    
+
     return resps;
 }
 

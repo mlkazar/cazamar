@@ -71,6 +71,8 @@ public:
     // whole file system attributes that aren't obvious
     virtual int32_t getAttr(Attr *attrp) = 0;
 
+    virtual int32_t access(uint32_t inFlags, uint32_t *outFlagsp) = 0;
+
     virtual void release() = 0;
 
     virtual int32_t readdir(uint64_t cookie, DirEnt *entryp) = 0;

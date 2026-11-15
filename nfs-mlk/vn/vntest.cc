@@ -100,13 +100,36 @@ VnTest::getAttr(Attr *attrp) {
 }
 
 int32_t
+VnTest::access(uint32_t inFlags, uint32_t *outFlagsp) {
+    uint32_t resultFlags = 0;
+    if ((inFlags & 4) && (_attrs.mode & 0400)) {
+        resultFlags |= 4;
+    }
+    if ((inFlags & 2) && (_attrs.mode & 0200)) {
+        resultFlags |= 2;
+    }
+    if ((inFlags & 1) && (_attrs.mode & 0100)) {
+        resultFlags |= 1;
+    }
+
+    *outFlagsp = resultFlags;
+
+    return 0;
+}
+
+int32_t
 VnTest::lookup(std::string name, Vn **vpp) {
     int32_t code;
 
+    printf("vntest: lookup of '%s' in %d.%d\n",
+           name.c_str(), _fh._info._parentId, _fh._info._fileId);
     if (name == std::string("FooFile")) {
         VnTestFh fh(0, 1);
         code = _vfsp->vget(fh.getString(), vpp);
         return code;
+    } else if (name == std::string(".") || name == std::string("..")) {
+        *vpp = this;
+        return 0;
     } else {
         return -1;
     }
@@ -114,6 +137,7 @@ VnTest::lookup(std::string name, Vn **vpp) {
 
 std::string
 VnTest::getFh() {
+    printf("vntest::getfh returning %d.%d\n", _fh._info._parentId, _fh._info._fileId);
     return _fh.getString();
 }
 

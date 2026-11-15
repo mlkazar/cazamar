@@ -63,6 +63,8 @@ public:
 
     int32_t getAttr(Attr *attrp);
 
+    int32_t access(uint32_t inFlags, uint32_t *outFlagsp);
+
     int32_t readdir(uint64_t cookie, Vn::DirEnt *ep);
 
     int32_t lookup(std::string name, Vn **vpp);

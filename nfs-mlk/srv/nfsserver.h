@@ -39,14 +39,12 @@ public:
     // This is per-compound operation state.
     class CompoundState {
     public:
-        nfs_fh4 _currentFh;
-        nfs_fh4 _savedFh;
+        std::string _currentFh;
+        std::string _savedFh;
         stateid4 _currentStateId;
         stateid4 _savedStateId;
 
         CompoundState() {
-            memset(&_currentFh, 0, sizeof(_currentFh));
-            memset(&_savedFh, 0, sizeof(_savedFh));
             memset(&_currentStateId, 0, sizeof(stateid4));
             memset(&_savedStateId, 0, sizeof(stateid4));
         }
@@ -84,23 +82,35 @@ public:
 
     void freeEntry4(entry4 *ep);
 
-    int32_t opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
+    void stringToNfs4Fh(std::string instr, nfs_fh4 *fhp);
 
-    int32_t opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
+    nfsstat4 opExchangeId(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
-    int32_t opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
+    nfsstat4 opCreateSession(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
-    int32_t opSequence(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
+    nfsstat4 opReclaimComplete(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
-    int32_t opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
+    nfsstat4 opSequence(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
-    int32_t opPutFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+    nfsstat4 opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
-    int32_t opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+    nfsstat4 opPutFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
-    int32_t opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+    nfsstat4 opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
-    int32_t opLookup(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+    nfsstat4 opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opLookup(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opGetFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opAccess(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opBad(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opSecinfoNoName(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opSecinfo(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 };
 
 extern "C"  COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
