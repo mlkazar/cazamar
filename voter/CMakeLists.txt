@@ -30,6 +30,14 @@ target_sources(vtest
   PRIVATE
     vtest.cc
 )
+if(APPLE)
+target_link_libraries(vtest
+  PRIVATE
+    voter
+    rpc
+    core
+)
+else()
 target_link_libraries(vtest
   PRIVATE
     voter
@@ -37,3 +45,4 @@ target_link_libraries(vtest
     core
     uuid
 )
+endif()
