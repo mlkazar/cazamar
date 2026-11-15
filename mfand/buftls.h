@@ -82,6 +82,8 @@ class BufTls : public BufGen {
 
     int32_t flush();
 
+    int isConnected();
+
     void reopen();
 
     void disconnect();

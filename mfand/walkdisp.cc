@@ -41,17 +41,9 @@ WalkTask::start()
         }
 
         while(1) {
-#ifdef __linux__
             entryp = readdir(dirp);
             if (!entryp)
                 break;
-#else
-            code = readdir_r(dirp, (struct dirent *)tbuffer, &entryp);
-            if (code)
-                break;
-            if (!entryp)
-                break;
-#endif
 
             /* skip . and .. */
 #ifdef __linux__

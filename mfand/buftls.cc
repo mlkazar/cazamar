@@ -642,6 +642,11 @@ BufTls::init(char *namep, uint32_t defaultPort)
     _server = 0;
 }
 
+int
+BufTls::isConnected() {
+    return _connected;
+}
+
 void
 BufTls::abort()
 {
