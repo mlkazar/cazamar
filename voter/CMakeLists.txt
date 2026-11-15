@@ -35,4 +35,5 @@ target_link_libraries(vtest
     voter
     rpc
     core
+    uuid
 )

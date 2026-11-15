@@ -231,8 +231,8 @@ target_sources(scantest
 )
 target_link_libraries(scantest
   PRIVATE
-    rst
     stream
+    rst
     oauth
     jsdb
     core
@@ -317,9 +317,9 @@ target_sources(cfstest
 )
 target_link_libraries(cfstest
   PRIVATE
-    rst
     rpc
     cfs
+    rst
     OpenSSL::SSL
     OpenSSL::Crypto
 )
@@ -334,11 +334,11 @@ target_sources(uptest
 )
 target_link_libraries(uptest
   PRIVATE
+    upload
+    lfs
+    cfs
     rst
     rpc
-    cfs
-    lfs
-    upload
     OpenSSL::SSL
     OpenSSL::Crypto
 )
@@ -372,9 +372,10 @@ target_sources(mfand
 )
 target_link_libraries(mfand
   PRIVATE
-    rst
     mf
     ext
+    rst
+    rpc
     core
     OpenSSL::SSL
     OpenSSL::Crypto
@@ -391,9 +392,10 @@ target_sources(mfanc
 )
 target_link_libraries(mfanc
   PRIVATE
-    rst
     mf
     ext
+    rst
+    rpc
     core
 )
 
