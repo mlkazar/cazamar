@@ -59,6 +59,20 @@ public:
         // don't set dir*_notify_delay
     };
 
+    class SetAttr {
+    public:
+        static const uint32_t setMode           = 0x01;
+        static const uint32_t setUid            = 0x02;
+        static const uint32_t setGid            = 0x04;
+        static const uint32_t setSize           = 0x08;
+        static const uint32_t setMTime          = 0x10;
+        static const uint32_t setATime          = 0x20;
+        // can't typically set ctime.
+
+        uint32_t setMask;
+        Attr attrs;
+    };
+
     class DirEnt {
     public:
         std::string _name;
@@ -68,6 +82,10 @@ public:
 
     Vfs *_vfsp;
 
+    virtual int32_t create(std::string name, SetAttr *setAttrs, Vn **vpp) = 0;
+
+    virtual int32_t lookup(std::string name, Vn **vpp) = 0;
+
     // whole file system attributes that aren't obvious
     virtual int32_t getAttr(Attr *attrp) = 0;
 
@@ -76,8 +94,6 @@ public:
     virtual void release() = 0;
 
     virtual int32_t readdir(uint64_t cookie, DirEnt *entryp) = 0;
-
-    virtual int32_t lookup(std::string name, Vn **vpp) = 0;
 
     virtual std::string getFh() = 0;
 };

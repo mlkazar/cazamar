@@ -153,6 +153,12 @@ VnTest::readdir(uint64_t cookie, Vn::DirEnt *entp) {
     return 0;
 }
 
+int32_t
+VnTest::create(std::string name, SetAttr *setAttrs, Vn **vpp) {
+    printf("vntest create '%s'\n", name.c_str());
+    return 2;
+}
+
 VfsTest::VfsTest() {
     _fsAttrs.linkSupport = true;
     _fsAttrs.symlinkSupport = true;

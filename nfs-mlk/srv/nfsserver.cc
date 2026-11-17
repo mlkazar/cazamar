@@ -88,6 +88,43 @@ NfsServer::translate_gid(uint32_t gid) {
     return std::string("staff");
 }
 
+uint32_t
+NfsServer::translate_to_uid(std::string uname) {
+    // TODO: use C library
+    return 0;
+}
+
+uint32_t
+NfsServer::translate_to_gid(std::string gname) {
+    // TODO: use C library
+    return 20;  // staff
+}
+
+NfsServer::StateId *
+NfsServer::allocStateId(Client *clientp) {
+    StateId *sp = new StateId();
+    generateStateId(clientp, sp->_stateId);
+    sp->_isWrite = false;
+
+    clientp->_allStateIds.push_back(sp);
+
+    return sp;
+}
+
+NfsServer::StateId *
+NfsServer::findStateId(Client *clientp, stateid4 *statep) {
+    std::list<StateId *>::iterator it;
+    StateId *sp;
+
+    for(it = clientp->_allStateIds.begin(); it != clientp->_allStateIds.end(); it++) {
+        sp = *it;
+        if (memcmp(&sp->_stateId, statep, sizeof(*statep)) == 0)
+            return sp;
+    }
+
+    return nullptr;
+}
+
 // free internal pointers in an fattr4 structure
 void
 NfsServer::freeFattr4(fattr4 *ap) {
@@ -108,6 +145,220 @@ NfsServer::stringToNfs4Fh(std::string instr, nfs_fh4 *fhp) {
     fhp->nfs_fh4_len = tlen;
     fhp->nfs_fh4_val = (char *) malloc(tlen);
     memcpy(fhp->nfs_fh4_val, instr.data(), tlen);
+}
+
+void
+NfsServer::generateStateId(Client *clientp, stateid4 &stateId) {
+    uint64_t newStateCounter = clientp->_stateIdGenerator++;
+    stateId.seqid = newStateCounter;
+    memset(stateId.other, 0, sizeof(stateId.other));
+    memcpy(stateId.other, &newStateCounter, sizeof(newStateCounter));
+}
+
+// returns -1 if there are entries present that we don't know how to
+// parse.
+int32_t
+NfsServer::vnAttrsFromNfsAttrs(Vn::SetAttr *vnAttrsp, fattr4 *nfsAttrsp) {
+    uint32_t ltemp;
+    uint64_t lltemp;
+    std::string name;
+
+    vnAttrsp->setMask = 0;
+    if (nfsAttrsp == nullptr) {
+        return 0;
+    }
+
+    // We have to process all the elements, even the ones we don't
+    // care about, since there's no length field in the bitmap4
+    // entries.
+    char *datap = nfsAttrsp->attr_vals.attrlist4_val;
+    uint32_t bytesLeft = nfsAttrsp->attr_vals.attrlist4_len;
+
+    for(uint32_t i=0;i<nfsAttrsp->attrmask.bitmap4_len;i++) {
+        uint32_t baseIx = 32*i;
+        uint32_t mask = nfsAttrsp->attrmask.bitmap4_val[i];
+        for(uint32_t j=0;j<32;j++) {
+            uint32_t itemIx = baseIx + j;
+            if (mask & (1<<j)) {
+                // itemIx is present in the data
+                switch (itemIx) {
+                    case FATTR4_CHANGE:
+                        datap += sizeof(uint64_t);
+
+                    case FATTR4_SIZE:
+                        memcpy(&lltemp, datap, sizeof(lltemp));
+                        datap += sizeof(lltemp);
+                        vnAttrsp->attrs.size = htonll(lltemp);
+                        vnAttrsp->setMask |= Vn::SetAttr::setSize;
+                        break;
+
+                    case FATTR4_NAMED_ATTR:
+                        datap += sizeof(uint32_t);
+
+                    case FATTR4_MODE:
+                        memcpy(&ltemp, datap, sizeof(ltemp));
+                        datap += sizeof(ltemp);
+                        vnAttrsp->attrs.mode = htonl(ltemp);
+                        vnAttrsp->setMask |= Vn::SetAttr::setMode;
+                        break;
+
+                    case FATTR4_OWNER:
+                        memcpy(&ltemp, datap, sizeof(ltemp));
+                        ltemp = htonl(ltemp);
+                        datap += sizeof(ltemp);
+                        name = std::string(datap, ltemp);
+                        datap += ltemp;
+                        vnAttrsp->attrs.uid = translate_to_uid(name);
+                        vnAttrsp->setMask |= Vn::SetAttr::setUid;
+                        break;
+
+                    case FATTR4_OWNER_GROUP:
+                        memcpy(&ltemp, datap, sizeof(ltemp));
+                        ltemp = htonl(ltemp);
+                        datap += sizeof(ltemp);
+                        name = std::string(datap, ltemp);
+                        datap += ltemp;
+                        vnAttrsp->attrs.gid = translate_to_gid(name);
+                        vnAttrsp->setMask |= Vn::SetAttr::setGid;
+                        break;
+
+                    case FATTR4_TIME_ACCESS:
+                        memcpy(&lltemp, datap, sizeof(lltemp));
+                        lltemp = htonll(lltemp);        // secs
+                        datap += sizeof(lltemp);
+                        memcpy(&ltemp, datap, sizeof(ltemp));
+                        ltemp = htonl(ltemp);         // nsecs
+                        datap += sizeof(ltemp);
+                        vnAttrsp->attrs.atime.secs = lltemp;
+                        vnAttrsp->attrs.atime.nsecs = ltemp;
+                        vnAttrsp->setMask |= Vn::SetAttr::setATime;
+                        break;
+
+                    case FATTR4_TIME_MODIFY:
+                        memcpy(&lltemp, datap, sizeof(lltemp));
+                        lltemp = htonll(lltemp);        // secs
+                        datap += sizeof(lltemp);
+                        memcpy(&ltemp, datap, sizeof(ltemp));
+                        ltemp = htonl(ltemp);         // nsecs
+                        datap += sizeof(ltemp);
+                        vnAttrsp->attrs.mtime.secs = lltemp;
+                        vnAttrsp->attrs.mtime.nsecs = ltemp;
+                        vnAttrsp->setMask |= Vn::SetAttr::setMTime;
+                        break;
+
+                    case FATTR4_TIME_BACKUP:
+                        datap += sizeof(lltemp) + sizeof(ltemp);
+                        break;
+
+                    case FATTR4_TIME_CREATE:
+                        datap += sizeof(lltemp) + sizeof(ltemp);
+                        break;
+
+                    default:
+                        return -1;
+                }       // switch
+            } // if (mask...)
+        } // loop over all bits
+    } // loop over all words
+
+    return 0;
+}
+
+nfsstat4
+NfsServer::opOpen(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    OPEN4args *arg = &op->nfs_argop4_u.opopen;
+    OPEN4res *subResp;
+    Vn *childVp;
+    Client *clientp;
+    Vn::Attr dirAttrs;
+    changeid4 preChange;
+    changeid4 postChange;
+    uint32_t *sp;
+
+    subResp = &resp->nfs_resop4_u.opopen;
+    subResp->status = NFS4_OK;
+    clientp = compStatep->_sessionp->_clientp;
+    OPEN4resok *okResp = &subResp->OPEN4res_u.resok4;
+
+    Vn *dirVp;
+    Vn::Attr attrs;
+    int32_t code;
+    code = _vfsp->vget(compStatep->_currentFh, &dirVp);
+    if (code) {
+        subResp->status = NFS4ERR_STALE;
+        printf("nfsserver::open failed with estale\n");
+        return NFS4ERR_STALE;
+    }
+
+    dirVp->getAttr(&dirAttrs);
+    preChange = changeOf(&dirAttrs);
+
+    int doCreate = (arg->openhow.opentype == OPEN4_CREATE);
+
+    if (arg->claim.claim == CLAIM_NULL) {
+        std::string name = std::string(arg->claim.open_claim4_u.file.utf8string_val,
+                                       arg->claim.open_claim4_u.file.utf8string_len);
+
+        fattr4 *fattrToUse = nullptr;
+        if (doCreate) {
+            if ( arg->openhow.openflag4_u.how.mode == UNCHECKED4 ||
+                 arg->openhow.openflag4_u.how.mode == GUARDED4) {
+                fattrToUse = &arg->openhow.openflag4_u.how.createhow4_u.createattrs;
+            } else if (arg->openhow.openflag4_u.how.mode == EXCLUSIVE4_1) {
+                fattrToUse = &arg->openhow.openflag4_u.how.createhow4_u.ch_createboth.cva_attrs;
+            } else {
+                printf("nfsserver: unrecognized openhow %d\n",
+                       arg->openhow.openflag4_u.how.mode);
+            }
+
+            Vn::SetAttr setAttrs;
+            vnAttrsFromNfsAttrs(&setAttrs, fattrToUse);
+            code = dirVp->create(name, &setAttrs, &childVp);
+        } else {
+            code = dirVp->lookup(name, &childVp);
+        }
+    } else if (arg->claim.claim == CLAIM_FH)  {
+        // use current file handle
+        code = _vfsp->vget(compStatep->_currentFh, &childVp);
+        if (code != 0) {
+            subResp->status = NFS4ERR_STALE;
+            return NFS4ERR_STALE;
+        }
+    }
+
+    if (code) {
+        subResp->status = NFS4ERR_INVAL;
+        return NFS4ERR_INVAL;
+    }
+
+    // wrap the filehandle in a stateid4, and fill in the rest of the
+    // response.
+    StateId *statep = allocStateId(clientp);
+
+    dirVp->getAttr(&dirAttrs);
+    postChange = changeOf(&dirAttrs);
+
+    memcpy(&okResp->stateid, &statep->_stateId, sizeof(stateid4));
+    okResp->cinfo.atomic = false;       // change to true when we do our locking properly
+    okResp->cinfo.before = preChange;
+    okResp->cinfo.after = postChange;
+
+    okResp->rflags = (OPEN4_RESULT_CONFIRM | OPEN4_RESULT_LOCKTYPE_POSIX);
+
+    // fill in the attributes for exclusive creates.  Don't know if it
+    // is legal to pass this back.
+    okResp->attrset.bitmap4_len = 0;
+    okResp->attrset.bitmap4_val = nullptr;
+
+    okResp->delegation.delegation_type = OPEN_DELEGATE_NONE;
+
+    subResp->status = NFS4_OK;
+    return NFS4_OK;
+}
+
+uint64_t
+NfsServer::changeOf(Vn::Attr *attrp) {
+    return (((uint64_t)attrp->ctime.secs) << 32) + attrp->ctime.nsecs;
 }
 
 nfsstat4
@@ -579,13 +830,17 @@ NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
     entry4 **lastEpp;
     bool atEof;
     VnTest *evp;
+    uint64_t nextCookie;
 
     inMaskAll[0] = inMaskAll[1] = inMaskAll[2] = ~0;
 
     atEof = false;
     lastEpp = &okResp->reply.entries;
+    nextCookie = arg->cookie;
     while (true) {
-        code = vp->readdir(arg->cookie, &dirEntry);
+        // readdir's dirEntry contains the cookie of the next entry to
+        // return.
+        code = vp->readdir(nextCookie, &dirEntry);
         if (code != 0)
             break;
         if (dirEntry._name.length() == 0) {
@@ -605,7 +860,7 @@ NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
 
         ep = (entry4 *) malloc(sizeof(*ep));
         memset(ep, 0, sizeof(*ep));
-        ep->cookie = dirEntry._cookie;
+        ep->cookie = nextCookie = dirEntry._cookie;
         ep->name.utf8string_len = tlen = dirEntry._name.length();
         ep->name.utf8string_val = (char *) malloc(tlen);
         memcpy(ep->name.utf8string_val, dirEntry._name.data(), tlen);
@@ -636,14 +891,20 @@ NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
             *lastEpp = ep;
             lastEpp = &ep->nextentry;
         }
-    }
+    } // while loop
 
     if (code == 0) {
         memcpy(&okResp->cookieverf, _vfsp->getCookieVerifier().data(), NFS4_VERIFIER_SIZE);
         okResp->reply.eof = atEof;
     }
 
-    return NFS4ERR_INVAL;
+    if (code == 0) {
+        subResp->status = NFS4_OK;
+        return NFS4_OK;
+    } else {
+        subResp->status = NFS4ERR_INVAL;
+        return NFS4ERR_INVAL;
+    }
 }
 
 nfsstat4
@@ -890,6 +1151,8 @@ NfsServer::opSequence(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compState
         return NFS4ERR_SEQ_MISORDERED;
     }
 
+    compStatep->_sessionp = sessionp;
+
     uint32_t nextCallSequence = sessionp->_nextCallSequence[arg->sa_slotid];
     if (nextCallSequence == arg->sa_sequenceid) {
         sessionp->_nextCallSequence[arg->sa_slotid]++;
@@ -988,6 +1251,38 @@ NfsServer::opPutFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) 
     PUTFH4res *subResp;
 
     subResp = &resp->nfs_resop4_u.opputfh;
+    subResp->status = NFS4_OK;
+
+    return NFS4_OK;
+}
+
+nfsstat4
+NfsServer::opSaveFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    char *tp;
+    uint32_t length;
+
+    compStatep->_savedFh = compStatep->_currentFh;
+    compStatep->_savedStateId = compStatep->_currentStateId;
+
+    SAVEFH4res *subResp;
+
+    subResp = &resp->nfs_resop4_u.opsavefh;
+    subResp->status = NFS4_OK;
+
+    return NFS4_OK;
+}
+
+nfsstat4
+NfsServer::opRestoreFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    char *tp;
+    uint32_t length;
+
+    compStatep->_currentFh = compStatep->_savedFh;
+    compStatep->_currentStateId = compStatep->_savedStateId;
+
+    RESTOREFH4res *subResp;
+
+    subResp = &resp->nfs_resop4_u.oprestorefh;
     subResp->status = NFS4_OK;
 
     return NFS4_OK;
@@ -1107,7 +1402,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
                 code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_OPEN:
-                code = serverp->opBad(op, resp, &compoundState);
+                code = serverp->opOpen(op, resp, &compoundState);
                 break;
             case OP_OPENATTR:
                 code = serverp->opBad(op, resp, &compoundState);
@@ -1146,10 +1441,10 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
                 code = serverp->opBad(op, resp, &compoundState);
                 break;
             case OP_RESTOREFH:
-                code = serverp->opBad(op, resp, &compoundState);
+                code = serverp->opRestoreFh(op, resp, &compoundState);
                 break;
             case OP_SAVEFH:
-                code = serverp->opBad(op, resp, &compoundState);
+                code = serverp->opSaveFh(op, resp, &compoundState);
                 break;
             case OP_SECINFO:
                 code = serverp->opSecinfo(op, resp, &compoundState);

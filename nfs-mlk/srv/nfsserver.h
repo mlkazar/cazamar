@@ -6,6 +6,8 @@
 
 #include <sys/time.h>
 
+#include <list>
+
 #include "nfsv41.h"
 #include "vn.h"
 
@@ -14,17 +16,30 @@ public:
     static const uint32_t _maxForeSlots = 16;
     static const uint32_t _attrMaskWords = 3;
 
+    class StateId {
+    public:
+        stateid4 _stateId;
+        bool _isWrite;
+    };
+
     typedef std::array<char, NFS4_SESSIONID_SIZE> StdSessionId4;
     class Client {
         friend class NfsServer;
     public:
         std::string _clientOwner;
         char _verifier[NFS4_VERIFIER_SIZE];
-        uint64_t clientId;
+        uint64_t _clientId;
+        uint64_t _stateIdGenerator;
         uint32_t _sessionSequenceId;
+        std::list<StateId *> _allStateIds;
+
+        Client() {
+            _stateIdGenerator = 1000;
+        }
     };
 
     class Session {
+    public:
         friend class NfsServer;
         Client *_clientp;
         StdSessionId4 _sessionId;
@@ -43,10 +58,12 @@ public:
         std::string _savedFh;
         stateid4 _currentStateId;
         stateid4 _savedStateId;
+        Session *_sessionp;
 
         CompoundState() {
             memset(&_currentStateId, 0, sizeof(stateid4));
             memset(&_savedStateId, 0, sizeof(stateid4));
+            _sessionp = nullptr;
         }
     };
 
@@ -72,6 +89,12 @@ public:
 
     std::string translate_gid(uint32_t gid);
 
+    uint32_t translate_to_uid(std::string);
+
+    uint32_t translate_to_gid(std::string);
+
+    int32_t vnAttrsFromNfsAttrs(Vn::SetAttr *vnAttrsp, fattr4 *nfsAttrsp);
+
     void copyToFattr( fattr4 *outp,
                       uint32_t *inMaskp,
                       Vn *vp,
@@ -94,6 +117,10 @@ public:
 
     nfsstat4 opPutRootFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *csp);
 
+    nfsstat4 opSaveFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opRestoreFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
     nfsstat4 opPutFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
     nfsstat4 opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
@@ -101,6 +128,8 @@ public:
     nfsstat4 opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
     nfsstat4 opLookup(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opOpen(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
     nfsstat4 opGetFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
@@ -110,7 +139,15 @@ public:
 
     nfsstat4 opSecinfoNoName(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
+    StateId *allocStateId(Client *clientp);
+
+    uint64_t changeOf(Vn::Attr *attrp);
+
+    StateId *findStateId(Client *clientp, stateid4 *statep);
+
     nfsstat4 opSecinfo(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    void generateStateId(Client *clientp, stateid4 &stateId);
 };
 
 extern "C"  COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
