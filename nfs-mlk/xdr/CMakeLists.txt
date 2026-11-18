@@ -14,6 +14,8 @@ add_custom_command(
   COMMAND rpcgen -c -C -o ${XDR_C} ${XDR_X}
   COMMAND rpcgen -m -C -o ${XDR_SVC} ${XDR_X}
   COMMAND rpcgen -l -C -o ${XDR_CLN} ${XDR_X}
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/edit.sh ${XDR_SVC}
+  
   DEPENDS "${XDR_X}"
 )
 
@@ -25,6 +27,7 @@ target_sources(nfssvc
   PRIVATE
     ${XDR_C}
     ${XDR_SVC}
+    svc_aux.c
 
   PUBLIC
     FILE_SET nfssvcHeaders
