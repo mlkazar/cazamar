@@ -225,6 +225,11 @@ class User {
     int _stmt_share_count_ix;
     int _stmt_net_amount_ix;
 
+    // how many fields we expect in the current section.  There are
+    // some sections that just have the account number and a few other
+    // items, and those lines we ignore.
+    int _field_count;
+
     AccountMap _accounts;
     NumberMap _fund_map;
     YFDriver _yfdriver;

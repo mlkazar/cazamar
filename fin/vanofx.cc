@@ -392,6 +392,10 @@ User::ParseOfx(std::string file_name) {
 
         tc = tbuffer[0];
         if (tc >= '0' && tc <= '9') {
+            // starts with a digit.  See if this line has enough items
+            if (items.size() < _field_count)
+                continue;
+
             if (_model_funds) {
                 std::string account_number;
                 std::string fund_number;
@@ -533,6 +537,7 @@ User::ParseOfx(std::string file_name) {
             }
         } else {
             // This describes the fields in a section.
+            _field_count = items.size();
             if (ItemsContains(&items, "Total Value")) {
                 // We're in a section defining a set of funds for one or more
                 // Accounts.
