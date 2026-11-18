@@ -19,7 +19,13 @@ public:
     class StateId {
     public:
         stateid4 _stateId;
+        Vn *_vnp;
         bool _isWrite;
+
+        StateId() {
+            _vnp = nullptr;
+            _isWrite = false;
+        }
     };
 
     typedef std::array<char, NFS4_SESSIONID_SIZE> StdSessionId4;
@@ -131,6 +137,8 @@ public:
 
     nfsstat4 opOpen(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
+    nfsstat4 opClose(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
     nfsstat4 opGetFh(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
     nfsstat4 opAccess(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
@@ -138,6 +146,8 @@ public:
     nfsstat4 opBad(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
     nfsstat4 opSecinfoNoName(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
+
+    nfsstat4 opRead(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep);
 
     StateId *allocStateId(Client *clientp);
 

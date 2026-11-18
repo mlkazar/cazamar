@@ -45,6 +45,14 @@ VfsTest::simpleFile(VnTestFh *fhp, VfsTest *vfsp) {
 
     vp->_fh = *fhp;
 
+    if (!isDir) {
+        char tbuffer[256];
+        snprintf(tbuffer, sizeof(tbuffer),
+                 "This is file %d.%d",
+                 fhp->_info._parentId, fhp->_info._fileId);
+        vp->_data = std::string(tbuffer);
+    }
+
     _allVns.push_back(vp);
 
     return vp;
@@ -157,6 +165,26 @@ int32_t
 VnTest::create(std::string name, SetAttr *setAttrs, Vn **vpp) {
     printf("vntest create '%s'\n", name.c_str());
     return 2;
+}
+
+int32_t
+VnTest::read(char *datap, uint64_t offset, uint32_t count) {
+    uint64_t fileLen = _data.length();
+    if (offset >= fileLen) {
+        return 0;
+    }
+
+    // figure out how many of the requested bytes are actually present
+    // in the file.
+    uint64_t bytesLeft = fileLen - offset;
+    if (bytesLeft > count) {
+        bytesLeft = count;
+    }
+
+    // copy out the data and return the count of the # of bytes
+    // transferred.
+    memcpy(datap, _data.data() + offset, bytesLeft);
+    return bytesLeft;
 }
 
 VfsTest::VfsTest() {

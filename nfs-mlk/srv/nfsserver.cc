@@ -334,6 +334,7 @@ NfsServer::opOpen(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     // wrap the filehandle in a stateid4, and fill in the rest of the
     // response.
     StateId *statep = allocStateId(clientp);
+    statep->_vnp = childVp;
 
     dirVp->getAttr(&dirAttrs);
     postChange = changeOf(&dirAttrs);
@@ -908,6 +909,79 @@ NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
 }
 
 nfsstat4
+NfsServer::opRead(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    READ4args *arg = &op->nfs_argop4_u.opread;
+    READ4res *subResp;
+    subResp = &resp->nfs_resop4_u.opread;
+    subResp->status = NFS4_OK;
+    READ4resok *okResp = &subResp->READ4res_u.resok4;
+    StateId *idp;
+    char *datap;
+    Vn::Attr attrs;
+
+    Client *clientp = compStatep->_sessionp->_clientp;
+    idp = findStateId(clientp, &arg->stateid);
+
+    if (!idp) {
+        subResp->status = NFS4ERR_STALE_STATEID;
+        return NFS4ERR_STALE_STATEID;
+    }
+
+    Vn *vp = idp->_vnp;
+
+    int32_t code = vp->getAttr(&attrs);
+    uint64_t fileSize = attrs.size;
+
+    uint32_t allocBytes = (fileSize < arg->count? fileSize : arg->count);
+
+    datap = (char *) malloc(allocBytes);
+    code = vp->read(datap, arg->offset, arg->count);
+    if (code < 0) {
+        free(datap);
+        subResp->status = NFS4ERR_IO;
+        return NFS4ERR_IO;
+    }
+
+    okResp->data.data_len = code;
+    if (code > 0) {
+        okResp->data.data_val = datap;
+    } else {
+        okResp->data.data_val = nullptr;
+        free(datap);
+    }
+    okResp->eof = (arg->offset + arg->count >= fileSize);
+
+    printf("nfsserver::read vp=%p %d bytes at %0llx eof=%d\n",
+           vp, code, arg->offset, okResp->eof);
+    return NFS4_OK;
+}
+
+nfsstat4
+NfsServer::opClose(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
+    CLOSE4args *arg = &op->nfs_argop4_u.opclose;
+    CLOSE4res *subResp;
+    subResp = &resp->nfs_resop4_u.opclose;
+    subResp->status = NFS4_OK;
+    StateId *idp;
+    char *datap;
+    Vn::Attr attrs;
+
+    Client *clientp = compStatep->_sessionp->_clientp;
+    idp = findStateId(clientp, &arg->open_stateid);
+
+    if (!idp) {
+        subResp->status = NFS4ERR_STALE_STATEID;
+        return NFS4ERR_STALE_STATEID;
+    }
+
+    clientp->_allStateIds.remove(idp);
+    delete idp;
+
+    // already set status.
+    return NFS4_OK;
+}
+
+nfsstat4
 NfsServer::opGetAttr(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep) {
     GETATTR4args *arg = &op->nfs_argop4_u.opgetattr;
     GETATTR4res *subResp;
@@ -1360,7 +1434,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
                 code = serverp->opAccess(op, resp, &compoundState);
                 break;
             case OP_CLOSE:
-                code = serverp->opBad(op, resp, &compoundState);
+                code = serverp->opClose(op, resp, &compoundState);
                 break;
             case OP_COMMIT:
                 code = serverp->opBad(op, resp, &compoundState);
@@ -1423,7 +1497,7 @@ COMPOUND4res *nfsproc4_compound_4_svc(COMPOUND4args *args,
                 code = serverp->opPutRootFh(op, resp, &compoundState);
                 break;
             case OP_READ:
-                code = serverp->opBad(op, resp, &compoundState);
+                code = serverp->opRead(op, resp, &compoundState);
                 break;
             case OP_READDIR:
                 code = serverp->opReaddir(op, resp, &compoundState);

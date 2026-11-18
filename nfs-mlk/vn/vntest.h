@@ -60,6 +60,7 @@ class VnTest : public Vn {
 public:
     Attr _attrs;
     VnTestFh _fh;
+    std::string _data;
 
     int32_t create(std::string name, SetAttr *setAttrs, Vn **vpp);
 
@@ -70,6 +71,8 @@ public:
     int32_t access(uint32_t inFlags, uint32_t *outFlagsp);
 
     int32_t readdir(uint64_t cookie, Vn::DirEnt *ep);
+
+    int32_t read(char *datap, uint64_t offset, uint32_t count);
 
     VnTest(VfsTest *vfsp);
 

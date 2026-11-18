@@ -95,6 +95,8 @@ public:
 
     virtual int32_t readdir(uint64_t cookie, DirEnt *entryp) = 0;
 
+    virtual int32_t read(char *datap, uint64_t offset, uint32_t count) = 0;
+
     virtual std::string getFh() = 0;
 };
 
