@@ -5,7 +5,7 @@ int32_t
 VfsTest::root(Vn **rootpp) {
     if (_rootp == nullptr) {
         VnTestFh rootFh(0, 0);
-        _rootp = simpleFile(&rootFh, this);
+        _rootp = simpleFile(&rootFh);
     }
 
     *rootpp =  _rootp;
@@ -13,7 +13,7 @@ VfsTest::root(Vn **rootpp) {
 }
 
 VnTest *
-VfsTest::simpleFile(VnTestFh *fhp, VfsTest *vfsp) {
+VfsTest::simpleFile(VnTestFh *fhp) {
     VnTestFh::Info fhData;
     memcpy(&fhData, fhp->data(), fhp->length());
     bool isDir = (fhData._fileId == 0);
@@ -45,12 +45,29 @@ VfsTest::simpleFile(VnTestFh *fhp, VfsTest *vfsp) {
 
     vp->_fh = *fhp;
 
-    if (!isDir) {
-        char tbuffer[256];
-        snprintf(tbuffer, sizeof(tbuffer),
-                 "This is file %d.%d",
-                 fhp->_info._parentId, fhp->_info._fileId);
-        vp->_data = std::string(tbuffer);
+    {
+        // prepopulate
+        if (!isDir) {
+            char tbuffer[256];
+            snprintf(tbuffer, sizeof(tbuffer),
+                     "This is file %d.%d\n",
+                     fhp->_info._parentId, fhp->_info._fileId);
+            vp->_data = std::string(tbuffer);
+        } else {
+            static const uint32_t entriesPerDir = 4;
+            for(uint32_t i=0;i<entriesPerDir;i++) {
+                VnTestDirEnt *ep;
+                char tbuffer[100];
+                ep = new VnTestDirEnt();
+                ep->_fh = VnTestFh(vp->_fh._info._parentId, i+1);
+                snprintf(tbuffer, sizeof(tbuffer), "Foo-%d", i+1);
+                ep->_name = std::string(tbuffer);
+                ep->_cookie = i+1;
+                vp->_dirEnts.push_back(ep);
+
+                simpleFile(&ep->_fh);
+            }
+        }
     }
 
     _allVns.push_back(vp);
@@ -84,15 +101,13 @@ VfsTest::vget(std::string afh, Vn **vpp) {
         }
     }
 
-    if (!found) {
-        *vpp = simpleFile(&fh, this);
-        printf("vget not found, vp=%p\n", *vpp);
-    } else {
+    if (found) {
         *vpp = vp;
         printf("vget found, vp=%p\n", *vpp);
+        return 0;
+    } else {
+        return -1;
     }
-
-    return 0;
 }
 
 int32_t
@@ -131,16 +146,29 @@ VnTest::lookup(std::string name, Vn **vpp) {
 
     printf("vntest: lookup of '%s' in %d.%d\n",
            name.c_str(), _fh._info._parentId, _fh._info._fileId);
-    if (name == std::string("FooFile")) {
-        VnTestFh fh(0, 1);
-        code = _vfsp->vget(fh.getString(), vpp);
-        return code;
-    } else if (name == std::string(".") || name == std::string("..")) {
+
+    if (name == std::string(".") || name == std::string("..")) {
         *vpp = this;
         return 0;
-    } else {
-        return -1;
     }
+
+    Vn *childVp;
+    DirEntList::iterator it;
+    for(it = _dirEnts.begin(); it != _dirEnts.end(); it++) {
+        VnTestDirEnt *ep = *it;
+        if (ep->_name == name) {
+            code = _vfsp->vget(ep->_fh.getString(), &childVp);
+            if (code != 0) {
+                *vpp = nullptr;
+                return code;
+            }
+            *vpp = childVp;
+            return 0;
+        }
+    }
+
+    *vpp = nullptr;
+    return -1;
 }
 
 std::string
@@ -151,13 +179,26 @@ VnTest::getFh() {
 
 int32_t
 VnTest::readdir(uint64_t cookie, Vn::DirEnt *entp) {
-    if (cookie == 0) {
-        entp->_name = std::string("FooFile");
-        entp->_fileId = 17;
-        entp->_cookie = 1;
-    } else if (cookie == 1) {
-        entp->_name = std::string("");
+    VnTestDirEnt *ep;
+    DirEntList::iterator it;
+
+    if (cookie != ~0ULL) {
+        for(it = _dirEnts.begin(); it != _dirEnts.end(); it++) {
+            ep = *it;
+            if (ep->_cookie == cookie || cookie == 0) {
+                DirEntList::iterator nextIt = it;
+                nextIt++;
+                entp->_name = ep->_name;
+                entp->_cookie = (nextIt == _dirEnts.end()? ~0ULL : (*nextIt)->_cookie);
+                entp->_fileId = ep->_fh._info._parentId * 100000 + ep->_fh._info._fileId;
+                return 0;
+            }
+        }
     }
+
+    entp->_name = std::string("");
+    entp->_cookie = ~0ULL;
+    entp->_fileId = 0;
     return 0;
 }
 
@@ -200,6 +241,10 @@ VfsTest::VfsTest() {
     _fsAttrs.maxWriteBytes = 1024*1024;
 
     memset(_cookieVerifier, 0xaa, sizeof(_cookieVerifier));
+    _dirGenerator = 1;
+
+    VnTestFh rootFh(0, 0);
+    _rootp = simpleFile(&rootFh);
 }
 
 VnTest::VnTest(VfsTest *vfsp) {

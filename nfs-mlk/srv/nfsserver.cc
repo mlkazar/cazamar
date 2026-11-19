@@ -842,8 +842,10 @@ NfsServer::opReaddir(nfs_argop4 *op, nfs_resop4 *resp, CompoundState *compStatep
         // readdir's dirEntry contains the cookie of the next entry to
         // return.
         code = vp->readdir(nextCookie, &dirEntry);
-        if (code != 0)
+        if (code != 0) {
+            code = 0;
             break;
+        }
         if (dirEntry._name.length() == 0) {
             // EOF
             code = 0;

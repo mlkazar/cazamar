@@ -56,11 +56,20 @@ public:
 
 };
 
+class VnTestDirEnt {
+public:
+    std::string _name;
+    VnTestFh _fh;
+    uint64_t _cookie;   // this is the entry's cookie; readdir returns next entry's cookie
+};
+
 class VnTest : public Vn {
 public:
+    typedef std::list<VnTestDirEnt *> DirEntList;
     Attr _attrs;
     VnTestFh _fh;
     std::string _data;
+    DirEntList _dirEnts;
 
     int32_t create(std::string name, SetAttr *setAttrs, Vn **vpp);
 
@@ -88,6 +97,7 @@ public:
     VnTest *_rootp;
     FsAttr _fsAttrs;
     char _cookieVerifier[8];
+    uint32_t _dirGenerator;
 
     int32_t root(Vn **vnpp);
 
@@ -95,7 +105,7 @@ public:
 
     int32_t vget(std::string fh, Vn **vpp);
 
-    VnTest * simpleFile(VnTestFh *fh, VfsTest *vfsp);
+    VnTest * simpleFile(VnTestFh *fh);
 
     VfsTest();
 
